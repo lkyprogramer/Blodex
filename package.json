@@ -11,6 +11,9 @@
     "check": "pnpm -r typecheck",
     "assets:compile": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:plan",
     "assets:generate": "pnpm assets:compile && ./scripts/generate_assets.sh",
-    "assets:validate": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:validate"
+    "assets:audio:compile": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:audio:plan",
+    "assets:audio:sync": "./scripts/sync_audio_assets.sh",
+    "assets:audio:validate": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:audio:validate",
+    "assets:validate": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:validate && pnpm assets:audio:sync && pnpm assets:audio:validate"
   }
 }

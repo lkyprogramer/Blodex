@@ -15,6 +15,9 @@ interface AssetManifestEntry {
   outputPath: string;
   license: string;
   revision: number;
+  sourceType: "generated" | "external";
+  sourceRef: string;
+  attribution: string;
 }
 
 function assert(condition: unknown, message: string): void {
@@ -39,6 +42,13 @@ function main(): void {
     assert(typeof entry.promptHash === "string" && entry.promptHash.length >= 8, `promptHash invalid on ${entry.id}`);
     assert(typeof entry.outputPath === "string" && entry.outputPath.length > 0, `outputPath missing on ${entry.id}`);
     assert(Number.isInteger(entry.revision) && entry.revision > 0, `revision invalid on ${entry.id}`);
+    assert(entry.sourceType === "generated" || entry.sourceType === "external", `sourceType invalid on ${entry.id}`);
+    assert(typeof entry.sourceRef === "string" && entry.sourceRef.length > 0, `sourceRef missing on ${entry.id}`);
+    assert(typeof entry.attribution === "string", `attribution missing on ${entry.id}`);
+    assert(entry.license !== "blocked", `blocked license is not allowed on ${entry.id}`);
+    if (entry.license === "review-required") {
+      assert(entry.attribution.length > 0, `review-required license requires attribution on ${entry.id}`);
+    }
   }
 
   process.stdout.write(`Manifest valid: ${entries.length} entries\n`);

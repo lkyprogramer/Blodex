@@ -1,0 +1,101 @@
+[
+  {
+    "id": "sfx_combat_hit_01",
+    "category": "sfx",
+    "eventKey": "combat:hit",
+    "sourceType": "external",
+    "sourceRef": "sfx_combat_hit_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/sfx_combat_hit_01.ogg",
+    "revision": 2
+  },
+  {
+    "id": "sfx_combat_death_01",
+    "category": "sfx",
+    "eventKey": "combat:death",
+    "sourceType": "external",
+    "sourceRef": "sfx_combat_death_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/sfx_combat_death_01.ogg",
+    "revision": 2
+  },
+  {
+    "id": "sfx_combat_crit_01",
+    "category": "sfx",
+    "eventKey": "combat:crit",
+    "sourceType": "external",
+    "sourceRef": "sfx_combat_crit_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/sfx_combat_crit_01.ogg",
+    "revision": 2
+  },
+  {
+    "id": "sfx_boss_phase_change_01",
+    "category": "sfx",
+    "eventKey": "boss:phaseChange",
+    "sourceType": "external",
+    "sourceRef": "sfx_boss_phase_change_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/sfx_boss_phase_change_01.ogg",
+    "revision": 2
+  },
+  {
+    "id": "sfx_skill_cleave_01",
+    "category": "sfx",
+    "eventKey": "skill:use:cleave",
+    "sourceType": "external",
+    "sourceRef": "sfx_skill_cleave_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/sfx_skill_cleave_01.ogg",
+    "revision": 2
+  },
+  {
+    "id": "sfx_skill_shadow_step_01",
+    "category": "sfx",
+    "eventKey": "skill:use:shadow_step",
+    "sourceType": "external",
+    "sourceRef": "sfx_skill_shadow_step_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/sfx_skill_shadow_step_01.ogg",
+    "revision": 2
+  },
+  {
+    "id": "sfx_skill_blood_drain_01",
+    "category": "sfx",
+    "eventKey": "skill:use:blood_drain",
+    "sourceType": "external",
+    "sourceRef": "sfx_skill_blood_drain_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/sfx_skill_blood_drain_01.ogg",
+    "revision": 2
+  },
+  {
+    "id": "sfx_skill_frost_nova_01",
+    "category": "sfx",
+    "eventKey": "skill:use:frost_nova",
+    "sourceType": "external",
+    "sourceRef": "sfx_skill_frost_nova_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/sfx_skill_frost_nova_01.ogg",
+    "revision": 2
+  },
+  {
+    "id": "sfx_skill_war_cry_01",
+    "category": "sfx",
+    "eventKey": "skill:use:war_cry",
+    "sourceType": "external",
+    "sourceRef": "sfx_skill_war_cry_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/sfx_skill_war_cry_01.ogg",
+    "revision": 2
+  }
+]

@@ -20,6 +20,9 @@ interface AssetPromptSpec {
   outputName: string;
   background?: "transparent" | "opaque" | "auto";
   outputFormat?: "png" | "webp";
+  sourceType?: "generated" | "external";
+  sourceRef?: string;
+  attribution?: string;
 }
 
 interface AssetPlan {
@@ -43,6 +46,9 @@ interface ManifestEntry {
   outputPath: string;
   license: string;
   revision: number;
+  sourceType: "generated" | "external";
+  sourceRef: string;
+  attribution: string;
 }
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -119,6 +125,10 @@ function main(): void {
       outputPath: `apps/game-client/public/generated/${row.out}`,
       license: "generated-original",
       revision
+      ,
+      sourceType: parsed.assets.find((entry) => entry.id === row.metadata.id)?.sourceType ?? "generated",
+      sourceRef: parsed.assets.find((entry) => entry.id === row.metadata.id)?.sourceRef ?? "gemini:gemini-3-pro-image-preview",
+      attribution: parsed.assets.find((entry) => entry.id === row.metadata.id)?.attribution ?? ""
     };
   });
 

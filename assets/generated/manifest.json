@@ -7,7 +7,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/player_vanguard.png",
     "license": "generated-original",
-    "revision": 2
+    "revision": 2,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "monster_melee_01",
@@ -17,7 +20,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/monster_melee_01.png",
     "license": "generated-original",
-    "revision": 2
+    "revision": 2,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "monster_ranged_01",
@@ -27,7 +33,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/monster_ranged_01.png",
     "license": "generated-original",
-    "revision": 2
+    "revision": 2,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "monster_elite_01",
@@ -37,7 +46,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/monster_elite_01.png",
     "license": "generated-original",
-    "revision": 2
+    "revision": 2,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "tile_floor_01",
@@ -47,7 +59,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/tile_floor_01.png",
     "license": "generated-original",
-    "revision": 2
+    "revision": 2,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "item_weapon_01",
@@ -57,7 +72,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/item_weapon_01.png",
     "license": "generated-original",
-    "revision": 1
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "item_weapon_02",
@@ -67,7 +85,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/item_weapon_02.png",
     "license": "generated-original",
-    "revision": 1
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "item_weapon_03",
@@ -77,7 +98,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/item_weapon_03.png",
     "license": "generated-original",
-    "revision": 1
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "item_helm_01",
@@ -87,7 +111,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/item_helm_01.png",
     "license": "generated-original",
-    "revision": 1
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "item_helm_02",
@@ -97,7 +124,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/item_helm_02.png",
     "license": "generated-original",
-    "revision": 1
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "item_chest_01",
@@ -107,7 +137,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/item_chest_01.png",
     "license": "generated-original",
-    "revision": 1
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "item_chest_02",
@@ -117,7 +150,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/item_chest_02.png",
     "license": "generated-original",
-    "revision": 1
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "item_boots_01",
@@ -127,7 +163,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/item_boots_01.png",
     "license": "generated-original",
-    "revision": 1
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "item_boots_02",
@@ -137,7 +176,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/item_boots_02.png",
     "license": "generated-original",
-    "revision": 1
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "item_ring_01",
@@ -147,7 +189,10 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/item_ring_01.png",
     "license": "generated-original",
-    "revision": 2
+    "revision": 2,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   },
   {
     "id": "item_ring_02",
@@ -157,6 +202,165 @@
     "sourcePath": "assets/source-prompts/asset-plan.yaml",
     "outputPath": "apps/game-client/public/generated/item_ring_02.png",
     "license": "generated-original",
-    "revision": 1
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "boss_bone_sovereign",
+    "category": "boss_sprite",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "3b00d3de81",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_bone_sovereign.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "telegraph_circle_red",
+    "category": "fx",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "6a348de131",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/telegraph_circle_red.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "telegraph_zone_red",
+    "category": "fx",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "6f6c921304",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/telegraph_zone_red.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "staircase_floor_exit",
+    "category": "tile",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "df4268e96e",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/staircase_floor_exit.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "skill_cleave",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "16d2d7b222",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_cleave.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "skill_shadow_step",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "cb7594cbb1",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_shadow_step.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "skill_blood_drain",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "a608a363c9",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_blood_drain.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "skill_frost_nova",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "cb6e268bde",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_frost_nova.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "skill_war_cry",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "e14f28223e",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_war_cry.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "meta_unlock_locked",
+    "category": "ui_icon",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "db6e22c255",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/meta_unlock_locked.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "meta_unlock_available",
+    "category": "ui_icon",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "5530fd1a9e",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/meta_unlock_available.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
+  },
+  {
+    "id": "meta_unlock_unlocked",
+    "category": "ui_icon",
+    "styleTag": "painterly-dark-fantasy-v2",
+    "promptHash": "e4d551bae7",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/meta_unlock_unlocked.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3-pro-image-preview",
+    "attribution": ""
   }
 ]
