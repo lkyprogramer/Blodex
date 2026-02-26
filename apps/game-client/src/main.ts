@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { DungeonScene } from "./scenes/DungeonScene";
+import { MetaMenuScene } from "./scenes/MetaMenuScene";
 import "./style.css";
 
 const root = document.querySelector("#game-root") as HTMLDivElement;
@@ -10,7 +11,7 @@ const game = new Phaser.Game({
   height: window.innerHeight,
   parent: root,
   backgroundColor: "#10141a",
-  scene: [DungeonScene],
+  scene: [MetaMenuScene, DungeonScene],
   physics: {
     default: "arcade",
     arcade: {
