@@ -1,10 +1,15 @@
 import type {
+  BossAttack,
+  BossRuntimeState,
+  BuffInstance,
   CombatEvent,
   EquipmentSlot,
   ItemInstance,
   MonsterState,
   ReplayInputEvent,
-  RunSummary
+  RunSummary,
+  SkillResolution,
+  StaircaseState
 } from "./types";
 
 export interface GameEventMap {
@@ -68,6 +73,53 @@ export interface GameEventMap {
     monsterId: string;
     from: MonsterState["aiState"];
     to: MonsterState["aiState"];
+    timestampMs: number;
+  };
+  "floor:enter": {
+    floor: number;
+    timestampMs: number;
+  };
+  "floor:clear": {
+    floor: number;
+    kills: number;
+    staircase: StaircaseState;
+    timestampMs: number;
+  };
+  "boss:phaseChange": {
+    bossId: string;
+    fromPhase: number;
+    toPhase: number;
+    hpRatio: number;
+    timestampMs: number;
+  };
+  "boss:summon": {
+    bossId: string;
+    attack: BossAttack;
+    count: number;
+    timestampMs: number;
+  };
+  "boss:attack": {
+    boss: BossRuntimeState;
+    attack: BossAttack;
+    timestampMs: number;
+  };
+  "skill:use": {
+    playerId: string;
+    skillId: string;
+    timestampMs: number;
+    resolution: SkillResolution;
+  };
+  "skill:cooldown": {
+    playerId: string;
+    skillId: string;
+    readyAtMs: number;
+  };
+  "buff:apply": {
+    buff: BuffInstance;
+    timestampMs: number;
+  };
+  "buff:expire": {
+    buff: BuffInstance;
     timestampMs: number;
   };
 }
