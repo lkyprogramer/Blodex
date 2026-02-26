@@ -60,18 +60,83 @@ function roomsOverlap(a: DungeonRoom, b: DungeonRoom): boolean {
 export interface ProcgenOptions {
   width: number;
   height: number;
-  roomCount: number;
+  roomCount?: number;
   minRoomSize: number;
   maxRoomSize: number;
   seed: string;
+  floorNumber?: number;
+}
+
+function defaultRoomCountByFloor(floorNumber: number | undefined): number {
+  if (floorNumber === undefined) {
+    return 12;
+  }
+  if (floorNumber >= 5) {
+    return 1;
+  }
+  if (floorNumber >= 3) {
+    return 14;
+  }
+  return 12;
+}
+
+export function generateBossRoom(seed: string, width = 46, height = 46): DungeonLayout {
+  const grid = createGrid(width, height);
+  const roomWidth = 12;
+  const roomHeight = 12;
+  const roomX = Math.floor((width - roomWidth) / 2);
+  const roomY = Math.floor((height - roomHeight) / 2);
+  const bossRoom: DungeonRoom = {
+    id: "boss-room",
+    x: roomX,
+    y: roomY,
+    width: roomWidth,
+    height: roomHeight
+  };
+
+  carveRoom(grid, bossRoom);
+
+  const entrance = {
+    x: Math.floor(width / 2),
+    y: Math.max(1, roomY - 8)
+  };
+  const roomCenter = center(bossRoom);
+  const corridorPath = carveCorridor(grid, entrance, roomCenter);
+
+  return {
+    width,
+    height,
+    walkable: grid,
+    rooms: [bossRoom],
+    corridors: [
+      {
+        fromRoomId: "entrance",
+        toRoomId: bossRoom.id,
+        path: corridorPath
+      }
+    ],
+    spawnPoints: [
+      { x: roomCenter.x - 2, y: roomCenter.y },
+      { x: roomCenter.x + 2, y: roomCenter.y }
+    ],
+    playerSpawn: entrance,
+    layoutHash: `${seed}:boss:${width}x${height}`
+  };
 }
 
 export function generateDungeon(options: ProcgenOptions): DungeonLayout {
+  const floorNumber = options.floorNumber ?? 1;
+  const resolvedRoomCount = options.roomCount ?? defaultRoomCountByFloor(floorNumber);
+
+  if (floorNumber >= 5 && resolvedRoomCount <= 1) {
+    return generateBossRoom(options.seed, options.width, options.height);
+  }
+
   const rng = new SeededRng(options.seed);
   const grid = createGrid(options.width, options.height);
   const rooms: DungeonRoom[] = [];
 
-  for (let attempt = 0; attempt < options.roomCount * 6 && rooms.length < options.roomCount; attempt += 1) {
+  for (let attempt = 0; attempt < resolvedRoomCount * 6 && rooms.length < resolvedRoomCount; attempt += 1) {
     const width = rng.nextInt(options.minRoomSize, options.maxRoomSize);
     const height = rng.nextInt(options.minRoomSize, options.maxRoomSize);
     const x = rng.nextInt(1, options.width - width - 2);
@@ -111,7 +176,7 @@ export function generateDungeon(options: ProcgenOptions): DungeonLayout {
 
   const spawnPoints = rooms.slice(1).map((room) => center(room));
   const playerSpawn = center(rooms[0]!);
-  const layoutHash = `${options.seed}:${rooms.length}:${corridors.length}`;
+  const layoutHash = `${options.seed}:${rooms.length}:${corridors.length}:${floorNumber}`;
 
   return {
     width: options.width,
