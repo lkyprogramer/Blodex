@@ -101,6 +101,17 @@ export function resolveBossAttack(
     };
   }
 
+  const distanceToPlayer = Math.hypot(
+    boss.position.x - player.position.x,
+    boss.position.y - player.position.y
+  );
+  if (distanceToPlayer > attack.range) {
+    return {
+      player,
+      events: []
+    };
+  }
+
   const dodgeChance = Math.min(0.35, player.derivedStats.critChance * 0.65);
   if (rng.next() < dodgeChance) {
     return {
