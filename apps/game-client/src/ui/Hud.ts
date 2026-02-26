@@ -13,6 +13,12 @@ interface HudState {
     kills: number;
     lootCollected: number;
     targetKills: number;
+    obols?: number;
+    floorGoalReached?: boolean;
+    isBossFloor?: boolean;
+    bossHealth?: number;
+    bossMaxHealth?: number;
+    bossPhase?: number;
   };
   meta: MetaProgression;
 }
@@ -99,6 +105,23 @@ export class Hud {
     `;
 
     this.runEl.className = "panel-block compact-block";
+    const skillsHtml =
+      player.skills === undefined
+        ? ""
+        : `<div class=\"skill-bar\">${player.skills.skillSlots
+            .map((slot, index) => {
+              if (slot === null) {
+                return `<div class=\"skill-slot locked\"><span class=\"skill-key\">${index + 1}</span><span>Locked</span></div>`;
+              }
+              const readyAt = player.skills?.cooldowns[slot.defId] ?? 0;
+              const remainingMs = Math.max(0, readyAt - performance.now());
+              const remainingText = remainingMs > 0 ? `${(remainingMs / 1000).toFixed(1)}s` : "Ready";
+              const manaEnough = player.mana >= 1;
+              return `<div class=\"skill-slot ${remainingMs > 0 ? "cooldown" : "ready"} ${
+                manaEnough ? "" : "oom"
+              }\"><span class=\"skill-key\">${index + 1}</span><span>${slot.defId}</span><small>${remainingText}</small></div>`;
+            })
+            .join("")}</div>`;
     this.runEl.innerHTML = `
       <div class="mini-grid mini-2">
         <div><span class="k">Floor</span><span>${state.run.floor}</span></div>
@@ -107,7 +130,14 @@ export class Hud {
         }">${player.health <= 0 ? "Dead" : "Hunting"}</span></div>
         <div><span class="k">Kills</span><span>${state.run.kills}/${state.run.targetKills}</span></div>
         <div><span class="k">Loot</span><span>${state.run.lootCollected}</span></div>
+        <div><span class="k">Obol</span><span>${state.run.obols ?? 0}</span></div>
+        <div><span class="k">Goal</span><span>${state.run.floorGoalReached ? "Stairs up" : "Hunt"}</span></div>
       </div>
+      ${state.run.isBossFloor ? `<div class=\"boss-strip\">Boss HP: ${Math.max(
+        0,
+        Math.floor(state.run.bossHealth ?? 0)
+      )}/${Math.max(1, Math.floor(state.run.bossMaxHealth ?? 1))} · Phase ${(state.run.bossPhase ?? 0) + 1}</div>` : ""}
+      ${skillsHtml}
     `;
 
     this.renderInventory(player.inventory, player.equipment);
@@ -247,14 +277,16 @@ export class Hud {
     this.summaryEl.classList.remove("hidden");
     this.summaryEl.className = "panel-block";
     this.summaryEl.innerHTML = `
-      <h2>Run Ended</h2>
+      <h2>${summary.isVictory ? "Run Victory" : "Run Ended"}</h2>
       <div class="stat-line"><span>Floor</span><span>${summary.floorReached}</span></div>
       <div class="stat-line"><span>Kills</span><span>${summary.kills}</span></div>
       <div class="stat-line"><span>Loot</span><span>${summary.lootCollected}</span></div>
+      <div class="stat-line"><span>Obol</span><span>${summary.obolsEarned ?? 0}</span></div>
+      <div class="stat-line"><span>Soul</span><span>${summary.soulShardsEarned ?? 0}</span></div>
       <div class="stat-line"><span>Time</span><span>${(summary.elapsedMs / 1000).toFixed(1)}s</span></div>
       <div class="stat-line"><span>Level</span><span>${summary.leveledTo}</span></div>
       <div class="summary-actions" style="margin-top: 10px;">
-        <button id="new-run-button">New Run</button>
+        <button id="new-run-button">Continue</button>
       </div>
     `;
 
