@@ -25,13 +25,15 @@ function selectTargets(player: PlayerState, monsters: MonsterState[], def: Skill
   }
 
   const living = monsters.filter((monster) => monster.health > 0);
+  const inRange = living.filter(
+    (monster) => Math.hypot(monster.position.x - player.position.x, monster.position.y - player.position.y) <= def.range
+  );
+
   if (def.targeting === "aoe_around") {
-    return living.filter(
-      (monster) => Math.hypot(monster.position.x - player.position.x, monster.position.y - player.position.y) <= def.range
-    );
+    return inRange;
   }
 
-  const nearest = [...living].sort(
+  const nearest = [...inRange].sort(
     (a, b) =>
       Math.hypot(a.position.x - player.position.x, a.position.y - player.position.y) -
       Math.hypot(b.position.x - player.position.x, b.position.y - player.position.y)

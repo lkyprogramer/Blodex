@@ -64,7 +64,7 @@ function main(): void {
     const revision =
       previous === undefined
         ? 1
-        : stableHash(`${previous.sourceRef}:${previous.eventKey}`) === hash
+        : stableHash(`${previous.id}:${previous.sourceRef}:${previous.eventKey}`) === hash
           ? previous.revision
           : previous.revision + 1;
 

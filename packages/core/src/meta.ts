@@ -37,6 +37,7 @@ export function migrateMeta(raw: unknown): MetaProgression {
     bestTimeMs: 0,
     soulShards: 0,
     unlocks: [],
+    cumulativeUnlockProgress: 0,
     schemaVersion: 2,
     permanentUpgrades: {
       startingHealth: 0,
@@ -58,6 +59,7 @@ export function migrateMeta(raw: unknown): MetaProgression {
       bestTimeMs: asNumber(raw.bestTimeMs, 0),
       soulShards: asNumber(raw.soulShards, 0),
       unlocks: Array.isArray(raw.unlocks) ? raw.unlocks.filter((entry): entry is string => typeof entry === "string") : [],
+      cumulativeUnlockProgress: asNumber(raw.cumulativeUnlockProgress, 0),
       schemaVersion: 2,
       permanentUpgrades: normalizePermanentUpgrades(raw.permanentUpgrades)
     };
@@ -69,6 +71,7 @@ export function migrateMeta(raw: unknown): MetaProgression {
     bestTimeMs: asNumber(raw.bestTimeMs, 0),
     soulShards: 0,
     unlocks: [],
+    cumulativeUnlockProgress: 0,
     schemaVersion: 2,
     permanentUpgrades: {
       startingHealth: 0,
@@ -112,6 +115,9 @@ export function canPurchaseUnlock(meta: MetaProgression, unlock: UnlockDef): boo
   if (meta.unlocks.includes(unlock.id)) {
     return false;
   }
+  if (meta.cumulativeUnlockProgress < unlock.cumulativeRequirement) {
+    return false;
+  }
   return meta.soulShards >= unlock.cost;
 }
 
@@ -123,7 +129,8 @@ export function purchaseUnlock(meta: MetaProgression, unlock: UnlockDef): MetaPr
   const next: MetaProgression = {
     ...meta,
     soulShards: meta.soulShards - unlock.cost,
-    unlocks: [...meta.unlocks, unlock.id]
+    unlocks: [...meta.unlocks, unlock.id],
+    cumulativeUnlockProgress: meta.cumulativeUnlockProgress + unlock.cost
   };
 
   if (unlock.effect.type !== "permanent_upgrade") {

@@ -134,6 +134,7 @@ export function createInitialMeta(): MetaProgression {
     bestTimeMs: 0,
     soulShards: 0,
     unlocks: [],
+    cumulativeUnlockProgress: 0,
     schemaVersion: 2,
     permanentUpgrades: createInitialPermanentUpgrades()
   };

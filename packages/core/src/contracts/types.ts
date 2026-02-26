@@ -343,6 +343,7 @@ export interface MetaProgression {
   bestTimeMs: number;
   soulShards: number;
   unlocks: string[];
+  cumulativeUnlockProgress: number;
   schemaVersion: 2;
   permanentUpgrades: PermanentUpgrade;
 }

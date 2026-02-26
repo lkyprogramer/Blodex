@@ -194,7 +194,7 @@ export class DungeonScene extends Phaser.Scene {
       },
       (slot) => {
         const equipped = this.player.equipment[slot];
-        this.player = {
+        const unequippedPlayer: PlayerState = {
           ...this.player,
           inventory: equipped === undefined ? this.player.inventory : [...this.player.inventory, equipped],
           equipment: {
@@ -202,6 +202,7 @@ export class DungeonScene extends Phaser.Scene {
             [slot]: undefined
           }
         };
+        this.player = this.refreshPlayerStatsFromEquipment(unequippedPlayer);
         if (equipped !== undefined) {
           this.eventBus.emit("item:unequip", {
             playerId: this.player.id,
@@ -437,6 +438,10 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private reusePlayerForNewFloor(player: PlayerState): PlayerState {
+    return this.refreshPlayerStatsFromEquipment(player);
+  }
+
+  private refreshPlayerStatsFromEquipment(player: PlayerState): PlayerState {
     const equipped = Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined);
     const derivedStats = deriveStats(player.baseStats, equipped, undefined, this.meta.permanentUpgrades);
 
@@ -626,10 +631,6 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private updateMonsters(dt: number, nowMs: number): void {
-    if (this.floorConfig.isBossFloor) {
-      return;
-    }
-
     const transitions = this.aiSystem.updateMonsters(
       this.entityManager.listLivingMonsters(),
       this.player,
@@ -643,10 +644,6 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private updateMonsterCombat(nowMs: number): void {
-    if (this.floorConfig.isBossFloor) {
-      return;
-    }
-
     const monsterCombat = this.combatSystem.updateMonsterAttacks(
       this.entityManager.listLivingMonsters(),
       this.player,
