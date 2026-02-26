@@ -341,10 +341,11 @@ export interface MetaProgression {
   runsPlayed: number;
   bestFloor: number;
   bestTimeMs: number;
-  soulShards?: number;
-  unlocks?: string[];
-  schemaVersion?: 2;
-  permanentUpgrades?: PermanentUpgrade;
+  soulShards: number;
+  unlocks: string[];
+  cumulativeUnlockProgress: number;
+  schemaVersion: 2;
+  permanentUpgrades: PermanentUpgrade;
 }
 
 export interface UnlockDef {
