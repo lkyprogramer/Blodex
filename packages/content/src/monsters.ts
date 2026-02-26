@@ -1,15 +1,4 @@
-import type { MonsterArchetypeId } from "./types";
-
-export interface MonsterArchetypeDef {
-  id: MonsterArchetypeId;
-  name: string;
-  healthMultiplier: number;
-  damageMultiplier: number;
-  attackRange: number;
-  moveSpeed: number;
-  xpValue: number;
-  spriteId: string;
-}
+import type { MonsterArchetypeDef } from "./types";
 
 export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
@@ -20,7 +9,12 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
     attackRange: 1,
     moveSpeed: 110,
     xpValue: 18,
-    spriteId: "monster_melee_01"
+    spriteId: "monster_melee_01",
+    dropTableId: "starter_floor",
+    aiConfig: {
+      chaseRange: 7,
+      attackCooldownMs: 1800
+    }
   },
   {
     id: "ranged_caster",
@@ -30,7 +24,12 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
     attackRange: 5,
     moveSpeed: 95,
     xpValue: 22,
-    spriteId: "monster_ranged_01"
+    spriteId: "monster_ranged_01",
+    dropTableId: "cathedral_depths",
+    aiConfig: {
+      chaseRange: 7,
+      attackCooldownMs: 1800
+    }
   },
   {
     id: "elite_bruiser",
@@ -40,10 +39,17 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
     attackRange: 1,
     moveSpeed: 85,
     xpValue: 40,
-    spriteId: "monster_elite_01"
+    spriteId: "monster_elite_01",
+    dropTableId: "catacomb_elite",
+    aiConfig: {
+      chaseRange: 7,
+      attackCooldownMs: 1800
+    }
   }
 ];
 
-export const MONSTER_ARCHETYPE_MAP = Object.fromEntries(
-  MONSTER_ARCHETYPES.map((entry) => [entry.id, entry])
-);
+export const MONSTER_ARCHETYPE_MAP: Record<MonsterArchetypeDef["id"], MonsterArchetypeDef> =
+  Object.fromEntries(MONSTER_ARCHETYPES.map((entry) => [entry.id, entry])) as Record<
+    MonsterArchetypeDef["id"],
+    MonsterArchetypeDef
+  >;

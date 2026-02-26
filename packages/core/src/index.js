@@ -1,6 +1,7 @@
 export * from "./contracts/events";
 export * from "./contracts/types";
 export * from "./combat";
+export * from "./eventBus";
 export * from "./loot";
 export * from "./inventory";
 export * from "./pathfinding";

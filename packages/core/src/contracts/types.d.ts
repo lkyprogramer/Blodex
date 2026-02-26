@@ -27,9 +27,30 @@ export interface GameConfig {
     enemyBaseDamage: number;
 }
 export interface RunSeed {
-    worldSeed: string;
-    floorIndex: number;
-    difficultyTier: number;
+    runSeed: string;
+    floor: number;
+    stream: "procgen" | "spawn" | "combat" | "loot";
+}
+export interface ReplayInputMove {
+    type: "move_target";
+    atMs: number;
+    target: {
+        x: number;
+        y: number;
+    };
+}
+export interface ReplayInputAttack {
+    type: "attack_target";
+    atMs: number;
+    targetId: string;
+}
+export type ReplayInputEvent = ReplayInputMove | ReplayInputAttack;
+export interface RunReplay {
+    version: string;
+    runSeed: string;
+    floor: number;
+    inputs: ReplayInputEvent[];
+    checksum?: string;
 }
 export interface ItemAffix {
     key: keyof DerivedStats;
@@ -146,6 +167,7 @@ export interface RunSummary {
     lootCollected: number;
     elapsedMs: number;
     leveledTo: number;
+    replayChecksum?: string;
 }
 export interface MetaProgression {
     runsPlayed: number;
