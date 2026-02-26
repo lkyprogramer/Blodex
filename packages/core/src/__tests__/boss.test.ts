@@ -1,7 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { resolveBossAttack } from "../boss";
 import { SeededRng } from "../rng";
-import type { BossAttack, BossRuntimeState, PlayerState } from "../contracts/types";
+import {
+  applyDamageToBoss,
+  initBossState,
+  markBossAttackUsed,
+  resolveBossAttack,
+  selectBossAttack,
+  updateBossPhase
+} from "../boss";
+import type { BossAttack, BossDef, BossRuntimeState, PlayerState } from "../contracts/types";
+
+const BOSS: BossDef = {
+  id: "boss-1",
+  name: "Boss",
+  spriteKey: "boss",
+  baseHealth: 200,
+  dropTableId: "boss",
+  exclusiveFloor: 5,
+  phases: [
+    {
+      hpThreshold: 1,
+      attackPattern: [{ id: "hit", cooldownMs: 1000, telegraphMs: 0, type: "melee", damage: 20, range: 2 }]
+    },
+    {
+      hpThreshold: 0.5,
+      attackPattern: [{ id: "rage", cooldownMs: 1000, telegraphMs: 0, type: "melee", damage: 30, range: 2 }]
+    }
+  ]
+};
 
 function makePlayer(): PlayerState {
   return {
@@ -50,6 +76,30 @@ function makeMeleeAttack(): BossAttack {
     range: 1
   };
 }
+
+describe("boss", () => {
+  it("switches phase after crossing threshold", () => {
+    let state = initBossState(BOSS, { x: 5, y: 5 });
+    state = applyDamageToBoss(state, 120);
+    state = updateBossPhase(state, BOSS);
+    expect(state.currentPhaseIndex).toBe(1);
+  });
+
+  it("selects and resolves attack deterministically", () => {
+    const rng = new SeededRng("boss-seed");
+    let state = initBossState(BOSS, { x: 5, y: 5 });
+    const attack = selectBossAttack(state, BOSS, 1000, rng);
+    expect(attack?.id).toBe("hit");
+    if (attack === null) {
+      return;
+    }
+    const player = makePlayer();
+    const result = resolveBossAttack(attack, state, player, rng, 1000);
+    expect(result.player.health).toBeLessThanOrEqual(player.health);
+    state = markBossAttackUsed(state, attack, 1000);
+    expect(state.attackCooldowns.hit).toBe(2000);
+  });
+});
 
 describe("boss combat", () => {
   it("does not apply damage when player is out of attack range", () => {

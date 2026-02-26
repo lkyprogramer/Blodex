@@ -31,10 +31,14 @@ describe("run replay determinism", () => {
     for (const sample of samples) {
       const initial: RunState = {
         startedAtMs: 0,
-        floor: 1,
-        kills: 0,
-        lootCollected: 0,
         runSeed: sample,
+        currentFloor: 1,
+        floor: 1,
+        floorsCleared: 0,
+        kills: 0,
+        totalKills: 0,
+        lootCollected: 0,
+        runEconomy: { obols: 0 },
         replay: createReplay(sample, 1)
       };
       const withInputs = appendReplayInput(

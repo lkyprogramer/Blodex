@@ -48,9 +48,15 @@ describe("progression", () => {
     const { summary, meta: updatedMeta } = endRun(
       {
         startedAtMs: 0,
+        runSeed: "test-seed",
+        currentFloor: 2,
         floor: 2,
+        floorsCleared: 1,
         kills: 18,
+        totalKills: 18,
         lootCollected: 5
+        ,
+        runEconomy: { obols: 12 }
       },
       player(3),
       60000,
