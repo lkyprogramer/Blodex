@@ -202,3 +202,75 @@ assets:
     palette: "blackened gold and crimson gemstone"
     materials: "aged metal and gemstone"
     constraints: "transparent background; no text; no logos; no watermark"
+
+  - id: boss_bone_sovereign
+    category: boss_sprite
+    outputName: boss_bone_sovereign.png
+    prompt: "Isometric undead bone sovereign boss, imposing silhouette"
+    constraints: "transparent background; no text; no logos; no watermark"
+
+  - id: telegraph_circle_red
+    category: fx
+    outputName: telegraph_circle_red.png
+    prompt: "Simple red circular telegraph indicator for game attacks"
+    constraints: "transparent background; clean shape; no text"
+
+  - id: telegraph_zone_red
+    category: fx
+    outputName: telegraph_zone_red.png
+    prompt: "Simple red rectangular telegraph indicator for game attacks"
+    constraints: "transparent background; clean shape; no text"
+
+  - id: staircase_floor_exit
+    category: tile
+    outputName: staircase_floor_exit.png
+    prompt: "Isometric stone staircase descending into darkness"
+    constraints: "transparent background; no text"
+
+  - id: skill_cleave
+    category: skill_icon
+    outputName: skill_cleave.png
+    prompt: "RPG skill icon of a sweeping blade arc"
+    constraints: "transparent background; no text"
+
+  - id: skill_shadow_step
+    category: skill_icon
+    outputName: skill_shadow_step.png
+    prompt: "RPG skill icon for shadow teleport strike"
+    constraints: "transparent background; no text"
+
+  - id: skill_blood_drain
+    category: skill_icon
+    outputName: skill_blood_drain.png
+    prompt: "RPG skill icon for life drain magic"
+    constraints: "transparent background; no text"
+
+  - id: skill_frost_nova
+    category: skill_icon
+    outputName: skill_frost_nova.png
+    prompt: "RPG skill icon for icy nova explosion"
+    constraints: "transparent background; no text"
+
+  - id: skill_war_cry
+    category: skill_icon
+    outputName: skill_war_cry.png
+    prompt: "RPG skill icon for battle roar buff"
+    constraints: "transparent background; no text"
+
+  - id: meta_unlock_locked
+    category: ui_icon
+    outputName: meta_unlock_locked.png
+    prompt: "UI icon for locked progression node"
+    constraints: "transparent background; no text"
+
+  - id: meta_unlock_available
+    category: ui_icon
+    outputName: meta_unlock_available.png
+    prompt: "UI icon for available progression node"
+    constraints: "transparent background; no text"
+
+  - id: meta_unlock_unlocked
+    category: ui_icon
+    outputName: meta_unlock_unlocked.png
+    prompt: "UI icon for unlocked progression node"
+    constraints: "transparent background; no text"
