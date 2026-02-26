@@ -5,6 +5,11 @@ import type {
   PlayerState,
   RunSummary
 } from "@blodex/core";
+import {
+  detectPreferredImageFormat,
+  resolveGeneratedAssetUrl,
+  resolveGeneratedPngFallback
+} from "../assets/imageAsset";
 
 interface HudState {
   player: PlayerState;
@@ -69,6 +74,7 @@ export class Hud {
   private readonly inventoryEl = document.querySelector("#inventory") as HTMLDivElement;
   private readonly summaryEl = document.querySelector("#summary") as HTMLDivElement;
   private readonly tooltipEl: HTMLDivElement;
+  private readonly preferredImageFormat = detectPreferredImageFormat();
 
   constructor(
     private readonly onEquip: (itemId: string) => void,
@@ -173,7 +179,10 @@ export class Hud {
             <div class="equip-slot-name">${slotLabel(slot)}</div>
             <button data-unequip-slot="${slot}" title="Unequip ${slotLongLabel(slot)}">×</button>
           </div>
-          <img class="item-icon" src="/generated/${equipped.iconId}.png" alt="${equipped.name}" />
+          <img class="item-icon" data-asset-id="${equipped.iconId}" src="${resolveGeneratedAssetUrl(
+            equipped.iconId,
+            this.preferredImageFormat
+          )}" alt="${equipped.name}" />
         </div>
       `;
     }).join("");
@@ -182,7 +191,10 @@ export class Hud {
       .map(
         (item) => `
         <div class="inventory-cell ${item.rarity}" data-item-id="${item.id}">
-          <img class="item-icon" src="/generated/${item.iconId}.png" alt="${item.name}" />
+          <img class="item-icon" data-asset-id="${item.iconId}" src="${resolveGeneratedAssetUrl(
+            item.iconId,
+            this.preferredImageFormat
+          )}" alt="${item.name}" />
           <button data-item-id="${item.id}" title="Equip ${item.name}">E</button>
         </div>
       `
@@ -197,6 +209,7 @@ export class Hud {
         <div class="inventory-grid">${inventoryGrid || '<div class="inventory-empty">No drops yet.</div>'}</div>
       </div>
     `;
+    this.bindGeneratedImageFallbacks();
 
     this.inventoryEl.querySelectorAll("button[data-item-id]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -243,6 +256,24 @@ export class Hud {
 
       element.addEventListener("mouseleave", () => {
         this.hideTooltip();
+      });
+    });
+  }
+
+  private bindGeneratedImageFallbacks(): void {
+    this.inventoryEl.querySelectorAll<HTMLImageElement>("img.item-icon[data-asset-id]").forEach((image) => {
+      image.addEventListener("error", () => {
+        const assetId = image.dataset.assetId;
+        if (assetId === undefined) {
+          return;
+        }
+
+        if (image.dataset.fallbackApplied === "1") {
+          return;
+        }
+
+        image.dataset.fallbackApplied = "1";
+        image.src = resolveGeneratedPngFallback(assetId);
       });
     });
   }

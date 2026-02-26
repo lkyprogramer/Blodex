@@ -9,8 +9,18 @@
     "license": "generated-original",
     "revision": 2,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 384,
+        "height": 384
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/player_vanguard.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/player_vanguard.png"
+    }
   },
   {
     "id": "monster_melee_01",
@@ -22,8 +32,18 @@
     "license": "generated-original",
     "revision": 2,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 320,
+        "height": 320
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/monster_melee_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/monster_melee_01.png"
+    }
   },
   {
     "id": "monster_ranged_01",
@@ -35,8 +55,18 @@
     "license": "generated-original",
     "revision": 2,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 320,
+        "height": 320
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/monster_ranged_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/monster_ranged_01.png"
+    }
   },
   {
     "id": "monster_elite_01",
@@ -48,8 +78,18 @@
     "license": "generated-original",
     "revision": 2,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 320,
+        "height": 320
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/monster_elite_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/monster_elite_01.png"
+    }
   },
   {
     "id": "tile_floor_01",
@@ -61,8 +101,18 @@
     "license": "generated-original",
     "revision": 2,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 320,
+        "height": 320
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/tile_floor_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/tile_floor_01.png"
+    }
   },
   {
     "id": "item_weapon_01",
@@ -74,8 +124,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_weapon_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_weapon_01.png"
+    }
   },
   {
     "id": "item_weapon_02",
@@ -87,8 +147,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_weapon_02.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_weapon_02.png"
+    }
   },
   {
     "id": "item_weapon_03",
@@ -100,8 +170,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_weapon_03.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_weapon_03.png"
+    }
   },
   {
     "id": "item_helm_01",
@@ -113,8 +193,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_helm_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_helm_01.png"
+    }
   },
   {
     "id": "item_helm_02",
@@ -126,8 +216,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_helm_02.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_helm_02.png"
+    }
   },
   {
     "id": "item_chest_01",
@@ -139,8 +239,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_chest_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_chest_01.png"
+    }
   },
   {
     "id": "item_chest_02",
@@ -152,8 +262,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_chest_02.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_chest_02.png"
+    }
   },
   {
     "id": "item_boots_01",
@@ -165,8 +285,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_boots_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_boots_01.png"
+    }
   },
   {
     "id": "item_boots_02",
@@ -178,8 +308,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_boots_02.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_boots_02.png"
+    }
   },
   {
     "id": "item_ring_01",
@@ -191,8 +331,18 @@
     "license": "generated-original",
     "revision": 2,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_ring_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_ring_01.png"
+    }
   },
   {
     "id": "item_ring_02",
@@ -204,8 +354,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_ring_02.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_ring_02.png"
+    }
   },
   {
     "id": "boss_bone_sovereign",
@@ -217,8 +377,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 448,
+        "height": 448
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_bone_sovereign.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_bone_sovereign.png"
+    }
   },
   {
     "id": "telegraph_circle_red",
@@ -230,8 +400,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 320,
+        "height": 320
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/telegraph_circle_red.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/telegraph_circle_red.png"
+    }
   },
   {
     "id": "telegraph_zone_red",
@@ -243,8 +423,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 320,
+        "height": 320
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/telegraph_zone_red.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/telegraph_zone_red.png"
+    }
   },
   {
     "id": "staircase_floor_exit",
@@ -256,8 +446,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 320,
+        "height": 320
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/staircase_floor_exit.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/staircase_floor_exit.png"
+    }
   },
   {
     "id": "skill_cleave",
@@ -269,8 +469,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_cleave.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_cleave.png"
+    }
   },
   {
     "id": "skill_shadow_step",
@@ -282,8 +492,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_shadow_step.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_shadow_step.png"
+    }
   },
   {
     "id": "skill_blood_drain",
@@ -295,8 +515,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_blood_drain.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_blood_drain.png"
+    }
   },
   {
     "id": "skill_frost_nova",
@@ -308,8 +538,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_frost_nova.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_frost_nova.png"
+    }
   },
   {
     "id": "skill_war_cry",
@@ -321,8 +561,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_war_cry.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_war_cry.png"
+    }
   },
   {
     "id": "meta_unlock_locked",
@@ -334,8 +584,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/meta_unlock_locked.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/meta_unlock_locked.png"
+    }
   },
   {
     "id": "meta_unlock_available",
@@ -347,8 +607,18 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/meta_unlock_available.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/meta_unlock_available.png"
+    }
   },
   {
     "id": "meta_unlock_unlocked",
@@ -360,7 +630,17 @@
     "license": "generated-original",
     "revision": 1,
     "sourceType": "generated",
-    "sourceRef": "gemini:gemini-3-pro-image-preview",
-    "attribution": ""
+    "sourceRef": "gemini:gemini-2.5-flash-image",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/meta_unlock_unlocked.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/meta_unlock_unlocked.png"
+    }
   }
 ]

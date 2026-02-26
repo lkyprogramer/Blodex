@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PROVIDER="${IMAGE_PROVIDER:-gemini}"
 MODEL="${IMAGE_MODEL:-gemini-2.5-flash-image}"
 
-mkdir -p "$ROOT_DIR/output/imagegen/raw" "$ROOT_DIR/apps/game-client/public/generated"
+mkdir -p "$ROOT_DIR/output/imagegen/raw"
 
 if [[ "$PROVIDER" == "gemini" ]]; then
   python3 "$ROOT_DIR/scripts/generate_assets_gemini.py" \
@@ -27,7 +27,4 @@ else
     --force
 fi
 
-cp "$ROOT_DIR"/output/imagegen/raw/*.png "$ROOT_DIR/apps/game-client/public/generated/"
-cp "$ROOT_DIR/assets/generated/manifest.json" "$ROOT_DIR/apps/game-client/public/generated/manifest.json"
-
-echo "Generated assets copied into apps/game-client/public/generated"
+echo "Raw image generation completed at output/imagegen/raw"
