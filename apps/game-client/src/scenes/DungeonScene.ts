@@ -305,7 +305,7 @@ export class DungeonScene extends Phaser.Scene {
       this.attackTargetId = clickedMonster.state.id;
       this.run = appendReplayInput(this.run, {
         type: "attack_target",
-        atMs: this.time.now,
+        atMs: this.getRunRelativeNowMs(),
         targetId: clickedMonster.state.id
       });
       return;
@@ -315,9 +315,13 @@ export class DungeonScene extends Phaser.Scene {
     this.path = this.computePathTo(targetTile);
     this.run = appendReplayInput(this.run, {
       type: "move_target",
-      atMs: this.time.now,
+      atMs: this.getRunRelativeNowMs(),
       target: targetTile
     });
+  }
+
+  private getRunRelativeNowMs(): number {
+    return Math.max(0, this.time.now - this.run.startedAtMs);
   }
 
   private updatePlayerMovement(dt: number, nowMs: number): void {
