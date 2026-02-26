@@ -1,9 +1,13 @@
 import {
+  addRunObols,
   applyXpGain,
   deriveStats,
   resolveMonsterAttack,
   resolvePlayerAttack,
   rollItemDrop,
+  type SkillDef,
+  type SkillResolution,
+  resolveSkill,
   type CombatEvent,
   type ItemDef,
   type ItemInstance,
@@ -134,9 +138,9 @@ export class CombatSystem {
         : rollItemDrop(
             lootTable,
             context.itemDefs,
-            context.run.floor,
+            context.run.currentFloor,
             context.lootRng,
-            `${context.run.floor}-${target.state.id}-${nextKills}`
+            `${context.run.currentFloor}-${target.state.id}-${nextKills}`
           );
 
     const droppedItemPayload =
@@ -151,8 +155,9 @@ export class CombatSystem {
     return {
       player: nextPlayer,
       run: {
-        ...context.run,
-        kills: nextKills
+        ...addRunObols(context.run, 1),
+        kills: nextKills,
+        totalKills: context.run.totalKills + 1
       },
       attackTargetId: null,
       nextPlayerAttackAt,
@@ -161,6 +166,25 @@ export class CombatSystem {
       leveledUp: xpResult.leveledUp,
       ...(droppedItemPayload === undefined ? {} : { droppedItem: droppedItemPayload })
     };
+  }
+
+  useSkill(
+    player: PlayerState,
+    monsters: MonsterRuntime[],
+    skillDef: SkillDef,
+    rng: RngLike,
+    nowMs: number
+  ): SkillResolution {
+    const snapshot = monsters.map((monster) => monster.state);
+    const resolution = resolveSkill(player, snapshot, skillDef, rng, nowMs);
+    const byId = new Map(resolution.affectedMonsters.map((monster) => [monster.id, monster]));
+    for (const monster of monsters) {
+      const next = byId.get(monster.state.id);
+      if (next !== undefined) {
+        monster.state = next;
+      }
+    }
+    return resolution;
   }
 
   updateMonsterAttacks(
