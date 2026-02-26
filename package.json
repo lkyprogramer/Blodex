@@ -16,6 +16,6 @@
     "assets:audio:compile": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:audio:plan",
     "assets:audio:sync": "./scripts/sync_audio_assets.sh",
     "assets:audio:validate": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:audio:validate",
-    "assets:validate": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:validate && pnpm assets:images:report && pnpm assets:audio:sync && pnpm assets:audio:validate"
+    "assets:validate": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:validate && pnpm assets:audio:sync && pnpm assets:audio:validate"
   }
 }
