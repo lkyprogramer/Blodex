@@ -63,9 +63,42 @@ import { MonsterSpawnSystem } from "../systems/MonsterSpawnSystem";
 import { MovementSystem } from "../systems/MovementSystem";
 import { RenderSystem } from "../systems/RenderSystem";
 import { Hud } from "../ui/Hud";
+import {
+  detectPreferredImageFormat,
+  resolveGeneratedAssetUrl,
+  resolveGeneratedPngFallback,
+  type PreferredImageFormat
+} from "../assets/imageAsset";
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
+const DUNGEON_IMAGE_ASSET_IDS = [
+  "player_vanguard",
+  "monster_melee_01",
+  "monster_ranged_01",
+  "monster_elite_01",
+  "tile_floor_01",
+  "item_weapon_01",
+  "item_weapon_02",
+  "item_weapon_03",
+  "item_helm_01",
+  "item_helm_02",
+  "item_chest_01",
+  "item_chest_02",
+  "item_boots_01",
+  "item_boots_02",
+  "item_ring_01",
+  "item_ring_02",
+  "boss_bone_sovereign",
+  "telegraph_circle_red",
+  "staircase_floor_exit",
+  "skill_cleave",
+  "skill_shadow_step",
+  "skill_blood_drain",
+  "skill_frost_nova",
+  "skill_war_cry"
+] as const;
+const DUNGEON_IMAGE_ASSET_KEY_SET = new Set<string>(DUNGEON_IMAGE_ASSET_IDS);
 
 export class DungeonScene extends Phaser.Scene {
   private static readonly ENTITY_DEPTH_OFFSET = 10_000;
@@ -77,6 +110,8 @@ export class DungeonScene extends Phaser.Scene {
   private readonly monsterSpawnSystem = new MonsterSpawnSystem();
   private readonly eventBus = createEventBus<GameEventMap>();
   private readonly renderSystem: RenderSystem;
+  private preferredImageFormat: PreferredImageFormat = "png";
+  private readonly imageFallbackRetried = new Set<string>();
 
   private hud!: Hud;
   private meta: MetaProgression = createInitialMeta();
@@ -138,31 +173,39 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   preload(): void {
-    this.load.image("player_vanguard", "/generated/player_vanguard.png");
-    this.load.image("monster_melee_01", "/generated/monster_melee_01.png");
-    this.load.image("monster_ranged_01", "/generated/monster_ranged_01.png");
-    this.load.image("monster_elite_01", "/generated/monster_elite_01.png");
-    this.load.image("tile_floor_01", "/generated/tile_floor_01.png");
-    this.load.image("item_weapon_01", "/generated/item_weapon_01.png");
-    this.load.image("item_weapon_02", "/generated/item_weapon_02.png");
-    this.load.image("item_weapon_03", "/generated/item_weapon_03.png");
-    this.load.image("item_helm_01", "/generated/item_helm_01.png");
-    this.load.image("item_helm_02", "/generated/item_helm_02.png");
-    this.load.image("item_chest_01", "/generated/item_chest_01.png");
-    this.load.image("item_chest_02", "/generated/item_chest_02.png");
-    this.load.image("item_boots_01", "/generated/item_boots_01.png");
-    this.load.image("item_boots_02", "/generated/item_boots_02.png");
-    this.load.image("item_ring_01", "/generated/item_ring_01.png");
-    this.load.image("item_ring_02", "/generated/item_ring_02.png");
-    this.load.image("boss_bone_sovereign", "/generated/boss_bone_sovereign.png");
-    this.load.image("telegraph_circle_red", "/generated/telegraph_circle_red.png");
-    this.load.image("staircase_floor_exit", "/generated/staircase_floor_exit.png");
+    this.preferredImageFormat = detectPreferredImageFormat();
+    this.imageFallbackRetried.clear();
 
-    this.load.image("skill_cleave", "/generated/skill_cleave.png");
-    this.load.image("skill_shadow_step", "/generated/skill_shadow_step.png");
-    this.load.image("skill_blood_drain", "/generated/skill_blood_drain.png");
-    this.load.image("skill_frost_nova", "/generated/skill_frost_nova.png");
-    this.load.image("skill_war_cry", "/generated/skill_war_cry.png");
+    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, this.handleImageLoadError, this);
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, this.handleImageLoadError, this);
+    });
+
+    for (const assetId of DUNGEON_IMAGE_ASSET_IDS) {
+      this.load.image(assetId, resolveGeneratedAssetUrl(assetId, this.preferredImageFormat));
+    }
+  }
+
+  private handleImageLoadError(file: Phaser.Loader.File): void {
+    if (this.preferredImageFormat !== "webp") {
+      return;
+    }
+
+    const key = String(file.key);
+    if (!DUNGEON_IMAGE_ASSET_KEY_SET.has(key)) {
+      return;
+    }
+
+    if (this.imageFallbackRetried.has(key)) {
+      return;
+    }
+
+    this.imageFallbackRetried.add(key);
+    this.load.image(key, resolveGeneratedPngFallback(key));
+
+    if (!this.load.isLoading()) {
+      this.load.start();
+    }
   }
 
   create(): void {
@@ -1021,6 +1064,8 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private cleanupScene(): void {
+    this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, this.handleImageLoadError, this);
+    this.imageFallbackRetried.clear();
     this.eventBus.removeAll();
     this.input.off("pointerdown", this.handlePointerDown, this);
     this.entityManager.clear();

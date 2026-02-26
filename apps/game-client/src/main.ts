@@ -1,9 +1,11 @@
 import Phaser from "phaser";
+import { detectPreferredImageFormat } from "./assets/imageAsset";
 import { DungeonScene } from "./scenes/DungeonScene";
 import { MetaMenuScene } from "./scenes/MetaMenuScene";
 import "./style.css";
 
 const root = document.querySelector("#game-root") as HTMLDivElement;
+detectPreferredImageFormat();
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,

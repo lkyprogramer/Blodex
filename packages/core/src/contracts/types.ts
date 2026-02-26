@@ -383,6 +383,13 @@ export interface AssetManifestEntry {
   sourceType?: "generated" | "external";
   sourceRef?: string;
   attribution?: string;
+  optimized?: {
+    primaryFormat: "webp";
+    fallbackFormat: "png";
+    targetSize: { width: number; height: number };
+    primaryOutputPath: string;
+    fallbackOutputPath: string;
+  };
 }
 
 export interface AudioManifestEntry {

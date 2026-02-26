@@ -10,10 +10,13 @@
     "lint": "tsc -p tsconfig.json --noEmit",
     "assets:plan": "node dist/compileAssetPlan.js",
     "assets:validate": "node dist/validateManifest.js",
+    "assets:images:optimize": "node dist/optimizeImageAssets.js",
+    "assets:images:report": "node dist/reportImageAssetSizes.js",
     "assets:audio:plan": "node dist/compileAudioPlan.js",
     "assets:audio:validate": "node dist/validateAudioManifest.js"
   },
   "dependencies": {
+    "sharp": "^0.34.4",
     "yaml": "^2.8.1"
   },
   "devDependencies": {

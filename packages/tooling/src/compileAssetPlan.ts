@@ -6,7 +6,7 @@ import { parse } from "yaml";
 
 interface AssetPromptSpec {
   id: string;
-  category: string;
+  category: ManifestEntry["category"];
   prompt: string;
   scene?: string;
   subject?: string;
@@ -39,7 +39,16 @@ interface AssetPlan {
 
 interface ManifestEntry {
   id: string;
-  category: string;
+  category:
+    | "player_sprite"
+    | "monster_sprite"
+    | "boss_sprite"
+    | "tile"
+    | "item_icon"
+    | "skill_icon"
+    | "hud"
+    | "fx"
+    | "ui_icon";
   styleTag: string;
   promptHash: string;
   sourcePath: string;
@@ -49,6 +58,13 @@ interface ManifestEntry {
   sourceType: "generated" | "external";
   sourceRef: string;
   attribution: string;
+  optimized: {
+    primaryFormat: "webp";
+    fallbackFormat: "png";
+    targetSize: { width: number; height: number };
+    primaryOutputPath: string;
+    fallbackOutputPath: string;
+  };
 }
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
@@ -57,6 +73,21 @@ const ASSET_PLAN_PATH = resolve(ROOT, "assets/source-prompts/asset-plan.yaml");
 const OUT_DIR = resolve(ROOT, "tmp/imagegen");
 const OUT_FILE = resolve(OUT_DIR, "jobs.jsonl");
 const MANIFEST_PATH = resolve(ROOT, "assets/generated/manifest.json");
+
+const DEFAULT_IMAGE_MODEL = process.env.IMAGE_MODEL ?? "gemini-2.5-flash-image";
+const DEFAULT_SOURCE_REF = `gemini:${DEFAULT_IMAGE_MODEL}`;
+
+const TARGET_SIZE_BY_CATEGORY: Record<ManifestEntry["category"], { width: number; height: number }> = {
+  player_sprite: { width: 384, height: 384 },
+  monster_sprite: { width: 320, height: 320 },
+  boss_sprite: { width: 448, height: 448 },
+  tile: { width: 320, height: 320 },
+  item_icon: { width: 192, height: 192 },
+  skill_icon: { width: 192, height: 192 },
+  hud: { width: 192, height: 192 },
+  fx: { width: 320, height: 320 },
+  ui_icon: { width: 192, height: 192 }
+};
 
 function stableHash(raw: string): string {
   return createHash("sha1").update(raw).digest("hex").slice(0, 10);
@@ -75,6 +106,8 @@ function main(): void {
   const raw = readFileSync(ASSET_PLAN_PATH, "utf-8");
   const parsed = parse(raw) as AssetPlan;
   const existingManifest = loadManifestById();
+
+  const assetsById = new Map(parsed.assets.map((entry) => [entry.id, entry]));
 
   const rows = parsed.assets.map((entry) => {
     const promptHash = stableHash(
@@ -108,6 +141,11 @@ function main(): void {
   });
 
   const manifest: ManifestEntry[] = rows.map((row) => {
+    const spec = assetsById.get(row.metadata.id);
+    if (spec === undefined) {
+      throw new Error(`asset id not found in plan while compiling manifest: ${row.metadata.id}`);
+    }
+
     const previous = existingManifest[row.metadata.id];
     const revision =
       previous === undefined
@@ -116,19 +154,28 @@ function main(): void {
           ? previous.revision
           : previous.revision + 1;
 
+    const fallbackOutputPath = `apps/game-client/public/generated/${row.metadata.id}.png`;
+    const primaryOutputPath = `apps/game-client/public/generated/${row.metadata.id}.webp`;
+
     return {
       id: row.metadata.id,
       category: row.metadata.category,
       styleTag: row.metadata.styleTag,
       promptHash: row.metadata.promptHash,
       sourcePath: "assets/source-prompts/asset-plan.yaml",
-      outputPath: `apps/game-client/public/generated/${row.out}`,
+      outputPath: fallbackOutputPath,
       license: "generated-original",
-      revision
-      ,
-      sourceType: parsed.assets.find((entry) => entry.id === row.metadata.id)?.sourceType ?? "generated",
-      sourceRef: parsed.assets.find((entry) => entry.id === row.metadata.id)?.sourceRef ?? "gemini:gemini-3-pro-image-preview",
-      attribution: parsed.assets.find((entry) => entry.id === row.metadata.id)?.attribution ?? ""
+      revision,
+      sourceType: spec.sourceType ?? "generated",
+      sourceRef: spec.sourceRef ?? DEFAULT_SOURCE_REF,
+      attribution: spec.attribution ?? "",
+      optimized: {
+        primaryFormat: "webp",
+        fallbackFormat: "png",
+        targetSize: TARGET_SIZE_BY_CATEGORY[row.metadata.category],
+        primaryOutputPath,
+        fallbackOutputPath
+      }
     };
   });
 

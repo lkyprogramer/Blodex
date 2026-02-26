@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,7 +8,16 @@ const MANIFEST_PATH = resolve(ROOT, "assets/generated/manifest.json");
 
 interface AssetManifestEntry {
   id: string;
-  category: string;
+  category:
+    | "player_sprite"
+    | "monster_sprite"
+    | "boss_sprite"
+    | "tile"
+    | "item_icon"
+    | "skill_icon"
+    | "hud"
+    | "fx"
+    | "ui_icon";
   styleTag: string;
   promptHash: string;
   sourcePath: string;
@@ -18,7 +27,26 @@ interface AssetManifestEntry {
   sourceType: "generated" | "external";
   sourceRef: string;
   attribution: string;
+  optimized: {
+    primaryFormat: "webp";
+    fallbackFormat: "png";
+    targetSize: { width: number; height: number };
+    primaryOutputPath: string;
+    fallbackOutputPath: string;
+  };
 }
+
+const TARGET_SIZE_BY_CATEGORY: Record<AssetManifestEntry["category"], { width: number; height: number }> = {
+  player_sprite: { width: 384, height: 384 },
+  monster_sprite: { width: 320, height: 320 },
+  boss_sprite: { width: 448, height: 448 },
+  tile: { width: 320, height: 320 },
+  item_icon: { width: 192, height: 192 },
+  skill_icon: { width: 192, height: 192 },
+  hud: { width: 192, height: 192 },
+  fx: { width: 320, height: 320 },
+  ui_icon: { width: 192, height: 192 }
+};
 
 function assert(condition: unknown, message: string): void {
   if (!condition) {
@@ -26,7 +54,14 @@ function assert(condition: unknown, message: string): void {
   }
 }
 
+function assertFileExists(pathLike: string, message: string): void {
+  assert(pathLike.length > 0, message);
+  const abs = resolve(ROOT, pathLike);
+  assert(existsSync(abs), `${message}; missing file: ${pathLike}`);
+}
+
 function main(): void {
+  assert(existsSync(MANIFEST_PATH), `Missing manifest: ${MANIFEST_PATH}`);
   const entries = JSON.parse(readFileSync(MANIFEST_PATH, "utf-8")) as AssetManifestEntry[];
 
   assert(Array.isArray(entries), "Manifest must be an array.");
@@ -49,6 +84,27 @@ function main(): void {
     if (entry.license === "review-required") {
       assert(entry.attribution.length > 0, `review-required license requires attribution on ${entry.id}`);
     }
+
+    assert(entry.optimized !== undefined, `optimized config missing on ${entry.id}`);
+    assert(entry.optimized.primaryFormat === "webp", `primaryFormat must be webp on ${entry.id}`);
+    assert(entry.optimized.fallbackFormat === "png", `fallbackFormat must be png on ${entry.id}`);
+
+    const expectedSize = TARGET_SIZE_BY_CATEGORY[entry.category];
+    const actualSize = entry.optimized.targetSize;
+    assert(Number.isInteger(actualSize.width) && actualSize.width > 0, `target width invalid on ${entry.id}`);
+    assert(Number.isInteger(actualSize.height) && actualSize.height > 0, `target height invalid on ${entry.id}`);
+    assert(
+      actualSize.width === expectedSize.width && actualSize.height === expectedSize.height,
+      `targetSize mismatch on ${entry.id}; expected ${expectedSize.width}x${expectedSize.height}`
+    );
+
+    assert(
+      entry.outputPath === entry.optimized.fallbackOutputPath,
+      `outputPath must match fallbackOutputPath on ${entry.id}`
+    );
+
+    assertFileExists(entry.optimized.primaryOutputPath, `primaryOutputPath missing on ${entry.id}`);
+    assertFileExists(entry.optimized.fallbackOutputPath, `fallbackOutputPath missing on ${entry.id}`);
   }
 
   process.stdout.write(`Manifest valid: ${entries.length} entries\n`);
