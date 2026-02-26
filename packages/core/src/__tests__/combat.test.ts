@@ -64,4 +64,35 @@ describe("combat", () => {
     const result = resolveMonsterAttack(makeMonster(), makePlayer(), rng, 1000);
     expect(result.player.health).toBeLessThan(120);
   });
+
+  it("keeps incoming damage at least one even against extreme armor", () => {
+    const rng = new SeededRng("minimum-damage");
+    const tank = {
+      ...makePlayer(),
+      derivedStats: {
+        ...makePlayer().derivedStats,
+        armor: 9999
+      }
+    };
+
+    const result = resolveMonsterAttack(makeMonster(), tank, rng, 2000);
+    expect(result.player.health).toBe(tank.health - 1);
+    expect(result.events[0]?.amount).toBe(1);
+  });
+
+  it("marks player death branch when monster damage is lethal", () => {
+    const rng = new SeededRng("lethal");
+    const fragile = {
+      ...makePlayer(),
+      health: 3
+    };
+    const heavyMonster = {
+      ...makeMonster(),
+      damage: 100
+    };
+
+    const result = resolveMonsterAttack(heavyMonster, fragile, rng, 3000);
+    expect(result.player.health).toBe(0);
+    expect(result.events.some((event) => event.kind === "death")).toBe(true);
+  });
 });

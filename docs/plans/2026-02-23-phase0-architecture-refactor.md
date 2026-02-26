@@ -243,51 +243,51 @@ PR-01 -> PR-02 -> PR-03 -> PR-04 -> PR-06 -> PR-07 -> PR-08
 ### 6.2 PR-01 到 PR-08 专项清单
 
 #### PR-01: 怪物配置数据化（drop + aiConfig）
-- [ ] `MonsterArchetypeDef` 增加 `dropTableId` 与 `aiConfig`。
-- [ ] `DungeonScene` 中移除对应硬编码分支。
-- [ ] 行为对比:
-  - [ ] 追击范围一致
-  - [ ] 攻击间隔一致
-  - [ ] 掉落表映射结果一致
+- [x] `MonsterArchetypeDef` 增加 `dropTableId` 与 `aiConfig`。
+- [x] `DungeonScene` 中移除对应硬编码分支。
+- [x] 行为对比:
+  - [x] 追击范围一致
+  - [x] 攻击间隔一致
+  - [x] 掉落表映射结果一致
 
 #### PR-02: EntityManager 抽离
-- [ ] 实体生命周期操作从 `DungeonScene` 移出。
-- [ ] 渲染对象生命周期与实体状态一致（无残留 sprite）。
-- [ ] run reset 后实体与渲染缓存均清空。
+- [x] 实体生命周期操作从 `DungeonScene` 移出。
+- [x] 渲染对象生命周期与实体状态一致（无残留 sprite）。
+- [x] run reset 后实体与渲染缓存均清空。
 
 #### PR-03: MovementSystem + AISystem 抽离
-- [ ] 玩家路径与寻路行为保持一致。
-- [ ] 怪物 `idle/chase/attack` 决策行为一致。
-- [ ] 不引入新的时间源与帧依赖抖动。
+- [x] 玩家路径与寻路行为保持一致。
+- [x] 怪物 `idle/chase/attack` 决策行为一致。
+- [x] 不引入新的时间源与帧依赖抖动。
 
 #### PR-04: CombatSystem 抽离
-- [ ] 玩家攻击节奏、伤害、击杀后 XP/掉落逻辑一致。
-- [ ] 怪物攻击与死亡判定一致。
-- [ ] 战斗链路不再在 `DungeonScene` 内直接耦合多处状态修改。
+- [x] 玩家攻击节奏、伤害、击杀后 XP/掉落逻辑一致。
+- [x] 怪物攻击与死亡判定一致。
+- [x] 战斗链路不再在 `DungeonScene` 内直接耦合多处状态修改。
 
 #### PR-05: core 测试基线补齐
-- [ ] `stats` 回归测试覆盖关键系数。
-- [ ] `combat` 边界测试覆盖死亡/最小伤害/极值防护。
-- [ ] `integration` 覆盖 kill->drop->pickup->equip 主链路。
-- [ ] 覆盖率达到目标基线。
+- [x] `stats` 回归测试覆盖关键系数。
+- [x] `combat` 边界测试覆盖死亡/最小伤害/极值防护。
+- [x] `integration` 覆盖 kill->drop->pickup->equip 主链路。
+- [x] 覆盖率达到目标基线。
 
 #### PR-06: EventBus + GameEventMap
-- [ ] EventBus API 完整且有独立单测。
-- [ ] `contracts/events.ts` 仅定义领域事件（无 `ui:*`/`vfx:*`/`sfx:*`）。
-- [ ] `DungeonScene` 接入事件流后行为无变化。
-- [ ] 订阅生命周期有清理机制（避免泄漏）。
+- [x] EventBus API 完整且有独立单测。
+- [x] `contracts/events.ts` 仅定义领域事件（无 `ui:*`/`vfx:*`/`sfx:*`）。
+- [x] `DungeonScene` 接入事件流后行为无变化。
+- [x] 订阅生命周期有清理机制（避免泄漏）。
 
 #### PR-07: RunSeed + replay hook
-- [ ] 关键逻辑不再依赖 `Date.now()` 作为随机输入源。
-- [ ] `RunSeed` 驱动地图、掉落、战斗相关随机行为。
-- [ ] replay 元数据可回放并生成一致 checksum。
-- [ ] 固定 seed 样本复验通过（>= 3 组）。
+- [x] 关键逻辑不再依赖 `Date.now()` 作为随机输入源。
+- [x] `RunSeed` 驱动地图、掉落、战斗相关随机行为。
+- [x] replay 元数据可回放并生成一致 checksum。
+- [x] 固定 seed 样本复验通过（>= 3 组）。
 
 #### PR-08: Phase 0 收敛
-- [ ] 删除过渡代码与重复逻辑。
-- [ ] 文档与实现一致（roadmap、phase0 计划、注释）。
-- [ ] 0A/0B DoD 全部满足。
-- [ ] 为 Phase 1 留出明确扩展点（无临时耦合残留）。
+- [x] 删除过渡代码与重复逻辑。
+- [x] 文档与实现一致（roadmap、phase0 计划、注释）。
+- [x] 0A/0B DoD 全部满足。
+- [x] 为 Phase 1 留出明确扩展点（无临时耦合残留）。
 
 ### 6.3 建议工时与并行策略（供排期）
 

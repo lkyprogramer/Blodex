@@ -1,3 +1,6 @@
+/**
+ * @deprecated Use `GameEventMap` and typed event names instead.
+ */
 export const GAME_EVENTS = {
     PLAYER_MOVED: "PLAYER_MOVED",
     TARGET_ACQUIRED: "TARGET_ACQUIRED",

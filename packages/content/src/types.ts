@@ -4,6 +4,26 @@ export type ItemRarity = "common" | "magic" | "rare";
 
 export type MonsterArchetypeId = "melee_grunt" | "ranged_caster" | "elite_bruiser";
 
+export interface MonsterAiConfig {
+  chaseRange: number;
+  attackCooldownMs: number;
+  fleeThreshold?: number;
+  wanderRadius?: number;
+}
+
+export interface MonsterArchetypeDef {
+  id: MonsterArchetypeId;
+  name: string;
+  healthMultiplier: number;
+  damageMultiplier: number;
+  attackRange: number;
+  moveSpeed: number;
+  xpValue: number;
+  spriteId: string;
+  dropTableId: string;
+  aiConfig: MonsterAiConfig;
+}
+
 export interface ItemAffix {
   key:
     | "maxHealth"
