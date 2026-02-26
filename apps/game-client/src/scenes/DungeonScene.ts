@@ -1,38 +1,71 @@
 import Phaser from "phaser";
 import {
+  addRunObols,
   appendReplayInput,
-  type CombatEvent,
+  applyDamageToBoss,
+  applyRunSummaryToMeta,
+  applyXpGain,
+  canUseSkill,
   collectLoot,
   createEventBus,
   createInitialMeta,
-  createReplay,
   createRunSeed,
+  createRunState,
+  createStaircaseState,
   defaultBaseStats,
   deriveFloorSeed,
   deriveStats,
   endRun,
+  enterNextFloor,
   equipItem,
+  findStaircasePosition,
+  generateBossRoom,
   generateDungeon,
+  initBossState,
+  isPlayerOnStaircase,
+  markBossAttackUsed,
+  markSkillUsed,
+  migrateMeta,
+  pickSkillChoices,
+  calculateSoulShardReward,
+  resolveMonsterAttack,
   SeededRng,
-  unequipItem,
+  selectBossAttack,
+  resolveBossAttack,
+  type CombatEvent,
+  type BossDef,
+  type BossRuntimeState,
+  type DungeonLayout,
   type GameEventMap,
   type GridNode,
   type ItemInstance,
   type MetaProgression,
+  type MonsterState,
   type PlayerState,
-  type RunState
+  type RunState,
+  type SkillDef
 } from "@blodex/core";
-import { GAME_CONFIG, ITEM_DEF_MAP, LOOT_TABLE_MAP, MONSTER_ARCHETYPES } from "@blodex/content";
+import {
+  BONE_SOVEREIGN,
+  GAME_CONFIG,
+  getFloorConfig,
+  ITEM_DEF_MAP,
+  LOOT_TABLE_MAP,
+  MONSTER_ARCHETYPES,
+  SKILL_DEFS,
+  type FloorConfig
+} from "@blodex/content";
 import { AISystem } from "../systems/AISystem";
 import { CombatSystem } from "../systems/CombatSystem";
 import { EntityManager } from "../systems/EntityManager";
-import { isoToGrid } from "../systems/iso";
+import { gridToIso, isoToGrid } from "../systems/iso";
 import { MonsterSpawnSystem } from "../systems/MonsterSpawnSystem";
 import { MovementSystem } from "../systems/MovementSystem";
 import { RenderSystem } from "../systems/RenderSystem";
 import { Hud } from "../ui/Hud";
 
-const META_STORAGE_KEY = "blodex_meta_v1";
+const META_STORAGE_KEY_V1 = "blodex_meta_v1";
+const META_STORAGE_KEY_V2 = "blodex_meta_v2";
 
 export class DungeonScene extends Phaser.Scene {
   private static readonly ENTITY_DEPTH_OFFSET = 10_000;
@@ -53,18 +86,33 @@ export class DungeonScene extends Phaser.Scene {
   private spawnRng!: SeededRng;
   private combatRng!: SeededRng;
   private lootRng!: SeededRng;
+  private skillRng!: SeededRng;
+  private bossRng!: SeededRng;
 
-  private dungeon = generateDungeon({
-    width: 46,
-    height: 46,
-    roomCount: 12,
-    minRoomSize: 4,
-    maxRoomSize: 9,
-    seed: "bootstrap"
-  });
+  private floorConfig: FloorConfig = getFloorConfig(1);
+
+  private dungeon: DungeonLayout = {
+    width: 1,
+    height: 1,
+    walkable: [[true]],
+    rooms: [],
+    corridors: [],
+    spawnPoints: [],
+    playerSpawn: { x: 0, y: 0 },
+    layoutHash: "bootstrap"
+  };
 
   private player!: PlayerState;
   private playerSprite!: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
+
+  private bossDef: BossDef = BONE_SOVEREIGN;
+  private bossState: BossRuntimeState | null = null;
+  private bossSprite: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle | null = null;
+
+  private staircaseState = {
+    position: { x: 0, y: 0 },
+    visible: false
+  };
 
   private path: GridNode[] = [];
   private attackTargetId: string | null = null;
@@ -75,6 +123,7 @@ export class DungeonScene extends Phaser.Scene {
   private readonly tileHeight = GAME_CONFIG.tileHeight;
   private playerYOffset = 16;
   private nextPlayerAttackAt = 0;
+  private nextBossAttackAt = 0;
   private hudDirty = true;
   private runEnded = false;
 
@@ -105,6 +154,15 @@ export class DungeonScene extends Phaser.Scene {
     this.load.image("item_boots_02", "/generated/item_boots_02.png");
     this.load.image("item_ring_01", "/generated/item_ring_01.png");
     this.load.image("item_ring_02", "/generated/item_ring_02.png");
+    this.load.image("boss_bone_sovereign", "/generated/boss_bone_sovereign.png");
+    this.load.image("telegraph_circle_red", "/generated/telegraph_circle_red.png");
+    this.load.image("staircase_floor_exit", "/generated/staircase_floor_exit.png");
+
+    this.load.image("skill_cleave", "/generated/skill_cleave.png");
+    this.load.image("skill_shadow_step", "/generated/skill_shadow_step.png");
+    this.load.image("skill_blood_drain", "/generated/skill_blood_drain.png");
+    this.load.image("skill_frost_nova", "/generated/skill_frost_nova.png");
+    this.load.image("skill_war_cry", "/generated/skill_war_cry.png");
   }
 
   create(): void {
@@ -114,6 +172,7 @@ export class DungeonScene extends Phaser.Scene {
     this.bootstrapRun(this.resolveInitialRunSeed());
 
     this.input.on("pointerdown", this.handlePointerDown, this);
+    this.bindSkillKeys();
 
     this.hud = new Hud(
       (itemId) => {
@@ -135,7 +194,14 @@ export class DungeonScene extends Phaser.Scene {
       },
       (slot) => {
         const equipped = this.player.equipment[slot];
-        this.player = unequipItem(this.player, slot);
+        this.player = {
+          ...this.player,
+          inventory: equipped === undefined ? this.player.inventory : [...this.player.inventory, equipped],
+          equipment: {
+            ...this.player.equipment,
+            [slot]: undefined
+          }
+        };
         if (equipped !== undefined) {
           this.eventBus.emit("item:unequip", {
             playerId: this.player.id,
@@ -145,7 +211,10 @@ export class DungeonScene extends Phaser.Scene {
           });
         }
       },
-      () => this.resetRun()
+      () => {
+        this.hud.clearSummary();
+        this.scene.start("meta-menu");
+      }
     );
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanupScene());
@@ -159,18 +228,29 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     const nowMs = this.time.now;
+
     this.updatePlayerMovement(deltaMs / 1000, nowMs);
     this.updateCombat(nowMs);
     this.updateMonsters(deltaMs / 1000, nowMs);
     this.updateMonsterCombat(nowMs);
+    this.updateBossCombat(nowMs);
     this.collectNearbyLoot(nowMs);
+
     this.renderSystem.syncPlayerSprite(this.playerSprite, this.player.position, this.playerYOffset, this.origin);
     this.renderSystem.syncMonsterSprites(this.entityManager.listMonsters(), this.origin);
+    this.syncBossSprite();
 
-    if (this.player.health <= 0 || this.run.kills >= GAME_CONFIG.floorClearKillTarget) {
-      this.finishRun();
+    if (this.player.health <= 0) {
+      this.finishRun(false);
       return;
     }
+
+    if (this.floorConfig.isBossFloor && this.bossState !== null && this.bossState.health <= 0) {
+      this.finishRun(true);
+      return;
+    }
+
+    this.updateFloorProgress(nowMs);
 
     if (this.hudDirty) {
       this.renderHud();
@@ -197,6 +277,29 @@ export class DungeonScene extends Phaser.Scene {
     this.eventBus.on("run:end", () => {
       this.hudDirty = true;
     });
+    this.eventBus.on("floor:enter", () => {
+      this.hudDirty = true;
+    });
+    this.eventBus.on("floor:clear", () => {
+      this.hudDirty = true;
+    });
+    this.eventBus.on("boss:phaseChange", () => {
+      this.hudDirty = true;
+    });
+  }
+
+  private bindSkillKeys(): void {
+    const bind = (code: string, slotIndex: number) => {
+      this.input.keyboard?.on(`keydown-${code}`, () => {
+        this.tryUseSkill(slotIndex);
+      });
+    };
+
+    bind("ONE", 0);
+    bind("TWO", 1);
+    bind("THREE", 2);
+    bind("FOUR", 3);
+    bind("Q", 0);
   }
 
   private resolveInitialRunSeed(): string {
@@ -208,49 +311,13 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private bootstrapRun(runSeed: string): void {
-    this.children.removeAll(true);
-    this.entityManager.clear();
-
     this.runSeed = runSeed;
-    this.configureRngStreams(1);
-    this.dungeon = generateDungeon({
-      width: 46,
-      height: 46,
-      roomCount: 12,
-      minRoomSize: 4,
-      maxRoomSize: 9,
-      seed: deriveFloorSeed(this.runSeed, 1, "procgen")
-    });
-
-    this.player = this.makeInitialPlayer();
-    this.run = {
-      startedAtMs: this.time.now,
-      floor: 1,
-      kills: 0,
-      lootCollected: 0,
-      runSeed: this.runSeed,
-      replay: createReplay(this.runSeed, 1)
-    };
-
-    this.path = [];
-    this.attackTargetId = null;
-    this.nextPlayerAttackAt = 0;
-    this.hudDirty = true;
-    this.runEnded = false;
-
-    const world = this.renderSystem.computeWorldBounds(this.dungeon);
-    this.origin = world.origin;
-    this.worldBounds = world.worldBounds;
-    this.renderSystem.drawDungeon(this.dungeon, this.origin);
-    const playerRender = this.renderSystem.spawnPlayer(this.player.position, this.origin);
-    this.playerSprite = playerRender.sprite;
-    this.playerYOffset = playerRender.yOffset;
-    this.spawnMonsters();
-    this.renderSystem.configureCamera(this.cameras.main, this.worldBounds, this.playerSprite);
+    this.run = createRunState(runSeed, this.time.now);
+    this.setupFloor(1, true);
 
     this.eventBus.emit("run:start", {
       runSeed: this.runSeed,
-      floor: this.run.floor,
+      floor: this.run.currentFloor,
       startedAtMs: this.run.startedAtMs,
       replayVersion: this.run.replay?.version ?? "unknown"
     });
@@ -260,11 +327,90 @@ export class DungeonScene extends Phaser.Scene {
     this.spawnRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "spawn"));
     this.combatRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "combat"));
     this.lootRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "loot"));
+    this.skillRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "skill"));
+    this.bossRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "boss"));
   }
 
-  private makeInitialPlayer() {
+  private setupFloor(floor: number, initial: boolean): void {
+    this.children.removeAll(true);
+    this.entityManager.clear();
+
+    this.floorConfig = getFloorConfig(floor);
+    this.configureRngStreams(floor);
+
+    this.dungeon = this.floorConfig.isBossFloor
+      ? this.renderBossFloor(floor)
+      : this.renderNormalFloor(floor);
+
+    this.player = initial ? this.makeInitialPlayer() : this.reusePlayerForNewFloor(this.player);
+    this.player = {
+      ...this.player,
+      position: { ...this.dungeon.playerSpawn }
+    };
+
+    this.path = [];
+    this.attackTargetId = null;
+    this.nextPlayerAttackAt = 0;
+    this.nextBossAttackAt = 0;
+    this.bossState = null;
+    this.bossSprite = null;
+    this.staircaseState = createStaircaseState(this.dungeon, this.dungeon.playerSpawn);
+
+    const world = this.renderSystem.computeWorldBounds(this.dungeon);
+    this.origin = world.origin;
+    this.worldBounds = world.worldBounds;
+    this.renderSystem.drawDungeon(this.dungeon, this.origin);
+
+    const playerRender = this.renderSystem.spawnPlayer(this.player.position, this.origin);
+    this.playerSprite = playerRender.sprite;
+    this.playerYOffset = playerRender.yOffset;
+
+    if (this.floorConfig.isBossFloor) {
+      this.spawnBoss();
+    } else {
+      this.spawnMonsters();
+    }
+
+    this.renderSystem.configureCamera(this.cameras.main, this.worldBounds, this.playerSprite);
+
+    this.run = {
+      ...this.run,
+      currentFloor: floor,
+      floor,
+      kills: 0
+    };
+
+    this.hudDirty = true;
+    this.runEnded = false;
+
+    if (!initial) {
+      this.eventBus.emit("floor:enter", {
+        floor,
+        timestampMs: this.time.now
+      });
+    }
+  }
+
+  private renderNormalFloor(floor: number) {
+    return generateDungeon({
+      width: 46,
+      height: 46,
+      minRoomSize: 4,
+      maxRoomSize: 9,
+      floorNumber: floor,
+      seed: deriveFloorSeed(this.runSeed, floor, "procgen")
+    });
+  }
+
+  private renderBossFloor(floor: number) {
+    return generateBossRoom(deriveFloorSeed(this.runSeed, floor, "procgen"), 46, 46);
+  }
+
+  private makeInitialPlayer(): PlayerState {
     const baseStats = defaultBaseStats();
-    const derivedStats = deriveStats(baseStats, []);
+    const derivedStats = deriveStats(baseStats, [], undefined, this.meta.permanentUpgrades);
+
+    const startingSkillIds = this.pickStartingSkillIds();
 
     return {
       id: "player",
@@ -278,8 +424,40 @@ export class DungeonScene extends Phaser.Scene {
       derivedStats,
       inventory: [],
       equipment: {},
-      gold: 0
+      gold: 0,
+      skills: {
+        skillSlots: Array.from({ length: Math.min(4, Math.max(2, this.meta.permanentUpgrades.skillSlots)) }, (_, idx) => {
+          const id = startingSkillIds[idx];
+          return id === undefined ? null : { defId: id, level: 1 };
+        }),
+        cooldowns: {}
+      },
+      activeBuffs: []
     };
+  }
+
+  private reusePlayerForNewFloor(player: PlayerState): PlayerState {
+    const equipped = Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined);
+    const derivedStats = deriveStats(player.baseStats, equipped, undefined, this.meta.permanentUpgrades);
+
+    return {
+      ...player,
+      derivedStats,
+      health: Math.min(player.health, derivedStats.maxHealth),
+      mana: Math.min(player.mana, derivedStats.maxMana)
+    };
+  }
+
+  private pickStartingSkillIds(): string[] {
+    const pool = SKILL_DEFS.filter((skill) => {
+      if (skill.unlockCondition === undefined) {
+        return true;
+      }
+      return this.meta.unlocks.includes(skill.unlockCondition);
+    });
+
+    const sorted = [...pool].sort((a, b) => a.id.localeCompare(b.id));
+    return sorted.slice(0, 2).map((entry) => entry.id);
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
@@ -339,6 +517,10 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private updateCombat(nowMs: number): void {
+    if (this.floorConfig.isBossFloor) {
+      return;
+    }
+
     const playerCombat = this.combatSystem.updatePlayerAttack({
       player: this.player,
       run: this.run,
@@ -372,6 +554,7 @@ export class DungeonScene extends Phaser.Scene {
         level: this.player.level,
         timestampMs: nowMs
       });
+      this.offerLevelupSkill();
     }
 
     if (playerCombat.killedMonsterId !== undefined) {
@@ -392,7 +575,40 @@ export class DungeonScene extends Phaser.Scene {
         timestampMs: nowMs
       });
     }
+  }
 
+  private offerLevelupSkill(): void {
+    if (this.player.skills === undefined) {
+      return;
+    }
+
+    const pool = SKILL_DEFS.filter((skill) => {
+      if (skill.unlockCondition === undefined) {
+        return true;
+      }
+      return this.meta.unlocks.includes(skill.unlockCondition);
+    });
+    const choices = pickSkillChoices(pool, this.skillRng, 3);
+    if (choices.length === 0) {
+      return;
+    }
+
+    const pick = choices[0]!;
+    const slots = [...this.player.skills.skillSlots];
+    const firstEmpty = slots.findIndex((entry) => entry === null);
+    if (firstEmpty >= 0) {
+      slots[firstEmpty] = { defId: pick.id, level: 1 };
+    } else {
+      slots[0] = { defId: pick.id, level: 1 };
+    }
+
+    this.player = {
+      ...this.player,
+      skills: {
+        ...this.player.skills,
+        skillSlots: slots
+      }
+    };
   }
 
   private emitCombatEvents(events: CombatEvent[]): void {
@@ -410,6 +626,10 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private updateMonsters(dt: number, nowMs: number): void {
+    if (this.floorConfig.isBossFloor) {
+      return;
+    }
+
     const transitions = this.aiSystem.updateMonsters(
       this.entityManager.listLivingMonsters(),
       this.player,
@@ -423,6 +643,10 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private updateMonsterCombat(nowMs: number): void {
+    if (this.floorConfig.isBossFloor) {
+      return;
+    }
+
     const monsterCombat = this.combatSystem.updateMonsterAttacks(
       this.entityManager.listLivingMonsters(),
       this.player,
@@ -434,6 +658,105 @@ export class DungeonScene extends Phaser.Scene {
     this.emitCombatEvents(monsterCombat.combatEvents);
     if (monsterCombat.combatEvents.length > 0) {
       this.hudDirty = true;
+    }
+  }
+
+  private updateBossCombat(nowMs: number): void {
+    if (!this.floorConfig.isBossFloor || this.bossState === null) {
+      return;
+    }
+
+    const distanceToBoss = Math.hypot(
+      this.player.position.x - this.bossState.position.x,
+      this.player.position.y - this.bossState.position.y
+    );
+
+    if (distanceToBoss <= 1.8 && nowMs >= this.nextPlayerAttackAt) {
+      const crit = this.combatRng.next() < this.player.derivedStats.critChance;
+      const damage = Math.max(1, Math.floor(this.player.derivedStats.attackPower * (crit ? 1.7 : 1)));
+      const previousPhase = this.bossState.currentPhaseIndex;
+      this.bossState = applyDamageToBoss(this.bossState, damage);
+      this.bossState = {
+        ...this.bossState,
+        ...(
+          this.bossState.health <= this.bossState.maxHealth * 0.5 && this.bossState.currentPhaseIndex === 0
+            ? { currentPhaseIndex: 1 }
+            : {}
+        )
+      };
+      this.nextPlayerAttackAt = nowMs + 1000 / Math.max(0.6, this.player.derivedStats.attackSpeed);
+
+      if (this.bossState.currentPhaseIndex !== previousPhase) {
+        this.eventBus.emit("boss:phaseChange", {
+          bossId: this.bossDef.id,
+          fromPhase: previousPhase,
+          toPhase: this.bossState.currentPhaseIndex,
+          hpRatio: this.bossState.health / this.bossState.maxHealth,
+          timestampMs: nowMs
+        });
+      }
+
+      this.hudDirty = true;
+    }
+
+    if (nowMs < this.nextBossAttackAt) {
+      return;
+    }
+
+    const attack = selectBossAttack(this.bossState, this.bossDef, nowMs, this.bossRng);
+    if (attack === null) {
+      return;
+    }
+
+    const attackResult = resolveBossAttack(attack, this.bossState, this.player, this.bossRng, nowMs);
+    this.player = attackResult.player;
+    this.emitCombatEvents(attackResult.events);
+
+    if (attack.type === "summon") {
+      this.eventBus.emit("boss:summon", {
+        bossId: this.bossDef.id,
+        attack,
+        count: attackResult.summonCount ?? 2,
+        timestampMs: nowMs
+      });
+      this.spawnSummonedMonsters(attackResult.summonCount ?? 2);
+    }
+
+    this.bossState = markBossAttackUsed(this.bossState, attack, nowMs);
+    this.nextBossAttackAt = nowMs + Math.max(800, attack.cooldownMs * 0.4);
+    this.hudDirty = true;
+  }
+
+  private spawnSummonedMonsters(count: number): void {
+    const archetype = MONSTER_ARCHETYPES[0];
+    if (archetype === undefined || this.bossState === null) {
+      return;
+    }
+
+    const existing = this.entityManager.listMonsters().length;
+    for (let i = 0; i < count; i += 1) {
+      const idx = existing + i;
+      const angle = (Math.PI * 2 * i) / Math.max(1, count);
+      const position = {
+        x: this.bossState.position.x + Math.cos(angle) * 2,
+        y: this.bossState.position.y + Math.sin(angle) * 2
+      };
+      const state: MonsterState = {
+        id: `summon-${idx}-${Math.floor(this.time.now)}`,
+        archetypeId: archetype.id,
+        level: this.run.currentFloor,
+        health: Math.floor(65 * this.floorConfig.monsterHpMultiplier),
+        maxHealth: Math.floor(65 * this.floorConfig.monsterHpMultiplier),
+        damage: Math.floor(8 * this.floorConfig.monsterDmgMultiplier),
+        attackRange: archetype.attackRange,
+        moveSpeed: archetype.moveSpeed,
+        xpValue: archetype.xpValue,
+        dropTableId: archetype.dropTableId,
+        position,
+        aiState: "chase"
+      };
+      const runtime = this.renderSystem.spawnMonster(state, archetype, this.origin);
+      this.entityManager.listMonsters().push(runtime);
     }
   }
 
@@ -472,8 +795,8 @@ export class DungeonScene extends Phaser.Scene {
     const monsters = this.monsterSpawnSystem.createMonsters({
       dungeon: this.dungeon,
       playerPosition: this.player.position,
-      floor: this.run.floor,
-      count: GAME_CONFIG.floorClearKillTarget + 1,
+      floor: this.run.currentFloor,
+      floorConfig: this.floorConfig,
       enemyBaseHealth: GAME_CONFIG.enemyBaseHealth,
       enemyBaseDamage: GAME_CONFIG.enemyBaseDamage,
       archetypes: MONSTER_ARCHETYPES,
@@ -485,6 +808,16 @@ export class DungeonScene extends Phaser.Scene {
     );
   }
 
+  private spawnBoss(): void {
+    const roomCenter = findStaircasePosition(this.dungeon, this.dungeon.playerSpawn);
+    this.bossState = initBossState(this.bossDef, roomCenter);
+    this.bossSprite = this.renderSystem.spawnBoss(roomCenter, this.origin, this.bossDef.spriteKey);
+    this.entityManager.setBoss({
+      state: this.bossState,
+      sprite: this.bossSprite
+    });
+  }
+
   private spawnLootDrop(item: ItemInstance, position: { x: number; y: number }): void {
     this.entityManager.addLoot({
       item,
@@ -493,16 +826,87 @@ export class DungeonScene extends Phaser.Scene {
     });
   }
 
-  private finishRun(): void {
+  private syncBossSprite(): void {
+    if (this.bossState === null || this.bossSprite === null) {
+      return;
+    }
+
+    const mapped = gridToIso(
+      this.bossState.position.x,
+      this.bossState.position.y,
+      this.tileWidth,
+      this.tileHeight,
+      this.origin.x,
+      this.origin.y
+    );
+
+    this.bossSprite.setPosition(mapped.x, mapped.y);
+    this.bossSprite.setVisible(this.bossState.health > 0);
+  }
+
+  private updateFloorProgress(nowMs: number): void {
+    if (this.floorConfig.isBossFloor) {
+      return;
+    }
+
+    const revealThreshold = Math.ceil(this.floorConfig.monsterCount * this.floorConfig.clearThreshold);
+    if (!this.staircaseState.visible && this.run.kills >= revealThreshold) {
+      this.staircaseState = {
+        ...this.staircaseState,
+        visible: true
+      };
+      this.entityManager.setStaircase(this.renderSystem.spawnStaircase(this.staircaseState.position, this.origin));
+      this.eventBus.emit("floor:clear", {
+        floor: this.run.currentFloor,
+        kills: this.run.kills,
+        staircase: this.staircaseState,
+        timestampMs: nowMs
+      });
+    }
+
+    if (!isPlayerOnStaircase(this.player.position, this.staircaseState, 0.85)) {
+      return;
+    }
+
+    if (this.run.currentFloor >= (GAME_CONFIG.maxFloors ?? 5)) {
+      return;
+    }
+
+    const fromFloor = this.run.currentFloor;
+    this.run = appendReplayInput(this.run, {
+      type: "floor_transition",
+      atMs: this.getRunRelativeNowMs(),
+      fromFloor,
+      toFloor: fromFloor + 1
+    });
+    this.run = enterNextFloor(this.run);
+    this.run = addRunObols(this.run, 5);
+    this.setupFloor(this.run.currentFloor, false);
+  }
+
+  private finishRun(isVictory: boolean): void {
     if (this.runEnded) {
       return;
     }
     this.runEnded = true;
+    this.run = {
+      ...this.run,
+      isVictory
+    };
 
-    const { summary, meta, replay } = endRun(this.run, this.player, this.time.now, this.meta);
-    this.meta = meta;
-    this.saveMeta(meta);
+    const { summary: baseSummary, meta: nextMeta, replay } = endRun(this.run, this.player, this.time.now, this.meta);
+    const soulShards = calculateSoulShardReward(this.run, isVictory);
+    const summary = {
+      ...baseSummary,
+      isVictory,
+      soulShardsEarned: soulShards,
+      obolsEarned: this.run.runEconomy.obols
+    };
+
+    this.meta = applyRunSummaryToMeta(nextMeta, summary);
+    this.saveMeta(this.meta);
     this.hud.showSummary(summary);
+
     const runEndPayload: GameEventMap["run:end"] = {
       summary,
       inputs: replay?.inputs ?? [],
@@ -518,15 +922,103 @@ export class DungeonScene extends Phaser.Scene {
     this.hudDirty = true;
   }
 
+  private tryUseSkill(slotIndex: number): void {
+    if (this.player.skills === undefined || this.runEnded) {
+      return;
+    }
+
+    const slot = this.player.skills.skillSlots[slotIndex];
+    if (slot === null || slot === undefined) {
+      return;
+    }
+
+    const def = SKILL_DEFS.find((entry) => entry.id === slot.defId);
+    if (def === undefined) {
+      return;
+    }
+
+    if (!canUseSkill(this.player, this.player.skills, def, this.time.now)) {
+      return;
+    }
+
+    const monsters = this.entityManager.listMonsters();
+    const resolution = this.combatSystem.useSkill(this.player, monsters, def as SkillDef, this.skillRng, this.time.now);
+    this.player = {
+      ...resolution.player,
+      skills: markSkillUsed(this.player.skills, def as SkillDef, this.time.now)
+    };
+
+    let kills = 0;
+    for (const event of resolution.events) {
+      if (event.kind !== "death") {
+        continue;
+      }
+      const dead = this.entityManager.removeMonsterById(event.targetId);
+      if (dead !== null) {
+        dead.sprite.destroy();
+        dead.healthBarBg.destroy();
+        dead.healthBarFg.destroy();
+
+        const xpResult = applyXpGain(this.player, dead.state.xpValue, "strength");
+        this.player = {
+          ...xpResult.player,
+          derivedStats: deriveStats(
+            xpResult.player.baseStats,
+            Object.values(xpResult.player.equipment).filter((item): item is ItemInstance => item !== undefined),
+            undefined,
+            this.meta.permanentUpgrades
+          )
+        };
+      }
+      kills += 1;
+    }
+
+    if (kills > 0) {
+      this.run = addRunObols(
+        {
+          ...this.run,
+          kills: this.run.kills + kills,
+          totalKills: this.run.totalKills + kills
+        },
+        kills
+      );
+    }
+
+    this.eventBus.emit("skill:use", {
+      playerId: this.player.id,
+      skillId: def.id,
+      timestampMs: this.time.now,
+      resolution
+    });
+    this.eventBus.emit("skill:cooldown", {
+      playerId: this.player.id,
+      skillId: def.id,
+      readyAtMs: this.player.skills?.cooldowns[def.id] ?? this.time.now
+    });
+    this.hudDirty = true;
+  }
+
   private renderHud(): void {
+    const runState = {
+      floor: this.run.currentFloor,
+      kills: this.run.kills,
+      lootCollected: this.run.lootCollected,
+      targetKills: this.floorConfig.monsterCount,
+      obols: this.run.runEconomy.obols,
+      floorGoalReached: this.staircaseState.visible,
+      isBossFloor: this.floorConfig.isBossFloor,
+      bossPhase: this.bossState?.currentPhaseIndex ?? 0,
+      ...(this.bossState === null
+        ? {}
+        : {
+            bossHealth: this.bossState.health,
+            bossMaxHealth: this.bossState.maxHealth
+          })
+    };
+
     this.hud.render({
       player: this.player,
-      run: {
-        floor: this.run.floor,
-        kills: this.run.kills,
-        lootCollected: this.run.lootCollected,
-        targetKills: GAME_CONFIG.floorClearKillTarget
-      },
+      run: runState,
       meta: this.meta
     });
   }
@@ -538,24 +1030,30 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private loadMeta(): MetaProgression {
-    const raw = window.localStorage.getItem(META_STORAGE_KEY);
-    if (raw === null) {
-      return createInitialMeta();
+    const rawV2 = window.localStorage.getItem(META_STORAGE_KEY_V2);
+    if (rawV2 !== null) {
+      try {
+        return migrateMeta(JSON.parse(rawV2));
+      } catch {
+        return createInitialMeta();
+      }
     }
 
-    try {
-      const parsed = JSON.parse(raw) as MetaProgression;
-      return {
-        runsPlayed: parsed.runsPlayed ?? 0,
-        bestFloor: parsed.bestFloor ?? 0,
-        bestTimeMs: parsed.bestTimeMs ?? 0
-      };
-    } catch {
-      return createInitialMeta();
+    const rawV1 = window.localStorage.getItem(META_STORAGE_KEY_V1);
+    if (rawV1 !== null) {
+      try {
+        const migrated = migrateMeta(JSON.parse(rawV1));
+        window.localStorage.setItem(META_STORAGE_KEY_V2, JSON.stringify(migrated));
+        return migrated;
+      } catch {
+        return createInitialMeta();
+      }
     }
+
+    return createInitialMeta();
   }
 
   private saveMeta(meta: MetaProgression): void {
-    window.localStorage.setItem(META_STORAGE_KEY, JSON.stringify(meta));
+    window.localStorage.setItem(META_STORAGE_KEY_V2, JSON.stringify(meta));
   }
 }
