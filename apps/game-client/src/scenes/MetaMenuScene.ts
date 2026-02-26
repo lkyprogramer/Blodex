@@ -4,6 +4,7 @@ import { UNLOCK_DEFS } from "@blodex/content";
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
+const PURCHASE_HOTKEYS = ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "ZERO"];
 
 export class MetaMenuScene extends Phaser.Scene {
   private meta: MetaProgression = createInitialMeta();
@@ -33,19 +34,31 @@ export class MetaMenuScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0.5);
 
-    const unlockLines = UNLOCK_DEFS.slice(0, 6).map((unlock, index) => {
-      const unlocked = this.meta.unlocks.includes(unlock.id);
-      return `${index + 1}. ${unlock.name} (${unlock.cost}) ${unlocked ? "[Unlocked]" : ""}`;
-    });
-
     this.add
-      .text(cx, 230, unlockLines.join("\n"), {
+      .text(cx, 200, "Click an unlock to purchase. You can also use hotkeys 1-0.", {
+        fontFamily: "Spectral",
+        color: "#dbc8a5",
+        fontSize: "15px",
+        align: "center"
+      })
+      .setOrigin(0.5, 0.5);
+
+    UNLOCK_DEFS.forEach((unlock, index) => {
+      const unlocked = this.meta.unlocks.includes(unlock.id);
+
+      this.add
+        .text(cx, 240 + index * 28, `${index + 1}. ${unlock.name} (${unlock.cost}) ${unlocked ? "[Unlocked]" : ""}`, {
         fontFamily: "Spectral",
         color: "#c9bb9d",
         fontSize: "16px",
         align: "center"
       })
-      .setOrigin(0.5, 0);
+        .setOrigin(0.5, 0)
+        .setInteractive({ useHandCursor: true })
+        .on("pointerdown", () => {
+          this.tryPurchase(index);
+        });
+    });
 
     const startButton = this.add
       .rectangle(cx, 470, 320, 56, 0x2d3b49, 0.95)
@@ -64,12 +77,9 @@ export class MetaMenuScene extends Phaser.Scene {
       this.scene.start("dungeon");
     });
 
-    this.input.keyboard?.on("keydown-ONE", () => this.tryPurchase(0));
-    this.input.keyboard?.on("keydown-TWO", () => this.tryPurchase(1));
-    this.input.keyboard?.on("keydown-THREE", () => this.tryPurchase(2));
-    this.input.keyboard?.on("keydown-FOUR", () => this.tryPurchase(3));
-    this.input.keyboard?.on("keydown-FIVE", () => this.tryPurchase(4));
-    this.input.keyboard?.on("keydown-SIX", () => this.tryPurchase(5));
+    PURCHASE_HOTKEYS.forEach((key, index) => {
+      this.input.keyboard?.on(`keydown-${key}`, () => this.tryPurchase(index));
+    });
     this.input.keyboard?.on("keydown-ENTER", () => this.scene.start("dungeon"));
   }
 
