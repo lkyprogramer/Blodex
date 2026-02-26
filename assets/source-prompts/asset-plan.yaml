@@ -1,4 +1,4 @@
-styleTag: painterly-dark-fantasy-v2
+styleTag: painterly-dark-fantasy-v1
 useCase: stylized-concept
 defaults:
   size: 1024x1024
@@ -9,268 +9,323 @@ assets:
   - id: player_vanguard
     category: player_sprite
     outputName: player_vanguard.png
-    prompt: "Isometric hooded knight vanguard with halberd and kite shield, grounded battle-ready stance, full-body game sprite concept"
+    prompt: "Isometric hooded vanguard knight in weathered plate armor, halberd and kite shield, somber cathedral gloom, clear gameplay silhouette"
     subject: "single armored vanguard hero with closed visor helm, halberd, and shield"
-    style: "painterly dark fantasy concept art with gritty medieval realism"
-    composition: "centered full-body portrait, isolated subject"
-    lighting: "dramatic but restrained top-left key light with soft bounce"
-    palette: "aged steel grays and tarnished bronze accents"
-    materials: "weathered plate armor, worn leather straps, frayed cloth"
-    constraints: "original dark fantasy IP; readable silhouette at gameplay scale; isolated cutout; transparent background; no logos; no text; no watermark"
-    avoid: "solid color backdrops, environment scenery, neon highlights, glossy plastic look"
+    style: "painterly dark fantasy concept art with visible brush texture"
+    composition: "centered full-body portrait, isolated subject, readable top-plane forms"
+    lighting: "low-key top-left directional light with restrained rim highlight"
+    palette: "charcoal, iron blue, damp stone green, tarnished gold accents"
+    materials: "worn steel plate, frayed cloth, cracked leather straps"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "neon color pops, bloom haze, glossy plastic materials, busy scenery"
 
   - id: monster_melee_01
     category: monster_sprite
     outputName: monster_melee_01.png
-    prompt: "Isometric feral crypt hound enemy, hostile crouched pose, game sprite concept"
+    prompt: "Isometric feral crypt hound, low stalking posture, hostile melee enemy, cathedral-catacomb mood"
     subject: "undead hound-like melee monster"
-    style: "painterly dark fantasy"
+    style: "painterly dark fantasy with brush texture"
     composition: "single isolated subject centered"
-    lighting: "dim ambient with subtle edge light"
-    palette: "ashen browns and desaturated crimson"
-    materials: "ragged fur and exposed bone"
-    constraints: "readable silhouette at gameplay scale; isolated cutout; transparent background; no logos; no text; no watermark"
-    avoid: "background scenery, ground planes, glow-heavy effects"
+    lighting: "low-key top-left light with subtle rim"
+    palette: "charcoal fur, damp stone green shadows, muted ember accents"
+    materials: "matted fur, exposed bone, torn sinew"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "neon glows, bloom-heavy fog, environment backdrop"
 
   - id: monster_ranged_01
     category: monster_sprite
     outputName: monster_ranged_01.png
-    prompt: "Isometric ash acolyte caster enemy with warped staff, game sprite concept"
+    prompt: "Isometric ash acolyte caster with warped staff, gaunt silhouette, ranged enemy for dark cathedral dungeon"
     subject: "hooded cult caster"
-    style: "painterly dark fantasy"
+    style: "painterly dark fantasy with brush texture"
     composition: "single isolated subject centered"
-    lighting: "subtle magical backlight"
-    palette: "muted violet, charcoal, ash gray"
-    materials: "cloth robes and scorched wood staff"
-    constraints: "readable silhouette at gameplay scale; isolated cutout; transparent background; no logos; no text; no watermark"
-    avoid: "background scenery, text overlays"
+    lighting: "low-key top-left light with restrained magical edge light"
+    palette: "iron blue, charcoal, ash gray, tiny ember accent"
+    materials: "smoked cloth robes, charred wood staff"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "high saturation magic, neon purple haze, scenic backgrounds"
 
   - id: monster_elite_01
     category: monster_sprite
     outputName: monster_elite_01.png
-    prompt: "Isometric armored revenant brute enemy, heavy stance with oversized weapon, game sprite concept"
+    prompt: "Isometric armored revenant brute with oversized cleaver, heavy imposing silhouette, medieval-cathedral gloom"
     subject: "large elite bruiser"
-    style: "painterly dark fantasy"
+    style: "painterly dark fantasy concept art"
     composition: "single isolated subject centered"
-    lighting: "hard directional light with subtle bounce"
-    palette: "dark steel, rust brown, ember accents"
-    materials: "cracked plate armor and corroded metal"
-    constraints: "readable silhouette at gameplay scale; isolated cutout; transparent background; no logos; no text; no watermark"
-    avoid: "background scenery, clutter"
+    lighting: "low-key top-left directional light, narrow rim separation"
+    palette: "dark steel, charcoal, damp stone green, restrained ember orange"
+    materials: "corroded plate, cracked bone, worn leather"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "cartoon exaggeration, candy colors, elaborate scenery"
 
   - id: tile_floor_01
     category: tile
     outputName: tile_floor_01.png
-    prompt: "Seamless isometric dungeon floor stone tile texture"
+    prompt: "Seamless isometric dungeon floor tile of worn cathedral flagstones with soot and moisture stains"
     subject: "worn cathedral flagstones"
-    style: "painterly game texture"
-    composition: "single tile texture"
-    lighting: "neutral flat lighting"
-    palette: "cold gray-green stone"
-    materials: "chipped stone with grime"
-    constraints: "seamless edges; no focal object; no text; no watermark"
+    style: "painterly game texture with visible brush grain"
+    composition: "single seamless tile texture"
+    lighting: "neutral low-key illumination, readable top surface"
+    palette: "damp stone green, charcoal gray, iron blue undertone"
+    materials: "chipped stone, ash dust, grime seams"
+    constraints: "seamless edges; no focal object; opaque background allowed; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
     background: opaque
 
   - id: item_weapon_01
     category: item_icon
     outputName: item_weapon_01.png
-    prompt: "Fantasy RPG one-handed sword item icon, centered"
+    prompt: "RPG icon of a worn one-handed sabre, painterly dark fantasy, centered with clean padding"
     subject: "worn sabre with nicked edge"
     style: "painted game UI icon"
     composition: "single isolated icon with generous padding"
-    lighting: "soft studio key"
-    palette: "steel gray and aged bronze"
-    materials: "weathered steel and leather wrap"
-    constraints: "transparent background; no text; no logos; no watermark"
+    lighting: "top-left low-key key light"
+    palette: "steel gray, iron blue shadows, tarnished gold details"
+    materials: "weathered steel blade, aged leather wrap"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: item_weapon_02
     category: item_icon
     outputName: item_weapon_02.png
-    prompt: "Fantasy RPG polearm item icon, centered"
+    prompt: "RPG icon of a dark halberd head and shaft section, painterly dark fantasy, centered"
     subject: "dark halberd with iron shaft fittings"
     style: "painted game UI icon"
     composition: "single isolated icon with generous padding"
-    lighting: "soft directional lighting"
-    palette: "charcoal steel and muted brass"
+    lighting: "top-left low-key directional light"
+    palette: "charcoal steel, iron blue shadows, dried leather brown"
     materials: "forged metal and wrapped wood"
-    constraints: "transparent background; no text; no logos; no watermark"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: item_weapon_03
     category: item_icon
     outputName: item_weapon_03.png
-    prompt: "Fantasy RPG greatsword item icon, centered"
+    prompt: "RPG icon of a broad greatsword with chipped fuller, painterly dark fantasy, centered"
     subject: "broad two-handed blade with etched fuller"
     style: "painted game UI icon"
     composition: "single isolated icon with generous padding"
-    lighting: "soft directional lighting"
-    palette: "cold steel and ember bronze"
-    materials: "tempered steel"
-    constraints: "transparent background; no text; no logos; no watermark"
+    lighting: "top-left low-key directional light"
+    palette: "cold steel, charcoal, restrained ember orange edge wear"
+    materials: "tempered steel with battle scars"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: item_helm_01
     category: item_icon
     outputName: item_helm_01.png
-    prompt: "Fantasy RPG helm item icon, centered"
+    prompt: "RPG icon of a grim closed-face helm, painterly dark fantasy, centered"
     subject: "grim closed-face helm"
     style: "painted game UI icon"
     composition: "single isolated icon with generous padding"
-    lighting: "controlled soft highlight"
-    palette: "dark iron and muted gold trim"
-    materials: "worn steel"
-    constraints: "transparent background; no text; no logos; no watermark"
+    lighting: "low-key top-left key with restrained rim"
+    palette: "dark iron, charcoal, muted tarnished gold trim"
+    materials: "worn steel and leather lining"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: item_helm_02
     category: item_icon
     outputName: item_helm_02.png
-    prompt: "Fantasy RPG elite helm item icon, centered"
+    prompt: "RPG icon of an elite spiked revenant helm, painterly dark fantasy, centered"
     subject: "spiked revenant mask helm"
     style: "painted game UI icon"
     composition: "single isolated icon with generous padding"
-    lighting: "dramatic rim highlight"
-    palette: "ash steel and ember red accents"
-    materials: "corroded metal"
-    constraints: "transparent background; no text; no logos; no watermark"
+    lighting: "low-key top-left key with subtle rim"
+    palette: "ash steel, charcoal, restrained ember accents"
+    materials: "corroded metal and aged straps"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: item_chest_01
     category: item_icon
     outputName: item_chest_01.png
-    prompt: "Fantasy RPG chest armor item icon, centered"
+    prompt: "RPG icon of layered mail-and-plate cuirass, painterly dark fantasy, centered"
     subject: "layered mail and plate cuirass"
     style: "painted game UI icon"
     composition: "single isolated icon with generous padding"
-    lighting: "soft controlled lighting"
-    palette: "iron gray and desaturated leather brown"
-    materials: "chainmail and leather"
-    constraints: "transparent background; no text; no logos; no watermark"
+    lighting: "low-key top-left soft light"
+    palette: "iron gray, charcoal, dried leather brown"
+    materials: "chainmail links and worn leather straps"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: item_chest_02
     category: item_icon
     outputName: item_chest_02.png
-    prompt: "Fantasy RPG rare chest armor item icon, centered"
+    prompt: "RPG icon of ornate oathbound cuirass with heavy pauldrons, painterly dark fantasy, centered"
     subject: "ornate oathbound cuirass with heavy pauldrons"
     style: "painted game UI icon"
     composition: "single isolated icon with generous padding"
-    lighting: "soft directional highlight"
-    palette: "dark steel with gold edging"
-    materials: "engraved metal and leather"
-    constraints: "transparent background; no text; no logos; no watermark"
+    lighting: "low-key top-left directional highlight"
+    palette: "dark steel, tarnished gold, charcoal shadows"
+    materials: "engraved metal and worn leather"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: item_boots_01
     category: item_icon
     outputName: item_boots_01.png
-    prompt: "Fantasy RPG boots item icon, centered"
+    prompt: "RPG icon of worn traveler boots, painterly dark fantasy, centered"
     subject: "worn traveler boots"
     style: "painted game UI icon"
     composition: "single isolated icon with generous padding"
-    lighting: "soft key light"
-    palette: "dark leather and muted steel"
-    materials: "stitched leather"
-    constraints: "transparent background; no text; no logos; no watermark"
+    lighting: "low-key top-left soft light"
+    palette: "dried leather brown, charcoal, muted steel"
+    materials: "stitched leather and scuffed soles"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: item_boots_02
     category: item_icon
     outputName: item_boots_02.png
-    prompt: "Fantasy RPG armored greaves item icon, centered"
+    prompt: "RPG icon of heavy catacomb greaves, painterly dark fantasy, centered"
     subject: "heavy catacomb greaves"
     style: "painted game UI icon"
     composition: "single isolated icon with generous padding"
-    lighting: "soft directional"
-    palette: "charcoal steel and tarnished brass"
-    materials: "plate metal"
-    constraints: "transparent background; no text; no logos; no watermark"
+    lighting: "low-key top-left directional light"
+    palette: "charcoal steel, iron blue shadows, tarnished brass"
+    materials: "plate metal with worn bindings"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: item_ring_01
     category: item_icon
     outputName: item_ring_01.png
-    prompt: "Fantasy RPG ring item icon, centered"
+    prompt: "RPG icon of engraved oath ring with dark gemstone, painterly dark fantasy, centered"
     subject: "engraved oath ring with dark gem"
     style: "painted game UI icon"
     composition: "single isolated icon with generous padding"
-    lighting: "soft studio light"
-    palette: "tarnished gold and deep crimson"
-    materials: "aged metal and polished gem"
-    constraints: "transparent background; no text; no logos; no watermark"
+    lighting: "low-key top-left studio-like light"
+    palette: "tarnished gold, charcoal shadows, deep ember-red gem"
+    materials: "aged metal and polished stone"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: item_ring_02
     category: item_icon
     outputName: item_ring_02.png
-    prompt: "Fantasy RPG rare ring item icon, centered"
+    prompt: "RPG icon of bloodsigil ring with etched runes, painterly dark fantasy, centered"
     subject: "bloodsigil band with etched runes"
     style: "painted game UI icon"
     composition: "single isolated icon with generous padding"
-    lighting: "soft studio light"
-    palette: "blackened gold and crimson gemstone"
-    materials: "aged metal and gemstone"
-    constraints: "transparent background; no text; no logos; no watermark"
+    lighting: "low-key top-left studio-like light"
+    palette: "blackened gold, charcoal, deep crimson gemstone"
+    materials: "aged metal and cut gemstone"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: boss_bone_sovereign
     category: boss_sprite
     outputName: boss_bone_sovereign.png
-    prompt: "Isometric undead bone sovereign boss, imposing silhouette"
-    constraints: "transparent background; no text; no logos; no watermark"
+    prompt: "Isometric Bone Sovereign undead boss with cathedral-regal silhouette, massive bone crown and relic armor, readable phase-boss form"
+    subject: "undead skeletal monarch boss"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "single isolated full-body boss subject"
+    lighting: "low-key top-left directional light with restrained rim"
+    palette: "bone ivory, charcoal, iron blue shadows, restrained ember accents"
+    materials: "cracked bone, tarnished relic metal, torn ritual cloth"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "neon magical aura, bloom haze, ornate background scene"
 
   - id: telegraph_circle_red
     category: fx
     outputName: telegraph_circle_red.png
-    prompt: "Simple red circular telegraph indicator for game attacks"
-    constraints: "transparent background; clean shape; no text"
+    prompt: "Top-down telegraph circle for attack warning, painterly dark fantasy UI FX, clean edge and restrained glow"
+    style: "painted UI FX"
+    composition: "single centered symbol"
+    lighting: "subtle internal glow only"
+    palette: "deep ember red and charcoal"
+    constraints: "transparent background; simple readable shape; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "neon pink, bloom-heavy halo, excessive particles"
 
   - id: telegraph_zone_red
     category: fx
     outputName: telegraph_zone_red.png
-    prompt: "Simple red rectangular telegraph indicator for game attacks"
-    constraints: "transparent background; clean shape; no text"
+    prompt: "Top-down rectangular telegraph zone for attack warning, painterly dark fantasy UI FX, clean edge and restrained glow"
+    style: "painted UI FX"
+    composition: "single centered symbol"
+    lighting: "subtle internal glow only"
+    palette: "deep ember red and charcoal"
+    constraints: "transparent background; simple readable shape; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "neon pink, bloom-heavy halo, excessive particles"
 
   - id: staircase_floor_exit
     category: tile
     outputName: staircase_floor_exit.png
-    prompt: "Isometric stone staircase descending into darkness"
-    constraints: "transparent background; no text"
+    prompt: "Isometric worn stone staircase descending into crypt darkness, clear top-plane readability for gameplay"
+    subject: "cathedral stone floor exit stair"
+    style: "painterly dark fantasy environment prop"
+    composition: "single isolated prop, centered"
+    lighting: "low-key top-left directional light"
+    palette: "damp stone green, charcoal, iron blue"
+    materials: "chipped stone and grime"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: skill_cleave
     category: skill_icon
     outputName: skill_cleave.png
-    prompt: "RPG skill icon of a sweeping blade arc"
-    constraints: "transparent background; no text"
+    prompt: "RPG skill icon of sweeping halberd cleave arc, painterly dark fantasy with restrained ember slash trail"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key top-left with subtle edge light"
+    palette: "steel gray, charcoal, ember orange"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: skill_shadow_step
     category: skill_icon
     outputName: skill_shadow_step.png
-    prompt: "RPG skill icon for shadow teleport strike"
-    constraints: "transparent background; no text"
+    prompt: "RPG skill icon for shadow-step strike, hooded silhouette and dark motion streaks, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key contrast with restrained rim"
+    palette: "charcoal, iron blue, muted ember accent"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: skill_blood_drain
     category: skill_icon
     outputName: skill_blood_drain.png
-    prompt: "RPG skill icon for life drain magic"
-    constraints: "transparent background; no text"
+    prompt: "RPG skill icon for vitality-drain ritual sigil and siphon stream, painterly dark fantasy, controlled glow"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with restrained inner glow"
+    palette: "deep crimson, charcoal, tarnished gold hints"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: skill_frost_nova
     category: skill_icon
     outputName: skill_frost_nova.png
-    prompt: "RPG skill icon for icy nova explosion"
-    constraints: "transparent background; no text"
+    prompt: "RPG skill icon for frost nova burst, jagged ice ring with restrained cold glow, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with subtle cold edge highlights"
+    palette: "iron blue, cold gray, charcoal"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: skill_war_cry
     category: skill_icon
     outputName: skill_war_cry.png
-    prompt: "RPG skill icon for battle roar buff"
-    constraints: "transparent background; no text"
+    prompt: "RPG skill icon for war cry buff, roaring helm emblem with shockwave lines, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with restrained ember accent"
+    palette: "charcoal, tarnished gold, muted ember orange"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: meta_unlock_locked
     category: ui_icon
     outputName: meta_unlock_locked.png
-    prompt: "UI icon for locked progression node"
-    constraints: "transparent background; no text"
+    prompt: "UI progression icon for locked node, chained sigil motif, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with restrained rim"
+    palette: "charcoal, iron blue, muted steel"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: meta_unlock_available
     category: ui_icon
     outputName: meta_unlock_available.png
-    prompt: "UI icon for available progression node"
-    constraints: "transparent background; no text"
+    prompt: "UI progression icon for available node, faintly lit relic sigil, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with subtle warm highlight"
+    palette: "charcoal, tarnished gold, muted ember"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
   - id: meta_unlock_unlocked
     category: ui_icon
     outputName: meta_unlock_unlocked.png
-    prompt: "UI icon for unlocked progression node"
-    constraints: "transparent background; no text"
+    prompt: "UI progression icon for unlocked node, consecrated sigil with restrained glow, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with subtle radiant edge"
+    palette: "tarnished gold, iron blue shadow, charcoal"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
