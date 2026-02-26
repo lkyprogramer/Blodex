@@ -71,8 +71,8 @@ export interface GameConfig {
   gridWidth: number;
   gridHeight: number;
   floorClearKillTarget: number;
-  floorClearKillRatio: number;
-  maxFloors: number;
+  floorClearKillRatio?: number;
+  maxFloors?: number;
   enemyBaseHealth: number;
   enemyBaseDamage: number;
 }
