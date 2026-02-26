@@ -108,14 +108,18 @@ function makeSkill(range: number): SkillDef {
     icon: "blood_drain",
     cooldownMs: 1000,
     manaCost: 10,
-    damageType: "magic",
+    damageType: "arcane",
     targeting: "nearest",
     range,
     effects: [{ type: "damage", value: 20 }]
   };
 }
 
-const neverCritRng = { next: () => 1 };
+const neverCritRng = {
+  next: () => 1,
+  nextInt: () => 0,
+  pick: <T>(items: T[]): T => items[0] as T
+};
 
 describe("skill", () => {
   it("checks cooldown and mana", () => {
