@@ -6,6 +6,8 @@ export const GAME_CONFIG: GameConfig = {
   gridWidth: 64,
   gridHeight: 64,
   floorClearKillTarget: 12,
+  floorClearKillRatio: 0.7,
+  maxFloors: 5,
   enemyBaseHealth: 85,
   enemyBaseDamage: 7
 };
