@@ -1,5 +1,5 @@
 import type { DungeonLayout, MonsterState } from "@blodex/core";
-import type { MonsterArchetypeDef } from "@blodex/content";
+import type { FloorConfig, MonsterArchetypeDef } from "@blodex/content";
 import type { RngLike } from "@blodex/core";
 
 export interface MonsterSpawnCandidate {
@@ -11,7 +11,8 @@ export interface MonsterSpawnOptions {
   dungeon: DungeonLayout;
   playerPosition: { x: number; y: number };
   floor: number;
-  count: number;
+  floorConfig?: FloorConfig;
+  count?: number;
   enemyBaseHealth: number;
   enemyBaseDamage: number;
   archetypes: MonsterArchetypeDef[];
@@ -68,13 +69,19 @@ export class MonsterSpawnSystem {
   }
 
   createMonsters(options: MonsterSpawnOptions): MonsterSpawnCandidate[] {
-    const points = this.generateSpawnPoints(options.dungeon, options.playerPosition, options.count, options.rng);
+    const count = options.count ?? options.floorConfig?.monsterCount ?? 0;
+    if (options.floorConfig?.isBossFloor === true && count <= 1) {
+      return [];
+    }
+
+    const points = this.generateSpawnPoints(options.dungeon, options.playerPosition, count, options.rng);
     const monsters: MonsterSpawnCandidate[] = [];
+    const hpMultiplier = options.floorConfig?.monsterHpMultiplier ?? 1;
+    const dmgMultiplier = options.floorConfig?.monsterDmgMultiplier ?? 1;
 
     for (let i = 0; i < points.length; i += 1) {
       const point = points[i]!;
       const archetype = options.archetypes[i % options.archetypes.length]!;
-      const levelScale = 1 + options.floor * 0.12;
 
       monsters.push({
         archetype,
@@ -82,9 +89,9 @@ export class MonsterSpawnSystem {
           id: `monster-${i}`,
           archetypeId: archetype.id,
           level: options.floor,
-          health: Math.floor(options.enemyBaseHealth * archetype.healthMultiplier * levelScale),
-          maxHealth: Math.floor(options.enemyBaseHealth * archetype.healthMultiplier * levelScale),
-          damage: Math.floor(options.enemyBaseDamage * archetype.damageMultiplier * levelScale),
+          health: Math.floor(options.enemyBaseHealth * archetype.healthMultiplier * hpMultiplier),
+          maxHealth: Math.floor(options.enemyBaseHealth * archetype.healthMultiplier * hpMultiplier),
+          damage: Math.floor(options.enemyBaseDamage * archetype.damageMultiplier * dmgMultiplier),
           attackRange: archetype.attackRange,
           moveSpeed: archetype.moveSpeed,
           xpValue: archetype.xpValue,
