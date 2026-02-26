@@ -194,6 +194,64 @@ export class RenderSystem {
       .setDepth(iso.y + this.entityDepthOffset - 10);
   }
 
+  spawnStaircase(
+    position: { x: number; y: number },
+    origin: { x: number; y: number }
+  ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse {
+    const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
+    if (this.scene.textures.exists("staircase_floor_exit")) {
+      return this.scene.add
+        .image(iso.x, iso.y - 6, "staircase_floor_exit")
+        .setDisplaySize(42, 42)
+        .setDepth(iso.y + this.entityDepthOffset - 5);
+    }
+    return this.scene.add
+      .ellipse(iso.x, iso.y - 4, 24, 12, 0x9ea7b8, 0.9)
+      .setStrokeStyle(1, 0x20252c)
+      .setDepth(iso.y + this.entityDepthOffset - 5);
+  }
+
+  spawnBoss(
+    position: { x: number; y: number },
+    origin: { x: number; y: number },
+    textureKey = "boss_bone_sovereign"
+  ): Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle {
+    const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
+    if (this.scene.textures.exists(textureKey)) {
+      return this.scene.add
+        .image(iso.x, iso.y, textureKey)
+        .setOrigin(0.5, 1)
+        .setDisplaySize(64, 80)
+        .setDepth(iso.y + this.entityDepthOffset + 20);
+    }
+    return this.scene.add
+      .rectangle(iso.x, iso.y, 38, 56, 0x6d5953)
+      .setOrigin(0.5, 1)
+      .setStrokeStyle(2, 0x241b18)
+      .setDepth(iso.y + this.entityDepthOffset + 20);
+  }
+
+  spawnTelegraphCircle(
+    position: { x: number; y: number },
+    radiusTiles: number,
+    origin: { x: number; y: number }
+  ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse {
+    const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
+    const width = Math.max(12, radiusTiles * this.tileWidth * 0.7);
+    const height = Math.max(10, radiusTiles * this.tileHeight * 0.7);
+    if (this.scene.textures.exists("telegraph_circle_red")) {
+      return this.scene.add
+        .image(iso.x, iso.y, "telegraph_circle_red")
+        .setDisplaySize(width, height)
+        .setAlpha(0.45)
+        .setDepth(iso.y + this.entityDepthOffset - 8);
+    }
+    return this.scene.add
+      .ellipse(iso.x, iso.y, width, height, 0xd45757, 0.35)
+      .setStrokeStyle(2, 0x7f1f1f, 0.7)
+      .setDepth(iso.y + this.entityDepthOffset - 8);
+  }
+
   syncPlayerSprite(
     sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle,
     position: { x: number; y: number },

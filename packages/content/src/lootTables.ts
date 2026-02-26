@@ -40,7 +40,30 @@ export const LOOT_TABLES: LootTableDef[] = [
       { itemDefId: "dusk_halberd", weight: 10, minFloor: 1 },
       { itemDefId: "oath_ring", weight: 10, minFloor: 1 }
     ]
+  },
+  {
+    id: "boss_bone_sovereign_rare",
+    entries: [
+      { itemDefId: "sanctified_greatsword", weight: 15, minFloor: 5 },
+      { itemDefId: "revenant_mask", weight: 15, minFloor: 5 },
+      { itemDefId: "oathbound_cuirass", weight: 15, minFloor: 5 },
+      { itemDefId: "bloodsigil_band", weight: 15, minFloor: 5 },
+      { itemDefId: "catacomb_greaves", weight: 15, minFloor: 5 }
+    ]
+  },
+  {
+    id: "boss_bone_sovereign_exclusive",
+    entries: [
+      { itemDefId: "sanctified_greatsword", weight: 20, minFloor: 5 },
+      { itemDefId: "revenant_mask", weight: 20, minFloor: 5 },
+      { itemDefId: "oathbound_cuirass", weight: 20, minFloor: 5 },
+      { itemDefId: "bloodsigil_band", weight: 20, minFloor: 5 },
+      { itemDefId: "catacomb_greaves", weight: 20, minFloor: 5 }
+    ]
   }
 ];
 
-export const LOOT_TABLE_MAP = Object.fromEntries(LOOT_TABLES.map((table) => [table.id, table]));
+export const LOOT_TABLE_MAP = Object.fromEntries(LOOT_TABLES.map((table) => [table.id, table])) as Record<
+  LootTableDef["id"],
+  LootTableDef
+>;
