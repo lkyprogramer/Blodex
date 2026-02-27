@@ -163,7 +163,7 @@ export function collectUnlockedBiomeIds(meta: MetaProgression, unlockDefs: Unloc
 }
 
 export function collectUnlockedAffixIds(meta: MetaProgression, unlockDefs: UnlockDef[]): string[] {
-  const set = new Set<string>(["frenzied", "armored"]);
+  const set = new Set<string>();
   for (const unlockId of meta.unlocks) {
     const unlock = unlockDefs.find((candidate) => candidate.id === unlockId);
     if (unlock?.effect.type === "affix_unlock") {

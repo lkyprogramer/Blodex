@@ -10,6 +10,15 @@ import { createInitialMeta } from "../run";
 
 const PHASE2_UNLOCKS: UnlockDef[] = [
   {
+    id: "u_affix_frenzied",
+    name: "Affix Frenzied",
+    description: "",
+    tier: 1,
+    cost: 20,
+    cumulativeRequirement: 0,
+    effect: { type: "affix_unlock", affixId: "frenzied" }
+  },
+  {
     id: "u_affix_vampiric",
     name: "Affix Vampiric",
     description: "",
@@ -39,14 +48,12 @@ const PHASE2_UNLOCKS: UnlockDef[] = [
 ];
 
 describe("meta phase2 unlock collection", () => {
-  it("includes default biome and base affix availability", () => {
+  it("includes default biome availability and no affixes before unlocks", () => {
     const meta = createInitialMeta();
     expect(collectUnlockedBiomeIds(meta, PHASE2_UNLOCKS)).toEqual(
       expect.arrayContaining(["forgotten_catacombs", "molten_caverns", "frozen_halls", "bone_throne"])
     );
-    expect(collectUnlockedAffixIds(meta, PHASE2_UNLOCKS)).toEqual(
-      expect.arrayContaining(["frenzied", "armored"])
-    );
+    expect(collectUnlockedAffixIds(meta, PHASE2_UNLOCKS)).toEqual([]);
     expect(collectUnlockedEventIds(meta, PHASE2_UNLOCKS)).toEqual([]);
   });
 
@@ -57,9 +64,10 @@ describe("meta phase2 unlock collection", () => {
     };
     meta = purchaseUnlock(meta, PHASE2_UNLOCKS[0]!);
     meta = purchaseUnlock(meta, PHASE2_UNLOCKS[1]!);
+    meta = purchaseUnlock(meta, PHASE2_UNLOCKS[2]!);
 
     expect(collectUnlockedAffixIds(meta, PHASE2_UNLOCKS)).toEqual(
-      expect.arrayContaining(["frenzied", "armored", "vampiric"])
+      expect.arrayContaining(["frenzied", "vampiric"])
     );
     expect(collectUnlockedEventIds(meta, PHASE2_UNLOCKS)).toContain("wandering_merchant");
   });
