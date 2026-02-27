@@ -111,7 +111,7 @@ body {
 
 #log {
   margin-top: 0;
-  min-height: 170px;
+  min-height: 210px;
 }
 
 .equipment-grid {
@@ -174,7 +174,7 @@ body {
 }
 
 .inventory-scroll {
-  max-height: 34vh;
+  max-height: 30vh;
   overflow: auto;
   padding-right: 2px;
 }
@@ -290,17 +290,18 @@ body {
 .consumable-slot {
   border: 1px solid rgba(208, 168, 111, 0.25);
   border-radius: 8px;
-  min-height: 62px;
+  min-height: 74px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  padding: 4px 6px;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 6px;
   background: rgba(17, 22, 30, 0.82);
   color: var(--text-main);
   font-family: inherit;
   text-align: left;
   cursor: pointer;
+  position: relative;
 }
 
 .consumable-slot.disabled {
@@ -308,14 +309,49 @@ body {
   cursor: not-allowed;
 }
 
-.consumable-key {
-  font-size: 10px;
-  color: var(--text-subtle);
+.quick-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
 }
 
-.consumable-name {
+.quick-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border: 1px solid rgba(208, 168, 111, 0.24);
+  border-radius: 5px;
+  background: rgba(9, 14, 19, 0.66);
+  flex: 0 0 auto;
+}
+
+.hotkey-badge {
+  font-size: 10px;
+  color: var(--text-main);
+  border: 1px solid rgba(208, 168, 111, 0.45);
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 1.45;
+  background: rgba(208, 168, 111, 0.1);
+}
+
+.consumable-meta {
   font-size: 11px;
-  line-height: 1.1;
+  line-height: 1.15;
+  color: #e8dbc5;
+}
+
+.slot-status {
+  font-size: 10px;
+  color: var(--text-subtle);
+  line-height: 1.2;
+}
+
+.skill-name {
+  font-size: 11px;
+  color: #ecdfcb;
+  line-height: 1.2;
 }
 
 .skill-bar {
@@ -328,19 +364,16 @@ body {
 .skill-slot {
   border: 1px solid rgba(208, 168, 111, 0.25);
   border-radius: 8px;
-  min-height: 56px;
+  min-height: 74px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 2px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
   font-size: 11px;
   background: rgba(17, 22, 30, 0.82);
-}
-
-.skill-slot .skill-key {
-  font-size: 10px;
-  color: var(--text-subtle);
+  padding: 6px;
+  position: relative;
 }
 
 .skill-slot.cooldown {
@@ -355,9 +388,14 @@ body {
   opacity: 0.5;
 }
 
+.skill-slot.locked .quick-icon {
+  filter: grayscale(0.72) brightness(0.84);
+}
+
 .log-panel {
-  flex: 0 0 190px;
-  max-height: 220px;
+  flex: 0 0 240px;
+  max-height: 34vh;
+  min-height: 220px;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -648,11 +686,12 @@ body {
   }
 
   .inventory-scroll {
-    max-height: 22vh;
+    max-height: 20vh;
   }
 
   .log-panel {
-    max-height: 36vh;
+    min-height: 170px;
+    max-height: 32vh;
   }
 
   .equipment-grid,

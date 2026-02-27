@@ -100,6 +100,7 @@ import { gridToIso, isoToGrid } from "../systems/iso";
 import { MonsterSpawnSystem } from "../systems/MonsterSpawnSystem";
 import { MovementSystem } from "../systems/MovementSystem";
 import { RenderSystem } from "../systems/RenderSystem";
+import { AudioSystem } from "../systems/AudioSystem";
 import { Hud } from "../ui/Hud";
 import {
   detectPreferredImageFormat,
@@ -150,6 +151,12 @@ const DEBUG_CHEATS_QUERY = "debugCheats";
 const DEBUG_FLAG_VALUES = new Set(["1", "true", "yes", "on"]);
 const DEBUG_LOCKED_EQUIP_QUERY = "debugEquipGate";
 const DEBUG_LOCKED_EQUIP_ICON_ID = "item_ring_02";
+const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
+  health_potion: "item_consumable_health_potion_01",
+  mana_potion: "item_consumable_mana_potion_01",
+  scroll_of_mapping: "item_consumable_scroll_mapping_01"
+};
+const SKILL_DEF_BY_ID = new Map(SKILL_DEFS.map((entry) => [entry.id, entry]));
 const DEBUG_COMMANDS = [
   { combo: "Alt+H", description: "Show cheat commands" },
   { combo: "Alt+O", description: "Add 30 Obol" },
@@ -188,6 +195,7 @@ export class DungeonScene extends Phaser.Scene {
   private readonly aiSystem = new AISystem();
   private readonly combatSystem = new CombatSystem();
   private readonly monsterSpawnSystem = new MonsterSpawnSystem();
+  private readonly audioSystem: AudioSystem;
   private readonly eventBus = createEventBus<GameEventMap>();
   private readonly renderSystem: RenderSystem;
   private preferredImageFormat: PreferredImageFormat = "png";
@@ -274,6 +282,7 @@ export class DungeonScene extends Phaser.Scene {
       GAME_CONFIG.tileHeight,
       DungeonScene.ENTITY_DEPTH_OFFSET
     );
+    this.audioSystem = new AudioSystem(this);
   }
 
   preload(): void {
@@ -288,6 +297,7 @@ export class DungeonScene extends Phaser.Scene {
     for (const assetId of DUNGEON_IMAGE_ASSET_IDS) {
       this.load.image(assetId, resolveGeneratedAssetUrl(assetId, this.preferredImageFormat));
     }
+    this.audioSystem.preload();
   }
 
   private handleImageLoadError(file: Phaser.Loader.File): void {
@@ -382,11 +392,13 @@ export class DungeonScene extends Phaser.Scene {
         this.hud.clearLogs();
         this.hud.hideDeathOverlay();
         this.hud.hideEventPanel();
+        this.audioSystem.stopAmbient();
         this.scene.start("meta-menu");
       }
     );
     this.installDebugApi();
     this.applyRuntimeBackgroundRemoval();
+    this.audioSystem.initialize();
     this.hud.hideDeathOverlay();
     this.hud.clearLogs();
     this.hud.hideEventPanel();
@@ -450,6 +462,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private bindDomainEventEffects(): void {
     this.eventBus.on("combat:hit", ({ combat }) => {
+      this.audioSystem.playCombatHit(combat.kind === "crit");
       this.hudDirty = true;
       const source = this.resolveEntityLabel(combat.sourceId);
       const target = this.resolveEntityLabel(combat.targetId);
@@ -480,6 +493,7 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("combat:death", ({ combat }) => {
+      this.audioSystem.playCombatDeath();
       this.hudDirty = true;
       const source = this.resolveEntityLabel(combat.sourceId);
       const target = this.resolveEntityLabel(combat.targetId);
@@ -521,6 +535,7 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("skill:use", ({ skillId, timestampMs }) => {
+      this.audioSystem.playSkillUse(skillId);
       this.hud.appendLog(`Skill used: ${skillId}.`, "info", timestampMs);
     });
 
@@ -534,6 +549,7 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("consumable:use", ({ consumableId, amountApplied, remainingCharges, timestampMs }) => {
+      this.audioSystem.playConsumableUse(consumableId);
       this.hudDirty = true;
       const label =
         consumableId === "health_potion"
@@ -549,7 +565,8 @@ export class DungeonScene extends Phaser.Scene {
       this.hud.appendLog(`Cannot use ${consumableId}: ${reason}`, "warn", timestampMs);
     });
 
-    this.eventBus.on("event:spawn", ({ eventName, floor, timestampMs }) => {
+    this.eventBus.on("event:spawn", ({ eventId, eventName, floor, timestampMs }) => {
+      this.audioSystem.playEventSpawn(eventId);
       this.hudDirty = true;
       this.hud.appendLog(`Event discovered on floor ${floor}: ${eventName}.`, "info", timestampMs);
     });
@@ -560,10 +577,12 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("merchant:offer", ({ floor, offerCount, timestampMs }) => {
+      this.audioSystem.playMerchantOpen();
       this.hud.appendLog(`Merchant opened on floor ${floor} with ${offerCount} offers.`, "info", timestampMs);
     });
 
     this.eventBus.on("merchant:purchase", ({ itemName, priceObol, timestampMs }) => {
+      this.audioSystem.playMerchantPurchase();
       this.hudDirty = true;
       this.hud.appendLog(`Purchased ${itemName} for ${priceObol} Obol.`, "success", timestampMs);
     });
@@ -601,6 +620,9 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("run:start", ({ floor, runSeed, startedAtMs }) => {
+      this.audioSystem.playFloorEnter();
+      this.audioSystem.playBiomeEnter();
+      this.audioSystem.playAmbientForBiome(this.currentBiome.id);
       this.hud.appendLog(`Run started on floor ${floor} (seed ${runSeed}).`, "info", startedAtMs);
     });
 
@@ -616,6 +638,11 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("floor:enter", ({ floor, biomeId, timestampMs }) => {
+      this.audioSystem.playFloorEnter();
+      if (biomeId !== undefined) {
+        this.audioSystem.playBiomeEnter();
+        this.audioSystem.playAmbientForBiome(biomeId);
+      }
       this.hudDirty = true;
       const biomeName =
         biomeId === undefined ? "" : ` (${BIOME_MAP[biomeId]?.name ?? biomeId})`;
@@ -628,6 +655,7 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("boss:phaseChange", ({ toPhase, hpRatio, timestampMs }) => {
+      this.audioSystem.playBossPhaseChange();
       this.hudDirty = true;
       this.hud.appendLog(
         `Boss shifted to phase ${toPhase + 1} (${Math.floor(hpRatio * 100)}% HP).`,
@@ -655,6 +683,7 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("hazard:trigger", ({ hazardType, timestampMs }) => {
+      this.audioSystem.playHazardTrigger(hazardType);
       this.hud.appendLog(`${hazardType} triggered.`, "warn", timestampMs);
     });
 
@@ -1683,10 +1712,12 @@ export class DungeonScene extends Phaser.Scene {
     const offer = this.merchantOffers.find((entry) => entry.offerId === offerId);
     if (offer === undefined) {
       this.hud.appendLog(`Offer ${offerId} unavailable.`, "warn", nowMs);
+      this.audioSystem.playMerchantFail();
       return;
     }
     if (this.run.runEconomy.obols < offer.priceObol) {
       this.hud.appendLog(`Not enough Obol for ${offer.itemDefId}.`, "warn", nowMs);
+      this.audioSystem.playMerchantFail();
       return;
     }
 
@@ -1702,6 +1733,7 @@ export class DungeonScene extends Phaser.Scene {
     );
     if (item === null) {
       this.hud.appendLog(`Merchant failed to deliver ${offer.itemDefId}.`, "warn", nowMs);
+      this.audioSystem.playMerchantFail();
       return;
     }
 
@@ -2514,6 +2546,7 @@ export class DungeonScene extends Phaser.Scene {
     if (this.runEnded) {
       return;
     }
+    this.audioSystem.stopAmbient();
     this.consumeCurrentEvent();
     this.runEnded = true;
     this.run = {
@@ -2678,9 +2711,33 @@ export class DungeonScene extends Phaser.Scene {
         id: def.id,
         name: def.name,
         hotkey: def.hotkey ?? "-",
+        iconId: CONSUMABLE_ICON_BY_ID[def.id],
         charges: this.consumables.charges[def.id] ?? 0,
         cooldownLeftMs,
         ...(availability.ok ? {} : { disabledReason: availability.reason })
+      };
+    });
+    const skillSlots = (this.player.skills?.skillSlots ?? []).map((slot, index) => {
+      if (slot === null) {
+        return {
+          hotkey: String(index + 1),
+          name: "Locked",
+          iconId: "meta_unlock_locked",
+          cooldownLeftMs: 0,
+          outOfMana: false,
+          locked: true
+        };
+      }
+      const skillDef = SKILL_DEF_BY_ID.get(slot.defId);
+      const cooldownLeftMs = Math.max(0, (this.player.skills?.cooldowns[slot.defId] ?? 0) - nowMs);
+      return {
+        id: slot.defId,
+        hotkey: String(index + 1),
+        name: skillDef?.name ?? slot.defId,
+        iconId: skillDef?.icon ?? "meta_unlock_available",
+        cooldownLeftMs,
+        outOfMana: this.player.mana < (skillDef?.manaCost ?? 0),
+        locked: false
       };
     });
 
@@ -2694,6 +2751,7 @@ export class DungeonScene extends Phaser.Scene {
       floorGoalReached: this.staircaseState.visible || this.mapRevealActive,
       mappingRevealed: this.mapRevealActive,
       consumables,
+      skillSlots,
       isBossFloor: this.floorConfig.isBossFloor,
       bossPhase: this.bossState?.currentPhaseIndex ?? 0,
       ...(this.bossState === null
@@ -2714,6 +2772,7 @@ export class DungeonScene extends Phaser.Scene {
   private cleanupScene(): void {
     this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, this.handleImageLoadError, this);
     this.imageFallbackRetried.clear();
+    this.audioSystem.shutdown();
     this.eventBus.removeAll();
     this.input.off("pointerdown", this.handlePointerDown, this);
     this.input.keyboard?.off("keydown", this.handleDebugHotkeys, this);

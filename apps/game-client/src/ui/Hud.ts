@@ -35,9 +35,19 @@ interface HudState {
       id: ConsumableId;
       name: string;
       hotkey: string;
+      iconId: string;
       charges: number;
       cooldownLeftMs: number;
       disabledReason?: string;
+    }>;
+    skillSlots?: Array<{
+      id?: string;
+      hotkey: string;
+      name: string;
+      iconId?: string;
+      cooldownLeftMs: number;
+      outOfMana: boolean;
+      locked: boolean;
     }>;
   };
   meta: MetaProgression;
@@ -166,23 +176,37 @@ export class Hud {
     `;
 
     this.runEl.className = "panel-block compact-block";
-    const skillsHtml =
-      player.skills === undefined
-        ? ""
-        : `<div class=\"skill-bar\">${player.skills.skillSlots
-            .map((slot, index) => {
-              if (slot === null) {
-                return `<div class=\"skill-slot locked\"><span class=\"skill-key\">${index + 1}</span><span>Locked</span></div>`;
-              }
-              const readyAt = player.skills?.cooldowns[slot.defId] ?? 0;
-              const remainingMs = Math.max(0, readyAt - performance.now());
-              const remainingText = remainingMs > 0 ? `${(remainingMs / 1000).toFixed(1)}s` : "Ready";
-              const manaEnough = player.mana >= 1;
-              return `<div class=\"skill-slot ${remainingMs > 0 ? "cooldown" : "ready"} ${
-                manaEnough ? "" : "oom"
-              }\"><span class=\"skill-key\">${index + 1}</span><span>${slot.defId}</span><small>${remainingText}</small></div>`;
-            })
-            .join("")}</div>`;
+    const skillsHtml = (state.run.skillSlots ?? [])
+      .map((slot) => {
+        const statusText = slot.locked
+          ? "Locked"
+          : slot.cooldownLeftMs > 0
+            ? `${(slot.cooldownLeftMs / 1000).toFixed(1)}s`
+            : "Ready";
+        const classes = [
+          "skill-slot",
+          slot.locked ? "locked" : "",
+          !slot.locked && slot.cooldownLeftMs > 0 ? "cooldown" : "ready",
+          !slot.locked && slot.outOfMana ? "oom" : ""
+        ]
+          .filter((entry) => entry.length > 0)
+          .join(" ");
+        const iconId = slot.iconId ?? "meta_unlock_locked";
+        return `
+          <div class="${classes}" title="${escapeHtml(slot.locked ? "Locked skill slot" : slot.name)}">
+            <div class="quick-head">
+              <img class="quick-icon" data-asset-id="${iconId}" src="${resolveGeneratedAssetUrl(
+                iconId,
+                this.preferredImageFormat
+              )}" alt="${escapeHtml(slot.name)}" />
+              <span class="hotkey-badge">${escapeHtml(slot.hotkey)}</span>
+            </div>
+            <span class="skill-name">${escapeHtml(slot.name)}</span>
+            <small class="slot-status">${statusText}</small>
+          </div>
+        `;
+      })
+      .join("");
     const consumablesHtml = (state.run.consumables ?? [])
       .map((entry) => {
         const disabled = entry.disabledReason !== undefined;
@@ -194,9 +218,15 @@ export class Hud {
             ${disabled ? "disabled" : ""}
             title="${escapeHtml(entry.disabledReason ?? `Use ${entry.name}`)}"
           >
-            <span class="consumable-key">${entry.hotkey}</span>
-            <span class="consumable-name">${entry.name}</span>
-            <small>${entry.charges} left · ${cooldown}</small>
+            <div class="quick-head">
+              <img class="quick-icon" data-asset-id="${entry.iconId}" src="${resolveGeneratedAssetUrl(
+                entry.iconId,
+                this.preferredImageFormat
+              )}" alt="${escapeHtml(entry.name)}" />
+              <span class="hotkey-badge">${entry.hotkey}</span>
+            </div>
+            <span class="consumable-meta">${escapeHtml(entry.name)}</span>
+            <small class="slot-status">${entry.charges} left · ${cooldown}</small>
           </button>
         `;
       })
@@ -223,8 +253,9 @@ export class Hud {
         Math.floor(state.run.bossHealth ?? 0)
       )}/${Math.max(1, Math.floor(state.run.bossMaxHealth ?? 1))} · Phase ${(state.run.bossPhase ?? 0) + 1}</div>` : ""}
       ${consumablesHtml.length > 0 ? `<div class="consumable-bar">${consumablesHtml}</div>` : ""}
-      ${skillsHtml}
+      ${skillsHtml.length > 0 ? `<div class="skill-bar">${skillsHtml}</div>` : ""}
     `;
+    this.bindGeneratedImageFallbacks(this.runEl);
 
     this.runEl.querySelectorAll<HTMLButtonElement>("button[data-consumable-id]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -340,7 +371,7 @@ export class Hud {
         <div class="inventory-grid">${inventoryGrid || '<div class="inventory-empty">No drops yet.</div>'}</div>
       </div>
     `;
-    this.bindGeneratedImageFallbacks();
+    this.bindGeneratedImageFallbacks(this.inventoryEl);
 
     this.inventoryEl.querySelectorAll("button[data-item-id]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -412,8 +443,8 @@ export class Hud {
     `;
   }
 
-  private bindGeneratedImageFallbacks(): void {
-    this.inventoryEl.querySelectorAll<HTMLImageElement>("img.item-icon[data-asset-id]").forEach((image) => {
+  private bindGeneratedImageFallbacks(container: ParentNode): void {
+    container.querySelectorAll<HTMLImageElement>("img[data-asset-id]").forEach((image) => {
       image.addEventListener("error", () => {
         const assetId = image.dataset.assetId;
         if (assetId === undefined) {
