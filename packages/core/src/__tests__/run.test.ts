@@ -33,6 +33,7 @@ describe("run replay determinism", () => {
         startedAtMs: 0,
         runSeed: sample,
         currentFloor: 1,
+        currentBiomeId: "forgotten_catacombs",
         floor: 1,
         floorsCleared: 0,
         kills: 0,

@@ -8,9 +8,11 @@ export interface MonsterRuntime {
   sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
   healthBarBg: Phaser.GameObjects.Rectangle;
   healthBarFg: Phaser.GameObjects.Rectangle;
+  affixMarker: Phaser.GameObjects.Ellipse | undefined;
   healthBarYOffset: number;
   yOffset: number;
   nextAttackAt: number;
+  nextSupportAt: number;
 }
 
 export interface LootRuntime {
@@ -49,6 +51,7 @@ export class EntityManager {
       monster.sprite.destroy();
       monster.healthBarBg.destroy();
       monster.healthBarFg.destroy();
+      monster.affixMarker?.destroy();
     }
     for (const drop of this.loot) {
       drop.sprite.destroy();

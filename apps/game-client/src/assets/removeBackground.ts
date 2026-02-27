@@ -9,6 +9,8 @@ interface BackgroundRemovalOptions {
   maxSeedColors?: number;
   minSeedCoverage?: number;
   minRemainingRatio?: number;
+  whiteThreshold?: number;
+  whiteSaturationTolerance?: number;
 }
 
 const DEFAULT_OPTIONS: Required<BackgroundRemovalOptions> = {
@@ -19,7 +21,9 @@ const DEFAULT_OPTIONS: Required<BackgroundRemovalOptions> = {
   quantizeStep: 16,
   maxSeedColors: 4,
   minSeedCoverage: 0.72,
-  minRemainingRatio: 0.05
+  minRemainingRatio: 0.05,
+  whiteThreshold: 232,
+  whiteSaturationTolerance: 26
 };
 
 interface Rgb {
@@ -263,6 +267,114 @@ function removeConnectedBackgroundPixels(
   return true;
 }
 
+function isNearWhite(
+  color: Rgb,
+  whiteThreshold: number,
+  whiteSaturationTolerance: number
+): boolean {
+  const max = Math.max(color.r, color.g, color.b);
+  const min = Math.min(color.r, color.g, color.b);
+  return max >= whiteThreshold && max - min <= whiteSaturationTolerance;
+}
+
+function removeConnectedNearWhitePixels(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  options: Required<BackgroundRemovalOptions>
+): boolean {
+  const visited = new Uint8Array(width * height);
+  const queue = new Int32Array(width * height);
+  let head = 0;
+  let tail = 0;
+  let opaqueBefore = 0;
+  const borderPositions = collectBorderPositions(width, height);
+
+  for (let i = 0; i < data.length; i += 4) {
+    if ((data[i + 3] ?? 0) >= options.alphaThreshold) {
+      opaqueBefore += 1;
+    }
+  }
+  if (opaqueBefore === 0) {
+    return false;
+  }
+
+  for (const position of borderPositions) {
+    const i = position * 4;
+    if ((data[i + 3] ?? 0) < options.alphaThreshold) {
+      continue;
+    }
+    const color = {
+      r: data[i] ?? 0,
+      g: data[i + 1] ?? 0,
+      b: data[i + 2] ?? 0
+    };
+    if (!isNearWhite(color, options.whiteThreshold, options.whiteSaturationTolerance)) {
+      continue;
+    }
+    visited[position] = 1;
+    queue[tail] = position;
+    tail += 1;
+  }
+
+  const neighbors = [-1, 1, -width, width];
+  while (head < tail) {
+    const current = queue[head] ?? -1;
+    head += 1;
+    if (current < 0) {
+      continue;
+    }
+    const currentX = current % width;
+    const currentY = Math.floor(current / width);
+    for (const offset of neighbors) {
+      const next = current + offset;
+      if (next < 0 || next >= width * height || visited[next] === 1) {
+        continue;
+      }
+      const nextX = next % width;
+      const nextY = Math.floor(next / width);
+      if (Math.abs(nextX - currentX) + Math.abs(nextY - currentY) !== 1) {
+        continue;
+      }
+      const i = next * 4;
+      if ((data[i + 3] ?? 0) < options.alphaThreshold) {
+        continue;
+      }
+      const color = {
+        r: data[i] ?? 0,
+        g: data[i + 1] ?? 0,
+        b: data[i + 2] ?? 0
+      };
+      if (!isNearWhite(color, options.whiteThreshold, options.whiteSaturationTolerance)) {
+        continue;
+      }
+      visited[next] = 1;
+      queue[tail] = next;
+      tail += 1;
+    }
+  }
+
+  let removed = 0;
+  for (let i = 0; i < visited.length; i += 1) {
+    if (visited[i] !== 1) {
+      continue;
+    }
+    const alphaIdx = i * 4 + 3;
+    if ((data[alphaIdx] ?? 0) >= options.alphaThreshold) {
+      data[alphaIdx] = 0;
+      removed += 1;
+    }
+  }
+
+  if (removed === 0) {
+    return false;
+  }
+
+  const opaqueAfter = opaqueBefore - removed;
+  const remainingRatio = opaqueAfter / opaqueBefore;
+  return remainingRatio >= options.minRemainingRatio;
+}
+
 function isCanvasImageSource(value: unknown): value is CanvasImageSource {
   return (
     value instanceof HTMLImageElement ||
@@ -401,7 +513,7 @@ export function removeConnectedBackgroundFromTexture(
     sourceHeight,
     options
   );
-  if (!changed) {
+  if (!changed && !removeConnectedNearWhitePixels(imageData.data, sourceWidth, sourceHeight, options)) {
     imageData.data.set(backup);
     return "failed";
   }

@@ -1,8 +1,12 @@
 import type {
+  ConsumableId,
   EquipmentSlot,
+  EventChoice,
   ItemInstance,
+  MerchantOffer,
   MetaProgression,
   PlayerState,
+  RandomEventDef,
   RunSummary
 } from "@blodex/core";
 import { canEquip } from "@blodex/core";
@@ -16,6 +20,7 @@ interface HudState {
   player: PlayerState;
   run: {
     floor: number;
+    biome?: string;
     kills: number;
     lootCollected: number;
     targetKills: number;
@@ -25,8 +30,23 @@ interface HudState {
     bossHealth?: number;
     bossMaxHealth?: number;
     bossPhase?: number;
+    mappingRevealed?: boolean;
+    consumables?: Array<{
+      id: ConsumableId;
+      name: string;
+      hotkey: string;
+      charges: number;
+      cooldownLeftMs: number;
+      disabledReason?: string;
+    }>;
   };
   meta: MetaProgression;
+}
+
+interface EventChoiceView {
+  choice: EventChoice;
+  enabled: boolean;
+  disabledReason?: string;
 }
 
 type LogLevel = "info" | "success" | "warn" | "danger";
@@ -100,6 +120,7 @@ export class Hud {
   private readonly logEl = document.querySelector("#log") as HTMLDivElement;
   private readonly summaryEl = document.querySelector("#summary") as HTMLDivElement;
   private readonly deathOverlayEl = document.querySelector("#death-overlay") as HTMLDivElement;
+  private readonly eventPanelEl = document.querySelector("#event-panel") as HTMLDivElement;
   private readonly tooltipEl: HTMLDivElement;
   private readonly preferredImageFormat = detectPreferredImageFormat();
 
@@ -109,6 +130,7 @@ export class Hud {
   constructor(
     private readonly onEquip: (itemId: string) => void,
     private readonly onUnequip: (slot: EquipmentSlot) => void,
+    private readonly onUseConsumable: (consumableId: ConsumableId) => void,
     private readonly onNewRun: () => void
   ) {
     this.tooltipEl = document.createElement("div");
@@ -116,6 +138,7 @@ export class Hud {
     document.body.appendChild(this.tooltipEl);
     this.renderLogPanel();
     this.hideDeathOverlay();
+    this.hideEventPanel();
   }
 
   render(state: HudState): void {
@@ -160,9 +183,28 @@ export class Hud {
               }\"><span class=\"skill-key\">${index + 1}</span><span>${slot.defId}</span><small>${remainingText}</small></div>`;
             })
             .join("")}</div>`;
+    const consumablesHtml = (state.run.consumables ?? [])
+      .map((entry) => {
+        const disabled = entry.disabledReason !== undefined;
+        const cooldown = entry.cooldownLeftMs > 0 ? `${(entry.cooldownLeftMs / 1000).toFixed(1)}s` : "Ready";
+        return `
+          <button
+            class="consumable-slot ${disabled ? "disabled" : "ready"}"
+            data-consumable-id="${entry.id}"
+            ${disabled ? "disabled" : ""}
+            title="${escapeHtml(entry.disabledReason ?? `Use ${entry.name}`)}"
+          >
+            <span class="consumable-key">${entry.hotkey}</span>
+            <span class="consumable-name">${entry.name}</span>
+            <small>${entry.charges} left · ${cooldown}</small>
+          </button>
+        `;
+      })
+      .join("");
     this.runEl.innerHTML = `
       <div class="mini-grid mini-2">
         <div><span class="k">Floor</span><span>${state.run.floor}</span></div>
+        <div><span class="k">Biome</span><span>${state.run.biome ?? "-"}</span></div>
         <div><span class="k">Status</span><span class="${
           player.health <= 0 ? "badge-danger" : "badge-ok"
         }">${player.health <= 0 ? "Dead" : "Hunting"}</span></div>
@@ -171,12 +213,27 @@ export class Hud {
         <div><span class="k">Obol</span><span>${state.run.obols ?? 0}</span></div>
         <div><span class="k">Goal</span><span>${state.run.floorGoalReached ? "Stairs up" : "Hunt"}</span></div>
       </div>
+      ${
+        state.run.mappingRevealed
+          ? `<div class="mapping-hint">Mapping scroll active: objective location revealed.</div>`
+          : ""
+      }
       ${state.run.isBossFloor ? `<div class=\"boss-strip\">Boss HP: ${Math.max(
         0,
         Math.floor(state.run.bossHealth ?? 0)
       )}/${Math.max(1, Math.floor(state.run.bossMaxHealth ?? 1))} · Phase ${(state.run.bossPhase ?? 0) + 1}</div>` : ""}
+      ${consumablesHtml.length > 0 ? `<div class="consumable-bar">${consumablesHtml}</div>` : ""}
       ${skillsHtml}
     `;
+
+    this.runEl.querySelectorAll<HTMLButtonElement>("button[data-consumable-id]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const id = button.dataset.consumableId as ConsumableId | undefined;
+        if (id !== undefined) {
+          this.onUseConsumable(id);
+        }
+      });
+    });
 
     this.renderInventory(player);
   }
@@ -399,6 +456,94 @@ export class Hud {
     this.tooltipEl.classList.add("hidden");
   }
 
+  showEventPanel(
+    eventDef: RandomEventDef,
+    choices: EventChoiceView[],
+    onChoose: (choiceId: string) => void,
+    onClose: () => void
+  ): void {
+    this.eventPanelEl.className = "event-panel";
+    const buttons = choices
+      .map(({ choice, enabled, disabledReason }) => {
+        return `
+          <button
+            class="event-choice ${enabled ? "" : "disabled"}"
+            data-choice-id="${choice.id}"
+            ${enabled ? "" : "disabled"}
+            title="${escapeHtml(disabledReason ?? choice.description)}"
+          >
+            <span class="event-choice-name">${escapeHtml(choice.name)}</span>
+            <small>${escapeHtml(choice.description)}</small>
+          </button>
+        `;
+      })
+      .join("");
+
+    this.eventPanelEl.innerHTML = `
+      <div class="event-card">
+        <h2>${escapeHtml(eventDef.name)}</h2>
+        <p>${escapeHtml(eventDef.description)}</p>
+        <div class="event-choice-list">${buttons}</div>
+        <button class="event-close" data-event-close="1">Close</button>
+      </div>
+    `;
+
+    this.eventPanelEl.querySelectorAll<HTMLButtonElement>("button[data-choice-id]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const choiceId = button.dataset.choiceId;
+        if (choiceId !== undefined) {
+          onChoose(choiceId);
+        }
+      });
+    });
+    this.eventPanelEl.querySelector<HTMLButtonElement>("button[data-event-close='1']")?.addEventListener("click", onClose);
+  }
+
+  showMerchantPanel(
+    offers: Array<MerchantOffer & { itemName: string; rarity: string }>,
+    onBuy: (offerId: string) => void,
+    onClose: () => void
+  ): void {
+    this.eventPanelEl.className = "event-panel";
+    const rows = offers
+      .map((offer) => {
+        return `
+          <div class="merchant-offer">
+            <div>
+              <div class="merchant-name">${escapeHtml(offer.itemName)}</div>
+              <small class="merchant-rarity ${offer.rarity}">${offer.rarity.toUpperCase()}</small>
+            </div>
+            <button data-offer-id="${offer.offerId}">Buy (${offer.priceObol})</button>
+          </div>
+        `;
+      })
+      .join("");
+
+    this.eventPanelEl.innerHTML = `
+      <div class="event-card">
+        <h2>Wandering Merchant</h2>
+        <p>Spend Obol to buy items for this run.</p>
+        <div class="merchant-list">${rows || '<p class="log-empty">Sold out.</p>'}</div>
+        <button class="event-close" data-event-close="1">Leave</button>
+      </div>
+    `;
+
+    this.eventPanelEl.querySelectorAll<HTMLButtonElement>("button[data-offer-id]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const offerId = button.dataset.offerId;
+        if (offerId !== undefined) {
+          onBuy(offerId);
+        }
+      });
+    });
+    this.eventPanelEl.querySelector<HTMLButtonElement>("button[data-event-close='1']")?.addEventListener("click", onClose);
+  }
+
+  hideEventPanel(): void {
+    this.eventPanelEl.className = "hidden";
+    this.eventPanelEl.innerHTML = "";
+  }
+
   showSummary(summary: RunSummary): void {
     this.summaryEl.classList.remove("hidden");
     this.summaryEl.className = "panel-block";
@@ -423,5 +568,6 @@ export class Hud {
   clearSummary(): void {
     this.summaryEl.className = "hidden";
     this.summaryEl.innerHTML = "";
+    this.hideEventPanel();
   }
 }

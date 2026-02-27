@@ -102,6 +102,78 @@ export const UNLOCK_DEFS: UnlockDef[] = [
       type: "skill_unlock",
       skillId: "shadow_step"
     }
+  },
+  {
+    id: "u_unlock_affix_frenzied",
+    name: "Affix: Frenzied",
+    description: "Enable frenzied monsters in advanced floors.",
+    tier: 1,
+    cost: 18,
+    cumulativeRequirement: 0,
+    effect: {
+      type: "affix_unlock",
+      affixId: "frenzied"
+    }
+  },
+  {
+    id: "u_unlock_affix_armored",
+    name: "Affix: Armored",
+    description: "Enable armored monsters in advanced floors.",
+    tier: 1,
+    cost: 18,
+    cumulativeRequirement: 0,
+    effect: {
+      type: "affix_unlock",
+      affixId: "armored"
+    }
+  },
+  {
+    id: "u_unlock_event_merchant",
+    name: "Event: Wandering Merchant",
+    description: "Allow merchant encounters during runs.",
+    tier: 2,
+    cost: 24,
+    cumulativeRequirement: 50,
+    effect: {
+      type: "event_unlock",
+      eventId: "wandering_merchant"
+    }
+  },
+  {
+    id: "u_unlock_affix_vampiric",
+    name: "Affix: Vampiric",
+    description: "Enable vampiric monsters.",
+    tier: 2,
+    cost: 34,
+    cumulativeRequirement: 70,
+    effect: {
+      type: "affix_unlock",
+      affixId: "vampiric"
+    }
+  },
+  {
+    id: "u_unlock_affix_splitting",
+    name: "Affix: Splitting",
+    description: "Enable splitting monsters.",
+    tier: 3,
+    cost: 52,
+    cumulativeRequirement: 130,
+    effect: {
+      type: "affix_unlock",
+      affixId: "splitting"
+    }
+  },
+  {
+    id: "u_unlock_event_unstable_portal",
+    name: "Event: Unstable Portal",
+    description: "Allow unstable portal events.",
+    tier: 3,
+    cost: 48,
+    cumulativeRequirement: 130,
+    effect: {
+      type: "event_unlock",
+      eventId: "unstable_portal"
+    }
   }
 ];
 

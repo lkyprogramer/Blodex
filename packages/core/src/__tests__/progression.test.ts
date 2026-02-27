@@ -50,6 +50,7 @@ describe("progression", () => {
         startedAtMs: 0,
         runSeed: "test-seed",
         currentFloor: 2,
+        currentBiomeId: "forgotten_catacombs",
         floor: 2,
         floorsCleared: 1,
         kills: 18,

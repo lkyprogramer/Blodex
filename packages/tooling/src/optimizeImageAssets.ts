@@ -46,6 +46,8 @@ interface BackgroundRemovalOptions {
   maxSeedColors: number;
   minSeedCoverage: number;
   minRemainingRatio: number;
+  whiteThreshold: number;
+  whiteSaturationTolerance: number;
 }
 
 interface Rgb {
@@ -76,7 +78,9 @@ const BACKGROUND_REMOVAL_OPTIONS: BackgroundRemovalOptions = {
   quantizeStep: 16,
   maxSeedColors: 4,
   minSeedCoverage: 0.72,
-  minRemainingRatio: 0.05
+  minRemainingRatio: 0.05,
+  whiteThreshold: 232,
+  whiteSaturationTolerance: 26
 };
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -322,6 +326,119 @@ function removeConnectedBackgroundPixels(
   return "applied";
 }
 
+function isNearWhite(
+  color: Rgb,
+  whiteThreshold: number,
+  whiteSaturationTolerance: number
+): boolean {
+  const max = Math.max(color.r, color.g, color.b);
+  const min = Math.min(color.r, color.g, color.b);
+  return max >= whiteThreshold && max - min <= whiteSaturationTolerance;
+}
+
+function removeConnectedNearWhitePixels(
+  pixels: Uint8Array,
+  width: number,
+  height: number,
+  options: BackgroundRemovalOptions
+): BackgroundOutcome {
+  const snapshot = pixels.slice();
+  const borderPositions = collectBorderPositions(width, height);
+  const visited = new Uint8Array(width * height);
+  const queue = new Int32Array(width * height);
+  let head = 0;
+  let tail = 0;
+  let opaqueBefore = 0;
+
+  for (let i = 0; i < pixels.length; i += 4) {
+    if ((pixels[i + 3] ?? 0) >= options.alphaThreshold) {
+      opaqueBefore += 1;
+    }
+  }
+  if (opaqueBefore === 0) {
+    return "skipped";
+  }
+
+  for (const pos of borderPositions) {
+    const idx = pos * 4;
+    if ((pixels[idx + 3] ?? 0) < options.alphaThreshold) {
+      continue;
+    }
+    const color = {
+      r: pixels[idx] ?? 0,
+      g: pixels[idx + 1] ?? 0,
+      b: pixels[idx + 2] ?? 0
+    };
+    if (!isNearWhite(color, options.whiteThreshold, options.whiteSaturationTolerance)) {
+      continue;
+    }
+    visited[pos] = 1;
+    queue[tail] = pos;
+    tail += 1;
+  }
+
+  const neighbors = [-1, 1, -width, width];
+  while (head < tail) {
+    const current = queue[head] ?? -1;
+    head += 1;
+    if (current < 0) {
+      continue;
+    }
+    const currentX = current % width;
+    const currentY = Math.floor(current / width);
+    for (const offset of neighbors) {
+      const next = current + offset;
+      if (next < 0 || next >= width * height || visited[next] === 1) {
+        continue;
+      }
+      const nextX = next % width;
+      const nextY = Math.floor(next / width);
+      if (Math.abs(nextX - currentX) + Math.abs(nextY - currentY) !== 1) {
+        continue;
+      }
+      const idx = next * 4;
+      if ((pixels[idx + 3] ?? 0) < options.alphaThreshold) {
+        continue;
+      }
+      const color = {
+        r: pixels[idx] ?? 0,
+        g: pixels[idx + 1] ?? 0,
+        b: pixels[idx + 2] ?? 0
+      };
+      if (!isNearWhite(color, options.whiteThreshold, options.whiteSaturationTolerance)) {
+        continue;
+      }
+      visited[next] = 1;
+      queue[tail] = next;
+      tail += 1;
+    }
+  }
+
+  let removed = 0;
+  for (let i = 0; i < visited.length; i += 1) {
+    if (visited[i] !== 1) {
+      continue;
+    }
+    const alphaIdx = i * 4 + 3;
+    if ((pixels[alphaIdx] ?? 0) >= options.alphaThreshold) {
+      pixels[alphaIdx] = 0;
+      removed += 1;
+    }
+  }
+
+  if (removed === 0) {
+    return "skipped";
+  }
+
+  const opaqueAfter = opaqueBefore - removed;
+  const remainingRatio = opaqueAfter / opaqueBefore;
+  if (remainingRatio < options.minRemainingRatio) {
+    pixels.set(snapshot);
+    return "rolled_back";
+  }
+  return "applied";
+}
+
 function indexRawImages(): Map<string, string> {
   assert(existsSync(RAW_DIR), `Raw directory not found: ${RAW_DIR}`);
 
@@ -400,7 +517,27 @@ async function optimizeEntry(
   assert(info.channels === 4, `Expected RGBA output, got ${info.channels} channels for ${entry.id}`);
   const pixels = Uint8Array.from(data);
   const backgroundOutcome = BACKGROUND_REMOVAL_CATEGORIES.has(entry.category)
-    ? removeConnectedBackgroundPixels(pixels, info.width, info.height, BACKGROUND_REMOVAL_OPTIONS)
+    ? (() => {
+        const primary = removeConnectedBackgroundPixels(
+          pixels,
+          info.width,
+          info.height,
+          BACKGROUND_REMOVAL_OPTIONS
+        );
+        if (primary === "applied") {
+          return primary;
+        }
+        const fallback = removeConnectedNearWhitePixels(
+          pixels,
+          info.width,
+          info.height,
+          BACKGROUND_REMOVAL_OPTIONS
+        );
+        if (fallback === "applied") {
+          return fallback;
+        }
+        return primary === "rolled_back" || fallback === "rolled_back" ? "rolled_back" : "skipped";
+      })()
     : "skipped";
 
   const output = sharp(Buffer.from(pixels), {

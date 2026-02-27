@@ -81,7 +81,7 @@ export class RenderSystem {
     camera.roundPixels = true;
   }
 
-  drawDungeon(dungeon: DungeonLayout, origin: { x: number; y: number }): void {
+  drawDungeon(dungeon: DungeonLayout, origin: { x: number; y: number }, tintColor?: number): void {
     if (this.scene.textures.exists("tile_floor_01")) {
       for (let y = 0; y < dungeon.height; y += 1) {
         for (let x = 0; x < dungeon.width; x += 1) {
@@ -89,10 +89,13 @@ export class RenderSystem {
             continue;
           }
           const iso = gridToIso(x, y, this.tileWidth, this.tileHeight, origin.x, origin.y);
-          this.scene.add
+          const tile = this.scene.add
             .image(iso.x, iso.y, "tile_floor_01")
             .setDisplaySize(this.tileWidth, this.tileHeight)
             .setDepth(iso.y);
+          if (tintColor !== undefined) {
+            tile.setTint(tintColor);
+          }
         }
       }
       return;
@@ -190,6 +193,24 @@ export class RenderSystem {
       .rectangle(iso.x, iso.y - 36, 28, 3, 0xd75959, 0.95)
       .setDepth(iso.y + this.entityDepthOffset + 3)
       .setVisible(false);
+    const affixId = state.affixes?.[0];
+    const affixColor =
+      affixId === "frenzied"
+        ? 0xea5d4b
+        : affixId === "armored"
+          ? 0x7f9ac7
+          : affixId === "vampiric"
+            ? 0x9a4bd2
+            : affixId === "splitting"
+              ? 0xd8b45f
+              : null;
+    const affixMarker =
+      affixColor === null
+        ? undefined
+        : this.scene.add
+            .ellipse(iso.x + 14, iso.y - 45, 8, 8, affixColor, 0.95)
+            .setStrokeStyle(1, 0x131820, 0.9)
+            .setDepth(iso.y + this.entityDepthOffset + 4);
 
     return {
       state,
@@ -197,9 +218,11 @@ export class RenderSystem {
       sprite,
       healthBarBg,
       healthBarFg,
+      affixMarker,
       healthBarYOffset: this.scene.textures.exists(archetype.spriteId) ? 36 : 30,
       yOffset: 0,
-      nextAttackAt: 0
+      nextAttackAt: 0,
+      nextSupportAt: 0
     };
   }
 
@@ -311,6 +334,12 @@ export class RenderSystem {
       const wasDamaged = monster.state.health < monster.state.maxHealth;
       monster.healthBarBg.setPosition(iso.x, iso.y - monster.healthBarYOffset);
       monster.healthBarFg.setPosition(iso.x, iso.y - monster.healthBarYOffset);
+      if (monster.affixMarker !== undefined) {
+        monster.affixMarker
+          .setPosition(iso.x + 14, iso.y - monster.healthBarYOffset - 8)
+          .setVisible(monster.state.health > 0)
+          .setDepth(iso.y + this.entityDepthOffset + 4);
+      }
       if (!wasDamaged) {
         monster.healthBarBg.setVisible(false);
         monster.healthBarFg.setVisible(false);

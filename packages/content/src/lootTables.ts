@@ -54,11 +54,30 @@ export const LOOT_TABLES: LootTableDef[] = [
   {
     id: "boss_bone_sovereign_exclusive",
     entries: [
-      { itemDefId: "sanctified_greatsword", weight: 20, minFloor: 5 },
-      { itemDefId: "revenant_mask", weight: 20, minFloor: 5 },
-      { itemDefId: "oathbound_cuirass", weight: 20, minFloor: 5 },
-      { itemDefId: "bloodsigil_band", weight: 20, minFloor: 5 },
-      { itemDefId: "catacomb_greaves", weight: 20, minFloor: 5 }
+      { itemDefId: "sovereign_requiem", weight: 20, minFloor: 5 },
+      { itemDefId: "crown_of_bone", weight: 20, minFloor: 5 },
+      { itemDefId: "cataclysm_mail", weight: 20, minFloor: 5 },
+      { itemDefId: "echostep_greaves", weight: 20, minFloor: 5 },
+      { itemDefId: "voidsigil_band", weight: 20, minFloor: 5 }
+    ]
+  },
+  {
+    id: "merchant_pool",
+    entries: [
+      { itemDefId: "dusk_halberd", weight: 12, minFloor: 2 },
+      { itemDefId: "penitent_blade", weight: 10, minFloor: 2 },
+      { itemDefId: "warden_greathelm", weight: 10, minFloor: 2 },
+      { itemDefId: "cathedral_plate", weight: 10, minFloor: 2 },
+      { itemDefId: "pilgrim_treads", weight: 10, minFloor: 2 },
+      { itemDefId: "oath_ring", weight: 10, minFloor: 2 },
+      { itemDefId: "revenant_mask", weight: 8, minFloor: 3 },
+      { itemDefId: "oathbound_cuirass", weight: 8, minFloor: 3 },
+      { itemDefId: "bloodsigil_band", weight: 8, minFloor: 3 },
+      { itemDefId: "sovereign_requiem", weight: 3, minFloor: 5 },
+      { itemDefId: "crown_of_bone", weight: 3, minFloor: 5 },
+      { itemDefId: "cataclysm_mail", weight: 3, minFloor: 5 },
+      { itemDefId: "echostep_greaves", weight: 3, minFloor: 5 },
+      { itemDefId: "voidsigil_band", weight: 3, minFloor: 5 }
     ]
   }
 ];
