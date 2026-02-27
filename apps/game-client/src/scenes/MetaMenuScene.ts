@@ -45,14 +45,31 @@ export class MetaMenuScene extends Phaser.Scene {
 
     UNLOCK_DEFS.forEach((unlock, index) => {
       const unlocked = this.meta.unlocks.includes(unlock.id);
+      const requirementReady = this.meta.cumulativeUnlockProgress >= unlock.cumulativeRequirement;
+      const canAfford = this.meta.soulShards >= unlock.cost;
+      const purchasable = !unlocked && requirementReady && canAfford;
+      const statusText = unlocked
+        ? "[Unlocked]"
+        : !requirementReady
+          ? `[Need Progress ${unlock.cumulativeRequirement}]`
+          : !canAfford
+            ? "[Need Soul Shards]"
+            : "[Available]";
+      const effectText = this.describeEffect(unlock);
+      const color = unlocked ? "#7dbd91" : purchasable ? "#d7c49f" : "#7f7b70";
 
       this.add
-        .text(cx, 240 + index * 28, `${index + 1}. ${unlock.name} (${unlock.cost}) ${unlocked ? "[Unlocked]" : ""}`, {
-        fontFamily: "Spectral",
-        color: "#c9bb9d",
-        fontSize: "16px",
-        align: "center"
-      })
+        .text(
+          cx,
+          240 + index * 30,
+          `${index + 1}. ${unlock.name} (${unlock.cost}) ${statusText}\n   ${effectText}`,
+          {
+            fontFamily: "Spectral",
+            color,
+            fontSize: "15px",
+            align: "center"
+          }
+        )
         .setOrigin(0.5, 0)
         .setInteractive({ useHandCursor: true })
         .on("pointerdown", () => {
@@ -60,13 +77,14 @@ export class MetaMenuScene extends Phaser.Scene {
         });
     });
 
+    const startButtonY = Math.min(this.scale.height - 56, 240 + UNLOCK_DEFS.length * 30 + 34);
     const startButton = this.add
-      .rectangle(cx, 470, 320, 56, 0x2d3b49, 0.95)
+      .rectangle(cx, startButtonY, 320, 56, 0x2d3b49, 0.95)
       .setStrokeStyle(2, 0xd0a86f)
       .setInteractive({ useHandCursor: true });
 
     this.add
-      .text(cx, 470, "Start New Run", {
+      .text(cx, startButtonY, "Start New Run", {
         fontFamily: "Cinzel",
         color: "#f2e8d7",
         fontSize: "22px"
@@ -123,5 +141,21 @@ export class MetaMenuScene extends Phaser.Scene {
 
   private saveMeta(meta: MetaProgression): void {
     window.localStorage.setItem(META_STORAGE_KEY_V2, JSON.stringify(meta));
+  }
+
+  private describeEffect(unlock: (typeof UNLOCK_DEFS)[number]): string {
+    if (unlock.effect.type === "permanent_upgrade") {
+      return `Permanent: ${unlock.effect.key} +${unlock.effect.value}`;
+    }
+    if (unlock.effect.type === "skill_unlock") {
+      return `Skill unlock: ${unlock.effect.skillId}`;
+    }
+    if (unlock.effect.type === "affix_unlock") {
+      return `Affix unlock: ${unlock.effect.affixId}`;
+    }
+    if (unlock.effect.type === "biome_unlock") {
+      return `Biome unlock: ${unlock.effect.biomeId}`;
+    }
+    return `Event unlock: ${unlock.effect.eventId}`;
   }
 }

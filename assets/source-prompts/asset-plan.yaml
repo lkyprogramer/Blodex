@@ -329,3 +329,341 @@ assets:
     lighting: "low-key with subtle radiant edge"
     palette: "tarnished gold, iron blue shadow, charcoal"
     constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: biome_catacombs_tile_floor_01
+    category: tile
+    outputName: biome_catacombs_tile_floor_01.png
+    prompt: "Seamless isometric floor tile of forgotten catacomb flagstones, painterly dark fantasy"
+    subject: "catacomb floor tile"
+    style: "painterly dark fantasy texture art"
+    composition: "single seamless tile"
+    lighting: "neutral low-key top-plane readability"
+    palette: "charcoal stone, damp green, iron blue shadows"
+    materials: "worn flagstone and soot"
+    constraints: "seamless edges; no text; opaque background allowed; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    background: opaque
+
+  - id: biome_catacombs_tile_wall_01
+    category: tile
+    outputName: biome_catacombs_tile_wall_01.png
+    prompt: "Isometric wall tile segment for forgotten catacombs, cracked mortared stone, painterly dark fantasy"
+    subject: "catacomb wall segment"
+    style: "painterly dark fantasy texture art"
+    composition: "single tileable wall segment"
+    lighting: "low-key directional light"
+    palette: "charcoal, damp stone green, muted brown"
+    materials: "aged stone and grime seams"
+    constraints: "tile-friendly silhouette; no text; opaque background allowed; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    background: opaque
+
+  - id: biome_molten_tile_floor_01
+    category: tile
+    outputName: biome_molten_tile_floor_01.png
+    prompt: "Seamless isometric molten caverns floor tile with cracked basalt and faint ember veins, painterly dark fantasy"
+    subject: "molten floor tile"
+    style: "painterly dark fantasy texture art"
+    composition: "single seamless tile"
+    lighting: "low-key with restrained warm accents"
+    palette: "charcoal basalt, ember orange accents, iron blue shadow"
+    materials: "burned stone and cooled lava seams"
+    constraints: "seamless edges; no text; opaque background allowed; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    background: opaque
+
+  - id: biome_molten_tile_wall_01
+    category: tile
+    outputName: biome_molten_tile_wall_01.png
+    prompt: "Isometric molten cavern wall segment, fractured volcanic rock with restrained ember fissures, painterly dark fantasy"
+    subject: "molten wall segment"
+    style: "painterly dark fantasy texture art"
+    composition: "single tile-friendly wall segment"
+    lighting: "low-key directional light"
+    palette: "dark basalt, ember orange, soot black"
+    materials: "volcanic stone and ash"
+    constraints: "tile-friendly silhouette; no text; opaque background allowed; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    background: opaque
+
+  - id: biome_frozen_tile_floor_01
+    category: tile
+    outputName: biome_frozen_tile_floor_01.png
+    prompt: "Seamless isometric frozen halls floor tile with frosted stone slabs and thin ice layers, painterly dark fantasy"
+    subject: "frozen floor tile"
+    style: "painterly dark fantasy texture art"
+    composition: "single seamless tile"
+    lighting: "low-key with restrained cold highlights"
+    palette: "iron blue, cold gray, charcoal"
+    materials: "iced stone and frost dust"
+    constraints: "seamless edges; no text; opaque background allowed; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    background: opaque
+
+  - id: biome_frozen_tile_wall_01
+    category: tile
+    outputName: biome_frozen_tile_wall_01.png
+    prompt: "Isometric frozen halls wall segment with rimed bricks and subtle icicles, painterly dark fantasy"
+    subject: "frozen wall segment"
+    style: "painterly dark fantasy texture art"
+    composition: "single tile-friendly wall segment"
+    lighting: "low-key with cold rim accents"
+    palette: "cold gray, iron blue, charcoal"
+    materials: "frosted stone and thin ice"
+    constraints: "tile-friendly silhouette; no text; opaque background allowed; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    background: opaque
+
+  - id: biome_bone_tile_floor_01
+    category: tile
+    outputName: biome_bone_tile_floor_01.png
+    prompt: "Seamless isometric bone throne floor tile with ossuary inlays and dark stone, painterly dark fantasy"
+    subject: "bone throne floor tile"
+    style: "painterly dark fantasy texture art"
+    composition: "single seamless tile"
+    lighting: "low-key directional top-left light"
+    palette: "bone ivory, charcoal, iron blue shadows"
+    materials: "bone fragments and worn stone"
+    constraints: "seamless edges; no text; opaque background allowed; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    background: opaque
+
+  - id: biome_bone_tile_wall_01
+    category: tile
+    outputName: biome_bone_tile_wall_01.png
+    prompt: "Isometric bone throne wall segment with rib-like arches and reliquary masonry, painterly dark fantasy"
+    subject: "bone throne wall segment"
+    style: "painterly dark fantasy texture art"
+    composition: "single tile-friendly wall segment"
+    lighting: "low-key with restrained rim separation"
+    palette: "bone ivory, charcoal, damp stone green shadows"
+    materials: "ossuary bone and mortar"
+    constraints: "tile-friendly silhouette; no text; opaque background allowed; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    background: opaque
+
+  - id: hazard_lava_zone_01
+    category: fx
+    outputName: hazard_lava_zone_01.png
+    prompt: "Top-down hazard decal for lava damage zone, molten cracks and restrained heat glow, painterly dark fantasy"
+    style: "painted gameplay FX"
+    composition: "single centered circular zone marker"
+    lighting: "subtle internal glow only"
+    palette: "ember orange, charcoal, burnt red"
+    constraints: "transparent background; gameplay readable; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: hazard_ice_zone_01
+    category: fx
+    outputName: hazard_ice_zone_01.png
+    prompt: "Top-down hazard decal for ice movement zone, fractured frost ring with restrained cold glow, painterly dark fantasy"
+    style: "painted gameplay FX"
+    composition: "single centered circular zone marker"
+    lighting: "subtle cold edge glow"
+    palette: "iron blue, cold gray, charcoal"
+    constraints: "transparent background; gameplay readable; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: hazard_spike_zone_01
+    category: fx
+    outputName: hazard_spike_zone_01.png
+    prompt: "Top-down hazard decal for bone spike trap, jagged warning glyph and impact ring, painterly dark fantasy"
+    style: "painted gameplay FX"
+    composition: "single centered circular zone marker"
+    lighting: "restrained warning glow"
+    palette: "deep crimson, bone ivory, charcoal"
+    constraints: "transparent background; gameplay readable; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: monster_magma_crawler_01
+    category: monster_sprite
+    outputName: monster_magma_crawler_01.png
+    prompt: "Isometric magma crawler beast with glowing fissures and low scuttle posture, painterly dark fantasy"
+    subject: "swarm melee magma crawler"
+    style: "painterly dark fantasy concept art"
+    composition: "single isolated subject centered"
+    lighting: "low-key top-left with restrained warm rim"
+    palette: "charcoal basalt, ember orange accents, soot black"
+    materials: "cracked volcanic hide"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: monster_ember_wraith_01
+    category: monster_sprite
+    outputName: monster_ember_wraith_01.png
+    prompt: "Isometric ember wraith caster, gaunt spectral silhouette with charred lantern focus, painterly dark fantasy"
+    subject: "ranged ember spirit"
+    style: "painterly dark fantasy concept art"
+    composition: "single isolated subject centered"
+    lighting: "low-key with restrained ember edge light"
+    palette: "ash gray, charcoal, muted ember"
+    materials: "smoke-like cloth and cinder wisps"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: monster_flame_brute_01
+    category: monster_sprite
+    outputName: monster_flame_brute_01.png
+    prompt: "Isometric flame brute with furnace chestplate and heavy maul stance, painterly dark fantasy"
+    subject: "large molten bruiser"
+    style: "painterly dark fantasy concept art"
+    composition: "single isolated subject centered"
+    lighting: "low-key with restrained furnace glow"
+    palette: "dark steel, ember orange, charcoal"
+    materials: "burned armor and cracked slag"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: monster_frost_warden_01
+    category: monster_sprite
+    outputName: monster_frost_warden_01.png
+    prompt: "Isometric frost warden sentinel with tower shield and ice-encrusted armor, painterly dark fantasy"
+    subject: "shielding frost guardian"
+    style: "painterly dark fantasy concept art"
+    composition: "single isolated subject centered"
+    lighting: "low-key with subtle cold rim"
+    palette: "iron blue, cold gray, charcoal"
+    materials: "iced plate and worn leather"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: monster_ice_specter_01
+    category: monster_sprite
+    outputName: monster_ice_specter_01.png
+    prompt: "Isometric ice specter with elongated spectral limbs and frozen mist trail, painterly dark fantasy"
+    subject: "kite ice specter"
+    style: "painterly dark fantasy concept art"
+    composition: "single isolated subject centered"
+    lighting: "low-key with restrained cold edge highlights"
+    palette: "cold gray, iron blue, charcoal"
+    materials: "spectral frost vapor"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: monster_shadow_lurker_01
+    category: monster_sprite
+    outputName: monster_shadow_lurker_01.png
+    prompt: "Isometric shadow lurker assassin with crouched ambush posture and hooked blades, painterly dark fantasy"
+    subject: "ambush shadow hunter"
+    style: "painterly dark fantasy concept art"
+    composition: "single isolated subject centered"
+    lighting: "low-key with thin rim separation"
+    palette: "charcoal, iron blue, muted crimson accent"
+    materials: "dark cloth and worn steel"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: monster_bone_priest_01
+    category: monster_sprite
+    outputName: monster_bone_priest_01.png
+    prompt: "Isometric bone priest support caster with reliquary staff and ritual vestments, painterly dark fantasy"
+    subject: "support undead priest"
+    style: "painterly dark fantasy concept art"
+    composition: "single isolated subject centered"
+    lighting: "low-key top-left with restrained ritual glow"
+    palette: "bone ivory, charcoal, tarnished gold"
+    materials: "aged robes, bone ornaments, relic staff"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: ui_event_mysterious_shrine_01
+    category: ui_icon
+    outputName: ui_event_mysterious_shrine_01.png
+    prompt: "UI icon for mysterious shrine event, pulsing relic altar glyph, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon"
+    lighting: "low-key with subtle inner glow"
+    palette: "tarnished gold, charcoal, ember orange"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: ui_event_trapped_chest_01
+    category: ui_icon
+    outputName: ui_event_trapped_chest_01.png
+    prompt: "UI icon for trapped chest event, rune-locked chest with warning sigils, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon"
+    lighting: "low-key with restrained warning edge"
+    palette: "charcoal, tarnished brass, muted crimson"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: ui_event_wandering_merchant_01
+    category: ui_icon
+    outputName: ui_event_wandering_merchant_01.png
+    prompt: "UI icon for wandering merchant event, cloaked trader emblem with satchel and coin sigil, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon"
+    lighting: "low-key with subtle warm highlight"
+    palette: "charcoal, dried leather brown, tarnished gold"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: ui_event_cursed_altar_01
+    category: ui_icon
+    outputName: ui_event_cursed_altar_01.png
+    prompt: "UI icon for cursed altar event, blood rune altar emblem, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon"
+    lighting: "low-key with restrained crimson glow"
+    palette: "deep crimson, charcoal, bone ivory"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: ui_event_fallen_adventurer_01
+    category: ui_icon
+    outputName: ui_event_fallen_adventurer_01.png
+    prompt: "UI icon for fallen adventurer event, broken helm and satchel marker, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon"
+    lighting: "low-key with soft rim"
+    palette: "charcoal steel, dried leather, muted ember"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: ui_event_unstable_portal_01
+    category: ui_icon
+    outputName: ui_event_unstable_portal_01.png
+    prompt: "UI icon for unstable portal event, fractured arcane ring with distortion ripples, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon"
+    lighting: "low-key with restrained cold glow"
+    palette: "iron blue, charcoal, muted violet-gray"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: ui_merchant_open_01
+    category: ui_icon
+    outputName: ui_merchant_open_01.png
+    prompt: "UI icon for merchant open action, coin pouch and handshake sigil, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon"
+    lighting: "low-key warm accent"
+    palette: "tarnished gold, dried leather, charcoal"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: ui_merchant_buy_01
+    category: ui_icon
+    outputName: ui_merchant_buy_01.png
+    prompt: "UI icon for merchant purchase action, relic item and coin exchange glyph, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon"
+    lighting: "low-key warm accent"
+    palette: "tarnished gold, iron blue, charcoal"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: ui_merchant_fail_01
+    category: ui_icon
+    outputName: ui_merchant_fail_01.png
+    prompt: "UI icon for merchant purchase fail, crossed coin sigil and faded relic, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon"
+    lighting: "low-key with restrained warning contrast"
+    palette: "charcoal, muted crimson, iron blue"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: item_consumable_health_potion_01
+    category: item_icon
+    outputName: item_consumable_health_potion_01.png
+    prompt: "RPG icon for health potion, dark glass vial with crimson liquid, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with restrained vial highlight"
+    palette: "deep crimson, charcoal, tarnished brass stopper"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: item_consumable_mana_potion_01
+    category: item_icon
+    outputName: item_consumable_mana_potion_01.png
+    prompt: "RPG icon for mana potion, dark glass vial with cold azure liquid, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with restrained cold highlight"
+    palette: "iron blue, cold cyan accent, charcoal"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: item_consumable_scroll_mapping_01
+    category: item_icon
+    outputName: item_consumable_scroll_mapping_01.png
+    prompt: "RPG icon for mapping scroll, sealed parchment map with rune cord, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with subtle parchment highlight"
+    palette: "aged parchment beige, charcoal ink, muted gold seal"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"

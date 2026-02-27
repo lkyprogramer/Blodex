@@ -10,12 +10,34 @@ export interface WorldBoundsConfig {
 }
 
 export class RenderSystem {
+  private readonly multiplyBlendFallbackKeys = new Set<string>();
+
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly tileWidth: number,
     private readonly tileHeight: number,
     private readonly entityDepthOffset: number
   ) {}
+
+  setMultiplyBlendFallbackKeys(keys: Iterable<string>): void {
+    this.multiplyBlendFallbackKeys.clear();
+    for (const key of keys) {
+      this.multiplyBlendFallbackKeys.add(key);
+    }
+  }
+
+  private applyEntityBlendFallback(
+    sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle,
+    textureKey: string
+  ): void {
+    if (!(sprite instanceof Phaser.GameObjects.Image)) {
+      return;
+    }
+    if (!this.multiplyBlendFallbackKeys.has(textureKey)) {
+      return;
+    }
+    sprite.setBlendMode(Phaser.BlendModes.MULTIPLY);
+  }
 
   computeWorldBounds(dungeon: DungeonLayout): WorldBoundsConfig {
     const corners = [
@@ -59,7 +81,7 @@ export class RenderSystem {
     camera.roundPixels = true;
   }
 
-  drawDungeon(dungeon: DungeonLayout, origin: { x: number; y: number }): void {
+  drawDungeon(dungeon: DungeonLayout, origin: { x: number; y: number }, tintColor?: number): void {
     if (this.scene.textures.exists("tile_floor_01")) {
       for (let y = 0; y < dungeon.height; y += 1) {
         for (let x = 0; x < dungeon.width; x += 1) {
@@ -67,10 +89,13 @@ export class RenderSystem {
             continue;
           }
           const iso = gridToIso(x, y, this.tileWidth, this.tileHeight, origin.x, origin.y);
-          this.scene.add
+          const tile = this.scene.add
             .image(iso.x, iso.y, "tile_floor_01")
             .setDisplaySize(this.tileWidth, this.tileHeight)
             .setDepth(iso.y);
+          if (tintColor !== undefined) {
+            tile.setTint(tintColor);
+          }
         }
       }
       return;
@@ -106,12 +131,14 @@ export class RenderSystem {
   } {
     const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
     if (this.scene.textures.exists("player_vanguard")) {
+      const sprite = this.scene.add
+        .image(iso.x, iso.y, "player_vanguard")
+        .setOrigin(0.5, 1)
+        .setDisplaySize(48, 64)
+        .setDepth(iso.y + this.entityDepthOffset);
+      this.applyEntityBlendFallback(sprite, "player_vanguard");
       return {
-        sprite: this.scene.add
-          .image(iso.x, iso.y, "player_vanguard")
-          .setOrigin(0.5, 1)
-          .setDisplaySize(48, 64)
-          .setDepth(iso.y + this.entityDepthOffset),
+        sprite,
         yOffset: 0
       };
     }
@@ -133,11 +160,15 @@ export class RenderSystem {
   ): MonsterRuntime {
     const iso = gridToIso(state.position.x, state.position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
     const sprite = this.scene.textures.exists(archetype.spriteId)
-      ? this.scene.add
-          .image(iso.x, iso.y, archetype.spriteId)
-          .setOrigin(0.5, 1)
-          .setDisplaySize(40, 52)
-          .setDepth(iso.y + this.entityDepthOffset)
+      ? (() => {
+          const image = this.scene.add
+            .image(iso.x, iso.y, archetype.spriteId)
+            .setOrigin(0.5, 1)
+            .setDisplaySize(40, 52)
+            .setDepth(iso.y + this.entityDepthOffset);
+          this.applyEntityBlendFallback(image, archetype.spriteId);
+          return image;
+        })()
       : this.scene.add
           .rectangle(
             iso.x,
@@ -162,6 +193,24 @@ export class RenderSystem {
       .rectangle(iso.x, iso.y - 36, 28, 3, 0xd75959, 0.95)
       .setDepth(iso.y + this.entityDepthOffset + 3)
       .setVisible(false);
+    const affixId = state.affixes?.[0];
+    const affixColor =
+      affixId === "frenzied"
+        ? 0xea5d4b
+        : affixId === "armored"
+          ? 0x7f9ac7
+          : affixId === "vampiric"
+            ? 0x9a4bd2
+            : affixId === "splitting"
+              ? 0xd8b45f
+              : null;
+    const affixMarker =
+      affixColor === null
+        ? undefined
+        : this.scene.add
+            .ellipse(iso.x + 14, iso.y - 45, 8, 8, affixColor, 0.95)
+            .setStrokeStyle(1, 0x131820, 0.9)
+            .setDepth(iso.y + this.entityDepthOffset + 4);
 
     return {
       state,
@@ -169,9 +218,11 @@ export class RenderSystem {
       sprite,
       healthBarBg,
       healthBarFg,
+      affixMarker,
       healthBarYOffset: this.scene.textures.exists(archetype.spriteId) ? 36 : 30,
       yOffset: 0,
-      nextAttackAt: 0
+      nextAttackAt: 0,
+      nextSupportAt: 0
     };
   }
 
@@ -218,11 +269,13 @@ export class RenderSystem {
   ): Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle {
     const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
     if (this.scene.textures.exists(textureKey)) {
-      return this.scene.add
+      const sprite = this.scene.add
         .image(iso.x, iso.y, textureKey)
         .setOrigin(0.5, 1)
         .setDisplaySize(64, 80)
         .setDepth(iso.y + this.entityDepthOffset + 20);
+      this.applyEntityBlendFallback(sprite, textureKey);
+      return sprite;
     }
     return this.scene.add
       .rectangle(iso.x, iso.y, 38, 56, 0x6d5953)
@@ -281,6 +334,12 @@ export class RenderSystem {
       const wasDamaged = monster.state.health < monster.state.maxHealth;
       monster.healthBarBg.setPosition(iso.x, iso.y - monster.healthBarYOffset);
       monster.healthBarFg.setPosition(iso.x, iso.y - monster.healthBarYOffset);
+      if (monster.affixMarker !== undefined) {
+        monster.affixMarker
+          .setPosition(iso.x + 14, iso.y - monster.healthBarYOffset - 8)
+          .setVisible(monster.state.health > 0)
+          .setDepth(iso.y + this.entityDepthOffset + 4);
+      }
       if (!wasDamaged) {
         monster.healthBarBg.setVisible(false);
         monster.healthBarFg.setVisible(false);

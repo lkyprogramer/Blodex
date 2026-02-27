@@ -5,8 +5,19 @@ function clamp(num: number, min: number, max: number): number {
 }
 
 function rollAffixes(itemDef: ItemDef, rng: RngLike): ItemInstance["rolledAffixes"] {
-  const rolled: ItemInstance["rolledAffixes"] = {};
-  const affixCount = clamp(rng.nextInt(itemDef.minAffixes, itemDef.maxAffixes), 1, itemDef.affixPool.length);
+  const fixed = itemDef.fixedAffixes ?? {};
+  if ((itemDef.kind ?? "equipment") === "unique") {
+    return { ...fixed };
+  }
+
+  const rolled: ItemInstance["rolledAffixes"] = { ...fixed };
+  if (itemDef.affixPool.length === 0) {
+    return rolled;
+  }
+
+  const minCount = Math.max(0, itemDef.minAffixes);
+  const maxCount = Math.max(minCount, itemDef.maxAffixes);
+  const affixCount = clamp(rng.nextInt(minCount, maxCount), 0, itemDef.affixPool.length);
   const pool = [...itemDef.affixPool];
 
   for (let i = 0; i < affixCount; i += 1) {
@@ -20,6 +31,38 @@ function rollAffixes(itemDef: ItemDef, rng: RngLike): ItemInstance["rolledAffixe
   }
 
   return rolled;
+}
+
+function rollSpecialAffixes(
+  itemDef: ItemDef,
+  rng: RngLike
+): ItemInstance["rolledSpecialAffixes"] {
+  const fixed = itemDef.fixedSpecialAffixes ?? {};
+  if ((itemDef.kind ?? "equipment") === "unique") {
+    return Object.keys(fixed).length === 0 ? undefined : { ...fixed };
+  }
+
+  const pool = [...(itemDef.specialAffixPool ?? [])];
+  if (pool.length === 0) {
+    return Object.keys(fixed).length === 0 ? undefined : { ...fixed };
+  }
+
+  const min = Math.max(0, itemDef.minSpecialAffixes ?? 0);
+  const max = Math.max(min, itemDef.maxSpecialAffixes ?? min);
+  const count = clamp(rng.nextInt(min, max), 0, pool.length);
+  const rolled: NonNullable<ItemInstance["rolledSpecialAffixes"]> = { ...fixed };
+
+  for (let i = 0; i < count; i += 1) {
+    const idx = rng.nextInt(0, pool.length - 1);
+    const picked = pool.splice(idx, 1)[0];
+    if (picked === undefined) {
+      continue;
+    }
+    const value = rng.nextInt(picked.min, picked.max);
+    rolled[picked.key] = (rolled[picked.key] ?? 0) + value;
+  }
+
+  return Object.keys(rolled).length === 0 ? undefined : rolled;
 }
 
 function pickWeightedEntry(entries: LootEntry[], rng: RngLike): LootEntry | null {
@@ -43,16 +86,20 @@ function pickWeightedEntry(entries: LootEntry[], rng: RngLike): LootEntry | null
 }
 
 function createItemInstance(def: ItemDef, seedFragment: string, rng: RngLike): ItemInstance {
+  const kind = def.kind ?? "equipment";
+  const rolledSpecialAffixes = rollSpecialAffixes(def, rng);
   return {
     id: `${def.id}-${seedFragment}`,
     defId: def.id,
     name: def.name,
+    kind,
     slot: def.slot,
     rarity: def.rarity,
     requiredLevel: def.requiredLevel,
     iconId: def.iconId,
     seed: seedFragment,
-    rolledAffixes: rollAffixes(def, rng)
+    rolledAffixes: rollAffixes(def, rng),
+    ...(rolledSpecialAffixes === undefined ? {} : { rolledSpecialAffixes })
   };
 }
 

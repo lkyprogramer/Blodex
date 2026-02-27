@@ -120,7 +120,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Generate asset images via Gemini with placeholder fallback")
     parser.add_argument("--input", required=True)
     parser.add_argument("--out-dir", required=True)
-    parser.add_argument("--model", default=os.getenv("IMAGE_MODEL", "gemini-2.5-flash-image"))
+    parser.add_argument("--model", default=os.getenv("IMAGE_MODEL", "gemini-3.1-flash-image-preview"))
     parser.add_argument("--delay-ms", type=int, default=int(os.getenv("GEMINI_REQUEST_DELAY_MS", "1200")))
     parser.add_argument("--timeout-s", type=int, default=int(os.getenv("GEMINI_REQUEST_TIMEOUT_S", "20")))
     parser.add_argument("--image-aspect-ratio", default=os.getenv("GEMINI_IMAGE_ASPECT_RATIO", "1:1"))

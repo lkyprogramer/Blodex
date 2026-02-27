@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@10.23.0",
   "scripts": {
-    "dev": "pnpm --filter @blodex/game-client dev",
+    "dev": "pnpm --filter @blodex/core build && pnpm --filter @blodex/content build && pnpm --filter @blodex/game-client dev",
     "build": "pnpm -r build",
     "test": "pnpm --filter @blodex/core test",
     "lint": "pnpm -r lint",

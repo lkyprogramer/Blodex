@@ -74,7 +74,7 @@ const OUT_DIR = resolve(ROOT, "tmp/imagegen");
 const OUT_FILE = resolve(OUT_DIR, "jobs.jsonl");
 const MANIFEST_PATH = resolve(ROOT, "assets/generated/manifest.json");
 
-const DEFAULT_IMAGE_MODEL = process.env.IMAGE_MODEL ?? "gemini-2.5-flash-image";
+const DEFAULT_IMAGE_MODEL = process.env.IMAGE_MODEL ?? "gemini-3.1-flash-image-preview";
 const DEFAULT_SOURCE_REF = `gemini:${DEFAULT_IMAGE_MODEL}`;
 
 const TARGET_SIZE_BY_CATEGORY: Record<ManifestEntry["category"], { width: number; height: number }> = {

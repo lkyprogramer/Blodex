@@ -44,7 +44,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #hud-panel h1 {
@@ -103,10 +104,14 @@ body {
 }
 
 .inventory-panel {
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
+}
+
+#log {
+  margin-top: 0;
+  min-height: 170px;
 }
 
 .equipment-grid {
@@ -169,8 +174,7 @@ body {
 }
 
 .inventory-scroll {
-  flex: 1;
-  min-height: 0;
+  max-height: 34vh;
   overflow: auto;
   padding-right: 2px;
 }
@@ -191,6 +195,32 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
+}
+
+.inventory-cell.locked {
+  border-color: rgba(155, 167, 189, 0.44);
+  background: rgba(11, 14, 21, 0.86);
+}
+
+.inventory-cell.locked .item-icon {
+  filter: grayscale(0.55) saturate(0.7) brightness(0.82);
+}
+
+.inventory-cell button.blocked {
+  border-color: rgba(122, 140, 176, 0.52);
+  background: rgba(92, 106, 132, 0.2);
+  color: #c6d2e3;
+}
+
+.inventory-cell button.blocked:hover {
+  background: rgba(112, 128, 159, 0.3);
+}
+
+.equip-lock-hint {
+  display: block;
+  font-size: 10px;
+  color: #92a8cb;
+  line-height: 1.2;
 }
 
 .inventory-cell.common,
@@ -240,6 +270,54 @@ body {
   color: #f0cbc4;
 }
 
+.mapping-hint {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 1px solid rgba(111, 186, 132, 0.45);
+  background: rgba(29, 73, 47, 0.25);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #d8efd7;
+}
+
+.consumable-bar {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.consumable-slot {
+  border: 1px solid rgba(208, 168, 111, 0.25);
+  border-radius: 8px;
+  min-height: 62px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 6px;
+  background: rgba(17, 22, 30, 0.82);
+  color: var(--text-main);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.consumable-slot.disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.consumable-key {
+  font-size: 10px;
+  color: var(--text-subtle);
+}
+
+.consumable-name {
+  font-size: 11px;
+  line-height: 1.1;
+}
+
 .skill-bar {
   margin-top: 8px;
   display: grid;
@@ -275,6 +353,232 @@ body {
 
 .skill-slot.locked {
   opacity: 0.5;
+}
+
+.log-panel {
+  flex: 0 0 190px;
+  max-height: 220px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-panel h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-family: "Cinzel", serif;
+  letter-spacing: 0.3px;
+  color: var(--text-subtle);
+}
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.log-entry {
+  border-left: 2px solid rgba(208, 168, 111, 0.4);
+  border-radius: 6px;
+  background: rgba(15, 21, 29, 0.84);
+  padding: 4px 6px;
+}
+
+.log-entry.info {
+  border-left-color: rgba(208, 168, 111, 0.5);
+}
+
+.log-entry.success {
+  border-left-color: rgba(111, 186, 132, 0.8);
+}
+
+.log-entry.warn {
+  border-left-color: rgba(224, 177, 99, 0.82);
+}
+
+.log-entry.danger {
+  border-left-color: rgba(208, 91, 91, 0.92);
+}
+
+.log-message {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.25;
+  color: #ece3d3;
+}
+
+.log-time {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: rgba(181, 168, 143, 0.88);
+}
+
+.log-empty {
+  margin: 0;
+  color: rgba(181, 168, 143, 0.7);
+  font-size: 12px;
+}
+
+#event-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 25000;
+  background: rgba(6, 8, 12, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#event-panel.hidden {
+  display: none;
+}
+
+.event-card {
+  width: min(460px, calc(100vw - 30px));
+  border: 1px solid rgba(208, 168, 111, 0.45);
+  border-radius: 12px;
+  background: rgba(12, 18, 25, 0.96);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+  padding: 14px;
+}
+
+.event-card h2 {
+  margin: 0;
+  font-family: "Cinzel", serif;
+  font-size: 22px;
+  color: var(--accent);
+}
+
+.event-card p {
+  margin: 8px 0 0;
+  color: #e6dac3;
+  font-size: 14px;
+}
+
+.event-choice-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.event-choice {
+  border: 1px solid rgba(208, 168, 111, 0.35);
+  border-radius: 8px;
+  background: rgba(19, 27, 37, 0.82);
+  color: var(--text-main);
+  font-family: inherit;
+  padding: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.event-choice.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.event-choice-name {
+  display: block;
+  font-size: 14px;
+}
+
+.event-close {
+  margin-top: 12px;
+  border: 1px solid rgba(208, 168, 111, 0.35);
+  border-radius: 8px;
+  background: rgba(208, 168, 111, 0.1);
+  color: var(--text-main);
+  font-family: inherit;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.merchant-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.merchant-offer {
+  border: 1px solid rgba(208, 168, 111, 0.25);
+  border-radius: 8px;
+  background: rgba(17, 23, 32, 0.82);
+  padding: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.merchant-offer button {
+  border: 1px solid rgba(208, 168, 111, 0.4);
+  border-radius: 6px;
+  background: rgba(208, 168, 111, 0.14);
+  color: var(--text-main);
+  font-family: inherit;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.merchant-name {
+  font-size: 14px;
+}
+
+.merchant-rarity {
+  font-size: 11px;
+}
+
+.merchant-rarity.common {
+  color: #d6cfbf;
+}
+
+.merchant-rarity.magic {
+  color: #7eb4ff;
+}
+
+.merchant-rarity.rare {
+  color: #f0cc74;
+}
+
+#death-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 7, 11, 0.72);
+  pointer-events: none;
+}
+
+#death-overlay.hidden {
+  display: none;
+}
+
+.death-card {
+  width: min(440px, calc(100vw - 36px));
+  border: 1px solid rgba(208, 91, 91, 0.66);
+  border-radius: 12px;
+  background: rgba(16, 10, 12, 0.95);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.5);
+  padding: 16px 18px;
+}
+
+.death-card h2 {
+  margin: 0;
+  color: #d77878;
+  font-family: "Cinzel", serif;
+  letter-spacing: 0.5px;
+}
+
+.death-card p {
+  margin: 9px 0 0;
+  color: #f0d2d2;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .inventory-tooltip {
@@ -341,6 +645,14 @@ body {
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     height: auto;
     max-height: 46vh;
+  }
+
+  .inventory-scroll {
+    max-height: 22vh;
+  }
+
+  .log-panel {
+    max-height: 36vh;
   }
 
   .equipment-grid,

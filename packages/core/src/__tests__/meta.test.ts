@@ -40,6 +40,7 @@ describe("meta", () => {
       startedAtMs: 0,
       runSeed: "seed",
       currentFloor: 5,
+      currentBiomeId: "bone_throne",
       floor: 5,
       floorsCleared: 4,
       kills: 12,

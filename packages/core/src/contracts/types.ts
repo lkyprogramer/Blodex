@@ -2,9 +2,35 @@ export type EquipmentSlot = "weapon" | "helm" | "chest" | "boots" | "ring";
 
 export type ItemRarity = "common" | "magic" | "rare";
 
-export type MonsterArchetypeId = "melee_grunt" | "ranged_caster" | "elite_bruiser";
+export type ItemKind = "equipment" | "consumable" | "unique";
+
+export type MonsterArchetypeId = string;
+
+export type BiomeId =
+  | "forgotten_catacombs"
+  | "molten_caverns"
+  | "frozen_halls"
+  | "bone_throne";
+
+export type HazardType = "damage_zone" | "movement_modifier" | "periodic_trap";
+
+export type MonsterAiBehavior = "chase" | "kite" | "ambush" | "swarm" | "shield" | "support";
+
+export type MonsterAffixId = "frenzied" | "armored" | "vampiric" | "splitting";
 
 export type DamageType = "physical" | "arcane";
+
+export type ItemSpecialAffixKey =
+  | "lifesteal"
+  | "critDamage"
+  | "aoeRadius"
+  | "damageOverTime"
+  | "thorns"
+  | "healthRegen"
+  | "dodgeChance"
+  | "xpBonus"
+  | "soulShardBonus"
+  | "cooldownReduction";
 
 export interface BaseStats {
   strength: number;
@@ -44,7 +70,17 @@ export interface GameConfig {
   enemyBaseDamage: number;
 }
 
-export type RunRngStreamName = "procgen" | "spawn" | "combat" | "loot" | "skill" | "boss";
+export type RunRngStreamName =
+  | "procgen"
+  | "spawn"
+  | "combat"
+  | "loot"
+  | "skill"
+  | "boss"
+  | "biome"
+  | "hazard"
+  | "event"
+  | "merchant";
 
 export interface RunSeed {
   runSeed: string;
@@ -99,16 +135,28 @@ export interface ItemAffix {
   max: number;
 }
 
+export interface ItemSpecialAffix {
+  key: ItemSpecialAffixKey;
+  min: number;
+  max: number;
+}
+
 export interface ItemDef {
   id: string;
   name: string;
   slot: EquipmentSlot;
+  kind?: ItemKind;
   rarity: ItemRarity;
   requiredLevel: number;
   iconId: string;
   minAffixes: number;
   maxAffixes: number;
   affixPool: ItemAffix[];
+  minSpecialAffixes?: number;
+  maxSpecialAffixes?: number;
+  specialAffixPool?: ItemSpecialAffix[];
+  fixedAffixes?: Partial<DerivedStats>;
+  fixedSpecialAffixes?: Partial<Record<ItemSpecialAffixKey, number>>;
 }
 
 export interface ItemInstance {
@@ -116,11 +164,13 @@ export interface ItemInstance {
   defId: string;
   name: string;
   slot: EquipmentSlot;
+  kind?: ItemKind;
   rarity: ItemRarity;
   requiredLevel: number;
   iconId: string;
   seed: string;
   rolledAffixes: Partial<DerivedStats>;
+  rolledSpecialAffixes?: Partial<Record<ItemSpecialAffixKey, number>>;
 }
 
 export interface LootEntry {
@@ -222,7 +272,18 @@ export interface MonsterState {
   xpValue: number;
   dropTableId: string;
   position: { x: number; y: number };
-  aiState: "idle" | "chase" | "attack" | "dead";
+  aiState:
+    | "idle"
+    | "chase"
+    | "kite"
+    | "ambush"
+    | "swarm"
+    | "shield"
+    | "support"
+    | "attack"
+    | "dead";
+  aiBehavior?: MonsterAiBehavior;
+  affixes?: MonsterAffixId[];
   isBoss?: boolean;
 }
 
@@ -258,6 +319,51 @@ export interface FloorConfig {
   monsterCount: number;
   clearThreshold: number;
   isBossFloor: boolean;
+}
+
+export interface BiomeDef {
+  id: BiomeId;
+  name: string;
+  ambientColor: number;
+  floorTilesetKey: string;
+  wallStyleKey: string;
+  roomCount: { min: number; max: number };
+  monsterPool: MonsterArchetypeId[];
+  hazardPool: string[];
+  lootBias: Partial<Record<EquipmentSlot, number>>;
+}
+
+export interface HazardDef {
+  id: string;
+  type: HazardType;
+  damagePerTick?: number;
+  tickIntervalMs?: number;
+  movementMultiplier?: number;
+  triggerIntervalMs?: number;
+  telegraphMs?: number;
+  radiusTiles?: number;
+  spriteKey: string;
+}
+
+export interface HazardRuntimeState {
+  id: string;
+  defId: string;
+  type: HazardType;
+  position: { x: number; y: number };
+  radiusTiles: number;
+  damagePerTick: number | undefined;
+  tickIntervalMs: number | undefined;
+  movementMultiplier: number | undefined;
+  triggerIntervalMs: number | undefined;
+  telegraphMs: number | undefined;
+  nextTickAtMs: number | undefined;
+  nextTriggerAtMs: number | undefined;
+}
+
+export interface MonsterAffixDef {
+  id: MonsterAffixId;
+  name: string;
+  description: string;
 }
 
 export interface StaircaseState {
@@ -313,8 +419,66 @@ export interface CombatEvent {
   timestampMs: number;
 }
 
+export type ConsumableId = "health_potion" | "mana_potion" | "scroll_of_mapping";
+
+export interface ConsumableDef {
+  id: ConsumableId;
+  name: string;
+  description: string;
+  hotkey?: "R" | "F" | "G";
+}
+
+export interface ConsumableState {
+  charges: Record<ConsumableId, number>;
+  cooldowns: Record<ConsumableId, number>;
+}
+
+export interface EventCost {
+  type: "health" | "mana" | "obol";
+  amount: number;
+}
+
+export type EventReward =
+  | { type: "health"; amount: number }
+  | { type: "mana"; amount: number }
+  | { type: "obol"; amount: number }
+  | { type: "xp"; amount: number }
+  | { type: "mapping" }
+  | { type: "item"; itemDefId?: string; lootTableId?: string }
+  | { type: "consumable"; consumableId: ConsumableId; amount: number };
+
+export interface EventChoice {
+  id: string;
+  name: string;
+  description: string;
+  cost?: EventCost;
+  rewards: EventReward[];
+  risk?: {
+    chance: number;
+    penalty: EventReward;
+  };
+}
+
+export interface RandomEventDef {
+  id: string;
+  name: string;
+  description: string;
+  floorRange: { min: number; max: number };
+  biomeIds?: BiomeId[];
+  unlockId?: string;
+  spawnWeight: number;
+  choices: EventChoice[];
+}
+
+export interface MerchantOffer {
+  offerId: string;
+  itemDefId: string;
+  priceObol: number;
+}
+
 export interface RunEconomyState {
   obols: number;
+  spentObols?: number;
 }
 
 export interface RunSummary {
@@ -359,7 +523,8 @@ export interface UnlockDef {
     | { type: "permanent_upgrade"; key: keyof PermanentUpgrade; value: number }
     | { type: "skill_unlock"; skillId: string }
     | { type: "affix_unlock"; affixId: string }
-    | { type: "biome_unlock"; biomeId: string };
+    | { type: "biome_unlock"; biomeId: string }
+    | { type: "event_unlock"; eventId: string };
 }
 
 export interface AssetManifestEntry {
@@ -417,4 +582,8 @@ export interface RunRngStreams {
   loot: RngLike;
   skill: RngLike;
   boss: RngLike;
+  biome: RngLike;
+  hazard: RngLike;
+  event: RngLike;
+  merchant: RngLike;
 }

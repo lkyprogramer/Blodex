@@ -2,9 +2,37 @@ export type EquipmentSlot = "weapon" | "helm" | "chest" | "boots" | "ring";
 
 export type ItemRarity = "common" | "magic" | "rare";
 
-export type MonsterArchetypeId = "melee_grunt" | "ranged_caster" | "elite_bruiser";
+export type ItemKind = "equipment" | "consumable" | "unique";
+
+export type MonsterArchetypeId = string;
+
+export type BiomeId =
+  | "forgotten_catacombs"
+  | "molten_caverns"
+  | "frozen_halls"
+  | "bone_throne";
+
+export type HazardType = "damage_zone" | "movement_modifier" | "periodic_trap";
+
+export type MonsterAiBehavior = "chase" | "kite" | "ambush" | "swarm" | "shield" | "support";
+
+export type MonsterAffixId = "frenzied" | "armored" | "vampiric" | "splitting";
 
 export type DamageType = "physical" | "arcane";
+
+export type ItemSpecialAffixKey =
+  | "lifesteal"
+  | "critDamage"
+  | "aoeRadius"
+  | "damageOverTime"
+  | "thorns"
+  | "healthRegen"
+  | "dodgeChance"
+  | "xpBonus"
+  | "soulShardBonus"
+  | "cooldownReduction";
+
+export type ConsumableId = "health_potion" | "mana_potion" | "scroll_of_mapping";
 
 export interface FloorConfig {
   floorNumber: number;
@@ -15,9 +43,47 @@ export interface FloorConfig {
   isBossFloor: boolean;
 }
 
+export interface BiomeDef {
+  id: BiomeId;
+  name: string;
+  ambientColor: number;
+  floorTilesetKey: string;
+  wallStyleKey: string;
+  roomCount: { min: number; max: number };
+  monsterPool: MonsterArchetypeId[];
+  hazardPool: string[];
+  lootBias: Partial<Record<EquipmentSlot, number>>;
+}
+
+export interface HazardDef {
+  id: string;
+  type: HazardType;
+  damagePerTick?: number;
+  tickIntervalMs?: number;
+  movementMultiplier?: number;
+  triggerIntervalMs?: number;
+  telegraphMs?: number;
+  radiusTiles?: number;
+  spriteKey: string;
+}
+
+export interface MonsterAffixDef {
+  id: MonsterAffixId;
+  name: string;
+  description: string;
+}
+
 export interface MonsterAiConfig {
+  behavior: MonsterAiBehavior;
   chaseRange: number;
   attackCooldownMs: number;
+  preferredDistance?: number;
+  ambushRadius?: number;
+  swarmRadius?: number;
+  shieldThreshold?: number;
+  supportRange?: number;
+  healThreshold?: number;
+  healPower?: number;
   fleeThreshold?: number;
   wanderRadius?: number;
 }
@@ -48,21 +114,71 @@ export interface ItemAffix {
   max: number;
 }
 
+export interface ItemSpecialAffix {
+  key: ItemSpecialAffixKey;
+  min: number;
+  max: number;
+}
+
 export interface ItemDef {
   id: string;
   name: string;
   slot: EquipmentSlot;
+  kind?: ItemKind;
   rarity: ItemRarity;
   requiredLevel: number;
   iconId: string;
   minAffixes: number;
   maxAffixes: number;
   affixPool: ItemAffix[];
+  minSpecialAffixes?: number;
+  maxSpecialAffixes?: number;
+  specialAffixPool?: ItemSpecialAffix[];
+  fixedAffixes?: Partial<Record<ItemAffix["key"], number>>;
+  fixedSpecialAffixes?: Partial<Record<ItemSpecialAffixKey, number>>;
 }
 
 export interface LootTableDef {
   id: string;
   entries: Array<{ itemDefId: string; weight: number; minFloor: number }>;
+}
+
+export interface RandomEventChoice {
+  id: string;
+  name: string;
+  description: string;
+  cost?: { type: "health" | "mana" | "obol"; amount: number };
+  rewards: Array<
+    | { type: "health"; amount: number }
+    | { type: "mana"; amount: number }
+    | { type: "obol"; amount: number }
+    | { type: "xp"; amount: number }
+    | { type: "mapping" }
+    | { type: "item"; itemDefId?: string; lootTableId?: string }
+    | { type: "consumable"; consumableId: ConsumableId; amount: number }
+  >;
+  risk?: {
+    chance: number;
+    penalty:
+      | { type: "health"; amount: number }
+      | { type: "mana"; amount: number }
+      | { type: "obol"; amount: number }
+      | { type: "xp"; amount: number }
+      | { type: "mapping" }
+      | { type: "item"; itemDefId?: string; lootTableId?: string }
+      | { type: "consumable"; consumableId: ConsumableId; amount: number };
+  };
+}
+
+export interface RandomEventDef {
+  id: string;
+  name: string;
+  description: string;
+  floorRange: { min: number; max: number };
+  biomeIds?: BiomeId[];
+  unlockId?: string;
+  spawnWeight: number;
+  choices: RandomEventChoice[];
 }
 
 export interface GameConfig {
@@ -136,5 +252,6 @@ export interface UnlockDef {
     | { type: "permanent_upgrade"; key: "startingHealth" | "startingArmor" | "luckBonus" | "skillSlots" | "potionCharges"; value: number }
     | { type: "skill_unlock"; skillId: string }
     | { type: "affix_unlock"; affixId: string }
-    | { type: "biome_unlock"; biomeId: string };
+    | { type: "biome_unlock"; biomeId: string }
+    | { type: "event_unlock"; eventId: string };
 }

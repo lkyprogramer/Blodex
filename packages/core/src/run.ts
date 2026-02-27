@@ -1,4 +1,5 @@
 import type {
+  BiomeId,
   ItemInstance,
   MetaProgression,
   PermanentUpgrade,
@@ -9,13 +10,15 @@ import type {
   RunRngStreamName,
   RunSummary
 } from "./contracts/types";
+import { resolveBiomeForFloorBySeed } from "./biome";
 
-export const REPLAY_VERSION = "phase1-v1";
+export const REPLAY_VERSION = "phase2-v1";
 
 export interface RunState {
   startedAtMs: number;
   runSeed: string;
   currentFloor: number;
+  currentBiomeId: BiomeId;
   /** @deprecated Use currentFloor. */
   floor: number;
   floorsCleared: number;
@@ -49,7 +52,7 @@ export function createRunSeed(): string {
 export function deriveFloorSeed(
   runSeed: string,
   floor: number,
-  stream: RunRngStreamName | "main" = "main"
+  stream: RunRngStreamName
 ): string {
   return `${runSeed}:floor:${floor}:stream:${stream}`;
 }
@@ -69,13 +72,15 @@ export function createRunState(runSeed: string, nowMs: number): RunState {
     startedAtMs: nowMs,
     runSeed,
     currentFloor: 1,
+    currentBiomeId: resolveBiomeForFloorBySeed(1, runSeed),
     floor: 1,
     floorsCleared: 0,
     kills: 0,
     totalKills: 0,
     lootCollected: 0,
     runEconomy: {
-      obols: 0
+      obols: 0,
+      spentObols: 0
     },
     replay: createReplay(runSeed, 1)
   };
@@ -152,6 +157,7 @@ export function enterNextFloor(run: RunState): RunState {
   const next: RunState = {
     ...run,
     currentFloor: nextFloor,
+    currentBiomeId: resolveBiomeForFloorBySeed(nextFloor, run.runSeed),
     floor: nextFloor,
     floorsCleared: run.floorsCleared + 1,
     kills: 0
@@ -172,7 +178,22 @@ export function addRunObols(run: RunState, delta: number): RunState {
   return {
     ...run,
     runEconomy: {
+      ...run.runEconomy,
       obols: run.runEconomy.obols + delta
+    }
+  };
+}
+
+export function spendRunObols(run: RunState, delta: number): RunState {
+  if (delta <= 0 || run.runEconomy.obols < delta) {
+    return run;
+  }
+  return {
+    ...run,
+    runEconomy: {
+      ...run.runEconomy,
+      obols: run.runEconomy.obols - delta,
+      spentObols: (run.runEconomy.spentObols ?? 0) + delta
     }
   };
 }

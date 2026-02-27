@@ -1,14 +1,18 @@
 import type {
+  BiomeId,
   BossAttack,
   BossRuntimeState,
   BuffInstance,
   CombatEvent,
   EquipmentSlot,
+  HazardType,
   ItemInstance,
+  MonsterAffixId,
   MonsterState,
   ReplayInputEvent,
   RunSummary,
   SkillResolution,
+  ConsumableId,
   StaircaseState
 } from "./types";
 
@@ -77,6 +81,7 @@ export interface GameEventMap {
   };
   "floor:enter": {
     floor: number;
+    biomeId?: BiomeId;
     timestampMs: number;
   };
   "floor:clear": {
@@ -120,6 +125,85 @@ export interface GameEventMap {
   };
   "buff:expire": {
     buff: BuffInstance;
+    timestampMs: number;
+  };
+  "hazard:trigger": {
+    hazardId: string;
+    hazardType: HazardType;
+    position: { x: number; y: number };
+    radiusTiles: number;
+    timestampMs: number;
+  };
+  "hazard:damage": {
+    hazardId: string;
+    hazardType: HazardType;
+    targetId: string;
+    amount: number;
+    remainingHealth: number;
+    timestampMs: number;
+  };
+  "hazard:enter": {
+    hazardId: string;
+    hazardType: HazardType;
+    targetId: string;
+    timestampMs: number;
+  };
+  "hazard:exit": {
+    hazardId: string;
+    hazardType: HazardType;
+    targetId: string;
+    timestampMs: number;
+  };
+  "monster:affixApplied": {
+    monsterId: string;
+    affixId: MonsterAffixId;
+    timestampMs: number;
+  };
+  "monster:split": {
+    sourceMonsterId: string;
+    spawnedIds: string[];
+    timestampMs: number;
+  };
+  "monster:leech": {
+    monsterId: string;
+    targetId: string;
+    amount: number;
+    timestampMs: number;
+  };
+  "consumable:use": {
+    playerId: string;
+    consumableId: ConsumableId;
+    amountApplied: number;
+    remainingCharges: number;
+    timestampMs: number;
+  };
+  "consumable:failed": {
+    playerId: string;
+    consumableId: ConsumableId;
+    reason: string;
+    timestampMs: number;
+  };
+  "event:spawn": {
+    eventId: string;
+    eventName: string;
+    floor: number;
+    timestampMs: number;
+  };
+  "event:choice": {
+    eventId: string;
+    choiceId: string;
+    timestampMs: number;
+  };
+  "merchant:offer": {
+    floor: number;
+    offerCount: number;
+    timestampMs: number;
+  };
+  "merchant:purchase": {
+    offerId: string;
+    itemId: string;
+    itemName: string;
+    priceObol: number;
     timestampMs: number;
   };
 }

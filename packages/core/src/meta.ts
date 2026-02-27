@@ -145,3 +145,41 @@ export function purchaseUnlock(meta: MetaProgression, unlock: UnlockDef): MetaPr
     }
   };
 }
+
+export function collectUnlockedBiomeIds(meta: MetaProgression, unlockDefs: UnlockDef[]): string[] {
+  const set = new Set<string>([
+    "forgotten_catacombs",
+    "molten_caverns",
+    "frozen_halls",
+    "bone_throne"
+  ]);
+  for (const unlockId of meta.unlocks) {
+    const unlock = unlockDefs.find((candidate) => candidate.id === unlockId);
+    if (unlock?.effect.type === "biome_unlock") {
+      set.add(unlock.effect.biomeId);
+    }
+  }
+  return [...set];
+}
+
+export function collectUnlockedAffixIds(meta: MetaProgression, unlockDefs: UnlockDef[]): string[] {
+  const set = new Set<string>();
+  for (const unlockId of meta.unlocks) {
+    const unlock = unlockDefs.find((candidate) => candidate.id === unlockId);
+    if (unlock?.effect.type === "affix_unlock") {
+      set.add(unlock.effect.affixId);
+    }
+  }
+  return [...set];
+}
+
+export function collectUnlockedEventIds(meta: MetaProgression, unlockDefs: UnlockDef[]): string[] {
+  const set = new Set<string>();
+  for (const unlockId of meta.unlocks) {
+    const unlock = unlockDefs.find((candidate) => candidate.id === unlockId);
+    if (unlock?.effect.type === "event_unlock") {
+      set.add(unlock.effect.eventId);
+    }
+  }
+  return [...set];
+}
