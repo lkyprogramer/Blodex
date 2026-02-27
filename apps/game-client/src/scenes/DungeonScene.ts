@@ -5,6 +5,7 @@ import {
   applyDamageToBoss,
   applyRunSummaryToMeta,
   applyXpGain,
+  canEquip,
   canUseSkill,
   collectLoot,
   createEventBus,
@@ -69,6 +70,7 @@ import {
   resolveGeneratedPngFallback,
   type PreferredImageFormat
 } from "../assets/imageAsset";
+import { removeConnectedBackgroundFromTexture, type BackgroundRemovalResult } from "../assets/removeBackground";
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
@@ -99,6 +101,13 @@ const DUNGEON_IMAGE_ASSET_IDS = [
   "skill_war_cry"
 ] as const;
 const DUNGEON_IMAGE_ASSET_KEY_SET = new Set<string>(DUNGEON_IMAGE_ASSET_IDS);
+const ENTITY_ASSET_KEYS_FOR_BACKGROUND_REMOVAL = [
+  "player_vanguard",
+  "monster_melee_01",
+  "monster_ranged_01",
+  "monster_elite_01",
+  "boss_bone_sovereign"
+] as const;
 
 export class DungeonScene extends Phaser.Scene {
   private static readonly ENTITY_DEPTH_OFFSET = 10_000;
@@ -161,6 +170,8 @@ export class DungeonScene extends Phaser.Scene {
   private nextBossAttackAt = 0;
   private hudDirty = true;
   private runEnded = false;
+  private lastDeathReason = "Unknown cause.";
+  private readonly entityLabelById = new Map<string, string>();
 
   constructor() {
     super("dungeon");
@@ -208,19 +219,34 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
+  private applyRuntimeBackgroundRemoval(): void {
+    const blendFallbackKeys = new Set<string>();
+    for (const textureKey of ENTITY_ASSET_KEYS_FOR_BACKGROUND_REMOVAL) {
+      const result = removeConnectedBackgroundFromTexture(this, textureKey);
+      if (result === "failed") {
+        blendFallbackKeys.add(textureKey);
+      }
+    }
+    this.renderSystem.setMultiplyBlendFallbackKeys(blendFallbackKeys);
+  }
+
   create(): void {
     this.cameras.main.setBackgroundColor("#11161d");
     this.meta = this.loadMeta();
-    this.bindDomainEventEffects();
-    this.bootstrapRun(this.resolveInitialRunSeed());
-
-    this.input.on("pointerdown", this.handlePointerDown, this);
-    this.bindSkillKeys();
-
     this.hud = new Hud(
       (itemId) => {
         const item = this.player.inventory.find((candidate) => candidate.id === itemId);
         if (item === undefined) {
+          this.hud.appendLog(`Equip failed: item ${itemId} not found in backpack.`, "warn", this.time.now);
+          return;
+        }
+
+        if (!canEquip(this.player, item)) {
+          this.hud.appendLog(
+            `Cannot equip ${item.name}: Need Lv${item.requiredLevel}, current Lv${this.player.level}.`,
+            "warn",
+            this.time.now
+          );
           return;
         }
 
@@ -233,7 +259,10 @@ export class DungeonScene extends Phaser.Scene {
             item: equipped,
             timestampMs: this.time.now
           });
+          return;
         }
+
+        this.hud.appendLog(`Equip failed: ${item.name} could not be equipped.`, "warn", this.time.now);
       },
       (slot) => {
         const equipped = this.player.equipment[slot];
@@ -257,9 +286,19 @@ export class DungeonScene extends Phaser.Scene {
       },
       () => {
         this.hud.clearSummary();
+        this.hud.clearLogs();
+        this.hud.hideDeathOverlay();
         this.scene.start("meta-menu");
       }
     );
+    this.applyRuntimeBackgroundRemoval();
+    this.hud.hideDeathOverlay();
+    this.hud.clearLogs();
+    this.bindDomainEventEffects();
+    this.bootstrapRun(this.resolveInitialRunSeed());
+
+    this.input.on("pointerdown", this.handlePointerDown, this);
+    this.bindSkillKeys();
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanupScene());
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.cleanupScene());
@@ -303,32 +342,134 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private bindDomainEventEffects(): void {
-    this.eventBus.on("loot:drop", () => {
+    this.eventBus.on("combat:hit", ({ combat }) => {
       this.hudDirty = true;
+      const source = this.resolveEntityLabel(combat.sourceId);
+      const target = this.resolveEntityLabel(combat.targetId);
+      if (combat.targetId === this.player.id) {
+        this.hud.appendLog(
+          `${source} hit ${target} for ${combat.amount} damage.`,
+          combat.kind === "crit" ? "danger" : "warn",
+          combat.timestampMs
+        );
+        return;
+      }
+      this.hud.appendLog(
+        `${source} ${combat.kind === "crit" ? "critically hit" : "hit"} ${target} for ${combat.amount} damage.`,
+        combat.kind === "crit" ? "success" : "info",
+        combat.timestampMs
+      );
     });
-    this.eventBus.on("loot:pickup", () => {
+
+    this.eventBus.on("combat:dodge", ({ combat }) => {
       this.hudDirty = true;
+      const source = this.resolveEntityLabel(combat.sourceId);
+      const target = this.resolveEntityLabel(combat.targetId);
+      this.hud.appendLog(
+        `${target} dodged ${source}'s attack.`,
+        combat.targetId === this.player.id ? "success" : "info",
+        combat.timestampMs
+      );
     });
-    this.eventBus.on("player:levelup", () => {
+
+    this.eventBus.on("combat:death", ({ combat }) => {
       this.hudDirty = true;
+      const source = this.resolveEntityLabel(combat.sourceId);
+      const target = this.resolveEntityLabel(combat.targetId);
+      if (combat.targetId === this.player.id) {
+        this.lastDeathReason = `Slain by ${source} (${combat.amount} ${combat.damageType} damage).`;
+        this.hud.appendLog(`${target} was slain by ${source}.`, "danger", combat.timestampMs);
+        return;
+      }
+      this.hud.appendLog(`${target} was slain by ${source}.`, "success", combat.timestampMs);
     });
-    this.eventBus.on("item:equip", () => {
+
+    this.eventBus.on("loot:drop", ({ sourceId, item, timestampMs }) => {
       this.hudDirty = true;
+      this.hud.appendLog(
+        `${this.resolveEntityLabel(sourceId)} dropped ${item.name}.`,
+        "info",
+        timestampMs
+      );
     });
-    this.eventBus.on("item:unequip", () => {
+
+    this.eventBus.on("loot:pickup", ({ item, timestampMs }) => {
       this.hudDirty = true;
+      this.hud.appendLog(`Picked up ${item.name}.`, "success", timestampMs);
     });
-    this.eventBus.on("run:end", () => {
+
+    this.eventBus.on("player:levelup", ({ level, timestampMs }) => {
       this.hudDirty = true;
+      this.hud.appendLog(`Level up! Vanguard reached Lv${level}.`, "success", timestampMs);
     });
-    this.eventBus.on("floor:enter", () => {
+
+    this.eventBus.on("item:equip", ({ item, slot, timestampMs }) => {
       this.hudDirty = true;
+      this.hud.appendLog(`Equipped ${item.name} (${slot}).`, "success", timestampMs);
     });
-    this.eventBus.on("floor:clear", () => {
+
+    this.eventBus.on("item:unequip", ({ item, slot, timestampMs }) => {
       this.hudDirty = true;
+      this.hud.appendLog(`Unequipped ${item.name} (${slot}).`, "info", timestampMs);
     });
-    this.eventBus.on("boss:phaseChange", () => {
+
+    this.eventBus.on("skill:use", ({ skillId, timestampMs }) => {
+      this.hud.appendLog(`Skill used: ${skillId}.`, "info", timestampMs);
+    });
+
+    this.eventBus.on("skill:cooldown", ({ skillId, readyAtMs }) => {
+      const cooldownMs = Math.max(0, readyAtMs - this.time.now);
+      this.hud.appendLog(
+        `${skillId} cooldown ${(cooldownMs / 1000).toFixed(1)}s.`,
+        "info",
+        this.time.now
+      );
+    });
+
+    this.eventBus.on("monster:stateChange", ({ monsterId, from, to, timestampMs }) => {
+      this.hud.appendLog(
+        `${this.resolveEntityLabel(monsterId)} state: ${from} -> ${to}.`,
+        "info",
+        timestampMs
+      );
+    });
+
+    this.eventBus.on("run:start", ({ floor, runSeed, startedAtMs }) => {
+      this.hud.appendLog(`Run started on floor ${floor} (seed ${runSeed}).`, "info", startedAtMs);
+    });
+
+    this.eventBus.on("run:end", ({ summary, finishedAtMs }) => {
       this.hudDirty = true;
+      this.hud.appendLog(
+        summary.isVictory
+          ? `Run complete! Floor ${summary.floorReached}, level ${summary.leveledTo}.`
+          : `Run ended on floor ${summary.floorReached}, level ${summary.leveledTo}.`,
+        summary.isVictory ? "success" : "danger",
+        finishedAtMs
+      );
+    });
+
+    this.eventBus.on("floor:enter", ({ floor, timestampMs }) => {
+      this.hudDirty = true;
+      this.hud.appendLog(`Entered floor ${floor}.`, "info", timestampMs);
+    });
+
+    this.eventBus.on("floor:clear", ({ floor, kills, timestampMs }) => {
+      this.hudDirty = true;
+      this.hud.appendLog(`Floor ${floor} cleared with ${kills} kills.`, "success", timestampMs);
+    });
+
+    this.eventBus.on("boss:phaseChange", ({ toPhase, hpRatio, timestampMs }) => {
+      this.hudDirty = true;
+      this.hud.appendLog(
+        `Boss shifted to phase ${toPhase + 1} (${Math.floor(hpRatio * 100)}% HP).`,
+        "warn",
+        timestampMs
+      );
+    });
+
+    this.eventBus.on("boss:summon", ({ count, timestampMs }) => {
+      this.hud.appendLog(`Boss summoned ${count} minions.`, "warn", timestampMs);
     });
   }
 
@@ -356,6 +497,10 @@ export class DungeonScene extends Phaser.Scene {
 
   private bootstrapRun(runSeed: string): void {
     this.runSeed = runSeed;
+    this.lastDeathReason = "Unknown cause.";
+    this.entityLabelById.clear();
+    this.hud.clearLogs();
+    this.hud.hideDeathOverlay();
     this.run = createRunState(runSeed, this.time.now);
     this.setupFloor(1, true);
 
@@ -391,6 +536,7 @@ export class DungeonScene extends Phaser.Scene {
       ...this.player,
       position: { ...this.dungeon.playerSpawn }
     };
+    this.entityLabelById.set(this.player.id, "Vanguard");
 
     this.path = [];
     this.attackTargetId = null;
@@ -673,6 +819,30 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
+  private resolveEntityLabel(entityId: string): string {
+    const cached = this.entityLabelById.get(entityId);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    if (entityId === this.player.id) {
+      return "Vanguard";
+    }
+
+    if (entityId === this.bossDef.id) {
+      return this.bossDef.name;
+    }
+
+    const monster = this.entityManager.findMonsterById(entityId);
+    if (monster !== undefined) {
+      const name = monster.archetype.name;
+      this.entityLabelById.set(entityId, name);
+      return name;
+    }
+
+    return entityId;
+  }
+
   private updateMonsters(dt: number, nowMs: number): void {
     const transitions = this.aiSystem.updateMonsters(
       this.entityManager.listLivingMonsters(),
@@ -796,6 +966,7 @@ export class DungeonScene extends Phaser.Scene {
         aiState: "chase"
       };
       const runtime = this.renderSystem.spawnMonster(state, archetype, this.origin);
+      this.entityLabelById.set(runtime.state.id, runtime.archetype.name);
       this.entityManager.listMonsters().push(runtime);
     }
   }
@@ -843,14 +1014,17 @@ export class DungeonScene extends Phaser.Scene {
       rng: this.spawnRng
     });
 
-    this.entityManager.setMonsters(
-      monsters.map((monster) => this.renderSystem.spawnMonster(monster.state, monster.archetype, this.origin))
-    );
+    const runtimes = monsters.map((monster) => this.renderSystem.spawnMonster(monster.state, monster.archetype, this.origin));
+    for (const runtime of runtimes) {
+      this.entityLabelById.set(runtime.state.id, runtime.archetype.name);
+    }
+    this.entityManager.setMonsters(runtimes);
   }
 
   private spawnBoss(): void {
     const roomCenter = findStaircasePosition(this.dungeon, this.dungeon.playerSpawn);
     this.bossState = initBossState(this.bossDef, roomCenter);
+    this.entityLabelById.set(this.bossDef.id, this.bossDef.name);
     this.bossSprite = this.renderSystem.spawnBoss(roomCenter, this.origin, this.bossDef.spriteKey);
     this.entityManager.setBoss({
       state: this.bossState,
@@ -945,6 +1119,13 @@ export class DungeonScene extends Phaser.Scene {
 
     this.meta = applyRunSummaryToMeta(nextMeta, summary);
     this.saveMeta(this.meta);
+    this.renderHud();
+    this.hudDirty = false;
+    if (isVictory) {
+      this.hud.hideDeathOverlay();
+    } else {
+      this.hud.showDeathOverlay(this.lastDeathReason);
+    }
     this.hud.showSummary(summary);
 
     const runEndPayload: GameEventMap["run:end"] = {
@@ -1068,6 +1249,7 @@ export class DungeonScene extends Phaser.Scene {
     this.imageFallbackRetried.clear();
     this.eventBus.removeAll();
     this.input.off("pointerdown", this.handlePointerDown, this);
+    this.hud.hideDeathOverlay();
     this.entityManager.clear();
   }
 

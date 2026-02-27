@@ -10,12 +10,34 @@ export interface WorldBoundsConfig {
 }
 
 export class RenderSystem {
+  private readonly multiplyBlendFallbackKeys = new Set<string>();
+
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly tileWidth: number,
     private readonly tileHeight: number,
     private readonly entityDepthOffset: number
   ) {}
+
+  setMultiplyBlendFallbackKeys(keys: Iterable<string>): void {
+    this.multiplyBlendFallbackKeys.clear();
+    for (const key of keys) {
+      this.multiplyBlendFallbackKeys.add(key);
+    }
+  }
+
+  private applyEntityBlendFallback(
+    sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle,
+    textureKey: string
+  ): void {
+    if (!(sprite instanceof Phaser.GameObjects.Image)) {
+      return;
+    }
+    if (!this.multiplyBlendFallbackKeys.has(textureKey)) {
+      return;
+    }
+    sprite.setBlendMode(Phaser.BlendModes.MULTIPLY);
+  }
 
   computeWorldBounds(dungeon: DungeonLayout): WorldBoundsConfig {
     const corners = [
@@ -106,12 +128,14 @@ export class RenderSystem {
   } {
     const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
     if (this.scene.textures.exists("player_vanguard")) {
+      const sprite = this.scene.add
+        .image(iso.x, iso.y, "player_vanguard")
+        .setOrigin(0.5, 1)
+        .setDisplaySize(48, 64)
+        .setDepth(iso.y + this.entityDepthOffset);
+      this.applyEntityBlendFallback(sprite, "player_vanguard");
       return {
-        sprite: this.scene.add
-          .image(iso.x, iso.y, "player_vanguard")
-          .setOrigin(0.5, 1)
-          .setDisplaySize(48, 64)
-          .setDepth(iso.y + this.entityDepthOffset),
+        sprite,
         yOffset: 0
       };
     }
@@ -133,11 +157,15 @@ export class RenderSystem {
   ): MonsterRuntime {
     const iso = gridToIso(state.position.x, state.position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
     const sprite = this.scene.textures.exists(archetype.spriteId)
-      ? this.scene.add
-          .image(iso.x, iso.y, archetype.spriteId)
-          .setOrigin(0.5, 1)
-          .setDisplaySize(40, 52)
-          .setDepth(iso.y + this.entityDepthOffset)
+      ? (() => {
+          const image = this.scene.add
+            .image(iso.x, iso.y, archetype.spriteId)
+            .setOrigin(0.5, 1)
+            .setDisplaySize(40, 52)
+            .setDepth(iso.y + this.entityDepthOffset);
+          this.applyEntityBlendFallback(image, archetype.spriteId);
+          return image;
+        })()
       : this.scene.add
           .rectangle(
             iso.x,
@@ -218,11 +246,13 @@ export class RenderSystem {
   ): Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle {
     const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
     if (this.scene.textures.exists(textureKey)) {
-      return this.scene.add
+      const sprite = this.scene.add
         .image(iso.x, iso.y, textureKey)
         .setOrigin(0.5, 1)
         .setDisplaySize(64, 80)
         .setDepth(iso.y + this.entityDepthOffset + 20);
+      this.applyEntityBlendFallback(sprite, textureKey);
+      return sprite;
     }
     return this.scene.add
       .rectangle(iso.x, iso.y, 38, 56, 0x6d5953)

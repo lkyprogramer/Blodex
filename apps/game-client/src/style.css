@@ -44,7 +44,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #hud-panel h1 {
@@ -103,10 +104,13 @@ body {
 }
 
 .inventory-panel {
-  flex: 1;
-  min-height: 0;
+  flex: 0 0 auto;
   display: flex;
   flex-direction: column;
+}
+
+#log {
+  margin-top: 0;
 }
 
 .equipment-grid {
@@ -169,8 +173,7 @@ body {
 }
 
 .inventory-scroll {
-  flex: 1;
-  min-height: 0;
+  max-height: 34vh;
   overflow: auto;
   padding-right: 2px;
 }
@@ -191,6 +194,32 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
+}
+
+.inventory-cell.locked {
+  border-color: rgba(155, 167, 189, 0.44);
+  background: rgba(11, 14, 21, 0.86);
+}
+
+.inventory-cell.locked .item-icon {
+  filter: grayscale(0.55) saturate(0.7) brightness(0.82);
+}
+
+.inventory-cell button.blocked {
+  border-color: rgba(122, 140, 176, 0.52);
+  background: rgba(92, 106, 132, 0.2);
+  color: #c6d2e3;
+}
+
+.inventory-cell button.blocked:hover {
+  background: rgba(112, 128, 159, 0.3);
+}
+
+.equip-lock-hint {
+  display: block;
+  font-size: 10px;
+  color: #92a8cb;
+  line-height: 1.2;
 }
 
 .inventory-cell.common,
@@ -277,6 +306,109 @@ body {
   opacity: 0.5;
 }
 
+.log-panel {
+  flex: 1 0 170px;
+  max-height: 220px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-panel h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-family: "Cinzel", serif;
+  letter-spacing: 0.3px;
+  color: var(--text-subtle);
+}
+
+.log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.log-entry {
+  border-left: 2px solid rgba(208, 168, 111, 0.4);
+  border-radius: 6px;
+  background: rgba(15, 21, 29, 0.84);
+  padding: 4px 6px;
+}
+
+.log-entry.info {
+  border-left-color: rgba(208, 168, 111, 0.5);
+}
+
+.log-entry.success {
+  border-left-color: rgba(111, 186, 132, 0.8);
+}
+
+.log-entry.warn {
+  border-left-color: rgba(224, 177, 99, 0.82);
+}
+
+.log-entry.danger {
+  border-left-color: rgba(208, 91, 91, 0.92);
+}
+
+.log-message {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.25;
+  color: #ece3d3;
+}
+
+.log-time {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: rgba(181, 168, 143, 0.88);
+}
+
+.log-empty {
+  margin: 0;
+  color: rgba(181, 168, 143, 0.7);
+  font-size: 12px;
+}
+
+#death-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 7, 11, 0.72);
+  pointer-events: none;
+}
+
+#death-overlay.hidden {
+  display: none;
+}
+
+.death-card {
+  width: min(440px, calc(100vw - 36px));
+  border: 1px solid rgba(208, 91, 91, 0.66);
+  border-radius: 12px;
+  background: rgba(16, 10, 12, 0.95);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.5);
+  padding: 16px 18px;
+}
+
+.death-card h2 {
+  margin: 0;
+  color: #d77878;
+  font-family: "Cinzel", serif;
+  letter-spacing: 0.5px;
+}
+
+.death-card p {
+  margin: 9px 0 0;
+  color: #f0d2d2;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
 .inventory-tooltip {
   position: fixed;
   z-index: 20000;
@@ -341,6 +473,14 @@ body {
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     height: auto;
     max-height: 46vh;
+  }
+
+  .inventory-scroll {
+    max-height: 22vh;
+  }
+
+  .log-panel {
+    max-height: 36vh;
   }
 
   .equipment-grid,

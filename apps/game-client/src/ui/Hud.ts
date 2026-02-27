@@ -5,6 +5,7 @@ import type {
   PlayerState,
   RunSummary
 } from "@blodex/core";
+import { canEquip } from "@blodex/core";
 import {
   detectPreferredImageFormat,
   resolveGeneratedAssetUrl,
@@ -28,7 +29,17 @@ interface HudState {
   meta: MetaProgression;
 }
 
+type LogLevel = "info" | "success" | "warn" | "danger";
+
+interface LogEntry {
+  id: number;
+  level: LogLevel;
+  message: string;
+  timestampMs: number;
+}
+
 const EQUIPMENT_SLOTS: EquipmentSlot[] = ["weapon", "helm", "chest", "boots", "ring"];
+const MAX_LOG_ENTRIES = 200;
 
 function slotLabel(slot: EquipmentSlot): string {
   switch (slot) {
@@ -67,14 +78,33 @@ function formatAffixName(key: string): string {
     .trim();
 }
 
+function escapeHtml(raw: string): string {
+  return raw
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function formatRunTimestamp(timestampMs: number): string {
+  const seconds = Math.max(0, timestampMs / 1000);
+  return `T+${seconds.toFixed(1)}s`;
+}
+
 export class Hud {
   private readonly metaEl = document.querySelector("#meta") as HTMLDivElement;
   private readonly statsEl = document.querySelector("#stats") as HTMLDivElement;
   private readonly runEl = document.querySelector("#run") as HTMLDivElement;
   private readonly inventoryEl = document.querySelector("#inventory") as HTMLDivElement;
+  private readonly logEl = document.querySelector("#log") as HTMLDivElement;
   private readonly summaryEl = document.querySelector("#summary") as HTMLDivElement;
+  private readonly deathOverlayEl = document.querySelector("#death-overlay") as HTMLDivElement;
   private readonly tooltipEl: HTMLDivElement;
   private readonly preferredImageFormat = detectPreferredImageFormat();
+
+  private logEntries: LogEntry[] = [];
+  private nextLogId = 1;
 
   constructor(
     private readonly onEquip: (itemId: string) => void,
@@ -84,6 +114,8 @@ export class Hud {
     this.tooltipEl = document.createElement("div");
     this.tooltipEl.className = "inventory-tooltip hidden";
     document.body.appendChild(this.tooltipEl);
+    this.renderLogPanel();
+    this.hideDeathOverlay();
   }
 
   render(state: HudState): void {
@@ -146,15 +178,51 @@ export class Hud {
       ${skillsHtml}
     `;
 
-    this.renderInventory(player.inventory, player.equipment);
+    this.renderInventory(player);
   }
 
-  private renderInventory(inventory: ItemInstance[], equipment: PlayerState["equipment"]): void {
+  appendLog(message: string, level: LogLevel = "info", timestampMs = performance.now()): void {
+    this.logEntries.push({
+      id: this.nextLogId,
+      level,
+      message,
+      timestampMs
+    });
+    this.nextLogId += 1;
+
+    if (this.logEntries.length > MAX_LOG_ENTRIES) {
+      this.logEntries = this.logEntries.slice(this.logEntries.length - MAX_LOG_ENTRIES);
+    }
+    this.renderLogPanel();
+  }
+
+  clearLogs(): void {
+    this.logEntries = [];
+    this.nextLogId = 1;
+    this.renderLogPanel();
+  }
+
+  showDeathOverlay(reason: string): void {
+    this.deathOverlayEl.classList.remove("hidden");
+    this.deathOverlayEl.innerHTML = `
+      <div class="death-card">
+        <h2>You Died</h2>
+        <p>${escapeHtml(reason)}</p>
+      </div>
+    `;
+  }
+
+  hideDeathOverlay(): void {
+    this.deathOverlayEl.classList.add("hidden");
+    this.deathOverlayEl.innerHTML = "";
+  }
+
+  private renderInventory(player: PlayerState): void {
     const itemById = new Map<string, ItemInstance>();
-    for (const item of inventory) {
+    for (const item of player.inventory) {
       itemById.set(item.id, item);
     }
-    for (const item of Object.values(equipment)) {
+    for (const item of Object.values(player.equipment)) {
       if (item !== undefined) {
         itemById.set(item.id, item);
       }
@@ -163,7 +231,7 @@ export class Hud {
     this.inventoryEl.className = "panel-block compact-block inventory-panel";
 
     const equipmentGrid = EQUIPMENT_SLOTS.map((slot) => {
-      const equipped = equipment[slot];
+      const equipped = player.equipment[slot];
       if (equipped === undefined) {
         return `
           <div class="equip-slot empty">
@@ -187,24 +255,30 @@ export class Hud {
       `;
     }).join("");
 
-    const inventoryGrid = inventory
-      .map(
-        (item) => `
-        <div class="inventory-cell ${item.rarity}" data-item-id="${item.id}">
-          <img class="item-icon" data-asset-id="${item.iconId}" src="${resolveGeneratedAssetUrl(
-            item.iconId,
-            this.preferredImageFormat
-          )}" alt="${item.name}" />
-          <button data-item-id="${item.id}" title="Equip ${item.name}">E</button>
-        </div>
-      `
-      )
+    const inventoryGrid = player.inventory
+      .map((item) => {
+        const equipable = canEquip(player, item);
+        return `
+          <div class="inventory-cell ${item.rarity} ${equipable ? "" : "locked"}" data-item-id="${item.id}">
+            <img class="item-icon" data-asset-id="${item.iconId}" src="${resolveGeneratedAssetUrl(
+              item.iconId,
+              this.preferredImageFormat
+            )}" alt="${item.name}" />
+            <button
+              class="${equipable ? "" : "blocked"}"
+              data-item-id="${item.id}"
+              title="${equipable ? `Equip ${item.name}` : `Need level ${item.requiredLevel}`}"
+            >${equipable ? "E" : `Lv${item.requiredLevel}`}</button>
+            ${equipable ? "" : `<small class="equip-lock-hint">Need Lv${item.requiredLevel}</small>`}
+          </div>
+        `;
+      })
       .join("");
 
     this.inventoryEl.innerHTML = `
       <h2>Inventory</h2>
       <div class="equipment-grid">${equipmentGrid}</div>
-      <div class="inventory-subhead">Backpack (${inventory.length})</div>
+      <div class="inventory-subhead">Backpack (${player.inventory.length})</div>
       <div class="inventory-scroll">
         <div class="inventory-grid">${inventoryGrid || '<div class="inventory-empty">No drops yet.</div>'}</div>
       </div>
@@ -258,6 +332,27 @@ export class Hud {
         this.hideTooltip();
       });
     });
+  }
+
+  private renderLogPanel(): void {
+    this.logEl.className = "panel-block log-panel";
+    const rows = [...this.logEntries]
+      .reverse()
+      .map(
+        (entry) => `
+          <div class="log-entry ${entry.level}" data-log-id="${entry.id}">
+            <p class="log-message">${escapeHtml(entry.message)}</p>
+            <small class="log-time">${formatRunTimestamp(entry.timestampMs)}</small>
+          </div>
+        `
+      )
+      .join("");
+    this.logEl.innerHTML = `
+      <h2>System Log</h2>
+      <div class="log-list">
+        ${rows || '<p class="log-empty">No events yet.</p>'}
+      </div>
+    `;
   }
 
   private bindGeneratedImageFallbacks(): void {
