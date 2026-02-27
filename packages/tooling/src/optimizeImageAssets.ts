@@ -46,6 +46,7 @@ interface BackgroundRemovalOptions {
   maxSeedColors: number;
   minSeedCoverage: number;
   minRemainingRatio: number;
+  minLargestComponentRatio: number;
   whiteThreshold: number;
   whiteSaturationTolerance: number;
 }
@@ -72,15 +73,16 @@ const BACKGROUND_REMOVAL_CATEGORIES: ReadonlySet<string> = new Set([
 ]);
 const BACKGROUND_REMOVAL_OPTIONS: BackgroundRemovalOptions = {
   alphaThreshold: 8,
-  seedTolerance: 48,
-  growTolerance: 64,
-  localTolerance: 20,
+  seedTolerance: 40,
+  growTolerance: 34,
+  localTolerance: 0,
   quantizeStep: 16,
-  maxSeedColors: 4,
-  minSeedCoverage: 0.72,
-  minRemainingRatio: 0.05,
-  whiteThreshold: 232,
-  whiteSaturationTolerance: 26
+  maxSeedColors: 3,
+  minSeedCoverage: 0.82,
+  minRemainingRatio: 0.12,
+  minLargestComponentRatio: 0.72,
+  whiteThreshold: 180,
+  whiteSaturationTolerance: 45
 };
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -137,6 +139,79 @@ function collectBorderPositions(width: number, height: number): number[] {
     }
   }
   return positions;
+}
+
+function computeOpaqueMaskStats(
+  pixels: Uint8Array,
+  width: number,
+  height: number,
+  alphaThreshold: number
+): { opaqueCount: number; largestComponentCount: number } {
+  const totalPixels = width * height;
+  const opaqueMask = new Uint8Array(totalPixels);
+  let opaqueCount = 0;
+  for (let pos = 0; pos < totalPixels; pos += 1) {
+    const alpha = pixels[pos * 4 + 3] ?? 0;
+    if (alpha < alphaThreshold) {
+      continue;
+    }
+    opaqueMask[pos] = 1;
+    opaqueCount += 1;
+  }
+
+  if (opaqueCount === 0) {
+    return { opaqueCount: 0, largestComponentCount: 0 };
+  }
+
+  const visited = new Uint8Array(totalPixels);
+  const queue = new Int32Array(totalPixels);
+  let largestComponentCount = 0;
+
+  for (let start = 0; start < totalPixels; start += 1) {
+    if (opaqueMask[start] !== 1 || visited[start] === 1) {
+      continue;
+    }
+
+    visited[start] = 1;
+    let componentCount = 0;
+    let head = 0;
+    let tail = 0;
+    queue[tail] = start;
+    tail += 1;
+
+    while (head < tail) {
+      const current = queue[head] ?? -1;
+      head += 1;
+      if (current < 0) {
+        continue;
+      }
+
+      componentCount += 1;
+      const x = current % width;
+      const y = Math.floor(current / width);
+
+      const left = x > 0 ? current - 1 : -1;
+      const right = x < width - 1 ? current + 1 : -1;
+      const up = y > 0 ? current - width : -1;
+      const down = y < height - 1 ? current + width : -1;
+
+      const neighbors = [left, right, up, down];
+      for (const next of neighbors) {
+        if (next < 0 || opaqueMask[next] !== 1 || visited[next] === 1) {
+          continue;
+        }
+        visited[next] = 1;
+        queue[tail] = next;
+        tail += 1;
+      }
+    }
+
+    if (componentCount > largestComponentCount) {
+      largestComponentCount = componentCount;
+    }
+  }
+
+  return { opaqueCount, largestComponentCount };
 }
 
 function pickSeedColors(
@@ -323,6 +398,17 @@ function removeConnectedBackgroundPixels(
     return "rolled_back";
   }
 
+  const maskStats = computeOpaqueMaskStats(pixels, width, height, options.alphaThreshold);
+  if (maskStats.opaqueCount === 0) {
+    pixels.set(snapshot);
+    return "rolled_back";
+  }
+  const largestComponentRatio = maskStats.largestComponentCount / maskStats.opaqueCount;
+  if (largestComponentRatio < options.minLargestComponentRatio) {
+    pixels.set(snapshot);
+    return "rolled_back";
+  }
+
   return "applied";
 }
 
@@ -436,6 +522,17 @@ function removeConnectedNearWhitePixels(
     pixels.set(snapshot);
     return "rolled_back";
   }
+
+  const maskStats = computeOpaqueMaskStats(pixels, width, height, options.alphaThreshold);
+  if (maskStats.opaqueCount === 0) {
+    pixels.set(snapshot);
+    return "rolled_back";
+  }
+  const largestComponentRatio = maskStats.largestComponentCount / maskStats.opaqueCount;
+  if (largestComponentRatio < options.minLargestComponentRatio) {
+    pixels.set(snapshot);
+    return "rolled_back";
+  }
   return "applied";
 }
 
@@ -518,25 +615,26 @@ async function optimizeEntry(
   const pixels = Uint8Array.from(data);
   const backgroundOutcome = BACKGROUND_REMOVAL_CATEGORIES.has(entry.category)
     ? (() => {
-        const primary = removeConnectedBackgroundPixels(
+        const nearWhite = removeConnectedNearWhitePixels(
           pixels,
           info.width,
           info.height,
           BACKGROUND_REMOVAL_OPTIONS
         );
-        if (primary === "applied") {
-          return primary;
+        if (nearWhite === "applied") {
+          return nearWhite;
         }
-        const fallback = removeConnectedNearWhitePixels(
+
+        const connected = removeConnectedBackgroundPixels(
           pixels,
           info.width,
           info.height,
           BACKGROUND_REMOVAL_OPTIONS
         );
-        if (fallback === "applied") {
-          return fallback;
+        if (connected === "applied") {
+          return connected;
         }
-        return primary === "rolled_back" || fallback === "rolled_back" ? "rolled_back" : "skipped";
+        return nearWhite === "rolled_back" || connected === "rolled_back" ? "rolled_back" : "skipped";
       })()
     : "skipped";
 

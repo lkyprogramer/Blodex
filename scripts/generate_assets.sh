@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PROVIDER="${IMAGE_PROVIDER:-gemini}"
-MODEL="${IMAGE_MODEL:-gemini-2.5-flash-image}"
+MODEL="${IMAGE_MODEL:-gemini-3.1-flash-image-preview}"
 
 mkdir -p "$ROOT_DIR/output/imagegen/raw"
 

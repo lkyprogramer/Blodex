@@ -9,21 +9,23 @@ interface BackgroundRemovalOptions {
   maxSeedColors?: number;
   minSeedCoverage?: number;
   minRemainingRatio?: number;
+  minLargestComponentRatio?: number;
   whiteThreshold?: number;
   whiteSaturationTolerance?: number;
 }
 
 const DEFAULT_OPTIONS: Required<BackgroundRemovalOptions> = {
   alphaThreshold: 8,
-  seedTolerance: 48,
-  growTolerance: 64,
-  localTolerance: 20,
+  seedTolerance: 40,
+  growTolerance: 34,
+  localTolerance: 0,
   quantizeStep: 16,
-  maxSeedColors: 4,
-  minSeedCoverage: 0.72,
-  minRemainingRatio: 0.05,
-  whiteThreshold: 232,
-  whiteSaturationTolerance: 26
+  maxSeedColors: 3,
+  minSeedCoverage: 0.82,
+  minRemainingRatio: 0.12,
+  minLargestComponentRatio: 0.72,
+  whiteThreshold: 180,
+  whiteSaturationTolerance: 45
 };
 
 interface Rgb {
@@ -77,6 +79,78 @@ function collectBorderPositions(width: number, height: number): number[] {
   }
 
   return positions;
+}
+
+function computeOpaqueMaskStats(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  alphaThreshold: number
+): { opaqueCount: number; largestComponentCount: number } {
+  const totalPixels = width * height;
+  const opaqueMask = new Uint8Array(totalPixels);
+  let opaqueCount = 0;
+  for (let pos = 0; pos < totalPixels; pos += 1) {
+    if ((data[pos * 4 + 3] ?? 0) < alphaThreshold) {
+      continue;
+    }
+    opaqueMask[pos] = 1;
+    opaqueCount += 1;
+  }
+
+  if (opaqueCount === 0) {
+    return { opaqueCount: 0, largestComponentCount: 0 };
+  }
+
+  const visited = new Uint8Array(totalPixels);
+  const queue = new Int32Array(totalPixels);
+  let largestComponentCount = 0;
+
+  for (let start = 0; start < totalPixels; start += 1) {
+    if (opaqueMask[start] !== 1 || visited[start] === 1) {
+      continue;
+    }
+
+    visited[start] = 1;
+    let componentCount = 0;
+    let head = 0;
+    let tail = 0;
+    queue[tail] = start;
+    tail += 1;
+
+    while (head < tail) {
+      const current = queue[head] ?? -1;
+      head += 1;
+      if (current < 0) {
+        continue;
+      }
+
+      componentCount += 1;
+      const x = current % width;
+      const y = Math.floor(current / width);
+
+      const left = x > 0 ? current - 1 : -1;
+      const right = x < width - 1 ? current + 1 : -1;
+      const up = y > 0 ? current - width : -1;
+      const down = y < height - 1 ? current + width : -1;
+      const neighbors = [left, right, up, down];
+
+      for (const next of neighbors) {
+        if (next < 0 || opaqueMask[next] !== 1 || visited[next] === 1) {
+          continue;
+        }
+        visited[next] = 1;
+        queue[tail] = next;
+        tail += 1;
+      }
+    }
+
+    if (componentCount > largestComponentCount) {
+      largestComponentCount = componentCount;
+    }
+  }
+
+  return { opaqueCount, largestComponentCount };
 }
 
 function pickSeedColors(
@@ -143,6 +217,7 @@ function removeConnectedBackgroundPixels(
   height: number,
   options: Required<BackgroundRemovalOptions>
 ): boolean {
+  const snapshot = data.slice();
   const seeds = pickSeedColors(data, width, height, options);
   if (seeds.length === 0) {
     return false;
@@ -261,6 +336,18 @@ function removeConnectedBackgroundPixels(
   const opaqueAfter = opaqueBefore - removed;
   const remainingRatio = opaqueAfter / opaqueBefore;
   if (remainingRatio < options.minRemainingRatio) {
+    data.set(snapshot);
+    return false;
+  }
+
+  const maskStats = computeOpaqueMaskStats(data, width, height, options.alphaThreshold);
+  if (maskStats.opaqueCount === 0) {
+    data.set(snapshot);
+    return false;
+  }
+  const largestComponentRatio = maskStats.largestComponentCount / maskStats.opaqueCount;
+  if (largestComponentRatio < options.minLargestComponentRatio) {
+    data.set(snapshot);
     return false;
   }
 
@@ -283,6 +370,7 @@ function removeConnectedNearWhitePixels(
   height: number,
   options: Required<BackgroundRemovalOptions>
 ): boolean {
+  const snapshot = data.slice();
   const visited = new Uint8Array(width * height);
   const queue = new Int32Array(width * height);
   let head = 0;
@@ -372,7 +460,23 @@ function removeConnectedNearWhitePixels(
 
   const opaqueAfter = opaqueBefore - removed;
   const remainingRatio = opaqueAfter / opaqueBefore;
-  return remainingRatio >= options.minRemainingRatio;
+  if (remainingRatio < options.minRemainingRatio) {
+    data.set(snapshot);
+    return false;
+  }
+
+  const maskStats = computeOpaqueMaskStats(data, width, height, options.alphaThreshold);
+  if (maskStats.opaqueCount === 0) {
+    data.set(snapshot);
+    return false;
+  }
+  const largestComponentRatio = maskStats.largestComponentCount / maskStats.opaqueCount;
+  if (largestComponentRatio < options.minLargestComponentRatio) {
+    data.set(snapshot);
+    return false;
+  }
+
+  return true;
 }
 
 function isCanvasImageSource(value: unknown): value is CanvasImageSource {
@@ -507,13 +611,13 @@ export function removeConnectedBackgroundFromTexture(
   }
 
   const backup = imageData.data.slice();
-  const changed = removeConnectedBackgroundPixels(
+  const removedNearWhite = removeConnectedNearWhitePixels(
     imageData.data,
     sourceWidth,
     sourceHeight,
     options
   );
-  if (!changed && !removeConnectedNearWhitePixels(imageData.data, sourceWidth, sourceHeight, options)) {
+  if (!removedNearWhite && !removeConnectedBackgroundPixels(imageData.data, sourceWidth, sourceHeight, options)) {
     imageData.data.set(backup);
     return "failed";
   }

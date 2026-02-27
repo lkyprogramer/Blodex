@@ -146,6 +146,39 @@ const ENTITY_ASSET_KEYS_FOR_BACKGROUND_REMOVAL = [
   "boss_bone_sovereign"
 ] as const;
 const FLOOR_EVENT_SPAWN_CHANCE = 0.62;
+const DEBUG_CHEATS_QUERY = "debugCheats";
+const DEBUG_FLAG_VALUES = new Set(["1", "true", "yes", "on"]);
+const DEBUG_LOCKED_EQUIP_QUERY = "debugEquipGate";
+const DEBUG_LOCKED_EQUIP_ICON_ID = "item_ring_02";
+const DEBUG_COMMANDS = [
+  { combo: "Alt+H", description: "Show cheat commands" },
+  { combo: "Alt+O", description: "Add 30 Obol" },
+  { combo: "Alt+C", description: "Grant 2 charges for all consumables" },
+  { combo: "Alt+E", description: "Force spawn random event and open panel" },
+  { combo: "Alt+M", description: "Open wandering merchant panel" },
+  { combo: "Alt+K", description: "Clear current floor instantly" },
+  { combo: "Alt+X", description: "Force player death (death feedback check)" },
+  { combo: "Alt+1..5", description: "Jump to floor 1-5 (biome/hazard/boss checks)" },
+  { combo: "Alt+N", description: "Start a fresh run" }
+] as const;
+
+interface BlodexDebugApi {
+  addObols: (amount?: number) => void;
+  grantConsumables: (charges?: number) => void;
+  spawnEvent: (eventId?: string) => void;
+  openMerchant: () => void;
+  clearFloor: () => void;
+  jumpFloor: (floor: number) => void;
+  killPlayer: () => void;
+  newRun: () => void;
+  help: () => string[];
+}
+
+declare global {
+  interface Window {
+    __blodexDebug?: BlodexDebugApi;
+  }
+}
 
 export class DungeonScene extends Phaser.Scene {
   private static readonly ENTITY_DEPTH_OFFSET = 10_000;
@@ -231,6 +264,7 @@ export class DungeonScene extends Phaser.Scene {
   private merchantOffers: MerchantOffer[] = [];
   private eventPanelOpen = false;
   private mapRevealActive = false;
+  private debugCheatsEnabled = false;
 
   constructor() {
     super("dungeon");
@@ -280,18 +314,14 @@ export class DungeonScene extends Phaser.Scene {
 
   private applyRuntimeBackgroundRemoval(): void {
     for (const textureKey of ENTITY_ASSET_KEYS_FOR_BACKGROUND_REMOVAL) {
-      removeConnectedBackgroundFromTexture(this, textureKey, {
-        seedTolerance: 64,
-        growTolerance: 88,
-        localTolerance: 30,
-        minSeedCoverage: 0.58
-      });
+      removeConnectedBackgroundFromTexture(this, textureKey);
     }
     this.renderSystem.setMultiplyBlendFallbackKeys([]);
   }
 
   create(): void {
     this.cameras.main.setBackgroundColor("#11161d");
+    this.debugCheatsEnabled = this.isDebugCheatsEnabled();
     this.meta = this.loadMeta();
     this.hud = new Hud(
       (itemId) => {
@@ -355,6 +385,7 @@ export class DungeonScene extends Phaser.Scene {
         this.scene.start("meta-menu");
       }
     );
+    this.installDebugApi();
     this.applyRuntimeBackgroundRemoval();
     this.hud.hideDeathOverlay();
     this.hud.clearLogs();
@@ -654,6 +685,10 @@ export class DungeonScene extends Phaser.Scene {
     this.input.keyboard?.on("keydown-R", () => this.tryUseConsumable("health_potion"));
     this.input.keyboard?.on("keydown-F", () => this.tryUseConsumable("mana_potion"));
     this.input.keyboard?.on("keydown-G", () => this.tryUseConsumable("scroll_of_mapping"));
+
+    if (this.debugCheatsEnabled) {
+      this.input.keyboard?.on("keydown", this.handleDebugHotkeys, this);
+    }
   }
 
   private resolveInitialRunSeed(): string {
@@ -662,6 +697,384 @@ export class DungeonScene extends Phaser.Scene {
       return requested.trim();
     }
     return createRunSeed();
+  }
+
+  private resolveDebugFlag(queryKey: string): boolean {
+    const raw = new URLSearchParams(window.location.search).get(queryKey);
+    if (raw === null) {
+      return false;
+    }
+    return DEBUG_FLAG_VALUES.has(raw.trim().toLowerCase());
+  }
+
+  private isDebugCheatsEnabled(): boolean {
+    if (!import.meta.env.DEV) {
+      return false;
+    }
+    return this.resolveDebugFlag(DEBUG_CHEATS_QUERY);
+  }
+
+  private isDebugLockedEquipEnabled(): boolean {
+    if (!import.meta.env.DEV) {
+      return false;
+    }
+    return this.debugCheatsEnabled || this.resolveDebugFlag(DEBUG_LOCKED_EQUIP_QUERY);
+  }
+
+  private installDebugApi(): void {
+    if (!this.debugCheatsEnabled) {
+      this.removeDebugApi();
+      return;
+    }
+    window.__blodexDebug = {
+      addObols: (amount = 30) => this.debugAddObols(amount),
+      grantConsumables: (charges = 2) => this.debugGrantConsumables(charges),
+      spawnEvent: (eventId) => this.debugSpawnEvent(eventId),
+      openMerchant: () => this.debugOpenMerchant(),
+      clearFloor: () => this.debugForceClearFloor(),
+      jumpFloor: (floor) => this.debugJumpToFloor(floor),
+      killPlayer: () => this.debugForceDeath(),
+      newRun: () => this.resetRun(),
+      help: () => DEBUG_COMMANDS.map((entry) => `${entry.combo}: ${entry.description}`)
+    };
+  }
+
+  private removeDebugApi(): void {
+    if (window.__blodexDebug !== undefined) {
+      delete window.__blodexDebug;
+    }
+  }
+
+  private debugLog(message: string, level: "info" | "warn" | "success" | "danger" = "info"): void {
+    this.hud.appendLog(`[Debug] ${message}`, level, this.time.now);
+  }
+
+  private showDebugHelp(): void {
+    for (const command of DEBUG_COMMANDS) {
+      this.debugLog(`${command.combo}: ${command.description}`);
+    }
+  }
+
+  private handleDebugHotkeys(event: KeyboardEvent): void {
+    if (!this.debugCheatsEnabled || !event.altKey) {
+      return;
+    }
+
+    let handled = true;
+    switch (event.code) {
+      case "KeyH":
+        this.showDebugHelp();
+        break;
+      case "KeyO":
+        this.debugAddObols(30);
+        break;
+      case "KeyC":
+        this.debugGrantConsumables(2);
+        break;
+      case "KeyE":
+        this.debugSpawnEvent();
+        break;
+      case "KeyM":
+        this.debugOpenMerchant();
+        break;
+      case "KeyK":
+        this.debugForceClearFloor();
+        break;
+      case "KeyX":
+        this.debugForceDeath();
+        break;
+      case "KeyN":
+        this.resetRun();
+        break;
+      case "Digit1":
+      case "Digit2":
+      case "Digit3":
+      case "Digit4":
+      case "Digit5":
+        this.debugJumpToFloor(Number.parseInt(event.code.slice(-1), 10));
+        break;
+      default:
+        handled = false;
+    }
+
+    if (handled) {
+      event.preventDefault();
+    }
+  }
+
+  private debugAddObols(amount: number): void {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return;
+    }
+    const normalized = Math.max(1, Math.floor(amount));
+    this.run = addRunObols(this.run, normalized);
+    this.hudDirty = true;
+    this.debugLog(`Added ${normalized} Obol. Current: ${this.run.runEconomy.obols}.`, "success");
+  }
+
+  private debugGrantConsumables(charges: number): void {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return;
+    }
+    const normalized = Math.max(1, Math.floor(charges));
+    for (const def of CONSUMABLE_DEFS) {
+      this.consumables = grantConsumable(this.consumables, def.id, normalized);
+    }
+    this.hudDirty = true;
+    this.debugLog(`Granted ${normalized} charges to all consumables.`, "success");
+  }
+
+  private isWalkableGridPoint(point: { x: number; y: number }): boolean {
+    const x = Math.round(point.x);
+    const y = Math.round(point.y);
+    if (x < 0 || y < 0 || x >= this.dungeon.width || y >= this.dungeon.height) {
+      return false;
+    }
+    return this.dungeon.walkable[y]?.[x] === true;
+  }
+
+  private resolveDebugEventPosition(): { x: number; y: number } | null {
+    const offsets = [
+      { x: 1, y: 0 },
+      { x: -1, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: -1 },
+      { x: 1, y: 1 },
+      { x: -1, y: -1 }
+    ];
+    for (const offset of offsets) {
+      const candidate = {
+        x: Math.round(this.player.position.x + offset.x),
+        y: Math.round(this.player.position.y + offset.y)
+      };
+      if (this.isWalkableGridPoint(candidate)) {
+        return candidate;
+      }
+    }
+    return this.pickFloorEventPosition();
+  }
+
+  private pickDebugEvent(eventId?: string): RandomEventDef | null {
+    if (eventId !== undefined) {
+      return RANDOM_EVENT_DEFS.find((entry) => entry.id === eventId) ?? null;
+    }
+    const eligible = RANDOM_EVENT_DEFS.filter((entry) => {
+      const floorOk =
+        this.run.currentFloor >= entry.floorRange.min && this.run.currentFloor <= entry.floorRange.max;
+      const biomeOk = entry.biomeIds === undefined || entry.biomeIds.includes(this.currentBiome.id);
+      return floorOk && biomeOk;
+    });
+    if (eligible.length === 0) {
+      return null;
+    }
+    const sorted = [...eligible].sort((a, b) => a.id.localeCompare(b.id));
+    return sorted[0] ?? null;
+  }
+
+  private debugSpawnEvent(eventId?: string): void {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return;
+    }
+    if (this.floorConfig.isBossFloor) {
+      this.debugLog("Cannot spawn floor event on boss floor.", "warn");
+      return;
+    }
+
+    const eventDef = this.pickDebugEvent(eventId);
+    if (eventDef === null) {
+      this.debugLog("No matching event definition found for this floor/biome.", "warn");
+      return;
+    }
+    const position = this.resolveDebugEventPosition();
+    if (position === null) {
+      this.debugLog("No valid position to place debug event.", "warn");
+      return;
+    }
+
+    this.consumeCurrentEvent();
+    this.createEventNode(eventDef, position, this.time.now);
+    this.openEventPanel(this.time.now);
+    this.hudDirty = true;
+    this.debugLog(`Spawned event ${eventDef.id}.`);
+  }
+
+  private debugOpenMerchant(): void {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return;
+    }
+    if (this.floorConfig.isBossFloor) {
+      this.debugLog("Merchant is unavailable on boss floor.", "warn");
+      return;
+    }
+    const merchantEvent = RANDOM_EVENT_DEFS.find((entry) => entry.id === "wandering_merchant");
+    if (merchantEvent === undefined) {
+      this.debugLog("wandering_merchant event definition not found.", "warn");
+      return;
+    }
+    const position = this.resolveDebugEventPosition();
+    if (position === null) {
+      this.debugLog("No valid position to open merchant.", "warn");
+      return;
+    }
+
+    this.consumeCurrentEvent();
+    this.createEventNode(merchantEvent, position, this.time.now);
+    this.openMerchantPanel(this.time.now);
+    this.hudDirty = true;
+    this.debugLog("Opened wandering merchant panel.");
+  }
+
+  private debugForceClearFloor(): void {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return;
+    }
+    const nowMs = this.time.now;
+
+    if (this.floorConfig.isBossFloor) {
+      if (this.bossState === null) {
+        this.debugLog("Boss runtime not ready.", "warn");
+        return;
+      }
+      this.bossState = {
+        ...this.bossState,
+        health: 0
+      };
+      this.hudDirty = true;
+      this.debugLog("Boss health set to 0. Triggering victory summary.", "success");
+      this.finishRun(true);
+      return;
+    }
+
+    const living = [...this.entityManager.listLivingMonsters()];
+    let removed = 0;
+    for (const monster of living) {
+      const dead = this.entityManager.removeMonsterById(monster.state.id);
+      if (dead === null) {
+        continue;
+      }
+      dead.sprite.destroy();
+      dead.healthBarBg.destroy();
+      dead.healthBarFg.destroy();
+      dead.affixMarker?.destroy();
+      removed += 1;
+    }
+
+    const revealThreshold = Math.ceil(this.floorConfig.monsterCount * this.floorConfig.clearThreshold);
+    const nextKills = Math.max(this.run.kills + removed, revealThreshold);
+    this.run = addRunObols(
+      {
+        ...this.run,
+        kills: nextKills,
+        totalKills: this.run.totalKills + removed
+      },
+      removed
+    );
+
+    if (!this.staircaseState.visible) {
+      this.staircaseState = {
+        ...this.staircaseState,
+        visible: true
+      };
+      this.entityManager.setStaircase(this.renderSystem.spawnStaircase(this.staircaseState.position, this.origin));
+      this.eventBus.emit("floor:clear", {
+        floor: this.run.currentFloor,
+        kills: this.run.kills,
+        staircase: this.staircaseState,
+        timestampMs: nowMs
+      });
+    }
+
+    this.hudDirty = true;
+    this.debugLog(`Cleared floor instantly (${removed} monsters removed).`, "success");
+  }
+
+  private debugJumpToFloor(targetFloor: number): void {
+    const maxFloors = GAME_CONFIG.maxFloors ?? 5;
+    const normalized = Math.max(1, Math.min(maxFloors, Math.floor(targetFloor)));
+    if (!Number.isFinite(normalized)) {
+      this.debugLog(`Invalid floor index: ${targetFloor}`, "warn");
+      return;
+    }
+
+    if (this.runEnded) {
+      this.hud.clearSummary();
+      this.hud.hideDeathOverlay();
+      this.runEnded = false;
+    }
+    if (this.run.currentFloor === normalized) {
+      this.debugLog(`Already on floor ${normalized}.`);
+      return;
+    }
+
+    this.run = appendReplayInput(this.run, {
+      type: "floor_transition",
+      atMs: this.getRunRelativeNowMs(),
+      fromFloor: this.run.currentFloor,
+      toFloor: normalized
+    });
+    this.run = {
+      ...this.run,
+      currentFloor: normalized,
+      floor: normalized
+    };
+    this.setupFloor(normalized, false);
+    this.hudDirty = true;
+    this.debugLog(`Jumped to floor ${normalized}.`, "success");
+  }
+
+  private debugForceDeath(): void {
+    if (this.runEnded) {
+      this.debugLog("Run already ended.", "warn");
+      return;
+    }
+    this.lastDeathReason = "Debug cheat forced death to validate death feedback pipeline.";
+    this.player = {
+      ...this.player,
+      health: 0
+    };
+    this.hudDirty = true;
+    this.debugLog("Forced player death.", "danger");
+    this.finishRun(false);
+  }
+
+  private injectDebugLockedEquipment(player: PlayerState, nowMs: number): PlayerState {
+    const existing = player.inventory.find((item) => item.defId === "debug_locked_ring");
+    if (existing !== undefined) {
+      return player;
+    }
+
+    const requiredLevel = Math.max(player.level + 2, 3);
+    const debugItem: ItemInstance = {
+      id: `debug_locked_ring_${Math.floor(nowMs)}`,
+      defId: "debug_locked_ring",
+      name: `Debug Sealed Ring (Lv${requiredLevel})`,
+      slot: "ring",
+      kind: "equipment",
+      rarity: "rare",
+      requiredLevel,
+      iconId: DEBUG_LOCKED_EQUIP_ICON_ID,
+      seed: `debug-${this.runSeed}`,
+      rolledAffixes: {
+        attackPower: 4,
+        armor: 2
+      }
+    };
+
+    this.hud.appendLog(
+      `[Debug] Added locked item: ${debugItem.name}. Click E to verify level gate feedback.`,
+      "info",
+      nowMs
+    );
+
+    return {
+      ...player,
+      inventory: [...player.inventory, debugItem]
+    };
   }
 
   private bootstrapRun(runSeed: string): void {
@@ -686,6 +1099,9 @@ export class DungeonScene extends Phaser.Scene {
       startedAtMs: this.run.startedAtMs,
       replayVersion: this.run.replay?.version ?? "unknown"
     });
+    if (this.debugCheatsEnabled) {
+      this.debugLog("Cheats enabled (?debugCheats=1). Press Alt+H for command list.");
+    }
   }
 
   private refreshUnlockSnapshots(): void {
@@ -732,6 +1148,9 @@ export class DungeonScene extends Phaser.Scene {
       ...this.player,
       position: { ...this.dungeon.playerSpawn }
     };
+    if (initial && this.isDebugLockedEquipEnabled()) {
+      this.player = this.injectDebugLockedEquipment(this.player, this.time.now);
+    }
     this.entityLabelById.set(this.player.id, "Vanguard");
 
     this.path = [];
@@ -960,6 +1379,10 @@ export class DungeonScene extends Phaser.Scene {
       return;
     }
 
+    this.createEventNode(eventDef, position, nowMs);
+  }
+
+  private createEventNode(eventDef: RandomEventDef, position: { x: number; y: number }, nowMs: number): void {
     const marker = this.renderSystem.spawnTelegraphCircle(position, 0.8, this.origin);
     marker.setAlpha(0.18);
     if (marker instanceof Phaser.GameObjects.Image) {
@@ -2293,8 +2716,10 @@ export class DungeonScene extends Phaser.Scene {
     this.imageFallbackRetried.clear();
     this.eventBus.removeAll();
     this.input.off("pointerdown", this.handlePointerDown, this);
+    this.input.keyboard?.off("keydown", this.handleDebugHotkeys, this);
     this.hud.hideDeathOverlay();
     this.hud.hideEventPanel();
+    this.removeDebugApi();
     this.destroyEventNode();
     this.clearHazards();
     this.entityManager.clear();
