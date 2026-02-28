@@ -18,6 +18,7 @@ export interface MonsterSpawnOptions {
   playerPosition: { x: number; y: number };
   floor: number;
   floorConfig?: FloorConfig;
+  affixPolicy?: "default" | "forceOne";
   count?: number;
   enemyBaseHealth: number;
   enemyBaseDamage: number;
@@ -113,6 +114,7 @@ export class MonsterSpawnSystem {
       const rolledAffixes = rollMonsterAffixes({
         floor: options.floor,
         isBoss: options.floorConfig?.isBossFloor ?? false,
+        ...(options.affixPolicy === undefined ? {} : { policy: options.affixPolicy }),
         ...(options.unlockedAffixes === undefined ? {} : { availableAffixes: options.unlockedAffixes }),
         rng: options.rng
       });

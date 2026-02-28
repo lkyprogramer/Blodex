@@ -1,5 +1,13 @@
 import type { MetaProgression, PermanentUpgrade, RunSummary, UnlockDef } from "./contracts/types";
 import type { RunState } from "./run";
+import {
+  createInitialDifficultyCompletions,
+  DEFAULT_DIFFICULTY,
+  normalizeDifficultyCompletions,
+  normalizeDifficultyMode,
+  registerDifficultyVictory,
+  resolveSelectedDifficulty
+} from "./difficulty";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -39,6 +47,8 @@ export function migrateMeta(raw: unknown): MetaProgression {
     unlocks: [],
     cumulativeUnlockProgress: 0,
     schemaVersion: 2,
+    selectedDifficulty: DEFAULT_DIFFICULTY,
+    difficultyCompletions: createInitialDifficultyCompletions(),
     permanentUpgrades: {
       startingHealth: 0,
       startingArmor: 0,
@@ -53,6 +63,8 @@ export function migrateMeta(raw: unknown): MetaProgression {
 
   const schemaVersion = asNumber(raw.schemaVersion, 1);
   if (schemaVersion >= 2) {
+    const difficultyCompletions = normalizeDifficultyCompletions(raw.difficultyCompletions);
+    const selectedDifficulty = normalizeDifficultyMode(raw.selectedDifficulty, DEFAULT_DIFFICULTY);
     return {
       runsPlayed: asNumber(raw.runsPlayed, 0),
       bestFloor: asNumber(raw.bestFloor, 0),
@@ -61,6 +73,11 @@ export function migrateMeta(raw: unknown): MetaProgression {
       unlocks: Array.isArray(raw.unlocks) ? raw.unlocks.filter((entry): entry is string => typeof entry === "string") : [],
       cumulativeUnlockProgress: asNumber(raw.cumulativeUnlockProgress, 0),
       schemaVersion: 2,
+      selectedDifficulty: resolveSelectedDifficulty({
+        selectedDifficulty,
+        difficultyCompletions
+      }),
+      difficultyCompletions,
       permanentUpgrades: normalizePermanentUpgrades(raw.permanentUpgrades)
     };
   }
@@ -73,6 +90,8 @@ export function migrateMeta(raw: unknown): MetaProgression {
     unlocks: [],
     cumulativeUnlockProgress: 0,
     schemaVersion: 2,
+    selectedDifficulty: DEFAULT_DIFFICULTY,
+    difficultyCompletions: createInitialDifficultyCompletions(),
     permanentUpgrades: {
       startingHealth: 0,
       startingArmor: 0,
@@ -91,9 +110,9 @@ export function calculateSoulShardReward(run: RunState, isVictory: boolean): num
   const completionReward = isVictory ? 10 : 0;
   const earned = killReward + floorReward + bossReward + completionReward;
   if (isVictory) {
-    return earned;
+    return Math.floor(earned * run.difficultyModifier.soulShardMultiplier);
   }
-  return Math.floor(earned * 0.5);
+  return Math.floor(earned * 0.5 * run.difficultyModifier.soulShardMultiplier);
 }
 
 export function calculateObolReward(event: "monster_kill" | "floor_clear"): number {
@@ -105,9 +124,17 @@ export function calculateObolReward(event: "monster_kill" | "floor_clear"): numb
 
 export function applyRunSummaryToMeta(meta: MetaProgression, summary: RunSummary): MetaProgression {
   const soulShardsEarned = summary.soulShardsEarned ?? 0;
-  return {
+  let next: MetaProgression = {
     ...meta,
     soulShards: meta.soulShards + soulShardsEarned
+  };
+  if (summary.isVictory === true) {
+    const completedDifficulty = normalizeDifficultyMode(summary.difficulty, DEFAULT_DIFFICULTY);
+    next = registerDifficultyVictory(next, completedDifficulty);
+  }
+  return {
+    ...next,
+    selectedDifficulty: resolveSelectedDifficulty(next)
   };
 }
 

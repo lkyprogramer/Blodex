@@ -9,6 +9,21 @@ export interface MovementUpdateResult {
 }
 
 export class MovementSystem {
+  private readonly pathCache = new Map<
+    string,
+    {
+      cachedAtMs: number;
+      path: GridNode[];
+    }
+  >();
+  private readonly pathCacheTtlMs = 700;
+  private readonly maxPathCacheEntries = 120;
+  private readonly maxExpandedNodesPerSearch = 2400;
+
+  clearPathCache(): void {
+    this.pathCache.clear();
+  }
+
   clampToWalkable(
     walkable: boolean[][],
     dimensions: { width: number; height: number },
@@ -51,14 +66,39 @@ export class MovementSystem {
     walkable: boolean[][],
     dimensions: { width: number; height: number },
     playerPosition: { x: number; y: number },
-    target: { x: number; y: number }
+    target: { x: number; y: number },
+    options?: {
+      cacheScope?: string;
+      nowMs?: number;
+    }
   ): GridNode[] {
     const start = {
       x: Math.round(playerPosition.x),
       y: Math.round(playerPosition.y)
     };
     const walkableTarget = this.clampToWalkable(walkable, dimensions, playerPosition, target);
-    return findPath(walkable, start, walkableTarget).slice(1);
+    const nowMs = options?.nowMs ?? 0;
+    const cacheScope = options?.cacheScope ?? "default";
+    const cacheKey = `${cacheScope}:${start.x},${start.y}->${walkableTarget.x},${walkableTarget.y}`;
+    const cached = this.pathCache.get(cacheKey);
+    if (cached !== undefined && nowMs - cached.cachedAtMs <= this.pathCacheTtlMs) {
+      return cached.path.map((node) => ({ x: node.x, y: node.y }));
+    }
+
+    const computed = findPath(walkable, start, walkableTarget, {
+      maxExpandedNodes: this.maxExpandedNodesPerSearch
+    }).slice(1);
+    this.pathCache.set(cacheKey, {
+      cachedAtMs: nowMs,
+      path: computed.map((node) => ({ x: node.x, y: node.y }))
+    });
+    if (this.pathCache.size > this.maxPathCacheEntries) {
+      const oldestKey = this.pathCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.pathCache.delete(oldestKey);
+      }
+    }
+    return computed;
   }
 
   updatePlayerMovement(player: PlayerState, path: GridNode[], dt: number): MovementUpdateResult {

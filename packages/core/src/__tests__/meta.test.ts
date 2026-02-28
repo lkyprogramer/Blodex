@@ -7,6 +7,7 @@ import {
   migrateMeta,
   purchaseUnlock
 } from "../meta";
+import { getDifficultyModifier } from "../difficulty";
 import type { RunState } from "../run";
 import { createInitialMeta } from "../run";
 
@@ -39,6 +40,8 @@ describe("meta", () => {
     const run: RunState = {
       startedAtMs: 0,
       runSeed: "seed",
+      difficulty: "normal",
+      difficultyModifier: getDifficultyModifier("normal"),
       currentFloor: 5,
       currentBiomeId: "bone_throne",
       floor: 5,

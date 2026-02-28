@@ -19,5 +19,8 @@ export * from "./monsterAffix";
 export * from "./consumable";
 export * from "./randomEvent";
 export * from "./meta";
+export * from "./difficulty";
+export * from "./balance";
+export * from "./balanceReport";
 export * from "./stats";
 export * from "./xp";

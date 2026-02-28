@@ -9,8 +9,17 @@ export interface WorldBoundsConfig {
   worldBounds: { x: number; y: number; width: number; height: number };
 }
 
+export interface RenderSyncStats {
+  monstersVisible: number;
+  monstersCulled: number;
+}
+
 export class RenderSystem {
   private readonly multiplyBlendFallbackKeys = new Set<string>();
+  private lastSyncStats: RenderSyncStats = {
+    monstersVisible: 0,
+    monstersCulled: 0
+  };
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -317,6 +326,8 @@ export class RenderSystem {
   }
 
   syncMonsterSprites(monsters: MonsterRuntime[], origin: { x: number; y: number }): void {
+    let monstersVisible = 0;
+    let monstersCulled = 0;
     for (const monster of monsters) {
       const iso = gridToIso(
         monster.state.position.x,
@@ -329,7 +340,16 @@ export class RenderSystem {
 
       monster.sprite.setPosition(iso.x, iso.y - monster.yOffset);
       monster.sprite.setDepth(iso.y + this.entityDepthOffset);
-      monster.sprite.setVisible(monster.state.health > 0);
+      const visible = this.isPositionVisible(iso.x, iso.y, 120) && monster.state.health > 0;
+      monster.sprite.setVisible(visible);
+      if (!visible) {
+        monstersCulled += 1;
+        monster.healthBarBg.setVisible(false);
+        monster.healthBarFg.setVisible(false);
+        monster.affixMarker?.setVisible(false);
+        continue;
+      }
+      monstersVisible += 1;
 
       const wasDamaged = monster.state.health < monster.state.maxHealth;
       monster.healthBarBg.setPosition(iso.x, iso.y - monster.healthBarYOffset);
@@ -355,5 +375,23 @@ export class RenderSystem {
         .setDisplaySize(width, 3)
         .setDepth(iso.y + this.entityDepthOffset + 3);
     }
+    this.lastSyncStats = {
+      monstersVisible,
+      monstersCulled
+    };
+  }
+
+  getLastSyncStats(): RenderSyncStats {
+    return this.lastSyncStats;
+  }
+
+  private isPositionVisible(x: number, y: number, padding: number): boolean {
+    const view = this.scene.cameras.main.worldView;
+    return (
+      x >= view.x - padding &&
+      x <= view.right + padding &&
+      y >= view.y - padding &&
+      y <= view.bottom + padding
+    );
   }
 }

@@ -15,7 +15,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "lint": "tsc -p tsconfig.json --noEmit"
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "balance:report": "vitest run src/__tests__/balance.report.test.ts --reporter=verbose"
   },
   "dependencies": {
     "seedrandom": "^3.0.5"

@@ -20,6 +20,15 @@ export type MonsterAffixId = "frenzied" | "armored" | "vampiric" | "splitting";
 
 export type DamageType = "physical" | "arcane";
 
+export type DifficultyMode = "normal" | "hard" | "nightmare";
+
+export interface DifficultyModifier {
+  monsterHealthMultiplier: number;
+  monsterDamageMultiplier: number;
+  affixPolicy: "default" | "forceOne";
+  soulShardMultiplier: number;
+}
+
 export type ItemSpecialAffixKey =
   | "lifesteal"
   | "critDamage"
@@ -125,6 +134,7 @@ export interface RunReplay {
   runSeed: string;
   floor: number;
   currentFloor?: number;
+  difficulty?: DifficultyMode;
   inputs: ReplayInputEvent[];
   checksum?: string;
 }
@@ -491,6 +501,7 @@ export interface RunSummary {
   isVictory?: boolean;
   soulShardsEarned?: number;
   obolsEarned?: number;
+  difficulty?: DifficultyMode;
 }
 
 export interface PermanentUpgrade {
@@ -509,6 +520,8 @@ export interface MetaProgression {
   unlocks: string[];
   cumulativeUnlockProgress: number;
   schemaVersion: 2;
+  selectedDifficulty: DifficultyMode;
+  difficultyCompletions: Record<DifficultyMode, number>;
   permanentUpgrades: PermanentUpgrade;
 }
 

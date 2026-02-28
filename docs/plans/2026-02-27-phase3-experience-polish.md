@@ -1,5 +1,7 @@
 # Phase 3 体验打磨实施方案（3A/3B/3C/3D）
 
+> Gate evidence: `docs/plans/2026-02-27-phase3-gate-evidence.md`
+
 ## Context
 
 基于 `docs/plans/2026-02-23-long-term-roadmap-design.md` 的 Phase 3 规划，以及当前仓库状态（Phase 0/1/2 主体能力已落地：多层地牢、技能/Buff、Boss、Meta、Biome/Hazard/Event、HUD 日志、基础音频链路），Phase 3 的目标是把“可玩”提升为“可持续沉浸”。
@@ -203,9 +205,9 @@ interface SkillVfxPreset {
 - 验证 feature flag 关闭后仅损失表现层，不影响 core 行为。
 
 **3A Gate**
-- [ ] 核心战斗事件均有可感知反馈（视觉+音频）。
-- [ ] 音频资源请求全 200，且无刺耳失真。
-- [ ] 3A 全开时与全关时，战斗结论一致。
+- [x] 核心战斗事件均有可感知反馈（视觉+音频）。
+- [x] 音频资源请求全 200，且无刺耳失真。
+- [x] 3A 全开时与全关时，战斗结论一致。
 
 ---
 
@@ -329,9 +331,9 @@ interface UIStateSnapshot {
 - `apps/game-client/src/ui/__tests__/ui-state-adapter.test.ts`
 
 **3B Gate**
-- [ ] UIManager 完成主入口接管，Legacy Hud 仅保留最小桥接。
-- [ ] Minimap 与 Fog of War 可用且稳定。
-- [ ] Event/Merchant/Summary 与日志协作无回归。
+- [x] UIManager 完成主入口接管，Legacy Hud 仅保留最小桥接。
+- [x] Minimap 与 Fog of War 可用且稳定。
+- [x] Event/Merchant/Summary 与日志协作无回归。
 
 ---
 
@@ -428,9 +430,9 @@ interface RunSimulation {
 - 输出“模式差异化参数表”供后续迭代追踪。
 
 **3C Gate**
-- [ ] 难度模式可解锁、可选择、可结算。
-- [ ] balance 仿真门禁在 CI 可执行。
-- [ ] 正常玩家通关率落在目标区间。
+- [x] 难度模式可解锁、可选择、可结算。
+- [x] balance 仿真门禁在 CI 可执行。
+- [x] 正常玩家通关率落在目标区间。
 
 ---
 
@@ -495,9 +497,9 @@ interface RunSimulation {
 - 提供开发态诊断开关，输出残留订阅数/对象数。
 
 **3D Gate（Phase 3 总 Gate）**
-- [ ] 压力测试下帧时间稳定，无明显内存增长。
-- [ ] VFX/SFX/UI 全部通过事件订阅解耦，不污染 core 规则层。
-- [ ] 通过长期路线图 Phase 3 DoD。
+- [x] 压力测试下帧时间稳定，无明显内存增长。
+- [x] VFX/SFX/UI 全部通过事件订阅解耦，不污染 core 规则层。
+- [x] 通过长期路线图 Phase 3 DoD。
 
 ---
 
@@ -689,7 +691,6 @@ pnpm assets:validate
 | M3-D | 3D 全部 | 性能与泄漏门禁通过，可进入发布候选 |
 
 **Phase 3 Final Go/No-Go**
-- [ ] Phase 3 全部 Gate 通过
-- [ ] 长期路线图 Phase 3 DoD 满足
-- [ ] 全链路回归（core/content/game-client/tooling）通过
-
+- [x] Phase 3 全部 Gate 通过
+- [x] 长期路线图 Phase 3 DoD 满足
+- [x] 全链路回归（core/content/game-client/tooling）通过

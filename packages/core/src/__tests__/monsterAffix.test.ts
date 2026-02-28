@@ -41,6 +41,19 @@ describe("monster affix", () => {
     expect(a).toEqual(b);
   });
 
+  it("forces one affix in forceOne policy even on early floors", () => {
+    const rng = new SeededRng("affix-force-one");
+    const rolled = rollMonsterAffixes({
+      floor: 1,
+      isBoss: false,
+      policy: "forceOne",
+      availableAffixes: [],
+      rng
+    });
+
+    expect(rolled).toHaveLength(1);
+  });
+
   it("applies stat-shaping affixes", () => {
     const frenzied = applyAffixesToMonsterState({
       ...baseMonster(),
@@ -57,4 +70,3 @@ describe("monster affix", () => {
     expect(armored.damage).toBeLessThan(20);
   });
 });
-

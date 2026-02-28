@@ -1,7 +1,6 @@
 import type {
   ConsumableId,
   EquipmentSlot,
-  EventChoice,
   ItemInstance,
   MerchantOffer,
   MetaProgression,
@@ -15,11 +14,29 @@ import {
   resolveGeneratedAssetUrl,
   resolveGeneratedPngFallback
 } from "../assets/imageAsset";
+import { renderBossHealthBar } from "./components/BossHealthBar";
+import {
+  bindEventDialogActions,
+  bindMerchantDialogActions,
+  renderEventDialog,
+  renderMerchantDialog,
+  type EventChoiceView
+} from "./components/EventDialog";
+import { renderHudPanel } from "./components/HudPanel";
+import {
+  bindConsumableBarActions,
+  renderSkillBar
+} from "./components/SkillBar";
+import {
+  bindRunSummaryActions,
+  renderRunSummaryScreen
+} from "./components/RunSummaryScreen";
 
 interface HudState {
   player: PlayerState;
   run: {
     floor: number;
+    difficulty?: string;
     biome?: string;
     kills: number;
     lootCollected: number;
@@ -34,18 +51,25 @@ interface HudState {
     consumables?: Array<{
       id: ConsumableId;
       name: string;
+      description?: string;
       hotkey: string;
       iconId: string;
       charges: number;
       cooldownLeftMs: number;
+      baseCooldownMs?: number;
       disabledReason?: string;
     }>;
     skillSlots?: Array<{
       id?: string;
       hotkey: string;
       name: string;
+      description?: string;
       iconId?: string;
       cooldownLeftMs: number;
+      baseCooldownMs?: number;
+      manaCost?: number;
+      targeting?: string;
+      range?: number;
       outOfMana: boolean;
       locked: boolean;
     }>;
@@ -53,15 +77,9 @@ interface HudState {
   meta: MetaProgression;
 }
 
-interface EventChoiceView {
-  choice: EventChoice;
-  enabled: boolean;
-  disabledReason?: string;
-}
+export type LogLevel = "info" | "success" | "warn" | "danger";
 
-type LogLevel = "info" | "success" | "warn" | "danger";
-
-interface LogEntry {
+export interface LogEntry {
   id: number;
   level: LogLevel;
   message: string;
@@ -122,10 +140,41 @@ function formatRunTimestamp(timestampMs: number): string {
   return `T+${seconds.toFixed(1)}s`;
 }
 
+function parseTooltipNumber(raw: string | undefined): number {
+  if (raw === undefined) {
+    return 0;
+  }
+  const value = Number.parseFloat(raw);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function formatCooldownLabel(cooldownLeftMs: number): string {
+  return cooldownLeftMs > 0 ? `Cooldown ${(cooldownLeftMs / 1000).toFixed(1)}s` : "Ready";
+}
+
+function formatTargetingLabel(targeting: string, range: number): string {
+  const roundedRange = Number.isFinite(range) && range > 0 ? Number.parseFloat(range.toFixed(1)) : 0;
+  if (targeting === "self") {
+    return "Self";
+  }
+  if (targeting === "nearest") {
+    return roundedRange > 0 ? `Nearest enemy (${roundedRange} range)` : "Nearest enemy";
+  }
+  if (targeting === "aoe_around") {
+    return roundedRange > 0 ? `Around you (${roundedRange} radius)` : "Around you";
+  }
+  if (targeting === "directional") {
+    return roundedRange > 0 ? `Directional (${roundedRange} range)` : "Directional";
+  }
+  return "-";
+}
+
 export class Hud {
   private readonly metaEl = document.querySelector("#meta") as HTMLDivElement;
   private readonly statsEl = document.querySelector("#stats") as HTMLDivElement;
   private readonly runEl = document.querySelector("#run") as HTMLDivElement;
+  private readonly bossBarEl = document.querySelector("#boss-bar") as HTMLDivElement;
+  private readonly skillBarEl = document.querySelector("#skillbar") as HTMLDivElement;
   private readonly inventoryEl = document.querySelector("#inventory") as HTMLDivElement;
   private readonly logEl = document.querySelector("#log") as HTMLDivElement;
   private readonly summaryEl = document.querySelector("#summary") as HTMLDivElement;
@@ -140,12 +189,15 @@ export class Hud {
   constructor(
     private readonly onEquip: (itemId: string) => void,
     private readonly onUnequip: (slot: EquipmentSlot) => void,
+    private readonly onDiscard: (itemId: string) => void,
     private readonly onUseConsumable: (consumableId: ConsumableId) => void,
     private readonly onNewRun: () => void
   ) {
     this.tooltipEl = document.createElement("div");
     this.tooltipEl.className = "inventory-tooltip hidden";
     document.body.appendChild(this.tooltipEl);
+    this.bossBarEl.className = "hidden";
+    this.skillBarEl.className = "hidden";
     this.renderLogPanel();
     this.hideDeathOverlay();
     this.hideEventPanel();
@@ -176,64 +228,10 @@ export class Hud {
     `;
 
     this.runEl.className = "panel-block compact-block";
-    const skillsHtml = (state.run.skillSlots ?? [])
-      .map((slot) => {
-        const statusText = slot.locked
-          ? "Locked"
-          : slot.cooldownLeftMs > 0
-            ? `${(slot.cooldownLeftMs / 1000).toFixed(1)}s`
-            : "Ready";
-        const classes = [
-          "skill-slot",
-          slot.locked ? "locked" : "",
-          !slot.locked && slot.cooldownLeftMs > 0 ? "cooldown" : "ready",
-          !slot.locked && slot.outOfMana ? "oom" : ""
-        ]
-          .filter((entry) => entry.length > 0)
-          .join(" ");
-        const iconId = slot.iconId ?? "meta_unlock_locked";
-        return `
-          <div class="${classes}" title="${escapeHtml(slot.locked ? "Locked skill slot" : slot.name)}">
-            <div class="quick-head">
-              <img class="quick-icon" data-asset-id="${iconId}" src="${resolveGeneratedAssetUrl(
-                iconId,
-                this.preferredImageFormat
-              )}" alt="${escapeHtml(slot.name)}" />
-              <span class="hotkey-badge">${escapeHtml(slot.hotkey)}</span>
-            </div>
-            <span class="skill-name">${escapeHtml(slot.name)}</span>
-            <small class="slot-status">${statusText}</small>
-          </div>
-        `;
-      })
-      .join("");
-    const consumablesHtml = (state.run.consumables ?? [])
-      .map((entry) => {
-        const disabled = entry.disabledReason !== undefined;
-        const cooldown = entry.cooldownLeftMs > 0 ? `${(entry.cooldownLeftMs / 1000).toFixed(1)}s` : "Ready";
-        return `
-          <button
-            class="consumable-slot ${disabled ? "disabled" : "ready"}"
-            data-consumable-id="${entry.id}"
-            ${disabled ? "disabled" : ""}
-            title="${escapeHtml(entry.disabledReason ?? `Use ${entry.name}`)}"
-          >
-            <div class="quick-head">
-              <img class="quick-icon" data-asset-id="${entry.iconId}" src="${resolveGeneratedAssetUrl(
-                entry.iconId,
-                this.preferredImageFormat
-              )}" alt="${escapeHtml(entry.name)}" />
-              <span class="hotkey-badge">${entry.hotkey}</span>
-            </div>
-            <span class="consumable-meta">${escapeHtml(entry.name)}</span>
-            <small class="slot-status">${entry.charges} left · ${cooldown}</small>
-          </button>
-        `;
-      })
-      .join("");
-    this.runEl.innerHTML = `
+    const runBody = `
       <div class="mini-grid mini-2">
         <div><span class="k">Floor</span><span>${state.run.floor}</span></div>
+        <div><span class="k">Mode</span><span>${(state.run.difficulty ?? "normal").toUpperCase()}</span></div>
         <div><span class="k">Biome</span><span>${state.run.biome ?? "-"}</span></div>
         <div><span class="k">Status</span><span class="${
           player.health <= 0 ? "badge-danger" : "badge-ok"
@@ -248,23 +246,37 @@ export class Hud {
           ? `<div class="mapping-hint">Mapping scroll active: objective location revealed.</div>`
           : ""
       }
-      ${state.run.isBossFloor ? `<div class=\"boss-strip\">Boss HP: ${Math.max(
-        0,
-        Math.floor(state.run.bossHealth ?? 0)
-      )}/${Math.max(1, Math.floor(state.run.bossMaxHealth ?? 1))} · Phase ${(state.run.bossPhase ?? 0) + 1}</div>` : ""}
-      ${consumablesHtml.length > 0 ? `<div class="consumable-bar">${consumablesHtml}</div>` : ""}
-      ${skillsHtml.length > 0 ? `<div class="skill-bar">${skillsHtml}</div>` : ""}
     `;
-    this.bindGeneratedImageFallbacks(this.runEl);
+    this.runEl.innerHTML = renderHudPanel("Run State", runBody);
 
-    this.runEl.querySelectorAll<HTMLButtonElement>("button[data-consumable-id]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const id = button.dataset.consumableId as ConsumableId | undefined;
-        if (id !== undefined) {
-          this.onUseConsumable(id);
-        }
-      });
-    });
+    const bossBarHtml = renderBossHealthBar(state.run);
+    if (bossBarHtml.length === 0) {
+      this.bossBarEl.className = "hidden";
+      this.bossBarEl.innerHTML = "";
+    } else {
+      this.bossBarEl.className = "";
+      this.bossBarEl.innerHTML = bossBarHtml;
+    }
+
+    const hasSkillbarContent =
+      (state.run.consumables?.length ?? 0) > 0 || (state.run.skillSlots?.length ?? 0) > 0;
+    if (!hasSkillbarContent) {
+      this.skillBarEl.className = "hidden";
+      this.skillBarEl.innerHTML = "";
+      this.hideTooltip();
+    } else {
+      this.skillBarEl.className = "skillbar-root";
+      this.skillBarEl.innerHTML = renderSkillBar(
+        {
+          ...(state.run.consumables === undefined ? {} : { consumables: state.run.consumables }),
+          ...(state.run.skillSlots === undefined ? {} : { skillSlots: state.run.skillSlots })
+        },
+        this.preferredImageFormat
+      );
+      this.bindGeneratedImageFallbacks(this.skillBarEl);
+      bindConsumableBarActions(this.skillBarEl, this.onUseConsumable);
+      this.bindQuickbarTooltips();
+    }
 
     this.renderInventory(player);
   }
@@ -288,6 +300,10 @@ export class Hud {
     this.logEntries = [];
     this.nextLogId = 1;
     this.renderLogPanel();
+  }
+
+  getLogEntries(): readonly LogEntry[] {
+    return this.logEntries;
   }
 
   showDeathOverlay(reason: string): void {
@@ -352,11 +368,18 @@ export class Hud {
               item.iconId,
               this.preferredImageFormat
             )}" alt="${item.name}" />
-            <button
-              class="${equipable ? "" : "blocked"}"
-              data-item-id="${item.id}"
-              title="${equipable ? `Equip ${item.name}` : `Need level ${item.requiredLevel}`}"
-            >${equipable ? "E" : `Lv${item.requiredLevel}`}</button>
+            <div class="inventory-cell-actions">
+              <button
+                class="${equipable ? "" : "blocked"}"
+                data-item-id="${item.id}"
+                title="${equipable ? `Equip ${item.name}` : `Need level ${item.requiredLevel}`}"
+              >${equipable ? "E" : `Lv${item.requiredLevel}`}</button>
+              <button
+                class="discard"
+                data-discard-item-id="${item.id}"
+                title="Discard ${item.name}"
+              >D</button>
+            </div>
             ${equipable ? "" : `<small class="equip-lock-hint">Need Lv${item.requiredLevel}</small>`}
           </div>
         `;
@@ -387,6 +410,16 @@ export class Hud {
         const slot = (button as HTMLButtonElement).dataset.unequipSlot as EquipmentSlot | undefined;
         if (slot !== undefined) {
           this.onUnequip(slot);
+        }
+      });
+    });
+
+    this.inventoryEl.querySelectorAll("button[data-discard-item-id]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const id = (button as HTMLButtonElement).dataset.discardItemId;
+        if (id !== undefined) {
+          this.hideTooltip();
+          this.onDiscard(id);
         }
       });
     });
@@ -461,26 +494,122 @@ export class Hud {
     });
   }
 
+  private bindQuickbarTooltips(): void {
+    this.skillBarEl.querySelectorAll<HTMLElement>("[data-tooltip-kind]").forEach((element) => {
+      element.addEventListener("mouseenter", (event) => {
+        this.showQuickbarTooltip(element, event as MouseEvent);
+      });
+      element.addEventListener("mousemove", (event) => {
+        this.showQuickbarTooltip(element, event as MouseEvent);
+      });
+      element.addEventListener("mouseleave", () => {
+        this.hideTooltip();
+      });
+    });
+  }
+
+  private showQuickbarTooltip(element: HTMLElement, event: MouseEvent): void {
+    const kind = element.dataset.tooltipKind;
+    if (kind === "consumable") {
+      const name = escapeHtml(element.dataset.tooltipName ?? "Consumable");
+      const descriptionRaw = element.dataset.tooltipDescription ?? "";
+      const hotkey = escapeHtml(element.dataset.tooltipHotkey ?? "-");
+      const charges = parseTooltipNumber(element.dataset.tooltipCharges);
+      const cooldownLeftMs = parseTooltipNumber(element.dataset.tooltipCooldownLeftMs);
+      const status = formatCooldownLabel(cooldownLeftMs);
+      const disabledReasonRaw = element.dataset.tooltipDisabledReason;
+      this.showTooltipHtml(
+        `
+          <div class="tooltip-name">${name}</div>
+          <div class="tooltip-meta">Hotkey: ${hotkey}</div>
+          ${
+            descriptionRaw.length > 0
+              ? `<div class="tooltip-body">${escapeHtml(descriptionRaw)}</div>`
+              : ""
+          }
+          <div class="tooltip-divider"></div>
+          <div class="tooltip-meta">Charges: ${charges}</div>
+          <div class="tooltip-meta">Status: ${escapeHtml(status)}</div>
+          ${
+            disabledReasonRaw === undefined
+              ? ""
+              : `<div class="tooltip-warning">${escapeHtml(disabledReasonRaw)}</div>`
+          }
+        `,
+        event
+      );
+      return;
+    }
+
+    if (kind === "skill") {
+      const name = escapeHtml(element.dataset.tooltipName ?? "Skill");
+      const descriptionRaw = element.dataset.tooltipDescription ?? "";
+      const hotkey = escapeHtml(element.dataset.tooltipHotkey ?? "-");
+      const cooldownLeftMs = parseTooltipNumber(element.dataset.tooltipCooldownLeftMs);
+      const baseCooldownMs = parseTooltipNumber(element.dataset.tooltipBaseCooldownMs);
+      const manaCost = parseTooltipNumber(element.dataset.tooltipManaCost);
+      const targeting = element.dataset.tooltipTargeting ?? "";
+      const range = parseTooltipNumber(element.dataset.tooltipRange);
+      const locked = element.dataset.tooltipLocked === "1";
+      const outOfMana = element.dataset.tooltipOutOfMana === "1";
+      const status = locked ? "Locked" : formatCooldownLabel(cooldownLeftMs);
+      const targetingLabel = formatTargetingLabel(targeting, range);
+      this.showTooltipHtml(
+        `
+          <div class="tooltip-name">${name}</div>
+          <div class="tooltip-meta">Hotkey: ${hotkey}</div>
+          ${
+            descriptionRaw.length > 0
+              ? `<div class="tooltip-body">${escapeHtml(descriptionRaw)}</div>`
+              : ""
+          }
+          <div class="tooltip-divider"></div>
+          <div class="tooltip-meta">Status: ${escapeHtml(status)}</div>
+          ${locked ? "" : `<div class="tooltip-meta">Mana Cost: ${manaCost}</div>`}
+          ${locked || baseCooldownMs <= 0 ? "" : `<div class="tooltip-meta">Base CD: ${(baseCooldownMs / 1000).toFixed(1)}s</div>`}
+          ${locked ? "" : `<div class="tooltip-meta">Target: ${escapeHtml(targetingLabel)}</div>`}
+          ${!locked && outOfMana ? '<div class="tooltip-warning">Not enough mana.</div>' : ""}
+        `,
+        event
+      );
+    }
+  }
+
+  private showTooltipHtml(contentHtml: string, event: MouseEvent): void {
+    this.tooltipEl.innerHTML = contentHtml;
+    this.tooltipEl.classList.remove("hidden");
+    this.positionTooltip(event.clientX, event.clientY);
+  }
+
+  private positionTooltip(clientX: number, clientY: number): void {
+    const offset = 14;
+    const margin = 8;
+    const rect = this.tooltipEl.getBoundingClientRect();
+    const maxLeft = window.innerWidth - rect.width - margin;
+    const maxTop = window.innerHeight - rect.height - margin;
+    const nextLeft = Math.max(margin, Math.min(maxLeft, clientX + offset));
+    const nextTop = Math.max(margin, Math.min(maxTop, clientY + offset));
+    this.tooltipEl.style.left = `${nextLeft}px`;
+    this.tooltipEl.style.top = `${nextTop}px`;
+  }
+
   private showTooltip(item: ItemInstance, event: MouseEvent): void {
     const affixes = Object.entries(item.rolledAffixes)
       .filter(([, value]) => value !== undefined)
-      .map(([key, value]) => `<div>+${value} ${formatAffixName(key)}</div>`)
+      .map(([key, value]) => `<div>+${value} ${escapeHtml(formatAffixName(key))}</div>`)
       .join("");
 
-    this.tooltipEl.innerHTML = `
-      <div class="tooltip-name">${item.name}</div>
+    this.showTooltipHtml(
+      `
+      <div class="tooltip-name">${escapeHtml(item.name)}</div>
       <div class="tooltip-rarity ${item.rarity}">${item.rarity.toUpperCase()}</div>
       <div class="tooltip-meta">Slot: ${slotLongLabel(item.slot)}</div>
       <div class="tooltip-meta">Req Lvl: ${item.requiredLevel}</div>
       <div class="tooltip-divider"></div>
       <div class="tooltip-affixes">${affixes || "No affixes"}</div>
-    `;
-
-    this.tooltipEl.classList.remove("hidden");
-    const x = event.clientX + 14;
-    const y = event.clientY + 14;
-    this.tooltipEl.style.left = `${x}px`;
-    this.tooltipEl.style.top = `${y}px`;
+    `,
+      event
+    );
   }
 
   private hideTooltip(): void {
@@ -494,40 +623,8 @@ export class Hud {
     onClose: () => void
   ): void {
     this.eventPanelEl.className = "event-panel";
-    const buttons = choices
-      .map(({ choice, enabled, disabledReason }) => {
-        return `
-          <button
-            class="event-choice ${enabled ? "" : "disabled"}"
-            data-choice-id="${choice.id}"
-            ${enabled ? "" : "disabled"}
-            title="${escapeHtml(disabledReason ?? choice.description)}"
-          >
-            <span class="event-choice-name">${escapeHtml(choice.name)}</span>
-            <small>${escapeHtml(choice.description)}</small>
-          </button>
-        `;
-      })
-      .join("");
-
-    this.eventPanelEl.innerHTML = `
-      <div class="event-card">
-        <h2>${escapeHtml(eventDef.name)}</h2>
-        <p>${escapeHtml(eventDef.description)}</p>
-        <div class="event-choice-list">${buttons}</div>
-        <button class="event-close" data-event-close="1">Close</button>
-      </div>
-    `;
-
-    this.eventPanelEl.querySelectorAll<HTMLButtonElement>("button[data-choice-id]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const choiceId = button.dataset.choiceId;
-        if (choiceId !== undefined) {
-          onChoose(choiceId);
-        }
-      });
-    });
-    this.eventPanelEl.querySelector<HTMLButtonElement>("button[data-event-close='1']")?.addEventListener("click", onClose);
+    this.eventPanelEl.innerHTML = renderEventDialog(eventDef, choices);
+    bindEventDialogActions(this.eventPanelEl, onChoose, onClose);
   }
 
   showMerchantPanel(
@@ -536,38 +633,8 @@ export class Hud {
     onClose: () => void
   ): void {
     this.eventPanelEl.className = "event-panel";
-    const rows = offers
-      .map((offer) => {
-        return `
-          <div class="merchant-offer">
-            <div>
-              <div class="merchant-name">${escapeHtml(offer.itemName)}</div>
-              <small class="merchant-rarity ${offer.rarity}">${offer.rarity.toUpperCase()}</small>
-            </div>
-            <button data-offer-id="${offer.offerId}">Buy (${offer.priceObol})</button>
-          </div>
-        `;
-      })
-      .join("");
-
-    this.eventPanelEl.innerHTML = `
-      <div class="event-card">
-        <h2>Wandering Merchant</h2>
-        <p>Spend Obol to buy items for this run.</p>
-        <div class="merchant-list">${rows || '<p class="log-empty">Sold out.</p>'}</div>
-        <button class="event-close" data-event-close="1">Leave</button>
-      </div>
-    `;
-
-    this.eventPanelEl.querySelectorAll<HTMLButtonElement>("button[data-offer-id]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const offerId = button.dataset.offerId;
-        if (offerId !== undefined) {
-          onBuy(offerId);
-        }
-      });
-    });
-    this.eventPanelEl.querySelector<HTMLButtonElement>("button[data-event-close='1']")?.addEventListener("click", onClose);
+    this.eventPanelEl.innerHTML = renderMerchantDialog(offers);
+    bindMerchantDialogActions(this.eventPanelEl, onBuy, onClose);
   }
 
   hideEventPanel(): void {
@@ -578,22 +645,8 @@ export class Hud {
   showSummary(summary: RunSummary): void {
     this.summaryEl.classList.remove("hidden");
     this.summaryEl.className = "panel-block";
-    this.summaryEl.innerHTML = `
-      <h2>${summary.isVictory ? "Run Victory" : "Run Ended"}</h2>
-      <div class="stat-line"><span>Floor</span><span>${summary.floorReached}</span></div>
-      <div class="stat-line"><span>Kills</span><span>${summary.kills}</span></div>
-      <div class="stat-line"><span>Loot</span><span>${summary.lootCollected}</span></div>
-      <div class="stat-line"><span>Obol</span><span>${summary.obolsEarned ?? 0}</span></div>
-      <div class="stat-line"><span>Soul</span><span>${summary.soulShardsEarned ?? 0}</span></div>
-      <div class="stat-line"><span>Time</span><span>${(summary.elapsedMs / 1000).toFixed(1)}s</span></div>
-      <div class="stat-line"><span>Level</span><span>${summary.leveledTo}</span></div>
-      <div class="summary-actions" style="margin-top: 10px;">
-        <button id="new-run-button">Continue</button>
-      </div>
-    `;
-
-    const button = this.summaryEl.querySelector("#new-run-button");
-    button?.addEventListener("click", () => this.onNewRun());
+    this.summaryEl.innerHTML = renderRunSummaryScreen(summary);
+    bindRunSummaryActions(this.summaryEl, () => this.onNewRun());
   }
 
   clearSummary(): void {

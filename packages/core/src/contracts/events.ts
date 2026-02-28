@@ -4,6 +4,7 @@ import type {
   BossRuntimeState,
   BuffInstance,
   CombatEvent,
+  DifficultyMode,
   EquipmentSlot,
   HazardType,
   ItemInstance,
@@ -64,6 +65,7 @@ export interface GameEventMap {
   "run:start": {
     runSeed: string;
     floor: number;
+    difficulty: DifficultyMode;
     startedAtMs: number;
     replayVersion: string;
   };

@@ -3,6 +3,7 @@ import type { MonsterAffixId, MonsterState, RngLike } from "./contracts/types";
 export interface MonsterAffixRollOptions {
   floor: number;
   isBoss: boolean;
+  policy?: "default" | "forceOne";
   availableAffixes?: MonsterAffixId[];
   rng: RngLike;
 }
@@ -25,15 +26,18 @@ export function affixRollChanceForFloor(floor: number): number {
 }
 
 export function rollMonsterAffixes(options: MonsterAffixRollOptions): MonsterAffixId[] {
-  if (options.floor <= 2 || options.isBoss) {
+  const forceOne = options.policy === "forceOne" && !options.isBoss;
+  if (!forceOne && (options.floor <= 2 || options.isBoss)) {
     return [];
   }
   const pool =
-    options.availableAffixes === undefined ? MONSTER_AFFIX_IDS : options.availableAffixes;
+    options.availableAffixes === undefined || options.availableAffixes.length === 0
+      ? MONSTER_AFFIX_IDS
+      : options.availableAffixes;
   if (pool.length === 0) {
     return [];
   }
-  if (options.rng.next() >= affixRollChanceForFloor(options.floor)) {
+  if (!forceOne && options.rng.next() >= affixRollChanceForFloor(options.floor)) {
     return [];
   }
   return [options.rng.pick(pool)];

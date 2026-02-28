@@ -20,6 +20,8 @@ export type MonsterAffixId = "frenzied" | "armored" | "vampiric" | "splitting";
 
 export type DamageType = "physical" | "arcane";
 
+export type DifficultyMode = "normal" | "hard" | "nightmare";
+
 export type ItemSpecialAffixKey =
   | "lifesteal"
   | "critDamage"

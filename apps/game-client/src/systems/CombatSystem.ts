@@ -56,12 +56,49 @@ function distance(a: { x: number; y: number }, b: { x: number; y: number }): num
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+const PLAYER_MELEE_RANGE = 1.5;
+const AUTO_TARGET_ACQUIRE_RANGE = 2.25;
+
+type TargetSource = "manual" | "auto";
+
+function resolvePreferredTarget(
+  monsters: MonsterRuntime[],
+  playerPosition: { x: number; y: number },
+  requestedTargetId: string | null
+): { target?: MonsterRuntime; source?: TargetSource } {
+  if (requestedTargetId !== null) {
+    const requested = monsters.find((monster) => monster.state.id === requestedTargetId);
+    if (requested !== undefined && requested.state.health > 0) {
+      return { target: requested, source: "manual" };
+    }
+  }
+
+  let nearest: MonsterRuntime | undefined;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const monster of monsters) {
+    if (monster.state.health <= 0) {
+      continue;
+    }
+    const dist = distance(playerPosition, monster.state.position);
+    if (dist < nearestDistance) {
+      nearestDistance = dist;
+      nearest = monster;
+    }
+  }
+  if (nearest === undefined || nearestDistance > AUTO_TARGET_ACQUIRE_RANGE) {
+    return {};
+  }
+  return { target: nearest, source: "auto" };
+}
+
 export class CombatSystem {
   updatePlayerAttack(context: PlayerCombatContext): PlayerCombatResult {
-    const target =
-      context.attackTargetId === null
-        ? undefined
-        : context.monsters.find((monster) => monster.state.id === context.attackTargetId);
+    const { target, source } = resolvePreferredTarget(
+      context.monsters,
+      context.player.position,
+      context.attackTargetId
+    );
+    const activeTargetId = target?.state.id ?? null;
 
     if (target === undefined || target.state.health <= 0) {
       return {
@@ -75,11 +112,21 @@ export class CombatSystem {
     }
 
     const dist = distance(context.player.position, target.state.position);
-    if (dist > 1.5) {
+    if (dist > PLAYER_MELEE_RANGE) {
+      if (source !== "manual") {
+        return {
+          player: context.player,
+          run: context.run,
+          attackTargetId: null,
+          nextPlayerAttackAt: context.nextPlayerAttackAt,
+          combatEvents: [],
+          leveledUp: false
+        };
+      }
       return {
         player: context.player,
         run: context.run,
-        attackTargetId: context.attackTargetId,
+        attackTargetId: activeTargetId,
         nextPlayerAttackAt: context.nextPlayerAttackAt,
         requestPathTarget: {
           x: Math.round(target.state.position.x),
@@ -94,7 +141,7 @@ export class CombatSystem {
       return {
         player: context.player,
         run: context.run,
-        attackTargetId: context.attackTargetId,
+        attackTargetId: activeTargetId,
         nextPlayerAttackAt: context.nextPlayerAttackAt,
         combatEvents: [],
         leveledUp: false
@@ -110,7 +157,7 @@ export class CombatSystem {
       return {
         player: context.player,
         run: context.run,
-        attackTargetId: context.attackTargetId,
+        attackTargetId: activeTargetId,
         nextPlayerAttackAt,
         combatEvents: result.events,
         leveledUp: false

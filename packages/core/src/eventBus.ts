@@ -5,6 +5,7 @@ export interface TypedEventBus<TEventMap extends object> {
   off<K extends keyof TEventMap>(event: K, handler: EventHandler<TEventMap[K]>): void;
   emit<K extends keyof TEventMap>(event: K, payload: TEventMap[K]): void;
   removeAll(event?: keyof TEventMap): void;
+  listenerCount(event?: keyof TEventMap): number;
 }
 
 export function createEventBus<TEventMap extends object>(): TypedEventBus<TEventMap> {
@@ -53,6 +54,17 @@ export function createEventBus<TEventMap extends object>(): TypedEventBus<TEvent
         return;
       }
       listeners.delete(event);
+    },
+
+    listenerCount(event?: keyof TEventMap): number {
+      if (event !== undefined) {
+        return listeners.get(event)?.size ?? 0;
+      }
+      let total = 0;
+      for (const set of listeners.values()) {
+        total += set.size;
+      }
+      return total;
     }
   };
 }
