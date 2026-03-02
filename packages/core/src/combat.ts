@@ -7,18 +7,32 @@ export interface CombatResolution {
   events: CombatEvent[];
 }
 
+export interface PlayerAttackModifiers {
+  damageMultiplier?: number;
+  critChanceBonus?: number;
+  critDamageMultiplier?: number;
+}
+
+function clamp(num: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, num));
+}
+
 export function resolvePlayerAttack(
   player: PlayerState,
   monster: MonsterState,
   rng: RngLike,
-  timestampMs: number
+  timestampMs: number,
+  modifiers: PlayerAttackModifiers = {}
 ): CombatResolution {
   if (monster.health <= 0) {
     return { player, monster, events: [] };
   }
 
-  const crit = rng.next() < player.derivedStats.critChance;
-  const damage = Math.max(1, Math.floor(player.derivedStats.attackPower * (crit ? 1.7 : 1)));
+  const critChance = clamp(player.derivedStats.critChance + (modifiers.critChanceBonus ?? 0), 0, 0.95);
+  const damageMultiplier = Math.max(0.05, modifiers.damageMultiplier ?? 1);
+  const critMultiplier = Math.max(1, modifiers.critDamageMultiplier ?? 1.7);
+  const crit = rng.next() < critChance;
+  const damage = Math.max(1, Math.floor(player.derivedStats.attackPower * damageMultiplier * (crit ? critMultiplier : 1)));
   const nextHealth = Math.max(0, monster.health - damage);
 
   const events: CombatEvent[] = [

@@ -7,13 +7,17 @@ import {
   collectUnlockedAffixIds,
   collectUnlockedBiomeIds,
   collectUnlockedEventIds,
+  collectUnlockedMutationIds,
+  collectUnlockedWeaponTypes,
   CONSUMABLE_DEFS,
+  buildMutationDefMap,
   createInitialConsumableState,
   createMerchantOffers,
   createHazardRuntimeState,
   appendReplayInput,
   applyDamageToBoss,
   applyAffixesToMonsterState,
+  collectActiveMutationEffects,
   applyRunSummaryToMeta,
   collectTalentEffectTotals,
   applyXpGain,
@@ -22,13 +26,20 @@ import {
   collectLoot,
   grantConsumable,
   hasMonsterAffix,
+  isItemDefUnlockedByWeaponType,
   isInsideHazard,
+  mergeFoundBlueprints,
   multiplyMovementModifiers,
   nextHazardTickAt,
   nextHazardTriggerAt,
+  normalizeMutationMetaState,
+  validateMutationSelection,
   pickRandomEvent,
   resolveBiomeForFloor,
   resolveMidBiomeOrder,
+  resolveEquippedWeaponType,
+  resolveWeaponTypeDef,
+  rollBlueprintDiscoveries,
   rollEventRisk,
   rollItemDrop,
   createEventBus,
@@ -75,9 +86,11 @@ import {
   type GameEventMap,
   type GridNode,
   type HazardRuntimeState,
+  type ItemDef,
   type ItemInstance,
   type MerchantOffer,
   type MetaProgression,
+  type MutationEffect,
   type MonsterAffixId,
   type MonsterState,
   type PlayerState,
@@ -87,15 +100,21 @@ import {
   type RuntimeEventNodeState,
   type RunState,
   type SkillDef,
-  type TalentEffectTotals
+  type TalentEffectTotals,
+  type WeaponType
 } from "@blodex/core";
 import {
   BIOME_MAP,
+  BLUEPRINT_DEFS,
+  BLUEPRINT_DEF_MAP,
   BONE_SOVEREIGN,
   GAME_CONFIG,
   HAZARD_MAP,
+  MUTATION_DEFS,
+  MUTATION_DEF_MAP,
   RANDOM_EVENT_DEFS,
   UNLOCK_DEFS,
+  WEAPON_TYPE_DEF_MAP,
   getFloorConfig,
   ITEM_DEF_MAP,
   LOOT_TABLE_MAP,
@@ -133,7 +152,7 @@ import { removeConnectedBackgroundFromTexture } from "../assets/removeBackground
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
-const RUN_SAVE_APP_VERSION = "phase2-4a";
+const RUN_SAVE_APP_VERSION = "phase2-4b";
 const AUTO_SAVE_INTERVAL_MS = 60_000;
 const DUNGEON_IMAGE_ASSET_IDS = [
   "player_vanguard",
@@ -192,6 +211,7 @@ const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
   scroll_of_mapping: "item_consumable_scroll_mapping_01"
 };
 const SKILL_DEF_BY_ID = new Map(SKILL_DEFS.map((entry) => [entry.id, entry]));
+const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
 const DEBUG_COMMANDS = [
   { combo: "Alt+H", description: "Show cheat commands" },
   { combo: "Alt+L", description: "Dump diagnostics snapshot to console/log" },
@@ -232,6 +252,16 @@ interface DungeonSceneInitData {
   resumedFromSave?: boolean;
 }
 
+interface MutationRuntimeState {
+  activeIds: string[];
+  activeEffects: MutationEffect[];
+  killAttackSpeedStacks: number;
+  killAttackSpeedUntilMs: number;
+  onHitInvulnUntilMs: number;
+  onHitInvulnCooldownUntilMs: number;
+  lethalGuardUsedFloors: Set<number>;
+}
+
 export class DungeonScene extends Phaser.Scene {
   private static readonly ENTITY_DEPTH_OFFSET = 10_000;
 
@@ -251,6 +281,18 @@ export class DungeonScene extends Phaser.Scene {
   private uiManager!: UIManager;
   private meta: MetaProgression = createInitialMeta();
   private talentEffects: TalentEffectTotals = collectTalentEffectTotals({}, TALENT_DEFS);
+  private blueprintFoundIdsInRun: string[] = [];
+  private unlockedWeaponTypes = new Set<WeaponType>(["sword"]);
+  private mutationRuntime: MutationRuntimeState = {
+    activeIds: [],
+    activeEffects: [],
+    killAttackSpeedStacks: 0,
+    killAttackSpeedUntilMs: 0,
+    onHitInvulnUntilMs: 0,
+    onHitInvulnCooldownUntilMs: 0,
+    lethalGuardUsedFloors: new Set<number>()
+  };
+  private readonly hiddenEntranceMarkers = new Map<string, Phaser.GameObjects.Ellipse>();
   private readonly saveManager = new SaveManager();
   private run!: RunState;
   private runSeed = "";
@@ -439,6 +481,7 @@ export class DungeonScene extends Phaser.Scene {
     this.vfxSystem.setEnabled(!this.resolveDebugFlag(DISABLE_VFX_QUERY));
     this.sfxSystem.setEnabled(!this.resolveDebugFlag(DISABLE_SFX_QUERY));
     this.meta = this.loadMeta();
+    this.normalizeMetaForPhase4B();
     this.refreshTalentEffects();
     this.selectedDifficulty =
       this.pendingResumeSave === null
@@ -648,9 +691,11 @@ export class DungeonScene extends Phaser.Scene {
       return;
     }
     const playerHazardMovementMultiplier = this.resolvePlayerHazardMovementMultiplier();
+    const mutationMoveMultiplier = this.resolveMutationMoveSpeedMultiplier();
 
     this.updateKeyboardMoveIntent(nowMs);
-    this.updatePlayerMovement((deltaMs / 1000) * playerHazardMovementMultiplier, nowMs);
+    this.updatePlayerMovement((deltaMs / 1000) * playerHazardMovementMultiplier * mutationMoveMultiplier, nowMs);
+    this.revealNearbyHiddenRoomsByMutation(nowMs);
     this.updateCombat(nowMs);
     this.updateMonsters(deltaMs / 1000, nowMs);
     this.updateMonsterCombat(nowMs);
@@ -1454,6 +1499,7 @@ export class DungeonScene extends Phaser.Scene {
         staircase: this.staircaseState,
         timestampMs: nowMs
       });
+      this.tryDiscoverBlueprints("floor_clear", nowMs);
     }
 
     this.hudDirty = true;
@@ -1564,7 +1610,9 @@ export class DungeonScene extends Phaser.Scene {
     this.uiManager.clearLogs();
     this.uiManager.hideDeathOverlay();
     this.uiManager.hideEventPanel();
+    this.blueprintFoundIdsInRun = [];
     this.refreshUnlockSnapshots();
+    this.resetMutationRuntimeState(this.meta.selectedMutationIds);
     this.consumables = createInitialConsumableState(this.meta.permanentUpgrades.potionCharges);
     this.mapRevealActive = false;
     this.eventPanelOpen = false;
@@ -1589,7 +1637,189 @@ export class DungeonScene extends Phaser.Scene {
   private refreshUnlockSnapshots(): void {
     this.unlockedBiomeIds = new Set(collectUnlockedBiomeIds(this.meta, UNLOCK_DEFS));
     this.unlockedAffixIds = collectUnlockedAffixIds(this.meta, UNLOCK_DEFS) as MonsterAffixId[];
-    this.unlockedEventIds = collectUnlockedEventIds(this.meta, UNLOCK_DEFS);
+    const unlockedEvents = new Set<string>(collectUnlockedEventIds(this.meta, UNLOCK_DEFS));
+    for (const blueprintId of this.meta.blueprintForgedIds) {
+      const blueprint = BLUEPRINT_DEF_MAP[blueprintId];
+      if (blueprint?.category === "event") {
+        unlockedEvents.add(blueprint.unlockTargetId);
+      }
+    }
+    this.unlockedEventIds = [...unlockedEvents.values()];
+    this.unlockedWeaponTypes = collectUnlockedWeaponTypes(this.meta, WEAPON_TYPE_DEF_MAP);
+  }
+
+  private normalizeMetaForPhase4B(): void {
+    const normalized = normalizeMutationMetaState(this.meta, MUTATION_DEFS);
+    if (JSON.stringify(normalized) !== JSON.stringify(this.meta)) {
+      this.meta = normalized;
+      this.saveMeta(this.meta);
+    } else {
+      this.meta = normalized;
+    }
+  }
+
+  private resetMutationRuntimeState(selectedMutationIds: string[]): void {
+    const activeEffects = collectActiveMutationEffects(selectedMutationIds, MUTATION_DEF_BY_ID);
+    this.mutationRuntime = {
+      activeIds: [...selectedMutationIds],
+      activeEffects,
+      killAttackSpeedStacks: 0,
+      killAttackSpeedUntilMs: 0,
+      onHitInvulnUntilMs: 0,
+      onHitInvulnCooldownUntilMs: 0,
+      lethalGuardUsedFloors: new Set<number>()
+    };
+  }
+
+  private collectKnownBlueprintIds(): string[] {
+    const known = new Set<string>(this.meta.blueprintFoundIds);
+    for (const blueprintId of this.blueprintFoundIdsInRun) {
+      known.add(blueprintId);
+    }
+    return [...known.values()];
+  }
+
+  private addRunBlueprintDiscoveries(blueprintIds: string[], nowMs: number, sourceLabel: string): void {
+    if (blueprintIds.length === 0) {
+      return;
+    }
+    const known = new Set(this.blueprintFoundIdsInRun);
+    const discovered: string[] = [];
+    for (const blueprintId of blueprintIds) {
+      if (known.has(blueprintId)) {
+        continue;
+      }
+      known.add(blueprintId);
+      discovered.push(blueprintId);
+      this.blueprintFoundIdsInRun.push(blueprintId);
+    }
+    if (discovered.length === 0) {
+      return;
+    }
+    for (const blueprintId of discovered) {
+      const blueprint = BLUEPRINT_DEF_MAP[blueprintId];
+      const label = blueprint?.name ?? blueprintId;
+      this.uiManager.appendLog(`Blueprint discovered (${sourceLabel}): ${label}.`, "success", nowMs);
+    }
+    this.scheduleRunSave();
+  }
+
+  private tryDiscoverBlueprints(
+    sourceType:
+      | "monster_affix"
+      | "boss_kill"
+      | "boss_first_kill"
+      | "challenge_room"
+      | "hidden_room"
+      | "random_event"
+      | "floor_clear",
+    nowMs: number,
+    sourceId?: string
+  ): void {
+    const discovered = rollBlueprintDiscoveries(
+      BLUEPRINT_DEFS,
+      sourceId === undefined
+        ? {
+            sourceType,
+            floor: this.run.currentFloor
+          }
+        : {
+            sourceType,
+            sourceId,
+            floor: this.run.currentFloor
+          },
+      this.lootRng,
+      this.collectKnownBlueprintIds()
+    );
+    this.addRunBlueprintDiscoveries(discovered, nowMs, sourceType);
+  }
+
+  private isItemDefUnlocked(itemDef: ItemDef): boolean {
+    return isItemDefUnlockedByWeaponType(itemDef, this.unlockedWeaponTypes);
+  }
+
+  private collectMutationEffects<T extends MutationEffect["type"]>(
+    type: T
+  ): Array<Extract<MutationEffect, { type: T }>> {
+    return this.mutationRuntime.activeEffects.filter(
+      (effect): effect is Extract<MutationEffect, { type: T }> => effect.type === type
+    );
+  }
+
+  private resolveMutationMoveSpeedMultiplier(): number {
+    return this.collectMutationEffects("move_speed_multiplier").reduce((multiplier, effect) => {
+      return multiplier * Math.max(0.1, effect.value);
+    }, 1);
+  }
+
+  private resolveMutationAttackSpeedMultiplier(nowMs: number): number {
+    const killBuffs = this.collectMutationEffects("on_kill_attack_speed");
+    if (killBuffs.length === 0 || nowMs > this.mutationRuntime.killAttackSpeedUntilMs) {
+      if (this.mutationRuntime.killAttackSpeedStacks !== 0) {
+        this.mutationRuntime.killAttackSpeedStacks = 0;
+      }
+      return 1;
+    }
+    const bonusPerStack = Math.max(...killBuffs.map((effect) => effect.value));
+    return 1 + this.mutationRuntime.killAttackSpeedStacks * bonusPerStack;
+  }
+
+  private resolveMutationDropBonus(): { obolMultiplier: number; soulShardMultiplier: number } {
+    const bonus = this.collectMutationEffects("drop_bonus").reduce(
+      (accumulator, effect) => {
+        return {
+          obol: accumulator.obol + effect.obolPercent,
+          soul: accumulator.soul + effect.soulShardPercent
+        };
+      },
+      { obol: 0, soul: 0 }
+    );
+    return {
+      obolMultiplier: Math.max(0, 1 + bonus.obol),
+      soulShardMultiplier: Math.max(0, 1 + bonus.soul)
+    };
+  }
+
+  private resolveHiddenRoomRevealRadius(): number {
+    return this.collectMutationEffects("hidden_room_reveal_radius").reduce((radius, effect) => {
+      return Math.max(radius, effect.value);
+    }, 0);
+  }
+
+  private applyOnKillMutationEffects(nowMs: number): void {
+    const healEffects = this.collectMutationEffects("on_kill_heal_percent");
+    if (healEffects.length > 0) {
+      const healPercent = healEffects.reduce((sum, effect) => sum + effect.value, 0);
+      const healAmount = Math.max(1, Math.floor(this.player.derivedStats.maxHealth * healPercent));
+      this.player = {
+        ...this.player,
+        health: Math.min(this.player.derivedStats.maxHealth, this.player.health + healAmount)
+      };
+      this.eventBus.emit("mutation:trigger", {
+        mutationId: "runtime:on_kill_heal",
+        effectType: "on_kill_heal_percent",
+        timestampMs: nowMs,
+        value: healAmount,
+        detail: `healed ${healAmount}`
+      });
+    }
+
+    const speedEffects = this.collectMutationEffects("on_kill_attack_speed");
+    if (speedEffects.length > 0) {
+      const maxStacks = Math.max(...speedEffects.map((effect) => effect.maxStacks));
+      const durationMs = Math.max(...speedEffects.map((effect) => effect.durationMs));
+      this.mutationRuntime.killAttackSpeedStacks = Math.min(
+        maxStacks,
+        this.mutationRuntime.killAttackSpeedStacks + 1
+      );
+      this.mutationRuntime.killAttackSpeedUntilMs = nowMs + durationMs;
+      this.eventBus.emit("mutation:trigger", {
+        mutationId: "runtime:on_kill_attack_speed",
+        effectType: "on_kill_attack_speed",
+        timestampMs: nowMs,
+        value: this.mutationRuntime.killAttackSpeedStacks
+      });
+    }
   }
 
   private configureRngStreams(
@@ -1611,6 +1841,7 @@ export class DungeonScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.entityManager.clear();
     this.clearHazards();
+    this.clearHiddenRoomMarkers();
     this.movementSystem.clearPathCache();
 
     this.floorConfig = getFloorConfig(floor, this.run.difficultyModifier);
@@ -1661,6 +1892,7 @@ export class DungeonScene extends Phaser.Scene {
       this.origin,
       this.resolveBiomeTileTint(this.currentBiome.id)
     );
+    this.renderHiddenRoomMarkers();
 
     const playerRender = this.renderSystem.spawnPlayer(this.player.position, this.origin);
     this.playerSprite = playerRender.sprite;
@@ -1718,6 +1950,110 @@ export class DungeonScene extends Phaser.Scene {
 
   private renderBossFloor(floor: number) {
     return generateBossRoom(deriveFloorSeed(this.runSeed, floor, "procgen"), 46, 46);
+  }
+
+  private clearHiddenRoomMarkers(): void {
+    for (const marker of this.hiddenEntranceMarkers.values()) {
+      marker.destroy();
+    }
+    this.hiddenEntranceMarkers.clear();
+  }
+
+  private renderHiddenRoomMarkers(): void {
+    this.clearHiddenRoomMarkers();
+    for (const hiddenRoom of this.dungeon.hiddenRooms ?? []) {
+      if (hiddenRoom.revealed) {
+        continue;
+      }
+      const iso = gridToIso(
+        hiddenRoom.entrance.x,
+        hiddenRoom.entrance.y,
+        this.tileWidth,
+        this.tileHeight,
+        this.origin.x,
+        this.origin.y
+      );
+      const marker = this.add
+        .ellipse(iso.x, iso.y - 4, 18, 10, 0xd1b06e, 0.32)
+        .setStrokeStyle(1, 0x614420, 0.9)
+        .setDepth(iso.y + DungeonScene.ENTITY_DEPTH_OFFSET - 6);
+      this.hiddenEntranceMarkers.set(hiddenRoom.roomId, marker);
+    }
+  }
+
+  private revealHiddenRoom(roomId: string, nowMs: number, source: "click" | "mutation"): boolean {
+    const hiddenRooms = this.dungeon.hiddenRooms ?? [];
+    const target = hiddenRooms.find((entry) => entry.roomId === roomId);
+    if (target === undefined || target.revealed) {
+      return false;
+    }
+
+    target.revealed = true;
+    const row = this.dungeon.walkable[target.entrance.y];
+    if (row !== undefined) {
+      row[target.entrance.x] = true;
+    }
+    this.movementSystem.clearPathCache();
+    this.path = [];
+    this.manualMoveTarget = null;
+    this.manualMoveTargetFailures = 0;
+
+    this.hiddenEntranceMarkers.get(roomId)?.destroy();
+    this.hiddenEntranceMarkers.delete(roomId);
+    this.uiManager.configureMinimap({
+      width: this.dungeon.width,
+      height: this.dungeon.height,
+      walkable: this.dungeon.walkable,
+      layoutHash: this.dungeon.layoutHash
+    });
+
+    this.uiManager.appendLog(
+      source === "click"
+        ? "Cracked wall opened. Hidden room revealed."
+        : "Mutation pulse revealed a hidden entrance.",
+      "success",
+      nowMs
+    );
+
+    if (!target.rewardsClaimed) {
+      const rewardTable = this.run.currentFloor >= 3 ? LOOT_TABLE_MAP.cathedral_depths : LOOT_TABLE_MAP.starter_floor;
+      if (rewardTable !== undefined) {
+        const reward = rollItemDrop(
+          rewardTable,
+          ITEM_DEF_MAP,
+          this.run.currentFloor,
+          this.lootRng,
+          `hidden-room-${roomId}-${Math.floor(nowMs)}`,
+          {
+            isItemEligible: (itemDef) => this.isItemDefUnlocked(itemDef)
+          }
+        );
+        if (reward !== null) {
+          this.spawnLootDrop(reward, target.entrance);
+        }
+      }
+      target.rewardsClaimed = true;
+      this.tryDiscoverBlueprints("hidden_room", nowMs, roomId);
+    }
+
+    this.scheduleRunSave();
+    return true;
+  }
+
+  private revealNearbyHiddenRoomsByMutation(nowMs: number): void {
+    const radius = this.resolveHiddenRoomRevealRadius();
+    if (radius <= 0) {
+      return;
+    }
+    for (const hiddenRoom of this.dungeon.hiddenRooms ?? []) {
+      if (hiddenRoom.revealed) {
+        continue;
+      }
+      if (Math.hypot(this.player.position.x - hiddenRoom.entrance.x, this.player.position.y - hiddenRoom.entrance.y) > radius) {
+        continue;
+      }
+      this.revealHiddenRoom(hiddenRoom.roomId, nowMs, "mutation");
+    }
   }
 
   private resolveBiomeTileTint(biomeId: BiomeDef["id"]): number | undefined {
@@ -2065,7 +2401,10 @@ export class DungeonScene extends Phaser.Scene {
       ITEM_DEF_MAP,
       this.run.currentFloor,
       this.lootRng,
-      `event-${Math.floor(nowMs)}-${this.run.currentFloor}`
+      `event-${Math.floor(nowMs)}-${this.run.currentFloor}`,
+      {
+        isItemEligible: (itemDef) => this.isItemDefUnlocked(itemDef)
+      }
     );
     if (item === null) {
       this.uiManager.appendLog(`${source}: item roll failed.`, "warn", nowMs);
@@ -2132,6 +2471,7 @@ export class DungeonScene extends Phaser.Scene {
     for (const reward of choice.rewards) {
       this.applyEventReward(reward, nowMs, `Event ${eventDef.name}`);
     }
+    this.tryDiscoverBlueprints("random_event", nowMs, eventDef.id);
 
     if (rollEventRisk(choice, this.eventRng) && choice.risk !== undefined) {
       this.applyEventPenalty(choice.risk.penalty, nowMs, `${eventDef.name} backlash`);
@@ -2159,8 +2499,12 @@ export class DungeonScene extends Phaser.Scene {
       return;
     }
     if (this.merchantOffers.length === 0) {
+      const visibleEntries = merchantPool.entries.filter((entry) => {
+        const itemDef = ITEM_DEF_MAP[entry.itemDefId];
+        return itemDef !== undefined && this.isItemDefUnlocked(itemDef);
+      });
       this.merchantOffers = createMerchantOffers(
-        merchantPool.entries,
+        visibleEntries,
         this.run.currentFloor,
         this.merchantRng,
         3
@@ -2213,7 +2557,10 @@ export class DungeonScene extends Phaser.Scene {
       ITEM_DEF_MAP,
       this.run.currentFloor,
       this.lootRng,
-      `merchant-${offer.offerId}-${Math.floor(nowMs)}`
+      `merchant-${offer.offerId}-${Math.floor(nowMs)}`,
+      {
+        isItemEligible: (itemDef) => this.isItemDefUnlocked(itemDef)
+      }
     );
     if (item === null) {
       this.uiManager.appendLog(`Merchant failed to deliver ${offer.itemDefId}.`, "warn", nowMs);
@@ -2321,11 +2668,18 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private pickStartingSkillIds(): string[] {
+    const forgedSkillUnlocks = new Set(
+      this.meta.blueprintForgedIds
+        .map((blueprintId) => BLUEPRINT_DEF_MAP[blueprintId])
+        .filter((blueprint) => blueprint?.category === "skill")
+        .map((blueprint) => blueprint?.unlockTargetId)
+        .filter((skillId): skillId is string => typeof skillId === "string")
+    );
     const pool = SKILL_DEFS.filter((skill) => {
       if (skill.unlockCondition === undefined) {
         return true;
       }
-      return this.meta.unlocks.includes(skill.unlockCondition);
+      return this.meta.unlocks.includes(skill.unlockCondition) || forgedSkillUnlocks.has(skill.unlockCondition);
     });
 
     const sorted = [...pool].sort((a, b) => a.id.localeCompare(b.id));
@@ -2349,6 +2703,18 @@ export class DungeonScene extends Phaser.Scene {
       x: Math.round(clickedGrid.x),
       y: Math.round(clickedGrid.y)
     };
+
+    const hiddenRoom = (this.dungeon.hiddenRooms ?? []).find((entry) => {
+      return (
+        !entry.revealed &&
+        entry.entrance.x === targetTile.x &&
+        entry.entrance.y === targetTile.y
+      );
+    });
+    if (hiddenRoom !== undefined) {
+      this.revealHiddenRoom(hiddenRoom.roomId, this.time.now, "click");
+      return;
+    }
 
     const clickedMonster = this.entityManager.pickMonsterAt(targetTile);
     if (clickedMonster !== null) {
@@ -2569,17 +2935,22 @@ export class DungeonScene extends Phaser.Scene {
       if (dead === null) {
         continue;
       }
+      for (const affixId of dead.state.affixes ?? []) {
+        this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
+      }
+      this.applyOnKillMutationEffects(nowMs);
       dead.sprite.destroy();
       dead.healthBarBg.destroy();
       dead.healthBarFg.destroy();
       dead.affixMarker?.destroy();
+      const { obolMultiplier } = this.resolveMutationDropBonus();
       this.run = addRunObols(
         {
           ...this.run,
           kills: this.run.kills + 1,
           totalKills: this.run.totalKills + 1
         },
-        1
+        Math.max(1, Math.floor(obolMultiplier))
       );
     }
     this.hudDirty = true;
@@ -2652,7 +3023,10 @@ export class DungeonScene extends Phaser.Scene {
       combatRng: this.combatRng,
       lootRng: this.lootRng,
       itemDefs: ITEM_DEF_MAP,
-      lootTables: LOOT_TABLE_MAP
+      lootTables: LOOT_TABLE_MAP,
+      attackSpeedMultiplier: this.resolveMutationAttackSpeedMultiplier(nowMs),
+      weaponTypeDefs: WEAPON_TYPE_DEF_MAP,
+      canDropItemDef: (itemDef) => this.isItemDefUnlocked(itemDef)
     });
 
     this.player = playerCombat.player;
@@ -2681,8 +3055,17 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     if (playerCombat.killedMonsterId !== undefined) {
+      const { obolMultiplier } = this.resolveMutationDropBonus();
+      const bonusObol = Math.max(0, Math.floor(obolMultiplier) - 1);
+      if (bonusObol > 0) {
+        this.run = addRunObols(this.run, bonusObol);
+      }
       const dead = this.entityManager.removeMonsterById(playerCombat.killedMonsterId);
       if (dead !== null) {
+        for (const affixId of dead.state.affixes ?? []) {
+          this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
+        }
+        this.applyOnKillMutationEffects(nowMs);
         dead.sprite.destroy();
         dead.healthBarBg.destroy();
         dead.healthBarFg.destroy();
@@ -2709,11 +3092,18 @@ export class DungeonScene extends Phaser.Scene {
       return;
     }
 
+    const forgedSkillUnlocks = new Set(
+      this.meta.blueprintForgedIds
+        .map((blueprintId) => BLUEPRINT_DEF_MAP[blueprintId])
+        .filter((blueprint) => blueprint?.category === "skill")
+        .map((blueprint) => blueprint?.unlockTargetId)
+        .filter((skillId): skillId is string => typeof skillId === "string")
+    );
     const pool = SKILL_DEFS.filter((skill) => {
       if (skill.unlockCondition === undefined) {
         return true;
       }
-      return this.meta.unlocks.includes(skill.unlockCondition);
+      return this.meta.unlocks.includes(skill.unlockCondition) || forgedSkillUnlocks.has(skill.unlockCondition);
     });
     const choices = pickSkillChoices(pool, this.skillRng, 3);
     if (choices.length === 0) {
@@ -2839,6 +3229,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private updateMonsterCombat(nowMs: number): void {
+    const healthBeforeHits = this.player.health;
     const monsterCombat = this.combatSystem.updateMonsterAttacks(
       this.entityManager.queryMonstersInRadius(
         this.player.position,
@@ -2851,6 +3242,104 @@ export class DungeonScene extends Phaser.Scene {
     );
 
     this.player = monsterCombat.player;
+    const playerTookDamage = this.player.health < healthBeforeHits;
+    if (playerTookDamage && nowMs <= this.mutationRuntime.onHitInvulnUntilMs) {
+      this.player = {
+        ...this.player,
+        health: healthBeforeHits
+      };
+    } else if (
+      playerTookDamage &&
+      nowMs > this.mutationRuntime.onHitInvulnCooldownUntilMs
+    ) {
+      const invulnEffects = this.collectMutationEffects("on_hit_invuln");
+      for (const effect of invulnEffects) {
+        if (this.combatRng.next() >= effect.chance) {
+          continue;
+        }
+        this.mutationRuntime.onHitInvulnUntilMs = nowMs + effect.durationMs;
+        this.mutationRuntime.onHitInvulnCooldownUntilMs = nowMs + effect.cooldownMs;
+        this.eventBus.emit("mutation:trigger", {
+          mutationId: "runtime:on_hit_invuln",
+          effectType: "on_hit_invuln",
+          timestampMs: nowMs,
+          value: effect.durationMs
+        });
+        break;
+      }
+    }
+
+    if (this.player.health <= 0) {
+      const lethalGuard = this.collectMutationEffects("once_per_floor_lethal_guard")
+        .map((effect) => effect.invulnMs)
+        .sort((left, right) => right - left)[0];
+      if (
+        lethalGuard !== undefined &&
+        !this.mutationRuntime.lethalGuardUsedFloors.has(this.run.currentFloor)
+      ) {
+        this.mutationRuntime.lethalGuardUsedFloors.add(this.run.currentFloor);
+        this.mutationRuntime.onHitInvulnUntilMs = nowMs + lethalGuard;
+        this.player = {
+          ...this.player,
+          health: 1
+        };
+        this.eventBus.emit("mutation:trigger", {
+          mutationId: "runtime:lethal_guard",
+          effectType: "once_per_floor_lethal_guard",
+          timestampMs: nowMs,
+          value: lethalGuard
+        });
+      }
+    }
+
+    const reflectPercent = this.collectMutationEffects("on_hit_reflect_percent").reduce((sum, effect) => {
+      return sum + effect.value;
+    }, 0);
+    if (reflectPercent > 0) {
+      for (const event of monsterCombat.combatEvents) {
+        if (event.targetId !== this.player.id || (event.kind !== "damage" && event.kind !== "crit") || event.amount <= 0) {
+          continue;
+        }
+        const source = this.entityManager.findMonsterById(event.sourceId);
+        if (source === undefined || source.state.health <= 0) {
+          continue;
+        }
+        const reflectedDamage = Math.max(1, Math.floor(event.amount * reflectPercent));
+        source.state.health = Math.max(0, source.state.health - reflectedDamage);
+        this.eventBus.emit("mutation:trigger", {
+          mutationId: "runtime:on_hit_reflect",
+          effectType: "on_hit_reflect_percent",
+          timestampMs: nowMs,
+          value: reflectedDamage,
+          detail: source.state.id
+        });
+        if (source.state.health > 0) {
+          continue;
+        }
+        const dead = this.entityManager.removeMonsterById(source.state.id);
+        if (dead === null) {
+          continue;
+        }
+        dead.sprite.destroy();
+        dead.healthBarBg.destroy();
+        dead.healthBarFg.destroy();
+        dead.affixMarker?.destroy();
+        for (const affixId of dead.state.affixes ?? []) {
+          this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
+        }
+        this.applyOnKillMutationEffects(nowMs);
+        const { obolMultiplier } = this.resolveMutationDropBonus();
+        this.run = addRunObols(
+          {
+            ...this.run,
+            kills: this.run.kills + 1,
+            totalKills: this.run.totalKills + 1
+          },
+          Math.max(1, Math.floor(obolMultiplier))
+        );
+      }
+    }
+
     this.emitCombatEvents(monsterCombat.combatEvents);
     for (const event of monsterCombat.combatEvents) {
       if (event.kind === "dodge" || event.amount <= 0) {
@@ -2888,10 +3377,20 @@ export class DungeonScene extends Phaser.Scene {
       this.player.position.x - this.bossState.position.x,
       this.player.position.y - this.bossState.position.y
     );
+    const weaponType = resolveEquippedWeaponType(this.player);
+    const weaponDef = resolveWeaponTypeDef(weaponType, WEAPON_TYPE_DEF_MAP);
+    const bonusAttackSpeed = this.resolveMutationAttackSpeedMultiplier(nowMs);
+    const critChanceBonus = weaponDef.mechanic.type === "crit_bonus" ? weaponDef.mechanic.critChanceBonus : 0;
+    const critDamageMultiplier = weaponDef.mechanic.type === "crit_bonus"
+      ? (weaponDef.mechanic.critDamageMultiplier ?? 1.7)
+      : 1.7;
 
-    if (distanceToBoss <= 1.8 && nowMs >= this.nextPlayerAttackAt) {
-      const crit = this.combatRng.next() < this.player.derivedStats.critChance;
-      const damage = Math.max(1, Math.floor(this.player.derivedStats.attackPower * (crit ? 1.7 : 1)));
+    if (distanceToBoss <= Math.max(1.1, weaponDef.attackRange + 0.3) && nowMs >= this.nextPlayerAttackAt) {
+      const crit = this.combatRng.next() < Math.min(0.95, this.player.derivedStats.critChance + critChanceBonus);
+      const damage = Math.max(
+        1,
+        Math.floor(this.player.derivedStats.attackPower * weaponDef.damageMultiplier * (crit ? critDamageMultiplier : 1))
+      );
       const previousPhase = this.bossState.currentPhaseIndex;
       this.bossState = applyDamageToBoss(this.bossState, damage);
       this.bossState = {
@@ -2902,7 +3401,15 @@ export class DungeonScene extends Phaser.Scene {
             : {}
         )
       };
-      this.nextPlayerAttackAt = nowMs + 1000 / Math.max(0.6, this.player.derivedStats.attackSpeed);
+      this.nextPlayerAttackAt =
+        nowMs +
+        1000 /
+          Math.max(
+            0.6,
+            this.player.derivedStats.attackSpeed *
+              Math.max(0.2, weaponDef.attackSpeedMultiplier) *
+              bonusAttackSpeed
+          );
 
       if (this.bossState.currentPhaseIndex !== previousPhase) {
         this.eventBus.emit("boss:phaseChange", {
@@ -3165,6 +3672,7 @@ export class DungeonScene extends Phaser.Scene {
         staircase: this.staircaseState,
         timestampMs: nowMs
       });
+      this.tryDiscoverBlueprints("floor_clear", nowMs);
     }
 
     if (!this.staircaseState.visible) {
@@ -3201,9 +3709,14 @@ export class DungeonScene extends Phaser.Scene {
       ...this.run,
       isVictory
     };
+    if (isVictory) {
+      this.tryDiscoverBlueprints("boss_kill", this.time.now, this.bossDef.id);
+      this.tryDiscoverBlueprints("boss_first_kill", this.time.now, this.bossDef.id);
+    }
 
     const { summary: baseSummary, meta: nextMeta, replay } = endRun(this.run, this.player, this.time.now, this.meta);
-    const soulShards = calculateSoulShardReward(this.run, isVictory);
+    const { soulShardMultiplier } = this.resolveMutationDropBonus();
+    const soulShards = Math.max(0, Math.floor(calculateSoulShardReward(this.run, isVictory) * soulShardMultiplier));
     const summary = {
       ...baseSummary,
       isVictory,
@@ -3212,7 +3725,8 @@ export class DungeonScene extends Phaser.Scene {
     };
     const runId = `${this.runSeed}:${this.run.startedAtMs}`;
     if (!this.saveManager.isRunSettled(runId)) {
-      this.meta = applyRunSummaryToMeta(nextMeta, summary);
+      const mergedMeta = mergeFoundBlueprints(nextMeta, this.blueprintFoundIdsInRun);
+      this.meta = applyRunSummaryToMeta(mergedMeta, summary);
       const committed = this.saveMeta(this.meta);
       if (committed) {
         this.saveManager.markRunSettled(runId);
@@ -3268,7 +3782,14 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     const monsters = this.entityManager.listMonsters();
-    const resolution = this.combatSystem.useSkill(this.player, monsters, def as SkillDef, this.skillRng, this.time.now);
+    const resolution = this.combatSystem.useSkill(
+      this.player,
+      monsters,
+      def as SkillDef,
+      this.skillRng,
+      this.time.now,
+      WEAPON_TYPE_DEF_MAP
+    );
     this.player = {
       ...resolution.player,
       skills: markSkillUsed(this.player.skills, def as SkillDef, this.time.now)
@@ -3285,6 +3806,10 @@ export class DungeonScene extends Phaser.Scene {
         dead.healthBarBg.destroy();
         dead.healthBarFg.destroy();
         dead.affixMarker?.destroy();
+        for (const affixId of dead.state.affixes ?? []) {
+          this.tryDiscoverBlueprints("monster_affix", this.time.now, affixId);
+        }
+        this.applyOnKillMutationEffects(this.time.now);
         if (hasMonsterAffix(dead.state, "splitting")) {
           this.spawnSplitChildren(dead.state, dead.archetype, this.time.now);
         }
@@ -3305,13 +3830,14 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     if (kills > 0) {
+      const { obolMultiplier } = this.resolveMutationDropBonus();
       this.run = addRunObols(
         {
           ...this.run,
           kills: this.run.kills + kills,
           totalKills: this.run.totalKills + kills
         },
-        kills
+        Math.max(kills, Math.floor(kills * obolMultiplier))
       );
     }
 
@@ -3348,6 +3874,29 @@ export class DungeonScene extends Phaser.Scene {
     const result = useConsumable(this.player, this.consumables, consumableId, nowMs);
     this.player = result.player;
     this.consumables = result.consumables;
+    if (consumableId === "health_potion") {
+      const potionEffects = this.collectMutationEffects("potion_heal_amp_and_self_damage");
+      if (potionEffects.length > 0) {
+        const healPercent = potionEffects.reduce((sum, effect) => sum + effect.healPercent, 0);
+        const selfDamagePercent = potionEffects.reduce(
+          (sum, effect) => sum + effect.selfDamageCurrentHpPercent,
+          0
+        );
+        const extraHeal = Math.max(0, Math.floor(result.amountApplied * healPercent));
+        const healedHealth = Math.min(this.player.derivedStats.maxHealth, this.player.health + extraHeal);
+        const selfDamage = Math.max(0, Math.floor(healedHealth * selfDamagePercent));
+        this.player = {
+          ...this.player,
+          health: Math.max(1, healedHealth - selfDamage)
+        };
+        this.eventBus.emit("mutation:trigger", {
+          mutationId: "runtime:potion_tradeoff",
+          effectType: "potion_heal_amp_and_self_damage",
+          timestampMs: nowMs,
+          value: extraHeal - selfDamage
+        });
+      }
+    }
     if (result.mappingRevealed) {
       this.mapRevealActive = true;
       this.uiManager.appendLog("Objective mapped on HUD.", "info", nowMs);
@@ -3576,7 +4125,13 @@ export class DungeonScene extends Phaser.Scene {
           path: corridor.path.map((point) => ({ ...point }))
         })),
         spawnPoints: this.dungeon.spawnPoints.map((point) => ({ ...point })),
-        playerSpawn: { ...this.dungeon.playerSpawn }
+        playerSpawn: { ...this.dungeon.playerSpawn },
+        hiddenRooms: (this.dungeon.hiddenRooms ?? []).map((room) => ({
+          roomId: room.roomId,
+          entrance: { ...room.entrance },
+          revealed: room.revealed,
+          rewardsClaimed: room.rewardsClaimed
+        }))
       },
       staircase: {
         position: { ...this.staircaseState.position },
@@ -3620,6 +4175,8 @@ export class DungeonScene extends Phaser.Scene {
       },
       mapRevealActive: this.mapRevealActive,
       rngCursor: this.collectRngCursor(),
+      blueprintFoundIdsInRun: [...this.blueprintFoundIdsInRun],
+      selectedMutationIds: [...this.mutationRuntime.activeIds],
       lease: {
         tabId: this.saveManager.getTabId(),
         renewedAtMs: wallNowMs,
@@ -3666,6 +4223,7 @@ export class DungeonScene extends Phaser.Scene {
       this.lastAiNearCount = 0;
       this.lastAiFarCount = 0;
       this.path = [];
+      this.blueprintFoundIdsInRun = [...(save.blueprintFoundIdsInRun ?? [])];
       this.attackTargetId = null;
       this.nextPlayerAttackAt = 0;
       this.nextBossAttackAt = 0;
@@ -3699,7 +4257,13 @@ export class DungeonScene extends Phaser.Scene {
           path: corridor.path.map((point) => ({ ...point }))
         })),
         spawnPoints: save.dungeon.spawnPoints.map((point) => ({ ...point })),
-        playerSpawn: { ...save.dungeon.playerSpawn }
+        playerSpawn: { ...save.dungeon.playerSpawn },
+        hiddenRooms: (save.dungeon.hiddenRooms ?? []).map((room) => ({
+          roomId: room.roomId,
+          entrance: { ...room.entrance },
+          revealed: room.revealed,
+          rewardsClaimed: room.rewardsClaimed
+        }))
       };
       this.player = this.refreshPlayerStatsFromEquipment({
         ...save.player,
@@ -3723,6 +4287,7 @@ export class DungeonScene extends Phaser.Scene {
         this.origin,
         this.resolveBiomeTileTint(this.currentBiome.id)
       );
+      this.renderHiddenRoomMarkers();
 
       const playerRender = this.renderSystem.spawnPlayer(this.player.position, this.origin);
       this.playerSprite = playerRender.sprite;
@@ -3830,6 +4395,17 @@ export class DungeonScene extends Phaser.Scene {
       this.hudDirty = true;
       this.resumedFromSave = true;
       this.lastAutoSaveAt = this.time.now;
+      const restoredSelectionCandidate = save.selectedMutationIds ?? this.meta.selectedMutationIds;
+      const unlockedMutationIds = collectUnlockedMutationIds(this.meta, MUTATION_DEFS);
+      const selectionValidation = validateMutationSelection(
+        restoredSelectionCandidate,
+        MUTATION_DEF_BY_ID,
+        this.meta.mutationSlots,
+        unlockedMutationIds
+      );
+      this.resetMutationRuntimeState(
+        selectionValidation.ok ? selectionValidation.selected : this.meta.selectedMutationIds
+      );
       return true;
     } catch (error) {
       console.warn("[Save] Failed to restore run snapshot.", error);
@@ -3867,6 +4443,7 @@ export class DungeonScene extends Phaser.Scene {
     this.uiManager.reset();
     this.removeDebugApi();
     this.destroyEventNode();
+    this.clearHiddenRoomMarkers();
     this.clearHazards();
     this.movementSystem.clearPathCache();
     this.manualMoveTarget = null;

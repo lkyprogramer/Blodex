@@ -1,4 +1,4 @@
-import type { DifficultyMode, TalentPath } from "@blodex/core";
+import type { BlueprintDef, DifficultyMode, MutationDef, TalentPath } from "@blodex/core";
 
 function escapeHtml(raw: string): string {
   return raw
@@ -63,14 +63,55 @@ export interface MetaMenuTalentGroupView {
   talents: MetaMenuTalentCardView[];
 }
 
+export interface MetaMenuBlueprintCardView {
+  id: string;
+  name: string;
+  category: BlueprintDef["category"];
+  rarity: BlueprintDef["rarity"];
+  forgeCost: number;
+  unlockTargetId: string;
+  statusText: string;
+  canForge: boolean;
+}
+
+export interface MetaMenuBlueprintGroupView {
+  category: BlueprintDef["category"];
+  label: string;
+  blueprints: MetaMenuBlueprintCardView[];
+}
+
+export interface MetaMenuMutationCardView {
+  id: string;
+  name: string;
+  category: MutationDef["category"];
+  tier: MutationDef["tier"];
+  unlockText: string;
+  effectText: string;
+  statusText: string;
+  selected: boolean;
+  canToggle: boolean;
+  canUnlockEcho: boolean;
+}
+
+export interface MetaMenuMutationGroupView {
+  category: MutationDef["category"];
+  label: string;
+  mutations: MetaMenuMutationCardView[];
+}
+
 export interface MetaMenuPanelView {
   soulShards: number;
+  echoes: number;
   unlockedCount: number;
   totalUnlocks: number;
   difficulties: MetaMenuDifficultyView[];
   runSave: MetaMenuRunSaveView | null;
   talentGroups: MetaMenuTalentGroupView[];
   unlockGroups: MetaMenuUnlockGroupView[];
+  blueprintGroups: MetaMenuBlueprintGroupView[];
+  mutationGroups: MetaMenuMutationGroupView[];
+  mutationSlots: number;
+  selectedMutations: number;
   startRunEnabled: boolean;
 }
 
@@ -78,6 +119,9 @@ export interface MetaMenuPanelHandlers {
   onPurchase: (index: number) => void;
   onPurchaseTalent: (talentId: string) => void;
   onSelectDifficulty: (mode: DifficultyMode) => void;
+  onForgeBlueprint: (blueprintId: string) => void;
+  onUnlockMutation: (mutationId: string) => void;
+  onToggleMutation: (mutationId: string) => void;
   onStartRun: () => void;
   onContinueRun: () => void;
   onAbandonRun: () => void;
@@ -97,6 +141,36 @@ function pathLabel(path: TalentPath): string {
       return "Utility";
     default:
       return path;
+  }
+}
+
+function blueprintCategoryLabel(category: BlueprintDef["category"]): string {
+  switch (category) {
+    case "skill":
+      return "Skill Blueprints";
+    case "weapon":
+      return "Weapon Blueprints";
+    case "consumable":
+      return "Consumable Blueprints";
+    case "event":
+      return "Event Blueprints";
+    case "mutation":
+      return "Mutation Blueprints";
+    default:
+      return category;
+  }
+}
+
+function mutationCategoryLabel(category: MutationDef["category"]): string {
+  switch (category) {
+    case "offensive":
+      return "Offensive Mutations";
+    case "defensive":
+      return "Defensive Mutations";
+    case "utility":
+      return "Utility Mutations";
+    default:
+      return category;
   }
 }
 
@@ -187,6 +261,92 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
     })
     .join("");
 
+  const blueprintGroupsHtml = view.blueprintGroups
+    .map((group) => {
+      const cards = group.blueprints
+        .map((blueprint) => {
+          const classes = [
+            "meta-blueprint-card",
+            blueprint.canForge ? "available" : "",
+            blueprint.statusText === "Forged" ? "unlocked" : "",
+            !blueprint.canForge && blueprint.statusText !== "Forged" ? "locked" : ""
+          ]
+            .filter((className) => className.length > 0)
+            .join(" ");
+          return `
+            <button
+              class="${classes}"
+              data-action="forge-blueprint"
+              data-blueprint-id="${escapeHtml(blueprint.id)}"
+              ${blueprint.canForge ? "" : "disabled"}
+            >
+              <div class="meta-unlock-head">
+                <span class="meta-unlock-name">${escapeHtml(blueprint.name)}</span>
+                <span class="meta-unlock-cost">${blueprint.forgeCost}</span>
+              </div>
+              <div class="meta-unlock-description">${escapeHtml(blueprint.unlockTargetId)}</div>
+              <div class="meta-unlock-effect">Rarity: ${escapeHtml(blueprint.rarity)}</div>
+              <div class="meta-unlock-status">${escapeHtml(blueprint.statusText)}</div>
+            </button>
+          `;
+        })
+        .join("");
+      return `
+        <section class="meta-tier-group" data-blueprint-category="${group.category}">
+          <h3>${escapeHtml(group.label)}</h3>
+          <div class="meta-tier-grid">${cards}</div>
+        </section>
+      `;
+    })
+    .join("");
+
+  const mutationGroupsHtml = view.mutationGroups
+    .map((group) => {
+      const cards = group.mutations
+        .map((mutation) => {
+          const classes = [
+            "meta-mutation-card",
+            mutation.selected ? "selected" : "",
+            mutation.canToggle || mutation.canUnlockEcho ? "available" : "",
+            !mutation.canToggle && !mutation.canUnlockEcho && !mutation.selected ? "locked" : ""
+          ]
+            .filter((className) => className.length > 0)
+            .join(" ");
+          const actionButton =
+            mutation.canUnlockEcho
+              ? `<button class="meta-inline-action" data-action="unlock-mutation" data-mutation-id="${escapeHtml(mutation.id)}">Unlock</button>`
+              : "";
+          return `
+            <div class="meta-mutation-item">
+              <button
+                class="${classes}"
+                data-action="toggle-mutation"
+                data-mutation-id="${escapeHtml(mutation.id)}"
+                ${mutation.canToggle ? "" : "disabled"}
+                aria-pressed="${mutation.selected ? "true" : "false"}"
+              >
+                <div class="meta-unlock-head">
+                  <span class="meta-unlock-name">${escapeHtml(mutation.name)}</span>
+                  <span class="meta-unlock-cost">T${mutation.tier}</span>
+                </div>
+                <div class="meta-unlock-description">${escapeHtml(mutation.unlockText)}</div>
+                <div class="meta-unlock-effect">${escapeHtml(mutation.effectText)}</div>
+                <div class="meta-unlock-status">${escapeHtml(mutation.statusText)}</div>
+              </button>
+              ${actionButton}
+            </div>
+          `;
+        })
+        .join("");
+      return `
+        <section class="meta-tier-group" data-mutation-category="${group.category}">
+          <h3>${escapeHtml(group.label)}</h3>
+          <div class="meta-tier-grid">${cards}</div>
+        </section>
+      `;
+    })
+    .join("");
+
   const unlockGroupsHtml = view.unlockGroups
     .map((group) => {
       const cards = group.unlocks
@@ -233,6 +393,7 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
         <h1>Blodex Meta Progression</h1>
         <div class="meta-menu-subhead">
           <span>Soul Shards: ${view.soulShards}</span>
+          <span>Echoes: ${view.echoes}</span>
           <span>Unlocks: ${view.unlockedCount}/${view.totalUnlocks}</span>
         </div>
       </header>
@@ -245,6 +406,16 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
         <h2>Talent Tree</h2>
         <p class="meta-menu-hint">Purchase talents to improve baseline stats and run economy.</p>
         ${talentGroupsHtml}
+      </section>
+      <section class="meta-menu-section">
+        <h2>Soul Forge</h2>
+        <p class="meta-menu-hint">Discover blueprints in runs, then forge discovered plans with Soul Shards.</p>
+        ${blueprintGroupsHtml}
+      </section>
+      <section class="meta-menu-section">
+        <h2>Mutation Loadout</h2>
+        <p class="meta-menu-hint">Selected ${view.selectedMutations}/${view.mutationSlots}. Click card to toggle, unlock echo mutations with Unlock button.</p>
+        ${mutationGroupsHtml}
       </section>
       <section class="meta-menu-section">
         <h2>Legacy Unlocks</h2>
@@ -291,6 +462,36 @@ export function bindMetaMenuPanelActions(
       return;
     }
     const onClick = () => handlers.onSelectDifficulty(mode);
+    button.addEventListener("click", onClick);
+    unbindActions.push(() => button.removeEventListener("click", onClick));
+  });
+
+  container.querySelectorAll<HTMLButtonElement>("button[data-action='forge-blueprint']").forEach((button) => {
+    const blueprintId = button.dataset.blueprintId;
+    if (blueprintId === undefined) {
+      return;
+    }
+    const onClick = () => handlers.onForgeBlueprint(blueprintId);
+    button.addEventListener("click", onClick);
+    unbindActions.push(() => button.removeEventListener("click", onClick));
+  });
+
+  container.querySelectorAll<HTMLButtonElement>("button[data-action='unlock-mutation']").forEach((button) => {
+    const mutationId = button.dataset.mutationId;
+    if (mutationId === undefined) {
+      return;
+    }
+    const onClick = () => handlers.onUnlockMutation(mutationId);
+    button.addEventListener("click", onClick);
+    unbindActions.push(() => button.removeEventListener("click", onClick));
+  });
+
+  container.querySelectorAll<HTMLButtonElement>("button[data-action='toggle-mutation']").forEach((button) => {
+    const mutationId = button.dataset.mutationId;
+    if (mutationId === undefined) {
+      return;
+    }
+    const onClick = () => handlers.onToggleMutation(mutationId);
     button.addEventListener("click", onClick);
     unbindActions.push(() => button.removeEventListener("click", onClick));
   });

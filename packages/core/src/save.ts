@@ -163,6 +163,31 @@ function isLootEntry(value: unknown): value is { item: ItemInstance; position: {
   );
 }
 
+function isHiddenRoomState(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.roomId === "string" &&
+    isPoint(value.entrance) &&
+    typeof value.revealed === "boolean" &&
+    typeof value.rewardsClaimed === "boolean"
+  );
+}
+
+function isDungeonLayoutSnapshot(value: unknown): value is DungeonLayout {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (value.hiddenRooms !== undefined) {
+    if (!Array.isArray(value.hiddenRooms)) {
+      return false;
+    }
+    if (!value.hiddenRooms.every((entry) => isHiddenRoomState(entry))) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function normalizeLegacyDraftFields(input: Record<string, unknown>): RunSaveEnvelope {
   const normalized: RunSaveEnvelope = {
     ...input
@@ -211,7 +236,7 @@ export function validateSave(raw: unknown): raw is RunSaveEnvelope {
   if (!isRecord(save.run) || !isRecord(save.player) || !isRecord(save.consumables)) {
     return false;
   }
-  if (!isRecord(save.dungeon) || !isRecord(save.staircase)) {
+  if (!isDungeonLayoutSnapshot(save.dungeon) || !isRecord(save.staircase)) {
     return false;
   }
   if (!Array.isArray(save.hazards) || !save.hazards.every((entry) => isRecord(entry))) {

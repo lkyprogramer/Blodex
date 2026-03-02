@@ -1,22 +1,30 @@
 import Phaser from "phaser";
 import {
   applyRunSummaryToMeta,
+  buildMutationDefMap,
   calculateSoulShardReward,
+  collectUnlockedMutationIds,
   canPurchaseTalent,
   createInitialMeta,
   endRun,
+  forgeBlueprint,
   migrateMeta,
+  mergeFoundBlueprints,
+  normalizeMutationMetaState,
   purchaseTalent,
   purchaseUnlock,
   resolveSelectedDifficulty,
+  unlockEchoMutation,
+  validateMutationSelection,
   isDifficultyUnlocked,
   setSelectedDifficulty,
+  type MutationDef,
   type RunSaveDataV1,
   type TalentNodeDef,
   type DifficultyMode,
   type MetaProgression
 } from "@blodex/core";
-import { TALENT_DEFS, UNLOCK_DEFS } from "@blodex/content";
+import { BLUEPRINT_DEF_MAP, BLUEPRINT_DEFS, MUTATION_DEFS, TALENT_DEFS, UNLOCK_DEFS } from "@blodex/content";
 import { UI_POLISH_FLAGS } from "../config/uiFlags";
 import { SaveManager } from "../systems/SaveManager";
 import {
@@ -34,6 +42,7 @@ const DIFFICULTY_LABEL: Record<DifficultyMode, string> = {
   hard: "Hard",
   nightmare: "Nightmare"
 };
+const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
 
 function hotkeyLabelFromKey(eventName: string): string {
   switch (eventName) {
@@ -76,6 +85,7 @@ export class MetaMenuScene extends Phaser.Scene {
 
   create(): void {
     this.meta = this.loadMeta();
+    this.normalizeMetaForPhase4B();
     this.runSave = this.saveManager.readSave();
     const resolvedDifficulty = resolveSelectedDifficulty(this.meta);
     if (resolvedDifficulty !== this.meta.selectedDifficulty) {
@@ -113,6 +123,9 @@ export class MetaMenuScene extends Phaser.Scene {
         onPurchase: (index) => this.tryPurchase(index),
         onPurchaseTalent: (talentId) => this.tryPurchaseTalent(talentId),
         onSelectDifficulty: (mode) => this.selectDifficulty(mode),
+        onForgeBlueprint: (blueprintId) => this.tryForgeBlueprint(blueprintId),
+        onUnlockMutation: (mutationId) => this.tryUnlockEchoMutation(mutationId),
+        onToggleMutation: (mutationId) => this.tryToggleMutationSelection(mutationId),
         onStartRun: () => this.startRun(),
         onContinueRun: () => this.continueRun(),
         onAbandonRun: () => this.abandonRun()
@@ -317,6 +330,95 @@ export class MetaMenuScene extends Phaser.Scene {
       talentGroups.set(talent.path, group);
     });
 
+    const foundBlueprints = new Set(this.meta.blueprintFoundIds);
+    const forgedBlueprints = new Set(this.meta.blueprintForgedIds);
+    const blueprintGroups = new Map<
+      MetaMenuPanelView["blueprintGroups"][number]["category"],
+      MetaMenuPanelView["blueprintGroups"][number]
+    >();
+    for (const blueprint of BLUEPRINT_DEFS) {
+      const isFound = foundBlueprints.has(blueprint.id);
+      const isForged = forgedBlueprints.has(blueprint.id);
+      const canForge = isFound && !isForged && this.meta.soulShards >= blueprint.forgeCost;
+      const statusText = isForged
+        ? "Forged"
+        : isFound
+          ? canForge
+            ? "Ready to Forge"
+            : "Need Soul Shards"
+          : "Undiscovered";
+      const group = blueprintGroups.get(blueprint.category) ?? {
+        category: blueprint.category,
+        label: this.blueprintCategoryLabel(blueprint.category),
+        blueprints: []
+      };
+      group.blueprints.push({
+        id: blueprint.id,
+        name: blueprint.name,
+        category: blueprint.category,
+        rarity: blueprint.rarity,
+        forgeCost: blueprint.forgeCost,
+        unlockTargetId: blueprint.unlockTargetId,
+        statusText,
+        canForge
+      });
+      blueprintGroups.set(blueprint.category, group);
+    }
+
+    const unlockedMutationIds = collectUnlockedMutationIds(this.meta, MUTATION_DEFS);
+    const selectedMutationIds = [...this.meta.selectedMutationIds];
+    const unlockedMutationSet = new Set(unlockedMutationIds);
+    const mutationGroups = new Map<
+      MutationDef["category"],
+      MetaMenuPanelView["mutationGroups"][number]
+    >();
+    for (const mutation of MUTATION_DEFS) {
+      const selected = selectedMutationIds.includes(mutation.id);
+      const unlocked = unlockedMutationSet.has(mutation.id);
+      let canToggle = selected;
+      let canUnlockEcho = false;
+      let statusText = selected ? "Selected" : "Locked";
+      if (!selected && unlocked) {
+        const validation = validateMutationSelection(
+          [...selectedMutationIds, mutation.id],
+          MUTATION_DEF_BY_ID,
+          this.meta.mutationSlots,
+          unlockedMutationIds
+        );
+        canToggle = validation.ok;
+        statusText = validation.ok ? "Available" : this.describeMutationValidationError(validation.reason);
+      } else if (!selected && !unlocked) {
+        if (mutation.unlock.type === "echo") {
+          canUnlockEcho = this.meta.echoes >= mutation.unlock.cost;
+          statusText = canUnlockEcho
+            ? `Cost ${mutation.unlock.cost} Echoes`
+            : `Need ${mutation.unlock.cost} Echoes`;
+        } else if (mutation.unlock.type === "blueprint") {
+          statusText = this.meta.blueprintForgedIds.includes(mutation.unlock.blueprintId)
+            ? "Available next refresh"
+            : `Need ${mutation.unlock.blueprintId}`;
+        }
+      }
+      const group = mutationGroups.get(mutation.category) ?? {
+        category: mutation.category,
+        label: this.mutationCategoryLabel(mutation.category),
+        mutations: []
+      };
+      group.mutations.push({
+        id: mutation.id,
+        name: mutation.name,
+        category: mutation.category,
+        tier: mutation.tier,
+        unlockText: this.describeMutationUnlock(mutation),
+        effectText: this.describeMutationEffects(mutation),
+        statusText,
+        selected,
+        canToggle,
+        canUnlockEcho
+      });
+      mutationGroups.set(mutation.category, group);
+    }
+
     const difficulties = DIFFICULTY_ORDER.map((mode, index) => {
       const shortcut = index === 0 ? "Q" : index === 1 ? "W" : "E";
       return {
@@ -331,6 +433,7 @@ export class MetaMenuScene extends Phaser.Scene {
 
     return {
       soulShards: this.meta.soulShards,
+      echoes: this.meta.echoes,
       unlockedCount: this.meta.unlocks.length,
       totalUnlocks: UNLOCK_DEFS.length,
       difficulties,
@@ -340,8 +443,74 @@ export class MetaMenuScene extends Phaser.Scene {
         talents: [...group.talents].sort((left, right) => left.tier - right.tier)
       })),
       unlockGroups: [...unlockGroups.values()].sort((left, right) => left.tier - right.tier),
+      blueprintGroups: [...blueprintGroups.values()],
+      mutationGroups: [...mutationGroups.values()].map((group) => ({
+        ...group,
+        mutations: [...group.mutations].sort((left, right) => left.tier - right.tier || left.name.localeCompare(right.name))
+      })),
+      mutationSlots: this.meta.mutationSlots,
+      selectedMutations: this.meta.selectedMutationIds.length,
       startRunEnabled: this.runSave === null
     };
+  }
+
+  private blueprintCategoryLabel(category: MetaMenuPanelView["blueprintGroups"][number]["category"]): string {
+    switch (category) {
+      case "skill":
+        return "Skill Blueprints";
+      case "weapon":
+        return "Weapon Blueprints";
+      case "consumable":
+        return "Consumable Blueprints";
+      case "event":
+        return "Event Blueprints";
+      case "mutation":
+        return "Mutation Blueprints";
+      default:
+        return category;
+    }
+  }
+
+  private mutationCategoryLabel(category: MutationDef["category"]): string {
+    switch (category) {
+      case "offensive":
+        return "Offensive";
+      case "defensive":
+        return "Defensive";
+      case "utility":
+        return "Utility";
+      default:
+        return category;
+    }
+  }
+
+  private describeMutationUnlock(mutation: MutationDef): string {
+    if (mutation.unlock.type === "default") {
+      return "Default unlock";
+    }
+    if (mutation.unlock.type === "blueprint") {
+      return `Forge ${mutation.unlock.blueprintId}`;
+    }
+    return `Echo unlock (${mutation.unlock.cost})`;
+  }
+
+  private describeMutationEffects(mutation: MutationDef): string {
+    return mutation.effects
+      .map((effect) => effect.type.replaceAll("_", " "))
+      .join(" + ");
+  }
+
+  private describeMutationValidationError(reason: string): string {
+    if (reason.includes("slot limit")) {
+      return "Slot full";
+    }
+    if (reason.includes("conflict")) {
+      return "Conflict with selected";
+    }
+    if (reason.includes("not unlocked")) {
+      return "Not unlocked";
+    }
+    return "Unavailable";
   }
 
   private difficultyRequirement(mode: DifficultyMode): string {
@@ -417,6 +586,16 @@ export class MetaMenuScene extends Phaser.Scene {
     this.hideDomMenu();
   }
 
+  private normalizeMetaForPhase4B(): void {
+    const normalized = normalizeMutationMetaState(this.meta, MUTATION_DEFS);
+    if (JSON.stringify(normalized) !== JSON.stringify(this.meta)) {
+      this.meta = normalized;
+      this.saveMeta(this.meta);
+      return;
+    }
+    this.meta = normalized;
+  }
+
   private tryPurchase(index: number): void {
     const unlock = UNLOCK_DEFS[index];
     if (unlock === undefined) {
@@ -428,6 +607,64 @@ export class MetaMenuScene extends Phaser.Scene {
     }
     this.meta = next;
     this.saveMeta(next);
+    this.scene.restart();
+  }
+
+  private tryForgeBlueprint(blueprintId: string): void {
+    const blueprint = BLUEPRINT_DEF_MAP[blueprintId];
+    if (blueprint === undefined) {
+      return;
+    }
+    const next = forgeBlueprint(this.meta, blueprint);
+    if (next === this.meta) {
+      return;
+    }
+    this.meta = normalizeMutationMetaState(next, MUTATION_DEFS);
+    this.saveMeta(this.meta);
+    this.scene.restart();
+  }
+
+  private tryUnlockEchoMutation(mutationId: string): void {
+    const mutation = MUTATION_DEF_BY_ID[mutationId];
+    if (mutation === undefined) {
+      return;
+    }
+    const result = unlockEchoMutation(this.meta, mutation);
+    if (!result.ok) {
+      return;
+    }
+    this.meta = normalizeMutationMetaState(result.meta, MUTATION_DEFS);
+    this.saveMeta(this.meta);
+    this.scene.restart();
+  }
+
+  private tryToggleMutationSelection(mutationId: string): void {
+    const mutation = MUTATION_DEF_BY_ID[mutationId];
+    if (mutation === undefined) {
+      return;
+    }
+    const unlockedMutationIds = collectUnlockedMutationIds(this.meta, MUTATION_DEFS);
+    const currentlySelected = [...this.meta.selectedMutationIds];
+    const nextSelection = currentlySelected.includes(mutationId)
+      ? currentlySelected.filter((selectedId) => selectedId !== mutationId)
+      : [...currentlySelected, mutationId];
+    const validation = validateMutationSelection(
+      nextSelection,
+      MUTATION_DEF_BY_ID,
+      this.meta.mutationSlots,
+      unlockedMutationIds
+    );
+    if (!validation.ok) {
+      return;
+    }
+    this.meta = normalizeMutationMetaState(
+      {
+        ...this.meta,
+        selectedMutationIds: validation.selected
+      },
+      MUTATION_DEFS
+    );
+    this.saveMeta(this.meta);
     this.scene.restart();
   }
 
@@ -527,7 +764,8 @@ export class MetaMenuScene extends Phaser.Scene {
       soulShardsEarned: soulShards,
       obolsEarned: failedRun.runEconomy.obols
     };
-    this.meta = applyRunSummaryToMeta(nextMeta, summary);
+    const mergedMeta = mergeFoundBlueprints(nextMeta, save.blueprintFoundIdsInRun ?? []);
+    this.meta = normalizeMutationMetaState(applyRunSummaryToMeta(mergedMeta, summary), MUTATION_DEFS);
     if (this.saveMeta(this.meta)) {
       this.saveManager.markRunSettled(save.runId);
       this.saveManager.deleteSave();

@@ -26,3 +26,6 @@ export * from "./stats";
 export * from "./xp";
 export * from "./talent";
 export * from "./save";
+export * from "./blueprint";
+export * from "./mutation";
+export * from "./weaponType";
