@@ -1,5 +1,9 @@
 import type { ItemDef, ItemInstance, LootEntry, LootTableDef, RngLike } from "./contracts/types";
 
+export interface RollItemDropOptions {
+  isItemEligible?: (itemDef: ItemDef) => boolean;
+}
+
 function clamp(num: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, num));
 }
@@ -94,6 +98,7 @@ function createItemInstance(def: ItemDef, seedFragment: string, rng: RngLike): I
     name: def.name,
     kind,
     slot: def.slot,
+    ...(def.weaponType === undefined ? {} : { weaponType: def.weaponType }),
     rarity: def.rarity,
     requiredLevel: def.requiredLevel,
     iconId: def.iconId,
@@ -108,9 +113,22 @@ export function rollItemDrop(
   itemDefs: Record<string, ItemDef>,
   floor: number,
   rng: RngLike,
-  seedFragment: string
+  seedFragment: string,
+  options: RollItemDropOptions = {}
 ): ItemInstance | null {
-  const validEntries = lootTable.entries.filter((entry) => entry.minFloor <= floor);
+  const validEntries = lootTable.entries.filter((entry) => {
+    if (entry.minFloor > floor) {
+      return false;
+    }
+    const def = itemDefs[entry.itemDefId];
+    if (def === undefined) {
+      return false;
+    }
+    if (options.isItemEligible !== undefined && !options.isItemEligible(def)) {
+      return false;
+    }
+    return true;
+  });
   if (validEntries.length === 0) {
     return null;
   }
@@ -140,16 +158,18 @@ export function rollBossDrops(
   itemDefs: Record<string, ItemDef>,
   floor: number,
   rng: RngLike,
-  seedFragment: string
+  seedFragment: string,
+  options: RollItemDropOptions = {}
 ): BossDropResult {
-  const rare = rollItemDrop(rareTable, itemDefs, floor, rng, `${seedFragment}-rare`);
-  const exclusive = rollItemDrop(bossExclusiveTable, itemDefs, floor, rng, `${seedFragment}-exclusive`);
+  const rare = rollItemDrop(rareTable, itemDefs, floor, rng, `${seedFragment}-rare`, options);
+  const exclusive = rollItemDrop(bossExclusiveTable, itemDefs, floor, rng, `${seedFragment}-exclusive`, options);
 
   if (rare === null || exclusive === null) {
     throw new Error("Boss drop tables must be valid and include floor-compatible entries.");
   }
 
-  const bonusDrop = rng.next() < 0.35 ? rollItemDrop(rareTable, itemDefs, floor, rng, `${seedFragment}-bonus`) : null;
+  const bonusDrop =
+    rng.next() < 0.35 ? rollItemDrop(rareTable, itemDefs, floor, rng, `${seedFragment}-bonus`, options) : null;
 
   return {
     guaranteedRare: rare,

@@ -42,6 +42,10 @@ function selectTargets(player: PlayerState, monsters: MonsterState[], def: Skill
   return nearest === undefined ? [] : [nearest];
 }
 
+export interface ResolveSkillOptions {
+  damageMultiplier?: number;
+}
+
 export function canUseSkill(
   player: PlayerState,
   skillState: PlayerSkillState,
@@ -60,7 +64,8 @@ export function resolveSkill(
   targets: MonsterState[],
   skillDef: SkillDef,
   rng: RngLike,
-  nowMs: number
+  nowMs: number,
+  options: ResolveSkillOptions = {}
 ): SkillResolution {
   const selectedTargets = selectTargets(player, targets, skillDef);
   const updatedMonsters = targets.map((monster) => ({ ...monster }));
@@ -72,6 +77,7 @@ export function resolveSkill(
     mana: Math.max(0, player.mana - skillDef.manaCost)
   };
 
+  const skillDamageMultiplier = Math.max(0.05, options.damageMultiplier ?? 1);
   for (const effect of skillDef.effects) {
     const resolved = resolveScalingValue(effect, player);
 
@@ -82,7 +88,7 @@ export function resolveSkill(
           continue;
         }
         const crit = rng.next() < nextPlayer.derivedStats.critChance;
-        const amount = Math.max(1, Math.floor(resolved * (crit ? 1.5 : 1)));
+        const amount = Math.max(1, Math.floor(resolved * skillDamageMultiplier * (crit ? 1.5 : 1)));
         const nextHealth = Math.max(0, updatedMonsters[idx]!.health - amount);
         updatedMonsters[idx] = {
           ...updatedMonsters[idx]!,

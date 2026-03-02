@@ -71,6 +71,14 @@ function makeDungeon(): DungeonLayout {
     corridors: [],
     spawnPoints: [{ x: 1, y: 1 }],
     playerSpawn: { x: 1, y: 1 },
+    hiddenRooms: [
+      {
+        roomId: "hidden-1",
+        entrance: { x: 2, y: 2 },
+        revealed: false,
+        rewardsClaimed: false
+      }
+    ],
     layoutHash: "layout-1"
   };
 }
@@ -233,6 +241,20 @@ describe("save", () => {
 
     expect(validateSave(broken)).toBe(false);
     expect(deserializeRunState(JSON.stringify(broken))).toBeNull();
+  });
+
+  it("rejects invalid hidden room snapshot shape", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    const dungeon = broken.dungeon as Record<string, unknown>;
+    dungeon.hiddenRooms = [
+      {
+        roomId: "hidden-1",
+        entrance: { x: 2, y: 2 },
+        revealed: "nope"
+      }
+    ];
+
+    expect(validateSave(broken)).toBe(false);
   });
 
   it("keeps unknown fields for forward compatibility", () => {

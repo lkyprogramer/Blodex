@@ -9,6 +9,7 @@ import type {
   HazardType,
   ItemInstance,
   MonsterAffixId,
+  MutationEffect,
   MonsterState,
   ReplayInputEvent,
   RunSummary,
@@ -207,6 +208,13 @@ export interface GameEventMap {
     itemName: string;
     priceObol: number;
     timestampMs: number;
+  };
+  "mutation:trigger": {
+    mutationId: string;
+    effectType: MutationEffect["type"];
+    timestampMs: number;
+    detail?: string;
+    value?: number;
   };
 }
 

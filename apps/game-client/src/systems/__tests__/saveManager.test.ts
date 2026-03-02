@@ -36,6 +36,18 @@ class MemoryStorage implements Storage {
   }
 }
 
+class ThrowOnSetStorage extends MemoryStorage {
+  override setItem(_key: string, _value: string): void {
+    throw new Error("setItem blocked");
+  }
+}
+
+class ThrowOnGetStorage extends MemoryStorage {
+  override getItem(_key: string): string | null {
+    throw new Error("getItem blocked");
+  }
+}
+
 function makeCursor(): Record<RunRngStreamName, number> {
   return {
     procgen: 0,
@@ -188,5 +200,23 @@ describe("SaveManager", () => {
 
     manager.dispose();
     vi.useRealTimers();
+  });
+
+  it("falls back to generated tab id when sessionStorage set throws", () => {
+    const manager = new SaveManager({
+      storage: new MemoryStorage(),
+      sessionStorage: new ThrowOnSetStorage()
+    });
+
+    expect(manager.getTabId().length).toBeGreaterThan(0);
+  });
+
+  it("falls back to generated tab id when sessionStorage get throws", () => {
+    const manager = new SaveManager({
+      storage: new MemoryStorage(),
+      sessionStorage: new ThrowOnGetStorage()
+    });
+
+    expect(manager.getTabId().length).toBeGreaterThan(0);
   });
 });

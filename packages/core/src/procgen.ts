@@ -1,4 +1,9 @@
-import type { DungeonCorridor, DungeonLayout, DungeonRoom } from "./contracts/types";
+import type {
+  DungeonCorridor,
+  DungeonLayout,
+  DungeonRoom,
+  HiddenRoomState
+} from "./contracts/types";
 import { SeededRng } from "./rng";
 
 function createGrid(width: number, height: number): boolean[][] {
@@ -55,6 +60,105 @@ function roomsOverlap(a: DungeonRoom, b: DungeonRoom): boolean {
     a.y + a.height + 1 < b.y ||
     b.y + b.height + 1 < a.y
   );
+}
+
+function clamp(num: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, num));
+}
+
+function isInsideRoom(room: DungeonRoom, x: number, y: number): boolean {
+  return x >= room.x && x < room.x + room.width && y >= room.y && y < room.y + room.height;
+}
+
+function isRoomInBounds(room: DungeonRoom, width: number, height: number): boolean {
+  return room.x >= 1 && room.y >= 1 && room.x + room.width <= width - 1 && room.y + room.height <= height - 1;
+}
+
+function tryGenerateHiddenRoom(
+  options: ProcgenOptions,
+  floorNumber: number,
+  rng: SeededRng,
+  grid: boolean[][],
+  rooms: DungeonRoom[]
+): HiddenRoomState[] {
+  if (floorNumber < 2 || rooms.length < 2) {
+    return [];
+  }
+
+  const maxAttempts = 24;
+  const minHiddenSize = Math.max(3, options.minRoomSize - 1);
+  const maxHiddenSize = Math.max(minHiddenSize, Math.min(options.maxRoomSize, minHiddenSize + 2));
+  const directions = [
+    { dx: 1, dy: 0 },
+    { dx: -1, dy: 0 },
+    { dx: 0, dy: 1 },
+    { dx: 0, dy: -1 }
+  ];
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const baseRoom = rooms[rng.nextInt(1, rooms.length - 1)];
+    if (baseRoom === undefined) {
+      continue;
+    }
+    const baseCenter = center(baseRoom);
+    const roomWidth = rng.nextInt(minHiddenSize, maxHiddenSize);
+    const roomHeight = rng.nextInt(minHiddenSize, maxHiddenSize);
+    const direction = directions[rng.nextInt(0, directions.length - 1)];
+    if (direction === undefined) {
+      continue;
+    }
+
+    let roomX = 0;
+    let roomY = 0;
+    if (direction.dx === 1) {
+      roomX = baseRoom.x + baseRoom.width + 2;
+      roomY = clamp(baseCenter.y - Math.floor(roomHeight / 2), 1, options.height - roomHeight - 1);
+    } else if (direction.dx === -1) {
+      roomX = baseRoom.x - roomWidth - 2;
+      roomY = clamp(baseCenter.y - Math.floor(roomHeight / 2), 1, options.height - roomHeight - 1);
+    } else if (direction.dy === 1) {
+      roomX = clamp(baseCenter.x - Math.floor(roomWidth / 2), 1, options.width - roomWidth - 1);
+      roomY = baseRoom.y + baseRoom.height + 2;
+    } else {
+      roomX = clamp(baseCenter.x - Math.floor(roomWidth / 2), 1, options.width - roomWidth - 1);
+      roomY = baseRoom.y - roomHeight - 2;
+    }
+
+    const hiddenRoom: DungeonRoom = {
+      id: `hidden-room-${attempt}`,
+      x: roomX,
+      y: roomY,
+      width: roomWidth,
+      height: roomHeight
+    };
+
+    if (!isRoomInBounds(hiddenRoom, options.width, options.height)) {
+      continue;
+    }
+    if (rooms.some((room) => roomsOverlap(hiddenRoom, room))) {
+      continue;
+    }
+
+    carveRoom(grid, hiddenRoom);
+    const hiddenCenter = center(hiddenRoom);
+    const branchPath = carveCorridor(grid, baseCenter, hiddenCenter);
+    const entrance = branchPath.find((point) => !isInsideRoom(baseRoom, point.x, point.y));
+    if (entrance === undefined) {
+      continue;
+    }
+
+    grid[entrance.y]![entrance.x] = false;
+    return [
+      {
+        roomId: hiddenRoom.id,
+        entrance: { x: entrance.x, y: entrance.y },
+        revealed: false,
+        rewardsClaimed: false
+      }
+    ];
+  }
+
+  return [];
 }
 
 export interface ProcgenOptions {
@@ -120,6 +224,7 @@ export function generateBossRoom(seed: string, width = 46, height = 46): Dungeon
       { x: roomCenter.x + 2, y: roomCenter.y }
     ],
     playerSpawn: entrance,
+    hiddenRooms: [],
     layoutHash: `${seed}:boss:${width}x${height}`
   };
 }
@@ -174,9 +279,17 @@ export function generateDungeon(options: ProcgenOptions): DungeonLayout {
     });
   }
 
-  const spawnPoints = rooms.slice(1).map((room) => center(room));
+  const hiddenRooms = tryGenerateHiddenRoom(options, floorNumber, rng, grid, rooms);
+  const hiddenRoomIdSet = new Set(hiddenRooms.map((entry) => entry.roomId));
+  const spawnPoints = rooms
+    .filter((room) => !hiddenRoomIdSet.has(room.id))
+    .slice(1)
+    .map((room) => center(room));
   const playerSpawn = center(rooms[0]!);
-  const layoutHash = `${options.seed}:${rooms.length}:${corridors.length}:${floorNumber}`;
+  const hiddenHashPart = hiddenRooms
+    .map((entry) => `${entry.roomId}@${entry.entrance.x},${entry.entrance.y}`)
+    .join("|");
+  const layoutHash = `${options.seed}:${rooms.length}:${corridors.length}:${floorNumber}:${hiddenHashPart}`;
 
   return {
     width: options.width,
@@ -186,6 +299,7 @@ export function generateDungeon(options: ProcgenOptions): DungeonLayout {
     corridors,
     spawnPoints,
     playerSpawn,
+    hiddenRooms,
     layoutHash
   };
 }

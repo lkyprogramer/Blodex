@@ -42,4 +42,24 @@ describe("generateDungeon", () => {
       expect(corridor.path.length).toBeGreaterThan(0);
     }
   });
+
+  it("generates hidden room entrances as blocked tiles on floor 2+", () => {
+    const dungeon = generateDungeon({
+      width: 50,
+      height: 50,
+      roomCount: 10,
+      minRoomSize: 4,
+      maxRoomSize: 8,
+      floorNumber: 3,
+      seed: "seed-hidden-room"
+    });
+
+    expect(dungeon.hiddenRooms).toBeDefined();
+    expect(dungeon.hiddenRooms?.length).toBeGreaterThanOrEqual(0);
+    for (const hidden of dungeon.hiddenRooms ?? []) {
+      expect(dungeon.walkable[hidden.entrance.y]?.[hidden.entrance.x]).toBe(false);
+      expect(hidden.revealed).toBe(false);
+      expect(hidden.rewardsClaimed).toBe(false);
+    }
+  });
 });

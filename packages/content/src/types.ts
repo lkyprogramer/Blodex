@@ -22,6 +22,8 @@ export type DamageType = "physical" | "arcane";
 
 export type DifficultyMode = "normal" | "hard" | "nightmare";
 
+export type WeaponType = "sword" | "axe" | "dagger" | "staff" | "hammer" | "sword_master";
+
 export type ItemSpecialAffixKey =
   | "lifesteal"
   | "critDamage"
@@ -127,6 +129,7 @@ export interface ItemDef {
   name: string;
   slot: EquipmentSlot;
   kind?: ItemKind;
+  weaponType?: WeaponType;
   rarity: ItemRarity;
   requiredLevel: number;
   iconId: string;
@@ -308,4 +311,70 @@ export interface TalentNodeDef {
   prerequisites: TalentPrerequisite[];
   effects: TalentEffect[];
   uiPosition: { x: number; y: number };
+}
+
+export interface BlueprintDropSource {
+  type:
+    | "monster_affix"
+    | "boss_kill"
+    | "boss_first_kill"
+    | "challenge_room"
+    | "hidden_room"
+    | "random_event"
+    | "floor_clear";
+  sourceId?: string;
+  chance: number;
+  floorMin?: number;
+  onlyIfNotFound?: boolean;
+}
+
+export interface BlueprintDef {
+  id: string;
+  name: string;
+  category: "skill" | "weapon" | "consumable" | "event" | "mutation";
+  unlockTargetId: string;
+  forgeCost: number;
+  rarity: "common" | "rare" | "legendary";
+  dropSources: BlueprintDropSource[];
+}
+
+export type MutationEffect =
+  | { type: "on_kill_heal_percent"; value: number }
+  | { type: "on_kill_attack_speed"; value: number; durationMs: number; maxStacks: number }
+  | { type: "on_hit_invuln"; chance: number; durationMs: number; cooldownMs: number }
+  | { type: "on_hit_reflect_percent"; value: number }
+  | { type: "once_per_floor_lethal_guard"; invulnMs: number }
+  | { type: "drop_bonus"; soulShardPercent: number; obolPercent: number }
+  | { type: "move_speed_multiplier"; value: number }
+  | { type: "potion_heal_amp_and_self_damage"; healPercent: number; selfDamageCurrentHpPercent: number }
+  | { type: "hidden_room_reveal_radius"; value: number };
+
+export interface MutationDef {
+  id: string;
+  name: string;
+  category: "offensive" | "defensive" | "utility";
+  tier: 1 | 2 | 3;
+  unlock:
+    | { type: "default" }
+    | { type: "blueprint"; blueprintId: string }
+    | { type: "echo"; cost: number };
+  incompatibleWith?: string[];
+  effects: MutationEffect[];
+}
+
+export interface WeaponTypeDef {
+  id: WeaponType;
+  attackSpeedMultiplier: number;
+  attackRange: number;
+  damageMultiplier: number;
+  mechanic:
+    | { type: "none" }
+    | { type: "crit_bonus"; critChanceBonus: number; critDamageMultiplier?: number }
+    | { type: "aoe_cleave"; radius: number; secondaryDamagePercent: number }
+    | { type: "stagger"; chance: number; slowPercent: number; durationMs: number }
+    | { type: "skill_amp"; skillDamagePercent: number }
+    | { type: "projectile"; speed: number };
+  unlock:
+    | { type: "default" }
+    | { type: "blueprint"; blueprintId: string };
 }

@@ -163,11 +163,17 @@ export function createInitialMeta(): MetaProgression {
     soulShards: 0,
     unlocks: [],
     cumulativeUnlockProgress: 0,
-    schemaVersion: 3,
+    schemaVersion: 4,
     selectedDifficulty: DEFAULT_DIFFICULTY,
     difficultyCompletions: createInitialDifficultyCompletions(),
     talentPoints: {},
     totalShardsSpent: 0,
+    blueprintFoundIds: [],
+    blueprintForgedIds: [],
+    echoes: 0,
+    mutationSlots: 1,
+    mutationUnlockedIds: [],
+    selectedMutationIds: [],
     permanentUpgrades: createInitialPermanentUpgrades()
   };
 }

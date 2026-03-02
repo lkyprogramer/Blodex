@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createUIStateSnapshot } from "../state/UIStateAdapter";
 
 const META_MOCK: MetaProgression = {
-  schemaVersion: 3,
+  schemaVersion: 4,
   runsPlayed: 3,
   bestFloor: 5,
   bestTimeMs: 123_000,
@@ -18,6 +18,12 @@ const META_MOCK: MetaProgression = {
   unlocks: [],
   talentPoints: {},
   totalShardsSpent: 0,
+  blueprintFoundIds: [],
+  blueprintForgedIds: [],
+  echoes: 0,
+  mutationSlots: 1,
+  mutationUnlockedIds: [],
+  selectedMutationIds: [],
   permanentUpgrades: {
     startingHealth: 0,
     startingArmor: 0,

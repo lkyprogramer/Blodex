@@ -5,6 +5,7 @@ describe("renderMetaMenuPanel", () => {
   it("renders tier groups and action attributes", () => {
     const html = renderMetaMenuPanel({
       soulShards: 120,
+      echoes: 5,
       unlockedCount: 2,
       totalUnlocks: 6,
       runSave: {
@@ -97,17 +98,73 @@ describe("renderMetaMenuPanel", () => {
           ]
         }
       ],
+      blueprintGroups: [
+        {
+          category: "weapon",
+          label: "Weapon Blueprints",
+          blueprints: [
+            {
+              id: "bp_weapon_axe",
+              name: "Axe Frame",
+              category: "weapon",
+              rarity: "common",
+              forgeCost: 16,
+              unlockTargetId: "weapon_type_axe",
+              statusText: "Ready to Forge",
+              canForge: true
+            }
+          ]
+        }
+      ],
+      mutationGroups: [
+        {
+          category: "offensive",
+          label: "Offensive",
+          mutations: [
+            {
+              id: "mut_battle_instinct",
+              name: "Battle Instinct",
+              category: "offensive",
+              tier: 1,
+              unlockText: "Default unlock",
+              effectText: "on kill attack speed",
+              statusText: "Selected",
+              selected: true,
+              canToggle: true,
+              canUnlockEcho: false
+            },
+            {
+              id: "mut_phase_skin",
+              name: "Phase Skin",
+              category: "defensive",
+              tier: 2,
+              unlockText: "Echo unlock (2)",
+              effectText: "on hit invuln",
+              statusText: "Cost 2 Echoes",
+              selected: false,
+              canToggle: false,
+              canUnlockEcho: true
+            }
+          ]
+        }
+      ],
+      mutationSlots: 2,
+      selectedMutations: 1,
       startRunEnabled: false
     });
 
     expect(html).toContain('data-action="difficulty"');
     expect(html).toContain('data-action="purchase"');
     expect(html).toContain('data-action="purchase-talent"');
+    expect(html).toContain('data-action="forge-blueprint"');
+    expect(html).toContain('data-action="toggle-mutation"');
+    expect(html).toContain('data-action="unlock-mutation"');
     expect(html).toContain('data-action="continue"');
     expect(html).toContain('data-action="abandon"');
     expect(html).toContain('data-action="start"');
     expect(html).toContain('data-tier="1"');
     expect(html).toContain('data-tier="2"');
     expect(html).toContain("Soul Shards: 120");
+    expect(html).toContain("Echoes: 5");
   });
 });

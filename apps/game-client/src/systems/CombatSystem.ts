@@ -2,8 +2,10 @@ import {
   addRunObols,
   applyXpGain,
   deriveStats,
+  resolveEquippedWeaponType,
   resolveMonsterAttack,
   resolvePlayerAttack,
+  resolveWeaponTypeDef,
   rollItemDrop,
   type SkillDef,
   type SkillResolution,
@@ -14,7 +16,9 @@ import {
   type LootTableDef,
   type RngLike,
   type PlayerState,
-  type RunState
+  type RunState,
+  type WeaponType,
+  type WeaponTypeDef
 } from "@blodex/core";
 import type { MonsterRuntime } from "./EntityManager";
 
@@ -29,6 +33,9 @@ interface PlayerCombatContext {
   lootRng: RngLike;
   itemDefs: Record<string, ItemDef>;
   lootTables: Record<string, LootTableDef>;
+  attackSpeedMultiplier?: number;
+  weaponTypeDefs?: Partial<Record<WeaponType, WeaponTypeDef>>;
+  canDropItemDef?: (itemDef: ItemDef) => boolean;
 }
 
 export interface PlayerCombatResult {
@@ -92,6 +99,56 @@ function resolvePreferredTarget(
 }
 
 export class CombatSystem {
+  private readonly staggerUntilByMonsterId = new Map<string, number>();
+
+  private resolveWeaponDef(
+    player: PlayerState,
+    weaponTypeDefs: Partial<Record<WeaponType, WeaponTypeDef>> | undefined
+  ): WeaponTypeDef {
+    const weaponType = resolveEquippedWeaponType(player);
+    return resolveWeaponTypeDef(weaponType, weaponTypeDefs ?? {});
+  }
+
+  private applyAxeCleave(
+    monsters: MonsterRuntime[],
+    primaryTargetId: string,
+    primaryTargetPosition: { x: number; y: number },
+    amount: number,
+    radius: number,
+    secondaryDamagePercent: number,
+    playerId: string,
+    nowMs: number
+  ): CombatEvent[] {
+    const events: CombatEvent[] = [];
+    const secondaryDamage = Math.max(1, Math.floor(amount * Math.max(0, secondaryDamagePercent)));
+    for (const monster of monsters) {
+      if (monster.state.id === primaryTargetId || monster.state.health <= 0) {
+        continue;
+      }
+      if (distance(monster.state.position, primaryTargetPosition) > radius) {
+        continue;
+      }
+      const nextHealth = Math.max(1, monster.state.health - secondaryDamage);
+      const appliedDamage = monster.state.health - nextHealth;
+      if (appliedDamage <= 0) {
+        continue;
+      }
+      monster.state = {
+        ...monster.state,
+        health: nextHealth
+      };
+      events.push({
+        kind: "damage",
+        sourceId: playerId,
+        targetId: monster.state.id,
+        amount: appliedDamage,
+        damageType: "physical",
+        timestampMs: nowMs
+      });
+    }
+    return events;
+  }
+
   updatePlayerAttack(context: PlayerCombatContext): PlayerCombatResult {
     const { target, source } = resolvePreferredTarget(
       context.monsters,
@@ -111,8 +168,10 @@ export class CombatSystem {
       };
     }
 
+    const weaponDef = this.resolveWeaponDef(context.player, context.weaponTypeDefs);
+    const effectiveMeleeRange = Math.max(0.5, weaponDef.attackRange);
     const dist = distance(context.player.position, target.state.position);
-    if (dist > PLAYER_MELEE_RANGE) {
+    if (dist > effectiveMeleeRange) {
       if (source !== "manual") {
         return {
           player: context.player,
@@ -148,10 +207,43 @@ export class CombatSystem {
       };
     }
 
+    const effectiveAttackSpeedMultiplier = Math.max(
+      0.2,
+      (context.attackSpeedMultiplier ?? 1) * Math.max(0.2, weaponDef.attackSpeedMultiplier)
+    );
     const nextPlayerAttackAt =
-      context.nowMs + 1000 / Math.max(0.6, context.player.derivedStats.attackSpeed);
-    const result = resolvePlayerAttack(context.player, target.state, context.combatRng, context.nowMs);
+      context.nowMs + 1000 / Math.max(0.6, context.player.derivedStats.attackSpeed * effectiveAttackSpeedMultiplier);
+    const result = resolvePlayerAttack(context.player, target.state, context.combatRng, context.nowMs, {
+      damageMultiplier: weaponDef.damageMultiplier,
+      ...(weaponDef.mechanic.type === "crit_bonus"
+        ? {
+            critChanceBonus: weaponDef.mechanic.critChanceBonus,
+            critDamageMultiplier: weaponDef.mechanic.critDamageMultiplier
+          }
+        : {})
+    });
     target.state = result.monster;
+    let weaponEvents: CombatEvent[] = [];
+    const primaryDamage = result.events.find((event) => event.kind === "damage" || event.kind === "crit")?.amount ?? 0;
+    if (weaponDef.mechanic.type === "aoe_cleave" && primaryDamage > 0) {
+      weaponEvents = this.applyAxeCleave(
+        context.monsters,
+        target.state.id,
+        target.state.position,
+        primaryDamage,
+        weaponDef.mechanic.radius,
+        weaponDef.mechanic.secondaryDamagePercent,
+        context.player.id,
+        context.nowMs
+      );
+    } else if (
+      weaponDef.mechanic.type === "stagger" &&
+      target.state.health > 0 &&
+      context.combatRng.next() < weaponDef.mechanic.chance
+    ) {
+      this.staggerUntilByMonsterId.set(target.state.id, context.nowMs + weaponDef.mechanic.durationMs);
+    }
+    const mergedEvents = [...result.events, ...weaponEvents];
 
     if (target.state.health > 0) {
       return {
@@ -159,10 +251,12 @@ export class CombatSystem {
         run: context.run,
         attackTargetId: activeTargetId,
         nextPlayerAttackAt,
-        combatEvents: result.events,
+        combatEvents: mergedEvents,
         leveledUp: false
       };
     }
+
+    this.staggerUntilByMonsterId.delete(target.state.id);
 
     const nextKills = context.run.kills + 1;
     const xpResult = applyXpGain(context.player, target.state.xpValue, "strength");
@@ -187,7 +281,12 @@ export class CombatSystem {
             context.itemDefs,
             context.run.currentFloor,
             context.lootRng,
-            `${context.run.currentFloor}-${target.state.id}-${nextKills}`
+            `${context.run.currentFloor}-${target.state.id}-${nextKills}`,
+            context.canDropItemDef === undefined
+              ? undefined
+              : {
+                  isItemEligible: context.canDropItemDef
+                }
           );
 
     const droppedItemPayload =
@@ -209,7 +308,7 @@ export class CombatSystem {
       attackTargetId: null,
       nextPlayerAttackAt,
       killedMonsterId: target.state.id,
-      combatEvents: result.events,
+      combatEvents: mergedEvents,
       leveledUp: xpResult.leveledUp,
       ...(droppedItemPayload === undefined ? {} : { droppedItem: droppedItemPayload })
     };
@@ -220,10 +319,16 @@ export class CombatSystem {
     monsters: MonsterRuntime[],
     skillDef: SkillDef,
     rng: RngLike,
-    nowMs: number
+    nowMs: number,
+    weaponTypeDefs?: Partial<Record<WeaponType, WeaponTypeDef>>
   ): SkillResolution {
+    const weaponDef = this.resolveWeaponDef(player, weaponTypeDefs);
+    const skillDamageMultiplier =
+      weaponDef.mechanic.type === "skill_amp" ? 1 + weaponDef.mechanic.skillDamagePercent : 1;
     const snapshot = monsters.map((monster) => monster.state);
-    const resolution = resolveSkill(player, snapshot, skillDef, rng, nowMs);
+    const resolution = resolveSkill(player, snapshot, skillDef, rng, nowMs, {
+      damageMultiplier: skillDamageMultiplier
+    });
     const byId = new Map(resolution.affectedMonsters.map((monster) => [monster.id, monster]));
     for (const monster of monsters) {
       const next = byId.get(monster.state.id);
@@ -245,6 +350,12 @@ export class CombatSystem {
 
     for (const monster of monsters) {
       if (monster.state.health <= 0 || monster.state.aiState !== "attack") {
+        this.staggerUntilByMonsterId.delete(monster.state.id);
+        continue;
+      }
+
+      const staggerUntilMs = this.staggerUntilByMonsterId.get(monster.state.id) ?? 0;
+      if (nowMs < staggerUntilMs) {
         continue;
       }
 
