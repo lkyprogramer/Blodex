@@ -10,4 +10,5 @@ export * from "./randomEvents";
 export * from "./bosses";
 export * from "./skills";
 export * from "./unlocks";
+export * from "./talents";
 export * from "./types";

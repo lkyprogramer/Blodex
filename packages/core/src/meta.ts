@@ -8,6 +8,12 @@ import {
   registerDifficultyVictory,
   resolveSelectedDifficulty
 } from "./difficulty";
+import {
+  derivePermanentUpgradesFromTalents,
+  estimateLegacyShardsSpentFromTalents,
+  mapLegacyPermanentUpgradesToTalents,
+  normalizeTalentPoints
+} from "./talent";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -38,6 +44,17 @@ function normalizePermanentUpgrades(input: unknown): PermanentUpgrade {
   };
 }
 
+function normalizeUnlocks(input: unknown): string[] {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+  return input.filter((entry): entry is string => typeof entry === "string");
+}
+
+function normalizeTotalShardsSpent(input: unknown, fallback = 0): number {
+  return Math.max(0, Math.floor(asNumber(input, fallback)));
+}
+
 export function migrateMeta(raw: unknown): MetaProgression {
   const base: MetaProgression = {
     runsPlayed: 0,
@@ -46,9 +63,11 @@ export function migrateMeta(raw: unknown): MetaProgression {
     soulShards: 0,
     unlocks: [],
     cumulativeUnlockProgress: 0,
-    schemaVersion: 2,
+    schemaVersion: 3,
     selectedDifficulty: DEFAULT_DIFFICULTY,
     difficultyCompletions: createInitialDifficultyCompletions(),
+    talentPoints: {},
+    totalShardsSpent: 0,
     permanentUpgrades: {
       startingHealth: 0,
       startingArmor: 0,
@@ -62,43 +81,73 @@ export function migrateMeta(raw: unknown): MetaProgression {
   }
 
   const schemaVersion = asNumber(raw.schemaVersion, 1);
-  if (schemaVersion >= 2) {
-    const difficultyCompletions = normalizeDifficultyCompletions(raw.difficultyCompletions);
-    const selectedDifficulty = normalizeDifficultyMode(raw.selectedDifficulty, DEFAULT_DIFFICULTY);
+  const difficultyCompletions =
+    schemaVersion >= 2
+      ? normalizeDifficultyCompletions(raw.difficultyCompletions)
+      : createInitialDifficultyCompletions();
+  const selectedDifficulty = resolveSelectedDifficulty({
+    selectedDifficulty:
+      schemaVersion >= 2
+        ? normalizeDifficultyMode(raw.selectedDifficulty, DEFAULT_DIFFICULTY)
+        : DEFAULT_DIFFICULTY,
+    difficultyCompletions
+  });
+
+  if (schemaVersion >= 3) {
+    const rawPermanentUpgrades = normalizePermanentUpgrades(raw.permanentUpgrades);
+    let talentPoints = normalizeTalentPoints(raw.talentPoints);
+    if (Object.keys(talentPoints).length === 0) {
+      talentPoints = mapLegacyPermanentUpgradesToTalents(rawPermanentUpgrades);
+    }
+    const permanentUpgrades = derivePermanentUpgradesFromTalents(talentPoints);
+    const totalShardsSpent = normalizeTotalShardsSpent(
+      raw.totalShardsSpent,
+      estimateLegacyShardsSpentFromTalents(talentPoints)
+    );
+
     return {
       runsPlayed: asNumber(raw.runsPlayed, 0),
       bestFloor: asNumber(raw.bestFloor, 0),
       bestTimeMs: asNumber(raw.bestTimeMs, 0),
       soulShards: asNumber(raw.soulShards, 0),
-      unlocks: Array.isArray(raw.unlocks) ? raw.unlocks.filter((entry): entry is string => typeof entry === "string") : [],
+      unlocks: normalizeUnlocks(raw.unlocks),
       cumulativeUnlockProgress: asNumber(raw.cumulativeUnlockProgress, 0),
-      schemaVersion: 2,
-      selectedDifficulty: resolveSelectedDifficulty({
-        selectedDifficulty,
-        difficultyCompletions
-      }),
+      schemaVersion: 3,
+      selectedDifficulty,
       difficultyCompletions,
-      permanentUpgrades: normalizePermanentUpgrades(raw.permanentUpgrades)
+      talentPoints,
+      totalShardsSpent,
+      permanentUpgrades
     };
   }
+
+  const rawPermanentUpgrades =
+    schemaVersion >= 2
+      ? normalizePermanentUpgrades(raw.permanentUpgrades)
+      : {
+          startingHealth: 0,
+          startingArmor: 0,
+          luckBonus: 0,
+          skillSlots: 2,
+          potionCharges: 0
+        };
+  const talentPoints = mapLegacyPermanentUpgradesToTalents(rawPermanentUpgrades);
+  const permanentUpgrades = derivePermanentUpgradesFromTalents(talentPoints);
+  const totalShardsSpent = estimateLegacyShardsSpentFromTalents(talentPoints);
 
   return {
     runsPlayed: asNumber(raw.runsPlayed, 0),
     bestFloor: asNumber(raw.bestFloor, 0),
     bestTimeMs: asNumber(raw.bestTimeMs, 0),
-    soulShards: 0,
-    unlocks: [],
-    cumulativeUnlockProgress: 0,
-    schemaVersion: 2,
-    selectedDifficulty: DEFAULT_DIFFICULTY,
-    difficultyCompletions: createInitialDifficultyCompletions(),
-    permanentUpgrades: {
-      startingHealth: 0,
-      startingArmor: 0,
-      luckBonus: 0,
-      skillSlots: 2,
-      potionCharges: 0
-    }
+    soulShards: schemaVersion >= 2 ? asNumber(raw.soulShards, 0) : 0,
+    unlocks: schemaVersion >= 2 ? normalizeUnlocks(raw.unlocks) : [],
+    cumulativeUnlockProgress: schemaVersion >= 2 ? asNumber(raw.cumulativeUnlockProgress, 0) : 0,
+    schemaVersion: 3,
+    selectedDifficulty,
+    difficultyCompletions,
+    talentPoints,
+    totalShardsSpent,
+    permanentUpgrades
   };
 }
 
@@ -157,19 +206,28 @@ export function purchaseUnlock(meta: MetaProgression, unlock: UnlockDef): MetaPr
     ...meta,
     soulShards: meta.soulShards - unlock.cost,
     unlocks: [...meta.unlocks, unlock.id],
-    cumulativeUnlockProgress: meta.cumulativeUnlockProgress + unlock.cost
+    cumulativeUnlockProgress: meta.cumulativeUnlockProgress + unlock.cost,
+    totalShardsSpent: meta.totalShardsSpent + unlock.cost
   };
 
   if (unlock.effect.type !== "permanent_upgrade") {
     return next;
   }
 
+  const legacyPermanentUpgrades: PermanentUpgrade = {
+    ...next.permanentUpgrades,
+    [unlock.effect.key]: next.permanentUpgrades[unlock.effect.key] + unlock.effect.value
+  };
+  const mappedLegacyTalents = mapLegacyPermanentUpgradesToTalents(legacyPermanentUpgrades);
+  const nextTalentPoints = {
+    ...next.talentPoints,
+    ...mappedLegacyTalents
+  };
+
   return {
     ...next,
-    permanentUpgrades: {
-      ...next.permanentUpgrades,
-      [unlock.effect.key]: next.permanentUpgrades[unlock.effect.key] + unlock.effect.value
-    }
+    talentPoints: nextTalentPoints,
+    permanentUpgrades: derivePermanentUpgradesFromTalents(nextTalentPoints)
   };
 }
 

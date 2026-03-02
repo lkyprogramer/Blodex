@@ -512,6 +512,58 @@ export interface PermanentUpgrade {
   potionCharges: number;
 }
 
+export type TalentPath = "core" | "warrior" | "ranger" | "arcanist" | "utility";
+
+export type TalentEffect =
+  | {
+      type: "base_stat_flat";
+      stat: "strength" | "dexterity" | "vitality" | "intelligence";
+      value: number;
+    }
+  | {
+      type: "derived_stat_flat";
+      stat: "maxHealth" | "maxMana" | "armor" | "attackPower";
+      value: number;
+    }
+  | {
+      type: "derived_stat_percent";
+      stat: "attackPower" | "attackSpeed" | "moveSpeed" | "critChance";
+      value: number;
+    }
+  | {
+      type: "economy";
+      key: "deathRetention" | "merchantDiscount";
+      value: number;
+    }
+  | {
+      type: "capacity";
+      key: "skillSlots" | "potionCharges";
+      value: number;
+    }
+  | {
+      type: "trigger";
+      key: "lethalGuard" | "phaseDodge" | "manaShield";
+      value: number;
+    };
+
+export interface TalentPrerequisite {
+  talentId: string;
+  minRank: number;
+}
+
+export interface TalentNodeDef {
+  id: string;
+  path: TalentPath;
+  tier: 0 | 1 | 2 | 3 | 4 | 5;
+  name: string;
+  description: string;
+  cost: number;
+  maxRank: number;
+  prerequisites: TalentPrerequisite[];
+  effects: TalentEffect[];
+  uiPosition: { x: number; y: number };
+}
+
 export interface MetaProgression {
   runsPlayed: number;
   bestFloor: number;
@@ -519,9 +571,11 @@ export interface MetaProgression {
   soulShards: number;
   unlocks: string[];
   cumulativeUnlockProgress: number;
-  schemaVersion: 2;
+  schemaVersion: 3;
   selectedDifficulty: DifficultyMode;
   difficultyCompletions: Record<DifficultyMode, number>;
+  talentPoints: Record<string, number>;
+  totalShardsSpent: number;
   permanentUpgrades: PermanentUpgrade;
 }
 

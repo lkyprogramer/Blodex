@@ -29,11 +29,13 @@ function makeUnlock(overrides: Partial<UnlockDef> = {}): UnlockDef {
 }
 
 describe("meta", () => {
-  it("migrates v1 to v2 schema", () => {
+  it("migrates v1/v2 data into v3 schema", () => {
     const migrated = migrateMeta({ runsPlayed: 3, bestFloor: 2, bestTimeMs: 12345 });
-    expect(migrated.schemaVersion).toBe(2);
+    expect(migrated.schemaVersion).toBe(3);
     expect(migrated.runsPlayed).toBe(3);
     expect(migrated.soulShards).toBe(0);
+    expect(migrated.talentPoints).toEqual({});
+    expect(migrated.totalShardsSpent).toBe(0);
   });
 
   it("calculates rewards", () => {

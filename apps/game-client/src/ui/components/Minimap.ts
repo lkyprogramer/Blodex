@@ -10,6 +10,11 @@ interface MinimapPoint {
   y: number;
 }
 
+export interface MinimapExplorationSnapshot {
+  layoutHash: string;
+  exploredKeys: number[];
+}
+
 export interface MinimapFrame {
   player: MinimapPoint;
   monsters: MinimapPoint[];
@@ -51,6 +56,7 @@ export class Minimap {
   }
 
   configure(layout: MinimapLayout): void {
+    this.root?.classList.remove("hidden");
     if (this.layout?.layoutHash === layout.layoutHash) {
       return;
     }
@@ -62,9 +68,34 @@ export class Minimap {
   reset(): void {
     this.explored.clear();
     this.clear();
+    this.root?.classList.add("hidden");
+  }
+
+  snapshot(): MinimapExplorationSnapshot | null {
+    if (this.layout === null) {
+      return null;
+    }
+    return {
+      layoutHash: this.layout.layoutHash,
+      exploredKeys: [...this.explored.values()].sort((left, right) => left - right)
+    };
+  }
+
+  restore(snapshot: MinimapExplorationSnapshot): void {
+    if (this.layout === null) {
+      return;
+    }
+    if (this.layout.layoutHash !== snapshot.layoutHash) {
+      this.explored.clear();
+      this.clear();
+      return;
+    }
+    this.explored = new Set(snapshot.exploredKeys);
+    this.clear();
   }
 
   render(frame: MinimapFrame): void {
+    this.root?.classList.remove("hidden");
     if (this.ctx === null || this.canvas === null || this.layout === null) {
       return;
     }

@@ -1,16 +1,24 @@
 import Phaser from "phaser";
 import {
+  applyRunSummaryToMeta,
+  calculateSoulShardReward,
+  canPurchaseTalent,
   createInitialMeta,
+  endRun,
   migrateMeta,
+  purchaseTalent,
   purchaseUnlock,
   resolveSelectedDifficulty,
   isDifficultyUnlocked,
   setSelectedDifficulty,
+  type RunSaveDataV1,
+  type TalentNodeDef,
   type DifficultyMode,
   type MetaProgression
 } from "@blodex/core";
-import { UNLOCK_DEFS } from "@blodex/content";
+import { TALENT_DEFS, UNLOCK_DEFS } from "@blodex/content";
 import { UI_POLISH_FLAGS } from "../config/uiFlags";
+import { SaveManager } from "../systems/SaveManager";
 import {
   bindMetaMenuPanelActions,
   renderMetaMenuPanel,
@@ -56,6 +64,8 @@ function hotkeyLabelFromKey(eventName: string): string {
 
 export class MetaMenuScene extends Phaser.Scene {
   private meta: MetaProgression = createInitialMeta();
+  private runSave: RunSaveDataV1 | null = null;
+  private readonly saveManager = new SaveManager();
   private readonly unbindDomActions: Array<() => void> = [];
   private readonly keyboardBindings: Array<{ eventName: string; handler: () => void }> = [];
   private menuRoot: HTMLDivElement | null = null;
@@ -66,6 +76,7 @@ export class MetaMenuScene extends Phaser.Scene {
 
   create(): void {
     this.meta = this.loadMeta();
+    this.runSave = this.saveManager.readSave();
     const resolvedDifficulty = resolveSelectedDifficulty(this.meta);
     if (resolvedDifficulty !== this.meta.selectedDifficulty) {
       this.meta = {
@@ -100,8 +111,11 @@ export class MetaMenuScene extends Phaser.Scene {
     this.unbindDomActions.push(
       ...bindMetaMenuPanelActions(this.menuRoot, {
         onPurchase: (index) => this.tryPurchase(index),
+        onPurchaseTalent: (talentId) => this.tryPurchaseTalent(talentId),
         onSelectDifficulty: (mode) => this.selectDifficulty(mode),
-        onStartRun: () => this.startRun()
+        onStartRun: () => this.startRun(),
+        onContinueRun: () => this.continueRun(),
+        onAbandonRun: () => this.abandonRun()
       })
     );
 
@@ -112,6 +126,8 @@ export class MetaMenuScene extends Phaser.Scene {
     this.bindKeyboard("keydown-W", () => this.selectDifficulty("hard"));
     this.bindKeyboard("keydown-E", () => this.selectDifficulty("nightmare"));
     this.bindKeyboard("keydown-ENTER", () => this.startRun());
+    this.bindKeyboard("keydown-C", () => this.continueRun());
+    this.bindKeyboard("keydown-B", () => this.abandonRun());
   }
 
   private renderLegacyPhaserMenu(): void {
@@ -269,6 +285,38 @@ export class MetaMenuScene extends Phaser.Scene {
       unlockGroups.set(unlock.tier, group);
     });
 
+    const talentGroups = new Map<MetaMenuPanelView["talentGroups"][number]["path"], MetaMenuPanelView["talentGroups"][number]>();
+    TALENT_DEFS.forEach((talent) => {
+      const rank = this.meta.talentPoints[talent.id] ?? 0;
+      const purchasable = canPurchaseTalent(this.meta, talent as TalentNodeDef);
+      const statusText =
+        rank >= talent.maxRank
+          ? "Max Rank"
+          : purchasable
+            ? "Available"
+            : this.meta.soulShards < talent.cost
+              ? "Need Soul Shards"
+              : "Prerequisite Required";
+      const group = talentGroups.get(talent.path) ?? {
+        path: talent.path,
+        label: talent.path,
+        talents: []
+      };
+      group.talents.push({
+        id: talent.id,
+        name: talent.name,
+        description: talent.description,
+        path: talent.path,
+        tier: talent.tier,
+        rank,
+        maxRank: talent.maxRank,
+        cost: talent.cost,
+        statusText,
+        purchasable
+      });
+      talentGroups.set(talent.path, group);
+    });
+
     const difficulties = DIFFICULTY_ORDER.map((mode, index) => {
       const shortcut = index === 0 ? "Q" : index === 1 ? "W" : "E";
       return {
@@ -286,7 +334,13 @@ export class MetaMenuScene extends Phaser.Scene {
       unlockedCount: this.meta.unlocks.length,
       totalUnlocks: UNLOCK_DEFS.length,
       difficulties,
-      unlockGroups: [...unlockGroups.values()].sort((left, right) => left.tier - right.tier)
+      runSave: this.describeRunSave(),
+      talentGroups: [...talentGroups.values()].map((group) => ({
+        ...group,
+        talents: [...group.talents].sort((left, right) => left.tier - right.tier)
+      })),
+      unlockGroups: [...unlockGroups.values()].sort((left, right) => left.tier - right.tier),
+      startRunEnabled: this.runSave === null
     };
   }
 
@@ -298,6 +352,21 @@ export class MetaMenuScene extends Phaser.Scene {
       return "Clear 1 Hard run";
     }
     return "Always available";
+  }
+
+  private describeRunSave(): MetaMenuPanelView["runSave"] {
+    if (this.runSave === null) {
+      return null;
+    }
+    const leaseBlocked = this.saveManager.hasForeignLease(this.runSave);
+    const date = new Date(this.runSave.savedAtMs);
+    const when = Number.isNaN(date.valueOf()) ? "Unknown time" : date.toLocaleString();
+    return {
+      canContinue: !leaseBlocked,
+      canAbandon: !leaseBlocked,
+      statusText: leaseBlocked ? "Run is active in another tab." : "Saved run ready to continue.",
+      detailText: `Floor ${this.runSave.run.currentFloor} • ${(this.runSave.run.difficulty ?? "normal").toUpperCase()} • ${when}`
+    };
   }
 
   private bindKeyboard(eventName: string, handler: () => void): void {
@@ -362,6 +431,20 @@ export class MetaMenuScene extends Phaser.Scene {
     this.scene.restart();
   }
 
+  private tryPurchaseTalent(talentId: string): void {
+    const talent = TALENT_DEFS.find((entry) => entry.id === talentId);
+    if (talent === undefined) {
+      return;
+    }
+    const next = purchaseTalent(this.meta, talent as TalentNodeDef);
+    if (next === this.meta) {
+      return;
+    }
+    this.meta = next;
+    this.saveMeta(next);
+    this.scene.restart();
+  }
+
   private selectDifficulty(mode: DifficultyMode): void {
     const next = setSelectedDifficulty(this.meta, mode);
     if (next === this.meta) {
@@ -373,9 +456,83 @@ export class MetaMenuScene extends Phaser.Scene {
   }
 
   private startRun(): void {
+    if (this.runSave !== null) {
+      return;
+    }
     const difficulty = resolveSelectedDifficulty(this.meta);
     this.hideDomMenu();
     this.scene.start("dungeon", { difficulty });
+  }
+
+  private continueRun(): void {
+    const save = this.saveManager.readSave();
+    if (save === null) {
+      this.scene.restart();
+      return;
+    }
+    const lease = this.saveManager.acquireLease(save);
+    if (!lease.ok || lease.save === null) {
+      this.scene.restart();
+      return;
+    }
+    this.hideDomMenu();
+    this.scene.start("dungeon", {
+      difficulty: lease.save.run.difficulty,
+      resumeSave: lease.save,
+      resumedFromSave: true
+    });
+  }
+
+  private estimateAbandonNowMs(save: RunSaveDataV1): number {
+    const inputs = save.run.replay?.inputs ?? [];
+    let elapsedMs = 0;
+    for (const input of inputs) {
+      if (Number.isFinite(input.atMs) && input.atMs > elapsedMs) {
+        elapsedMs = input.atMs;
+      }
+    }
+    return save.run.startedAtMs + elapsedMs;
+  }
+
+  private abandonRun(): void {
+    const save = this.saveManager.readSave();
+    if (save === null) {
+      this.scene.restart();
+      return;
+    }
+    if (this.saveManager.hasForeignLease(save)) {
+      this.scene.restart();
+      return;
+    }
+    if (this.saveManager.isRunSettled(save.runId)) {
+      this.saveManager.deleteSave();
+      this.scene.restart();
+      return;
+    }
+
+    const failedRun = {
+      ...save.run,
+      isVictory: false
+    };
+    const { summary: baseSummary, meta: nextMeta } = endRun(
+      failedRun,
+      save.player,
+      this.estimateAbandonNowMs(save),
+      this.meta
+    );
+    const soulShards = calculateSoulShardReward(failedRun, false);
+    const summary = {
+      ...baseSummary,
+      isVictory: false,
+      soulShardsEarned: soulShards,
+      obolsEarned: failedRun.runEconomy.obols
+    };
+    this.meta = applyRunSummaryToMeta(nextMeta, summary);
+    if (this.saveMeta(this.meta)) {
+      this.saveManager.markRunSettled(save.runId);
+      this.saveManager.deleteSave();
+    }
+    this.scene.restart();
   }
 
   private loadMeta(): MetaProgression {
@@ -402,8 +559,13 @@ export class MetaMenuScene extends Phaser.Scene {
     return createInitialMeta();
   }
 
-  private saveMeta(meta: MetaProgression): void {
-    window.localStorage.setItem(META_STORAGE_KEY_V2, JSON.stringify(meta));
+  private saveMeta(meta: MetaProgression): boolean {
+    try {
+      window.localStorage.setItem(META_STORAGE_KEY_V2, JSON.stringify(meta));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private describeEffect(unlock: (typeof UNLOCK_DEFS)[number]): string {

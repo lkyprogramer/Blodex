@@ -7,6 +7,12 @@ describe("renderMetaMenuPanel", () => {
       soulShards: 120,
       unlockedCount: 2,
       totalUnlocks: 6,
+      runSave: {
+        canContinue: true,
+        canAbandon: true,
+        statusText: "Saved run found",
+        detailText: "Floor 2 · Normal"
+      },
       difficulties: [
         {
           mode: "normal",
@@ -31,6 +37,26 @@ describe("renderMetaMenuPanel", () => {
           selected: false,
           unlocked: false,
           requirement: "Clear 1 Hard run"
+        }
+      ],
+      talentGroups: [
+        {
+          path: "core",
+          label: "Core",
+          talents: [
+            {
+              id: "core_vitality_training",
+              name: "Vitality Training",
+              description: "desc",
+              path: "core",
+              tier: 0,
+              rank: 0,
+              maxRank: 1,
+              cost: 24,
+              statusText: "Available",
+              purchasable: true
+            }
+          ]
         }
       ],
       unlockGroups: [
@@ -70,11 +96,15 @@ describe("renderMetaMenuPanel", () => {
             }
           ]
         }
-      ]
+      ],
+      startRunEnabled: false
     });
 
     expect(html).toContain('data-action="difficulty"');
     expect(html).toContain('data-action="purchase"');
+    expect(html).toContain('data-action="purchase-talent"');
+    expect(html).toContain('data-action="continue"');
+    expect(html).toContain('data-action="abandon"');
     expect(html).toContain('data-action="start"');
     expect(html).toContain('data-tier="1"');
     expect(html).toContain('data-tier="2"');

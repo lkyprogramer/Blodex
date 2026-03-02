@@ -24,3 +24,5 @@ export * from "./balance";
 export * from "./balanceReport";
 export * from "./stats";
 export * from "./xp";
+export * from "./talent";
+export * from "./save";
