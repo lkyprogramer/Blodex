@@ -1,5 +1,7 @@
 import type {
   BiomeId,
+  DifficultyMode,
+  DifficultyModifier,
   ItemInstance,
   MetaProgression,
   PermanentUpgrade,
@@ -11,12 +13,19 @@ import type {
   RunSummary
 } from "./contracts/types";
 import { resolveBiomeForFloorBySeed } from "./biome";
+import {
+  createInitialDifficultyCompletions,
+  DEFAULT_DIFFICULTY,
+  getDifficultyModifier
+} from "./difficulty";
 
 export const REPLAY_VERSION = "phase2-v1";
 
 export interface RunState {
   startedAtMs: number;
   runSeed: string;
+  difficulty: DifficultyMode;
+  difficultyModifier: DifficultyModifier;
   currentFloor: number;
   currentBiomeId: BiomeId;
   /** @deprecated Use currentFloor. */
@@ -57,20 +66,33 @@ export function deriveFloorSeed(
   return `${runSeed}:floor:${floor}:stream:${stream}`;
 }
 
-export function createReplay(runSeed: string, floor: number, version = REPLAY_VERSION): RunReplay {
+export function createReplay(
+  runSeed: string,
+  floor: number,
+  version = REPLAY_VERSION,
+  difficulty: DifficultyMode = DEFAULT_DIFFICULTY
+): RunReplay {
   return {
     version,
     runSeed,
     floor,
+    difficulty,
     currentFloor: floor,
     inputs: []
   };
 }
 
-export function createRunState(runSeed: string, nowMs: number): RunState {
+export function createRunState(
+  runSeed: string,
+  nowMs: number,
+  difficulty: DifficultyMode = DEFAULT_DIFFICULTY
+): RunState {
+  const difficultyModifier = getDifficultyModifier(difficulty);
   return {
     startedAtMs: nowMs,
     runSeed,
+    difficulty,
+    difficultyModifier,
     currentFloor: 1,
     currentBiomeId: resolveBiomeForFloorBySeed(1, runSeed),
     floor: 1,
@@ -82,7 +104,7 @@ export function createRunState(runSeed: string, nowMs: number): RunState {
       obols: 0,
       spentObols: 0
     },
-    replay: createReplay(runSeed, 1)
+    replay: createReplay(runSeed, 1, REPLAY_VERSION, difficulty)
   };
 }
 
@@ -116,6 +138,7 @@ export function computeReplayChecksum(summary: RunSummary, replay: RunReplay): s
       runSeed: replay.runSeed,
       floor: replay.floor,
       currentFloor: replay.currentFloor,
+      difficulty: replay.difficulty,
       inputs: replay.inputs
     }
   });
@@ -141,6 +164,8 @@ export function createInitialMeta(): MetaProgression {
     unlocks: [],
     cumulativeUnlockProgress: 0,
     schemaVersion: 2,
+    selectedDifficulty: DEFAULT_DIFFICULTY,
+    difficultyCompletions: createInitialDifficultyCompletions(),
     permanentUpgrades: createInitialPermanentUpgrades()
   };
 }
@@ -213,7 +238,8 @@ export function endRun(
     leveledTo: player.level,
     isVictory: run.isVictory ?? false,
     obolsEarned: run.runEconomy.obols,
-    soulShardsEarned: 0
+    soulShardsEarned: 0,
+    difficulty: run.difficulty
   };
 
   const replay =

@@ -54,4 +54,19 @@ describe("eventBus", () => {
     bus.emit("beta:event", { label: "no-op" });
     expect(beta).toHaveBeenCalledTimes(1);
   });
+
+  it("reports listener count for diagnostics", () => {
+    const bus = createEventBus<TestEventMap>();
+    const h1 = vi.fn();
+    const h2 = vi.fn();
+    bus.on("alpha:event", h1);
+    bus.on("beta:event", h2);
+
+    expect(bus.listenerCount("alpha:event")).toBe(1);
+    expect(bus.listenerCount("beta:event")).toBe(1);
+    expect(bus.listenerCount()).toBe(2);
+
+    bus.off("alpha:event", h1);
+    expect(bus.listenerCount()).toBe(1);
+  });
 });

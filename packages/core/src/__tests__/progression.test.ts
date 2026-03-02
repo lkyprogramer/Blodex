@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createInitialMeta, endRun } from "../run";
+import { getDifficultyModifier } from "../difficulty";
 import { deriveStats } from "../stats";
 import { equipItem, unequipItem } from "../inventory";
 import type { ItemInstance, PlayerState } from "../contracts/types";
@@ -49,6 +50,8 @@ describe("progression", () => {
       {
         startedAtMs: 0,
         runSeed: "test-seed",
+        difficulty: "normal",
+        difficultyModifier: getDifficultyModifier("normal"),
         currentFloor: 2,
         currentBiomeId: "forgotten_catacombs",
         floor: 2,

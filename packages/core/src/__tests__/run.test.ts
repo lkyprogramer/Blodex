@@ -7,6 +7,7 @@ import {
 } from "../run";
 import type { RunState } from "../run";
 import type { RunSummary } from "../contracts/types";
+import { getDifficultyModifier } from "../difficulty";
 
 function makeSummary(seed: string): RunSummary {
   return {
@@ -32,6 +33,8 @@ describe("run replay determinism", () => {
       const initial: RunState = {
         startedAtMs: 0,
         runSeed: sample,
+        difficulty: "normal",
+        difficultyModifier: getDifficultyModifier("normal"),
         currentFloor: 1,
         currentBiomeId: "forgotten_catacombs",
         floor: 1,

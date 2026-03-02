@@ -12,6 +12,18 @@
   --ok: #6fba84;
 }
 
+body.theme-high-contrast {
+  --bg-deep: #070b10;
+  --bg-mid: #0f1620;
+  --panel: rgba(6, 12, 18, 0.96);
+  --panel-border: #a5c7df;
+  --accent: #ffd08a;
+  --text-main: #f8f4ea;
+  --text-subtle: #d7cfbf;
+  --danger: #ff7d7d;
+  --ok: #93d9a8;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -112,6 +124,56 @@ body {
 #log {
   margin-top: 0;
   min-height: 210px;
+}
+
+#boss-bar {
+  margin: 0;
+}
+
+#minimap {
+  margin: 0;
+}
+
+.perf-panel {
+  border: 1px solid rgba(111, 186, 132, 0.35);
+  border-radius: 8px;
+  background: rgba(10, 24, 18, 0.75);
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #cde9d4;
+  white-space: pre-line;
+}
+
+.minimap-panel {
+  padding: 8px;
+}
+
+.minimap-panel h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-family: "Cinzel", serif;
+  color: var(--text-subtle);
+  letter-spacing: 0.3px;
+}
+
+.minimap-panel canvas {
+  width: 100%;
+  max-width: 160px;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(208, 168, 111, 0.26);
+  background: rgba(7, 11, 16, 0.9);
+  display: block;
+}
+
+#skillbar.skillbar-root {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
+  background: linear-gradient(180deg, rgba(11, 16, 22, 0) 0%, rgba(11, 16, 22, 0.92) 22%);
 }
 
 .equipment-grid {
@@ -216,6 +278,27 @@ body {
   background: rgba(112, 128, 159, 0.3);
 }
 
+.inventory-cell-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.inventory-cell-actions button {
+  width: 100%;
+}
+
+.inventory-cell button.discard {
+  border-color: rgba(208, 113, 113, 0.55);
+  background: rgba(140, 46, 46, 0.24);
+  color: #f2c3c3;
+}
+
+.inventory-cell button.discard:hover {
+  background: rgba(170, 64, 64, 0.34);
+}
+
 .equip-lock-hint {
   display: block;
   font-size: 10px;
@@ -270,6 +353,52 @@ body {
   color: #f0cbc4;
 }
 
+.boss-health-panel {
+  border-color: rgba(212, 87, 87, 0.42);
+  background: rgba(88, 20, 20, 0.26);
+}
+
+.boss-health-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.boss-health-title {
+  font-family: "Cinzel", serif;
+  font-size: 12px;
+  letter-spacing: 0.45px;
+  color: #f0cbc4;
+}
+
+.boss-health-meta {
+  font-size: 11px;
+  color: #f3b8af;
+}
+
+.boss-health-track {
+  margin-top: 6px;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 87, 87, 0.46);
+  background: rgba(30, 6, 6, 0.66);
+  overflow: hidden;
+}
+
+.boss-health-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c34848, #e06c5a);
+}
+
+.boss-health-values {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #f5d4ce;
+  text-align: right;
+}
+
 .mapping-hint {
   margin-top: 8px;
   padding: 6px 8px;
@@ -281,7 +410,7 @@ body {
 }
 
 .consumable-bar {
-  margin-top: 8px;
+  margin-top: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
@@ -359,6 +488,10 @@ body {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
+}
+
+.skillbar-panel {
+  border-color: rgba(208, 168, 111, 0.35);
 }
 
 .skill-slot {
@@ -472,6 +605,7 @@ body {
   display: none;
 }
 
+.dialog-card,
 .event-card {
   width: min(460px, calc(100vw - 30px));
   border: 1px solid rgba(208, 168, 111, 0.45);
@@ -481,6 +615,7 @@ body {
   padding: 14px;
 }
 
+.dialog-card h2,
 .event-card h2 {
   margin: 0;
   font-family: "Cinzel", serif;
@@ -488,12 +623,14 @@ body {
   color: var(--accent);
 }
 
+.dialog-card p,
 .event-card p {
   margin: 8px 0 0;
   color: #e6dac3;
   font-size: 14px;
 }
 
+.dialog-actions,
 .event-choice-list {
   margin-top: 12px;
   display: flex;
@@ -501,6 +638,7 @@ body {
   gap: 8px;
 }
 
+.dialog-action,
 .event-choice {
   border: 1px solid rgba(208, 168, 111, 0.35);
   border-radius: 8px;
@@ -512,16 +650,19 @@ body {
   cursor: pointer;
 }
 
+.dialog-action.disabled,
 .event-choice.disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
+.dialog-action-title,
 .event-choice-name {
   display: block;
   font-size: 14px;
 }
 
+.dialog-close,
 .event-close {
   margin-top: 12px;
   border: 1px solid rgba(208, 168, 111, 0.35);
@@ -660,6 +801,13 @@ body {
   color: var(--text-subtle);
 }
 
+.tooltip-body {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: #ecdfcb;
+}
+
 .tooltip-divider {
   border-top: 1px solid rgba(208, 168, 111, 0.25);
   margin: 7px 0;
@@ -668,6 +816,12 @@ body {
 .tooltip-affixes {
   font-size: 12px;
   line-height: 1.3;
+}
+
+.tooltip-warning {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #e7b989;
 }
 
 .hidden {
@@ -692,6 +846,14 @@ body {
   .log-panel {
     min-height: 170px;
     max-height: 32vh;
+  }
+
+  #skillbar.skillbar-root {
+    position: static;
+    bottom: auto;
+    margin-top: 8px;
+    padding-bottom: 0;
+    background: transparent;
   }
 
   .equipment-grid,

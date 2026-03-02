@@ -7,6 +7,7 @@
     "dev": "pnpm --filter @blodex/core build && pnpm --filter @blodex/content build && pnpm --filter @blodex/game-client dev",
     "build": "pnpm -r build",
     "test": "pnpm --filter @blodex/core test",
+    "balance:report": "pnpm --filter @blodex/core balance:report",
     "lint": "pnpm -r lint",
     "check": "pnpm -r typecheck",
     "assets:compile": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:plan",

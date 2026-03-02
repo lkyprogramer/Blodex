@@ -13,6 +13,7 @@ import {
   createHazardRuntimeState,
   appendReplayInput,
   applyDamageToBoss,
+  applyAffixesToMonsterState,
   applyRunSummaryToMeta,
   applyXpGain,
   canEquip,
@@ -48,11 +49,15 @@ import {
   markBossAttackUsed,
   markSkillUsed,
   migrateMeta,
+  normalizeDifficultyMode,
   pickSkillChoices,
+  rollMonsterAffixes,
+  resolveSelectedDifficulty,
   spendRunObols,
   shouldRunHazardTick,
   shouldTriggerPeriodicHazard,
   calculateSoulShardReward,
+  isDifficultyUnlocked,
   resolveMonsterAttack,
   SeededRng,
   selectBossAttack,
@@ -64,6 +69,7 @@ import {
   type ConsumableId,
   type ConsumableState,
   type DungeonLayout,
+  type DifficultyMode,
   type EventReward,
   type GameEventMap,
   type GridNode,
@@ -94,14 +100,22 @@ import {
   type FloorConfig
 } from "@blodex/content";
 import { AISystem } from "../systems/AISystem";
+import type { MonsterAiUpdateResult } from "../systems/AISystem";
 import { CombatSystem } from "../systems/CombatSystem";
 import { EntityManager } from "../systems/EntityManager";
 import { gridToIso, isoToGrid } from "../systems/iso";
 import { MonsterSpawnSystem } from "../systems/MonsterSpawnSystem";
 import { MovementSystem } from "../systems/MovementSystem";
 import { RenderSystem } from "../systems/RenderSystem";
-import { AudioSystem } from "../systems/AudioSystem";
-import { Hud } from "../ui/Hud";
+import { SFXSystem } from "../systems/SFXSystem";
+import { VFXSystem } from "../systems/VFXSystem";
+import {
+  FeedbackEventRouter,
+  type FeedbackAction,
+  type FeedbackRouterInput
+} from "../systems/feedbackEventRouter";
+import { UIManager } from "../ui/UIManager";
+import { createUIStateSnapshot } from "../ui/state/UIStateAdapter";
 import {
   detectPreferredImageFormat,
   resolveGeneratedAssetUrl,
@@ -148,9 +162,19 @@ const ENTITY_ASSET_KEYS_FOR_BACKGROUND_REMOVAL = [
 ] as const;
 const FLOOR_EVENT_SPAWN_CHANCE = 0.62;
 const DEBUG_CHEATS_QUERY = "debugCheats";
+const DISABLE_VFX_QUERY = "disableVfx";
+const DISABLE_SFX_QUERY = "disableSfx";
 const DEBUG_FLAG_VALUES = new Set(["1", "true", "yes", "on"]);
 const DEBUG_LOCKED_EQUIP_QUERY = "debugEquipGate";
+const DEBUG_DIAGNOSTICS_QUERY = "debugDiagnostics";
 const DEBUG_LOCKED_EQUIP_ICON_ID = "item_ring_02";
+const MINIMAP_REFRESH_INTERVAL_MS = 120;
+const MANUAL_PATH_REPLAN_INTERVAL_MS = 90;
+const KEYBOARD_MOVE_INPUT_INTERVAL_MS = 70;
+const AI_ACTIVE_RADIUS_TILES = 10;
+const AI_FAR_UPDATE_INTERVAL_FRAMES = 3;
+const MONSTER_COMBAT_RADIUS_TILES = 12;
+const LOOT_PICKUP_RADIUS_TILES = 1.15;
 const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
   health_potion: "item_consumable_health_potion_01",
   mana_potion: "item_consumable_mana_potion_01",
@@ -159,6 +183,8 @@ const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
 const SKILL_DEF_BY_ID = new Map(SKILL_DEFS.map((entry) => [entry.id, entry]));
 const DEBUG_COMMANDS = [
   { combo: "Alt+H", description: "Show cheat commands" },
+  { combo: "Alt+L", description: "Dump diagnostics snapshot to console/log" },
+  { combo: "Alt+J", description: "Run lifecycle smoke reset loop (12 iterations)" },
   { combo: "Alt+O", description: "Add 30 Obol" },
   { combo: "Alt+C", description: "Grant 2 charges for all consumables" },
   { combo: "Alt+E", description: "Force spawn random event and open panel" },
@@ -178,6 +204,8 @@ interface BlodexDebugApi {
   jumpFloor: (floor: number) => void;
   killPlayer: () => void;
   newRun: () => void;
+  diagnostics: () => Record<string, unknown>;
+  stressRuns: (iterations?: number) => Record<string, unknown>;
   help: () => string[];
 }
 
@@ -185,6 +213,10 @@ declare global {
   interface Window {
     __blodexDebug?: BlodexDebugApi;
   }
+}
+
+interface DungeonSceneInitData {
+  difficulty?: DifficultyMode;
 }
 
 export class DungeonScene extends Phaser.Scene {
@@ -195,16 +227,20 @@ export class DungeonScene extends Phaser.Scene {
   private readonly aiSystem = new AISystem();
   private readonly combatSystem = new CombatSystem();
   private readonly monsterSpawnSystem = new MonsterSpawnSystem();
-  private readonly audioSystem: AudioSystem;
+  private readonly sfxSystem: SFXSystem;
+  private readonly vfxSystem: VFXSystem;
+  private readonly feedbackRouter: FeedbackEventRouter;
   private readonly eventBus = createEventBus<GameEventMap>();
   private readonly renderSystem: RenderSystem;
   private preferredImageFormat: PreferredImageFormat = "png";
   private readonly imageFallbackRetried = new Set<string>();
 
-  private hud!: Hud;
+  private uiManager!: UIManager;
   private meta: MetaProgression = createInitialMeta();
   private run!: RunState;
   private runSeed = "";
+  private selectedDifficulty: DifficultyMode = "normal";
+  private pendingDifficulty: DifficultyMode | null = null;
 
   private spawnRng!: SeededRng;
   private combatRng!: SeededRng;
@@ -250,6 +286,15 @@ export class DungeonScene extends Phaser.Scene {
 
   private path: GridNode[] = [];
   private attackTargetId: string | null = null;
+  private manualMoveTarget: GridNode | null = null;
+  private manualMoveTargetFailures = 0;
+  private nextManualPathReplanAt = 0;
+  private nextKeyboardMoveInputAt = 0;
+  private cursorKeys: Phaser.Types.Input.Keyboard.CursorKeys | null = null;
+  private readonly keyboardBindings: Array<{
+    eventName: string;
+    handler: (...args: unknown[]) => void;
+  }> = [];
 
   private origin = { x: 0, y: 0 };
   private worldBounds = { x: -2000, y: -2000, width: 4000, height: 4000 };
@@ -273,6 +318,14 @@ export class DungeonScene extends Phaser.Scene {
   private eventPanelOpen = false;
   private mapRevealActive = false;
   private debugCheatsEnabled = false;
+  private diagnosticsEnabled = false;
+  private perfPanelEl: HTMLDivElement | null = null;
+  private nextDiagnosticsAt = 0;
+  private cleanupStarted = false;
+  private lastAiNearCount = 0;
+  private lastAiFarCount = 0;
+  private lastMinimapRefreshAt = 0;
+  private aiFrameCounter = 0;
 
   constructor() {
     super("dungeon");
@@ -282,7 +335,32 @@ export class DungeonScene extends Phaser.Scene {
       GAME_CONFIG.tileHeight,
       DungeonScene.ENTITY_DEPTH_OFFSET
     );
-    this.audioSystem = new AudioSystem(this);
+    this.sfxSystem = new SFXSystem(this);
+    this.vfxSystem = new VFXSystem(this);
+    this.feedbackRouter = new FeedbackEventRouter(
+      (action) => {
+        this.dispatchFeedbackAction(action);
+      },
+      {
+        onDispatchError: ({ input, error }) => {
+          const type = input.type;
+          console.warn(`[FeedbackRouter] Failed to dispatch action for ${type}`, error);
+          (this.uiManager as UIManager | undefined)?.appendLog(
+            `Feedback degraded for ${type}; continuing run safely.`,
+            "warn",
+            this.time.now
+          );
+        }
+      }
+    );
+  }
+
+  init(data: DungeonSceneInitData): void {
+    if (data.difficulty === undefined) {
+      this.pendingDifficulty = null;
+      return;
+    }
+    this.pendingDifficulty = normalizeDifficultyMode(data.difficulty, "normal");
   }
 
   preload(): void {
@@ -297,7 +375,7 @@ export class DungeonScene extends Phaser.Scene {
     for (const assetId of DUNGEON_IMAGE_ASSET_IDS) {
       this.load.image(assetId, resolveGeneratedAssetUrl(assetId, this.preferredImageFormat));
     }
-    this.audioSystem.preload();
+    this.sfxSystem.preload();
   }
 
   private handleImageLoadError(file: Phaser.Loader.File): void {
@@ -330,19 +408,24 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.cleanupStarted = false;
     this.cameras.main.setBackgroundColor("#11161d");
     this.debugCheatsEnabled = this.isDebugCheatsEnabled();
+    this.diagnosticsEnabled = this.resolveDebugFlag(DEBUG_DIAGNOSTICS_QUERY) || this.debugCheatsEnabled;
+    this.vfxSystem.setEnabled(!this.resolveDebugFlag(DISABLE_VFX_QUERY));
+    this.sfxSystem.setEnabled(!this.resolveDebugFlag(DISABLE_SFX_QUERY));
     this.meta = this.loadMeta();
-    this.hud = new Hud(
+    this.selectedDifficulty = this.resolveSelectedDifficultyForRun();
+    this.uiManager = new UIManager(
       (itemId) => {
         const item = this.player.inventory.find((candidate) => candidate.id === itemId);
         if (item === undefined) {
-          this.hud.appendLog(`Equip failed: item ${itemId} not found in backpack.`, "warn", this.time.now);
+          this.uiManager.appendLog(`Equip failed: item ${itemId} not found in backpack.`, "warn", this.time.now);
           return;
         }
 
         if (!canEquip(this.player, item)) {
-          this.hud.appendLog(
+          this.uiManager.appendLog(
             `Cannot equip ${item.name}: Need Lv${item.requiredLevel}, current Lv${this.player.level}.`,
             "warn",
             this.time.now
@@ -362,7 +445,7 @@ export class DungeonScene extends Phaser.Scene {
           return;
         }
 
-        this.hud.appendLog(`Equip failed: ${item.name} could not be equipped.`, "warn", this.time.now);
+        this.uiManager.appendLog(`Equip failed: ${item.name} could not be equipped.`, "warn", this.time.now);
       },
       (slot) => {
         const equipped = this.player.equipment[slot];
@@ -384,51 +467,145 @@ export class DungeonScene extends Phaser.Scene {
           });
         }
       },
+      (itemId) => {
+        const item = this.player.inventory.find((candidate) => candidate.id === itemId);
+        if (item === undefined) {
+          this.uiManager.appendLog(`Discard failed: item ${itemId} not found in backpack.`, "warn", this.time.now);
+          return;
+        }
+        this.player = {
+          ...this.player,
+          inventory: this.player.inventory.filter((candidate) => candidate.id !== itemId)
+        };
+        this.hudDirty = true;
+        this.uiManager.appendLog(`Discarded ${item.name}.`, "info", this.time.now);
+      },
       (consumableId) => {
         this.tryUseConsumable(consumableId);
       },
       () => {
-        this.hud.clearSummary();
-        this.hud.clearLogs();
-        this.hud.hideDeathOverlay();
-        this.hud.hideEventPanel();
-        this.audioSystem.stopAmbient();
+        this.uiManager.clearSummary();
+        this.uiManager.clearLogs();
+        this.uiManager.hideDeathOverlay();
+        this.uiManager.hideEventPanel();
+        this.sfxSystem.stopAmbient();
         this.scene.start("meta-menu");
       }
     );
     this.installDebugApi();
     this.applyRuntimeBackgroundRemoval();
-    this.audioSystem.initialize();
-    this.hud.hideDeathOverlay();
-    this.hud.clearLogs();
-    this.hud.hideEventPanel();
+    this.sfxSystem.initialize();
+    this.uiManager.hideDeathOverlay();
+    this.uiManager.clearLogs();
+    this.uiManager.hideEventPanel();
+    this.initDiagnosticsPanel();
     this.bindDomainEventEffects();
-    this.bootstrapRun(this.resolveInitialRunSeed());
+    this.clearKeyboardBindings();
+    this.bootstrapRun(this.resolveInitialRunSeed(), this.selectedDifficulty);
+    this.renderDiagnosticsPanel(this.time.now);
 
     this.input.on("pointerdown", this.handlePointerDown, this);
     this.bindSkillKeys();
+    this.bindMovementKeys();
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanupScene());
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.cleanupScene());
     this.hudDirty = true;
   }
 
+  private resolveSelectedDifficultyForRun(): DifficultyMode {
+    const requested = this.pendingDifficulty ?? this.meta.selectedDifficulty;
+    const normalized = normalizeDifficultyMode(requested, "normal");
+    const resolved = isDifficultyUnlocked(this.meta, normalized)
+      ? normalized
+      : resolveSelectedDifficulty(this.meta);
+    this.pendingDifficulty = null;
+    if (resolved !== this.meta.selectedDifficulty) {
+      this.meta = {
+        ...this.meta,
+        selectedDifficulty: resolved
+      };
+      this.saveMeta(this.meta);
+    }
+    return resolved;
+  }
+
+  private initDiagnosticsPanel(): void {
+    this.perfPanelEl = document.querySelector<HTMLDivElement>("#perf-panel");
+    if (this.perfPanelEl === null) {
+      return;
+    }
+    if (!this.diagnosticsEnabled) {
+      this.perfPanelEl.classList.add("hidden");
+      this.perfPanelEl.textContent = "";
+      return;
+    }
+    this.perfPanelEl.classList.remove("hidden");
+    this.perfPanelEl.classList.add("perf-panel");
+    this.nextDiagnosticsAt = 0;
+    this.perfPanelEl.textContent = "Diagnostics pending run bootstrap...";
+  }
+
+  private renderDiagnosticsPanel(nowMs: number): void {
+    if (!this.diagnosticsEnabled || this.perfPanelEl === null) {
+      return;
+    }
+    if (nowMs < this.nextDiagnosticsAt) {
+      return;
+    }
+    this.nextDiagnosticsAt = nowMs + 260;
+    const entity = this.entityManager.getDiagnostics();
+    const vfx = this.vfxSystem.getDiagnostics();
+    const sfx = this.sfxSystem.getDiagnostics();
+    const render = this.renderSystem.getLastSyncStats();
+    const fps = this.game.loop.actualFps;
+    this.perfPanelEl.textContent = [
+      `FPS ${fps.toFixed(1)} | floor ${this.run.currentFloor} ${this.run.difficulty.toUpperCase()}`,
+      `AI near/far ${this.lastAiNearCount}/${this.lastAiFarCount}`,
+      `Listeners eventBus ${this.eventBus.listenerCount()}`,
+      `Entity M ${entity.monsters} (alive ${entity.livingMonsters}) L ${entity.loot} T ${entity.telegraphs}`,
+      `Render visible/culled ${render.monstersVisible}/${render.monstersCulled}`,
+      `VFX active ${vfx.activeTransientObjects} dropped ${vfx.droppedEffects}`,
+      `SFX ambient ${sfx.ambientActive ? sfx.ambientKey ?? "on" : "off"}`
+    ].join("\n");
+  }
+
+  private collectDiagnosticsSnapshot(): Record<string, unknown> {
+    return {
+      floor: this.run.currentFloor,
+      difficulty: this.run.difficulty,
+      ai: {
+        near: this.lastAiNearCount,
+        far: this.lastAiFarCount
+      },
+      listeners: {
+        eventBus: this.eventBus.listenerCount()
+      },
+      entity: this.entityManager.getDiagnostics(),
+      render: this.renderSystem.getLastSyncStats(),
+      vfx: this.vfxSystem.getDiagnostics(),
+      sfx: this.sfxSystem.getDiagnostics()
+    };
+  }
+
   update(_: number, deltaMs: number): void {
     if (this.runEnded) {
       return;
     }
+    const nowMs = this.time.now;
 
     if (this.eventPanelOpen) {
       if (this.hudDirty) {
         this.renderHud();
         this.hudDirty = false;
       }
+      this.updateMinimap(nowMs);
+      this.renderDiagnosticsPanel(nowMs);
       return;
     }
-
-    const nowMs = this.time.now;
     const playerHazardMovementMultiplier = this.resolvePlayerHazardMovementMultiplier();
 
+    this.updateKeyboardMoveIntent(nowMs);
     this.updatePlayerMovement((deltaMs / 1000) * playerHazardMovementMultiplier, nowMs);
     this.updateCombat(nowMs);
     this.updateMonsters(deltaMs / 1000, nowMs);
@@ -453,28 +630,135 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     this.updateFloorProgress(nowMs);
+    this.updateMinimap(nowMs);
 
     if (this.hudDirty) {
       this.renderHud();
       this.hudDirty = false;
     }
+    this.renderDiagnosticsPanel(nowMs);
+  }
+
+  private updateMinimap(nowMs: number): void {
+    if (nowMs - this.lastMinimapRefreshAt < MINIMAP_REFRESH_INTERVAL_MS) {
+      return;
+    }
+    this.lastMinimapRefreshAt = nowMs;
+
+    const monsters = this.entityManager.listLivingMonsters().map((monster) => ({
+      x: Math.round(monster.state.position.x),
+      y: Math.round(monster.state.position.y)
+    }));
+    const loot = this.entityManager.listLoot().map((drop) => ({
+      x: Math.round(drop.position.x),
+      y: Math.round(drop.position.y)
+    }));
+    const staircase =
+      this.staircaseState.visible === true
+        ? {
+            x: Math.round(this.staircaseState.position.x),
+            y: Math.round(this.staircaseState.position.y)
+          }
+        : undefined;
+    const eventNode =
+      this.eventNode === null || this.eventNode.resolved
+        ? undefined
+        : {
+            x: Math.round(this.eventNode.position.x),
+            y: Math.round(this.eventNode.position.y)
+          };
+
+    this.uiManager.renderMinimap({
+      player: {
+        x: Math.round(this.player.position.x),
+        y: Math.round(this.player.position.y)
+      },
+      monsters,
+      loot,
+      ...(staircase === undefined ? {} : { staircase }),
+      ...(eventNode === undefined ? {} : { eventNode }),
+      revealAll: this.mapRevealActive
+    });
+  }
+
+  private routeFeedback(input: FeedbackRouterInput): void {
+    this.feedbackRouter.route(input);
+  }
+
+  private resolveEntitySprite(
+    entityId: string
+  ): Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle | null {
+    if (entityId === this.player.id) {
+      return this.playerSprite ?? null;
+    }
+    if (entityId === this.bossDef.id) {
+      return this.bossSprite;
+    }
+    const monster = this.entityManager.findMonsterById(entityId);
+    return monster?.sprite ?? null;
+  }
+
+  private dispatchFeedbackAction(action: FeedbackAction): void {
+    if (action.channel === "sfx") {
+      this.sfxSystem.dispatch(action);
+      return;
+    }
+
+    switch (action.cue) {
+      case "combat_hit":
+        this.vfxSystem.playCombatHit(
+          this.resolveEntitySprite(action.targetId),
+          action.amount,
+          action.critical
+        );
+        return;
+      case "combat_dodge":
+        this.vfxSystem.playCombatDodge(this.resolveEntitySprite(action.targetId));
+        return;
+      case "combat_death":
+        this.vfxSystem.playCombatDeath(this.resolveEntitySprite(action.targetId));
+        return;
+      case "skill_cast":
+        this.vfxSystem.playSkillCast(this.resolveEntitySprite(action.casterId), action.skillId);
+        return;
+      case "boss_phase":
+        this.vfxSystem.playBossPhaseChange(this.resolveEntitySprite(action.bossId));
+        return;
+      case "hazard_trigger": {
+        const mapped = gridToIso(
+          action.position.x,
+          action.position.y,
+          this.tileWidth,
+          this.tileHeight,
+          this.origin.x,
+          this.origin.y
+        );
+        this.vfxSystem.playHazardTrigger(mapped.x, mapped.y, action.hazardType);
+        return;
+      }
+      default:
+        return;
+    }
   }
 
   private bindDomainEventEffects(): void {
     this.eventBus.on("combat:hit", ({ combat }) => {
-      this.audioSystem.playCombatHit(combat.kind === "crit");
+      this.routeFeedback({
+        type: "combat:hit",
+        combat
+      });
       this.hudDirty = true;
       const source = this.resolveEntityLabel(combat.sourceId);
       const target = this.resolveEntityLabel(combat.targetId);
       if (combat.targetId === this.player.id) {
-        this.hud.appendLog(
+        this.uiManager.appendLog(
           `${source} hit ${target} for ${combat.amount} damage.`,
           combat.kind === "crit" ? "danger" : "warn",
           combat.timestampMs
         );
         return;
       }
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `${source} ${combat.kind === "crit" ? "critically hit" : "hit"} ${target} for ${combat.amount} damage.`,
         combat.kind === "crit" ? "success" : "info",
         combat.timestampMs
@@ -482,10 +766,14 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("combat:dodge", ({ combat }) => {
+      this.routeFeedback({
+        type: "combat:dodge",
+        combat
+      });
       this.hudDirty = true;
       const source = this.resolveEntityLabel(combat.sourceId);
       const target = this.resolveEntityLabel(combat.targetId);
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `${target} dodged ${source}'s attack.`,
         combat.targetId === this.player.id ? "success" : "info",
         combat.timestampMs
@@ -493,21 +781,24 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("combat:death", ({ combat }) => {
-      this.audioSystem.playCombatDeath();
+      this.routeFeedback({
+        type: "combat:death",
+        combat
+      });
       this.hudDirty = true;
       const source = this.resolveEntityLabel(combat.sourceId);
       const target = this.resolveEntityLabel(combat.targetId);
       if (combat.targetId === this.player.id) {
         this.lastDeathReason = `Slain by ${source} (${combat.amount} ${combat.damageType} damage).`;
-        this.hud.appendLog(`${target} was slain by ${source}.`, "danger", combat.timestampMs);
+        this.uiManager.appendLog(`${target} was slain by ${source}.`, "danger", combat.timestampMs);
         return;
       }
-      this.hud.appendLog(`${target} was slain by ${source}.`, "success", combat.timestampMs);
+      this.uiManager.appendLog(`${target} was slain by ${source}.`, "success", combat.timestampMs);
     });
 
     this.eventBus.on("loot:drop", ({ sourceId, item, timestampMs }) => {
       this.hudDirty = true;
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `${this.resolveEntityLabel(sourceId)} dropped ${item.name}.`,
         "info",
         timestampMs
@@ -516,32 +807,36 @@ export class DungeonScene extends Phaser.Scene {
 
     this.eventBus.on("loot:pickup", ({ item, timestampMs }) => {
       this.hudDirty = true;
-      this.hud.appendLog(`Picked up ${item.name}.`, "success", timestampMs);
+      this.uiManager.appendLog(`Picked up ${item.name}.`, "success", timestampMs);
     });
 
     this.eventBus.on("player:levelup", ({ level, timestampMs }) => {
       this.hudDirty = true;
-      this.hud.appendLog(`Level up! Vanguard reached Lv${level}.`, "success", timestampMs);
+      this.uiManager.appendLog(`Level up! Vanguard reached Lv${level}.`, "success", timestampMs);
     });
 
     this.eventBus.on("item:equip", ({ item, slot, timestampMs }) => {
       this.hudDirty = true;
-      this.hud.appendLog(`Equipped ${item.name} (${slot}).`, "success", timestampMs);
+      this.uiManager.appendLog(`Equipped ${item.name} (${slot}).`, "success", timestampMs);
     });
 
     this.eventBus.on("item:unequip", ({ item, slot, timestampMs }) => {
       this.hudDirty = true;
-      this.hud.appendLog(`Unequipped ${item.name} (${slot}).`, "info", timestampMs);
+      this.uiManager.appendLog(`Unequipped ${item.name} (${slot}).`, "info", timestampMs);
     });
 
-    this.eventBus.on("skill:use", ({ skillId, timestampMs }) => {
-      this.audioSystem.playSkillUse(skillId);
-      this.hud.appendLog(`Skill used: ${skillId}.`, "info", timestampMs);
+    this.eventBus.on("skill:use", ({ playerId, skillId, timestampMs }) => {
+      this.routeFeedback({
+        type: "skill:use",
+        skillId,
+        playerId
+      });
+      this.uiManager.appendLog(`Skill used: ${skillId}.`, "info", timestampMs);
     });
 
     this.eventBus.on("skill:cooldown", ({ skillId, readyAtMs }) => {
       const cooldownMs = Math.max(0, readyAtMs - this.time.now);
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `${skillId} cooldown ${(cooldownMs / 1000).toFixed(1)}s.`,
         "info",
         this.time.now
@@ -549,7 +844,10 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("consumable:use", ({ consumableId, amountApplied, remainingCharges, timestampMs }) => {
-      this.audioSystem.playConsumableUse(consumableId);
+      this.routeFeedback({
+        type: "consumable:use",
+        consumableId
+      });
       this.hudDirty = true;
       const label =
         consumableId === "health_potion"
@@ -557,38 +855,45 @@ export class DungeonScene extends Phaser.Scene {
           : consumableId === "mana_potion"
             ? `Mana potion restored ${amountApplied} mana`
             : "Scroll of Mapping revealed objective";
-      this.hud.appendLog(`${label}. Charges left: ${remainingCharges}.`, "success", timestampMs);
+      this.uiManager.appendLog(`${label}. Charges left: ${remainingCharges}.`, "success", timestampMs);
     });
 
     this.eventBus.on("consumable:failed", ({ consumableId, reason, timestampMs }) => {
       this.hudDirty = true;
-      this.hud.appendLog(`Cannot use ${consumableId}: ${reason}`, "warn", timestampMs);
+      this.uiManager.appendLog(`Cannot use ${consumableId}: ${reason}`, "warn", timestampMs);
     });
 
     this.eventBus.on("event:spawn", ({ eventId, eventName, floor, timestampMs }) => {
-      this.audioSystem.playEventSpawn(eventId);
+      this.routeFeedback({
+        type: "event:spawn",
+        eventId
+      });
       this.hudDirty = true;
-      this.hud.appendLog(`Event discovered on floor ${floor}: ${eventName}.`, "info", timestampMs);
+      this.uiManager.appendLog(`Event discovered on floor ${floor}: ${eventName}.`, "info", timestampMs);
     });
 
     this.eventBus.on("event:choice", ({ eventId, choiceId, timestampMs }) => {
       this.hudDirty = true;
-      this.hud.appendLog(`Event choice selected: ${eventId} -> ${choiceId}.`, "info", timestampMs);
+      this.uiManager.appendLog(`Event choice selected: ${eventId} -> ${choiceId}.`, "info", timestampMs);
     });
 
     this.eventBus.on("merchant:offer", ({ floor, offerCount, timestampMs }) => {
-      this.audioSystem.playMerchantOpen();
-      this.hud.appendLog(`Merchant opened on floor ${floor} with ${offerCount} offers.`, "info", timestampMs);
+      this.routeFeedback({
+        type: "merchant:offer"
+      });
+      this.uiManager.appendLog(`Merchant opened on floor ${floor} with ${offerCount} offers.`, "info", timestampMs);
     });
 
     this.eventBus.on("merchant:purchase", ({ itemName, priceObol, timestampMs }) => {
-      this.audioSystem.playMerchantPurchase();
+      this.routeFeedback({
+        type: "merchant:purchase"
+      });
       this.hudDirty = true;
-      this.hud.appendLog(`Purchased ${itemName} for ${priceObol} Obol.`, "success", timestampMs);
+      this.uiManager.appendLog(`Purchased ${itemName} for ${priceObol} Obol.`, "success", timestampMs);
     });
 
     this.eventBus.on("monster:stateChange", ({ monsterId, from, to, timestampMs }) => {
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `${this.resolveEntityLabel(monsterId)} state: ${from} -> ${to}.`,
         "info",
         timestampMs
@@ -596,7 +901,7 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("monster:affixApplied", ({ monsterId, affixId, timestampMs }) => {
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `${this.resolveEntityLabel(monsterId)} gained affix: ${affixId}.`,
         "warn",
         timestampMs
@@ -604,7 +909,7 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("monster:split", ({ sourceMonsterId, spawnedIds, timestampMs }) => {
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `${this.resolveEntityLabel(sourceMonsterId)} split into ${spawnedIds.length} fragments.`,
         "warn",
         timestampMs
@@ -612,23 +917,28 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("monster:leech", ({ monsterId, amount, targetId, timestampMs }) => {
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `${this.resolveEntityLabel(monsterId)} leeched ${amount} HP from ${this.resolveEntityLabel(targetId)}.`,
         "danger",
         timestampMs
       );
     });
 
-    this.eventBus.on("run:start", ({ floor, runSeed, startedAtMs }) => {
-      this.audioSystem.playFloorEnter();
-      this.audioSystem.playBiomeEnter();
-      this.audioSystem.playAmbientForBiome(this.currentBiome.id);
-      this.hud.appendLog(`Run started on floor ${floor} (seed ${runSeed}).`, "info", startedAtMs);
+    this.eventBus.on("run:start", ({ floor, runSeed, difficulty, startedAtMs }) => {
+      this.routeFeedback({
+        type: "run:start",
+        biomeId: this.currentBiome.id
+      });
+      this.uiManager.appendLog(
+        `Run started on floor ${floor} (${difficulty.toUpperCase()}, seed ${runSeed}).`,
+        "info",
+        startedAtMs
+      );
     });
 
     this.eventBus.on("run:end", ({ summary, finishedAtMs }) => {
       this.hudDirty = true;
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         summary.isVictory
           ? `Run complete! Floor ${summary.floorReached}, level ${summary.leveledTo}.`
           : `Run ended on floor ${summary.floorReached}, level ${summary.leveledTo}.`,
@@ -638,26 +948,28 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("floor:enter", ({ floor, biomeId, timestampMs }) => {
-      this.audioSystem.playFloorEnter();
-      if (biomeId !== undefined) {
-        this.audioSystem.playBiomeEnter();
-        this.audioSystem.playAmbientForBiome(biomeId);
-      }
+      this.routeFeedback({
+        type: "floor:enter",
+        ...(biomeId === undefined ? {} : { biomeId })
+      });
       this.hudDirty = true;
       const biomeName =
         biomeId === undefined ? "" : ` (${BIOME_MAP[biomeId]?.name ?? biomeId})`;
-      this.hud.appendLog(`Entered floor ${floor}${biomeName}.`, "info", timestampMs);
+      this.uiManager.appendLog(`Entered floor ${floor}${biomeName}.`, "info", timestampMs);
     });
 
     this.eventBus.on("floor:clear", ({ floor, kills, timestampMs }) => {
       this.hudDirty = true;
-      this.hud.appendLog(`Floor ${floor} cleared with ${kills} kills.`, "success", timestampMs);
+      this.uiManager.appendLog(`Floor ${floor} cleared with ${kills} kills.`, "success", timestampMs);
     });
 
-    this.eventBus.on("boss:phaseChange", ({ toPhase, hpRatio, timestampMs }) => {
-      this.audioSystem.playBossPhaseChange();
+    this.eventBus.on("boss:phaseChange", ({ bossId, toPhase, hpRatio, timestampMs }) => {
+      this.routeFeedback({
+        type: "boss:phaseChange",
+        bossId
+      });
       this.hudDirty = true;
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `Boss shifted to phase ${toPhase + 1} (${Math.floor(hpRatio * 100)}% HP).`,
         "warn",
         timestampMs
@@ -665,32 +977,36 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("boss:summon", ({ count, timestampMs }) => {
-      this.hud.appendLog(`Boss summoned ${count} minions.`, "warn", timestampMs);
+      this.uiManager.appendLog(`Boss summoned ${count} minions.`, "warn", timestampMs);
     });
 
     this.eventBus.on("hazard:enter", ({ hazardType, targetId, timestampMs }) => {
       if (targetId !== this.player.id) {
         return;
       }
-      this.hud.appendLog(`Entered ${hazardType} zone.`, "warn", timestampMs);
+      this.uiManager.appendLog(`Entered ${hazardType} zone.`, "warn", timestampMs);
     });
 
     this.eventBus.on("hazard:exit", ({ hazardType, targetId, timestampMs }) => {
       if (targetId !== this.player.id) {
         return;
       }
-      this.hud.appendLog(`Left ${hazardType} zone.`, "info", timestampMs);
+      this.uiManager.appendLog(`Left ${hazardType} zone.`, "info", timestampMs);
     });
 
-    this.eventBus.on("hazard:trigger", ({ hazardType, timestampMs }) => {
-      this.audioSystem.playHazardTrigger(hazardType);
-      this.hud.appendLog(`${hazardType} triggered.`, "warn", timestampMs);
+    this.eventBus.on("hazard:trigger", ({ hazardType, position, timestampMs }) => {
+      this.routeFeedback({
+        type: "hazard:trigger",
+        hazardType,
+        position
+      });
+      this.uiManager.appendLog(`${hazardType} triggered.`, "warn", timestampMs);
     });
 
     this.eventBus.on("hazard:damage", ({ hazardType, targetId, amount, remainingHealth, timestampMs }) => {
       const label = this.resolveEntityLabel(targetId);
       const level = targetId === this.player.id ? "danger" : "info";
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `${label} took ${amount} damage from ${hazardType} (${Math.floor(remainingHealth)} HP left).`,
         level,
         timestampMs
@@ -701,7 +1017,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private bindSkillKeys(): void {
     const bind = (code: string, slotIndex: number) => {
-      this.input.keyboard?.on(`keydown-${code}`, () => {
+      this.bindKeyboard(`keydown-${code}`, () => {
         this.tryUseSkill(slotIndex);
       });
     };
@@ -711,13 +1027,43 @@ export class DungeonScene extends Phaser.Scene {
     bind("THREE", 2);
     bind("FOUR", 3);
     bind("Q", 0);
-    this.input.keyboard?.on("keydown-R", () => this.tryUseConsumable("health_potion"));
-    this.input.keyboard?.on("keydown-F", () => this.tryUseConsumable("mana_potion"));
-    this.input.keyboard?.on("keydown-G", () => this.tryUseConsumable("scroll_of_mapping"));
+    this.bindKeyboard("keydown-R", () => this.tryUseConsumable("health_potion"));
+    this.bindKeyboard("keydown-F", () => this.tryUseConsumable("mana_potion"));
+    this.bindKeyboard("keydown-G", () => this.tryUseConsumable("scroll_of_mapping"));
 
     if (this.debugCheatsEnabled) {
-      this.input.keyboard?.on("keydown", this.handleDebugHotkeys, this);
+      this.bindKeyboard("keydown", (event) => {
+        this.handleDebugHotkeys(event as KeyboardEvent);
+      });
     }
+  }
+
+  private bindMovementKeys(): void {
+    const keyboard = this.input.keyboard;
+    if (keyboard === undefined || keyboard === null) {
+      this.cursorKeys = null;
+      return;
+    }
+    this.cursorKeys = keyboard.createCursorKeys();
+  }
+
+  private bindKeyboard(eventName: string, handler: (...args: unknown[]) => void): void {
+    const keyboard = this.input.keyboard;
+    if (keyboard === undefined || keyboard === null) {
+      return;
+    }
+    keyboard.on(eventName, handler);
+    this.keyboardBindings.push({ eventName, handler });
+  }
+
+  private clearKeyboardBindings(): void {
+    const keyboard = this.input.keyboard;
+    if (keyboard !== undefined && keyboard !== null) {
+      for (const binding of this.keyboardBindings) {
+        keyboard.off(binding.eventName, binding.handler);
+      }
+    }
+    this.keyboardBindings.length = 0;
   }
 
   private resolveInitialRunSeed(): string {
@@ -764,6 +1110,8 @@ export class DungeonScene extends Phaser.Scene {
       jumpFloor: (floor) => this.debugJumpToFloor(floor),
       killPlayer: () => this.debugForceDeath(),
       newRun: () => this.resetRun(),
+      diagnostics: () => this.debugDumpDiagnostics(),
+      stressRuns: (iterations = 12) => this.debugStressRuns(iterations),
       help: () => DEBUG_COMMANDS.map((entry) => `${entry.combo}: ${entry.description}`)
     };
   }
@@ -775,7 +1123,36 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private debugLog(message: string, level: "info" | "warn" | "success" | "danger" = "info"): void {
-    this.hud.appendLog(`[Debug] ${message}`, level, this.time.now);
+    this.uiManager.appendLog(`[Debug] ${message}`, level, this.time.now);
+  }
+
+  private debugDumpDiagnostics(): Record<string, unknown> {
+    const snapshot = this.collectDiagnosticsSnapshot();
+    console.info("[Blodex] diagnostics snapshot", snapshot);
+    const entity = this.entityManager.getDiagnostics();
+    this.debugLog(
+      `Diag listeners=${this.eventBus.listenerCount()} monsters=${entity.monsters}/${entity.livingMonsters} loot=${entity.loot}`,
+      "info"
+    );
+    return snapshot;
+  }
+
+  private debugStressRuns(iterations: number): Record<string, unknown> {
+    const count = Math.max(1, Math.min(50, Math.floor(iterations)));
+    const before = this.collectDiagnosticsSnapshot();
+    for (let i = 0; i < count; i += 1) {
+      this.bootstrapRun(`stress-${this.time.now}-${i}`, this.selectedDifficulty);
+    }
+    this.hudDirty = true;
+    const after = this.collectDiagnosticsSnapshot();
+    const summary = {
+      iterations: count,
+      before,
+      after
+    };
+    console.info("[Blodex] lifecycle stress summary", summary);
+    this.debugLog(`Lifecycle stress finished (${count} resets).`, "success");
+    return summary;
   }
 
   private showDebugHelp(): void {
@@ -793,6 +1170,12 @@ export class DungeonScene extends Phaser.Scene {
     switch (event.code) {
       case "KeyH":
         this.showDebugHelp();
+        break;
+      case "KeyL":
+        this.debugDumpDiagnostics();
+        break;
+      case "KeyJ":
+        this.debugStressRuns(12);
         break;
       case "KeyO":
         this.debugAddObols(30);
@@ -1031,8 +1414,8 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     if (this.runEnded) {
-      this.hud.clearSummary();
-      this.hud.hideDeathOverlay();
+      this.uiManager.clearSummary();
+      this.uiManager.hideDeathOverlay();
       this.runEnded = false;
     }
     if (this.run.currentFloor === normalized) {
@@ -1094,7 +1477,7 @@ export class DungeonScene extends Phaser.Scene {
       }
     };
 
-    this.hud.appendLog(
+    this.uiManager.appendLog(
       `[Debug] Added locked item: ${debugItem.name}. Click E to verify level gate feedback.`,
       "info",
       nowMs
@@ -1106,25 +1489,34 @@ export class DungeonScene extends Phaser.Scene {
     };
   }
 
-  private bootstrapRun(runSeed: string): void {
+  private bootstrapRun(runSeed: string, difficulty: DifficultyMode): void {
     this.runSeed = runSeed;
+    this.selectedDifficulty = difficulty;
+    this.runEnded = false;
     this.lastDeathReason = "Unknown cause.";
+    this.manualMoveTarget = null;
+    this.manualMoveTargetFailures = 0;
+    this.nextManualPathReplanAt = 0;
+    this.nextKeyboardMoveInputAt = 0;
     this.entityLabelById.clear();
-    this.hud.clearLogs();
-    this.hud.hideDeathOverlay();
-    this.hud.hideEventPanel();
+    this.lastAiNearCount = 0;
+    this.lastAiFarCount = 0;
+    this.uiManager.clearLogs();
+    this.uiManager.hideDeathOverlay();
+    this.uiManager.hideEventPanel();
     this.refreshUnlockSnapshots();
     this.consumables = createInitialConsumableState(this.meta.permanentUpgrades.potionCharges);
     this.mapRevealActive = false;
     this.eventPanelOpen = false;
     this.merchantOffers = [];
     this.destroyEventNode();
-    this.run = createRunState(runSeed, this.time.now);
+    this.run = createRunState(runSeed, this.time.now, difficulty);
     this.setupFloor(1, true);
 
     this.eventBus.emit("run:start", {
       runSeed: this.runSeed,
       floor: this.run.currentFloor,
+      difficulty: this.run.difficulty,
       startedAtMs: this.run.startedAtMs,
       replayVersion: this.run.replay?.version ?? "unknown"
     });
@@ -1155,8 +1547,9 @@ export class DungeonScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.entityManager.clear();
     this.clearHazards();
+    this.movementSystem.clearPathCache();
 
-    this.floorConfig = getFloorConfig(floor);
+    this.floorConfig = getFloorConfig(floor, this.run.difficultyModifier);
     this.configureRngStreams(floor);
     const midBiomeOrder = resolveMidBiomeOrder(this.biomeRng);
     const rolledBiomeId = resolveBiomeForFloor(floor, midBiomeOrder);
@@ -1165,7 +1558,7 @@ export class DungeonScene extends Phaser.Scene {
     this.mapRevealActive = false;
     this.eventPanelOpen = false;
     this.merchantOffers = [];
-    this.hud.hideEventPanel();
+    this.uiManager.hideEventPanel();
     this.destroyEventNode();
 
     this.dungeon = this.floorConfig.isBossFloor
@@ -1184,6 +1577,9 @@ export class DungeonScene extends Phaser.Scene {
 
     this.path = [];
     this.attackTargetId = null;
+    this.manualMoveTarget = null;
+    this.manualMoveTargetFailures = 0;
+    this.nextManualPathReplanAt = 0;
     this.nextPlayerAttackAt = 0;
     this.nextBossAttackAt = 0;
     this.bossState = null;
@@ -1223,6 +1619,15 @@ export class DungeonScene extends Phaser.Scene {
       floor,
       kills: 0
     };
+    this.uiManager.configureMinimap({
+      width: this.dungeon.width,
+      height: this.dungeon.height,
+      walkable: this.dungeon.walkable,
+      layoutHash: this.dungeon.layoutHash
+    });
+    this.uiManager.resetMinimap();
+    this.lastMinimapRefreshAt = 0;
+    this.updateMinimap(this.time.now);
 
     this.hudDirty = true;
     this.runEnded = false;
@@ -1460,20 +1865,20 @@ export class DungeonScene extends Phaser.Scene {
       return { choice, enabled: false as const, disabledReason: reason };
     });
 
-    this.hud.showEventPanel(
+    this.uiManager.showEventDialog(
       eventDef,
       choices,
       (choiceId) => this.resolveEventChoice(choiceId, this.time.now),
       () => this.dismissCurrentEvent(this.time.now)
     );
-    this.hud.appendLog(`Event encountered: ${eventDef.name}.`, "info", nowMs);
+    this.uiManager.appendLog(`Event encountered: ${eventDef.name}.`, "info", nowMs);
   }
 
   private dismissCurrentEvent(nowMs: number): void {
     if (this.eventNode === null) {
       return;
     }
-    this.hud.appendLog(`Left event ${this.eventNode.eventDef.name} without interaction.`, "info", nowMs);
+    this.uiManager.appendLog(`Left event ${this.eventNode.eventDef.name} without interaction.`, "info", nowMs);
     this.consumeCurrentEvent();
   }
 
@@ -1488,7 +1893,7 @@ export class DungeonScene extends Phaser.Scene {
     const cost = choice.cost;
     if (!canPayEventCost(cost, this.player.health, this.player.mana, this.run.runEconomy.obols)) {
       const reason = cost === undefined ? "invalid cost" : `need ${cost.amount} ${cost.type}`;
-      this.hud.appendLog(`Cannot choose ${choice.name}: ${reason}.`, "warn", nowMs);
+      this.uiManager.appendLog(`Cannot choose ${choice.name}: ${reason}.`, "warn", nowMs);
       this.openEventPanel(nowMs);
       return false;
     }
@@ -1507,7 +1912,7 @@ export class DungeonScene extends Phaser.Scene {
       } else {
         this.run = spendRunObols(this.run, cost.amount);
       }
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `Event cost paid (${eventId}/${choiceId}): ${cost.amount} ${cost.type}.`,
         "warn",
         nowMs
@@ -1523,7 +1928,7 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         health: Math.min(this.player.derivedStats.maxHealth, this.player.health + reward.amount)
       };
-      this.hud.appendLog(`${source}: restored ${reward.amount} HP.`, "success", nowMs);
+      this.uiManager.appendLog(`${source}: restored ${reward.amount} HP.`, "success", nowMs);
       return;
     }
     if (reward.type === "mana") {
@@ -1531,18 +1936,18 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         mana: Math.min(this.player.derivedStats.maxMana, this.player.mana + reward.amount)
       };
-      this.hud.appendLog(`${source}: restored ${reward.amount} mana.`, "success", nowMs);
+      this.uiManager.appendLog(`${source}: restored ${reward.amount} mana.`, "success", nowMs);
       return;
     }
     if (reward.type === "obol") {
       this.run = addRunObols(this.run, reward.amount);
-      this.hud.appendLog(`${source}: gained ${reward.amount} Obol.`, "success", nowMs);
+      this.uiManager.appendLog(`${source}: gained ${reward.amount} Obol.`, "success", nowMs);
       return;
     }
     if (reward.type === "xp") {
       const xpResult = applyXpGain(this.player, reward.amount, "intelligence");
       this.player = this.refreshPlayerStatsFromEquipment(xpResult.player);
-      this.hud.appendLog(`${source}: gained ${reward.amount} XP.`, "success", nowMs);
+      this.uiManager.appendLog(`${source}: gained ${reward.amount} XP.`, "success", nowMs);
       if (xpResult.leveledUp) {
         this.eventBus.emit("player:levelup", {
           playerId: this.player.id,
@@ -1555,12 +1960,12 @@ export class DungeonScene extends Phaser.Scene {
     }
     if (reward.type === "mapping") {
       this.mapRevealActive = true;
-      this.hud.appendLog(`${source}: mapping scroll revealed objective.`, "info", nowMs);
+      this.uiManager.appendLog(`${source}: mapping scroll revealed objective.`, "info", nowMs);
       return;
     }
     if (reward.type === "consumable") {
       this.consumables = grantConsumable(this.consumables, reward.consumableId, reward.amount);
-      this.hud.appendLog(
+      this.uiManager.appendLog(
         `${source}: gained ${reward.amount}x ${reward.consumableId}.`,
         "success",
         nowMs
@@ -1578,7 +1983,7 @@ export class DungeonScene extends Phaser.Scene {
             entries: [{ itemDefId: reward.itemDefId, weight: 1, minFloor: 1 }]
           };
     if (table === undefined) {
-      this.hud.appendLog(`${source}: no valid item reward table.`, "warn", nowMs);
+      this.uiManager.appendLog(`${source}: no valid item reward table.`, "warn", nowMs);
       return;
     }
     const item = rollItemDrop(
@@ -1589,7 +1994,7 @@ export class DungeonScene extends Phaser.Scene {
       `event-${Math.floor(nowMs)}-${this.run.currentFloor}`
     );
     if (item === null) {
-      this.hud.appendLog(`${source}: item roll failed.`, "warn", nowMs);
+      this.uiManager.appendLog(`${source}: item roll failed.`, "warn", nowMs);
       return;
     }
     this.player = collectLoot(this.player, item);
@@ -1597,7 +2002,7 @@ export class DungeonScene extends Phaser.Scene {
       ...this.run,
       lootCollected: this.run.lootCollected + 1
     };
-    this.hud.appendLog(`${source}: acquired ${item.name}.`, "success", nowMs);
+    this.uiManager.appendLog(`${source}: acquired ${item.name}.`, "success", nowMs);
   }
 
   private applyEventPenalty(reward: EventReward, nowMs: number, source: string): void {
@@ -1606,7 +2011,7 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         health: Math.max(0, this.player.health - reward.amount)
       };
-      this.hud.appendLog(`${source}: lost ${reward.amount} HP.`, "danger", nowMs);
+      this.uiManager.appendLog(`${source}: lost ${reward.amount} HP.`, "danger", nowMs);
       if (this.player.health <= 0) {
         this.lastDeathReason = `Fell to event penalty (${reward.amount} health).`;
       }
@@ -1617,16 +2022,16 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         mana: Math.max(0, this.player.mana - reward.amount)
       };
-      this.hud.appendLog(`${source}: lost ${reward.amount} mana.`, "warn", nowMs);
+      this.uiManager.appendLog(`${source}: lost ${reward.amount} mana.`, "warn", nowMs);
       return;
     }
     if (reward.type === "obol") {
       const spent = Math.min(this.run.runEconomy.obols, reward.amount);
       this.run = spendRunObols(this.run, spent);
-      this.hud.appendLog(`${source}: lost ${spent} Obol.`, "warn", nowMs);
+      this.uiManager.appendLog(`${source}: lost ${spent} Obol.`, "warn", nowMs);
       return;
     }
-    this.hud.appendLog(`${source}: penalty ignored (${reward.type}).`, "warn", nowMs);
+    this.uiManager.appendLog(`${source}: penalty ignored (${reward.type}).`, "warn", nowMs);
   }
 
   private resolveEventChoice(choiceId: string, nowMs: number): void {
@@ -1636,7 +2041,7 @@ export class DungeonScene extends Phaser.Scene {
     const { eventDef } = this.eventNode;
     const choice = eventDef.choices.find((entry) => entry.id === choiceId);
     if (choice === undefined) {
-      this.hud.appendLog(`Event choice ${choiceId} not found.`, "warn", nowMs);
+      this.uiManager.appendLog(`Event choice ${choiceId} not found.`, "warn", nowMs);
       return;
     }
     if (!this.applyEventCost(nowMs, eventDef.id, choice.id)) {
@@ -1674,7 +2079,7 @@ export class DungeonScene extends Phaser.Scene {
   private openMerchantPanel(nowMs: number): void {
     const merchantPool = LOOT_TABLE_MAP.merchant_pool;
     if (merchantPool === undefined) {
-      this.hud.appendLog("Merchant pool missing.", "warn", nowMs);
+      this.uiManager.appendLog("Merchant pool missing.", "warn", nowMs);
       this.consumeCurrentEvent();
       return;
     }
@@ -1701,7 +2106,7 @@ export class DungeonScene extends Phaser.Scene {
       };
     });
     this.eventPanelOpen = true;
-    this.hud.showMerchantPanel(
+    this.uiManager.showMerchantDialog(
       view,
       (offerId) => this.tryBuyMerchantOffer(offerId, this.time.now),
       () => this.consumeCurrentEvent()
@@ -1711,13 +2116,17 @@ export class DungeonScene extends Phaser.Scene {
   private tryBuyMerchantOffer(offerId: string, nowMs: number): void {
     const offer = this.merchantOffers.find((entry) => entry.offerId === offerId);
     if (offer === undefined) {
-      this.hud.appendLog(`Offer ${offerId} unavailable.`, "warn", nowMs);
-      this.audioSystem.playMerchantFail();
+      this.uiManager.appendLog(`Offer ${offerId} unavailable.`, "warn", nowMs);
+      this.routeFeedback({
+        type: "merchant:fail"
+      });
       return;
     }
     if (this.run.runEconomy.obols < offer.priceObol) {
-      this.hud.appendLog(`Not enough Obol for ${offer.itemDefId}.`, "warn", nowMs);
-      this.audioSystem.playMerchantFail();
+      this.uiManager.appendLog(`Not enough Obol for ${offer.itemDefId}.`, "warn", nowMs);
+      this.routeFeedback({
+        type: "merchant:fail"
+      });
       return;
     }
 
@@ -1732,8 +2141,10 @@ export class DungeonScene extends Phaser.Scene {
       `merchant-${offer.offerId}-${Math.floor(nowMs)}`
     );
     if (item === null) {
-      this.hud.appendLog(`Merchant failed to deliver ${offer.itemDefId}.`, "warn", nowMs);
-      this.audioSystem.playMerchantFail();
+      this.uiManager.appendLog(`Merchant failed to deliver ${offer.itemDefId}.`, "warn", nowMs);
+      this.routeFeedback({
+        type: "merchant:fail"
+      });
       return;
     }
 
@@ -1752,7 +2163,7 @@ export class DungeonScene extends Phaser.Scene {
     });
     this.merchantOffers = this.merchantOffers.filter((entry) => entry.offerId !== offer.offerId);
     if (this.merchantOffers.length === 0) {
-      this.hud.appendLog("Merchant sold out.", "info", nowMs);
+      this.uiManager.appendLog("Merchant sold out.", "info", nowMs);
       this.consumeCurrentEvent();
     } else {
       this.openMerchantPanel(nowMs);
@@ -1765,7 +2176,7 @@ export class DungeonScene extends Phaser.Scene {
       this.eventNode.resolved = true;
     }
     this.destroyEventNode();
-    this.hud.hideEventPanel();
+    this.uiManager.hideEventPanel();
     this.eventPanelOpen = false;
     this.hudDirty = true;
   }
@@ -1849,6 +2260,8 @@ export class DungeonScene extends Phaser.Scene {
     const clickedMonster = this.entityManager.pickMonsterAt(targetTile);
     if (clickedMonster !== null) {
       this.attackTargetId = clickedMonster.state.id;
+      this.manualMoveTarget = null;
+      this.manualMoveTargetFailures = 0;
       this.run = appendReplayInput(this.run, {
         type: "attack_target",
         atMs: this.getRunRelativeNowMs(),
@@ -1858,6 +2271,9 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     this.attackTargetId = null;
+    this.manualMoveTarget = targetTile;
+    this.manualMoveTargetFailures = 0;
+    this.nextManualPathReplanAt = 0;
     this.path = this.computePathTo(targetTile);
     this.run = appendReplayInput(this.run, {
       type: "move_target",
@@ -1868,6 +2284,46 @@ export class DungeonScene extends Phaser.Scene {
 
   private getRunRelativeNowMs(): number {
     return Math.max(0, this.time.now - this.run.startedAtMs);
+  }
+
+  private updateKeyboardMoveIntent(nowMs: number): void {
+    if (this.runEnded || this.eventPanelOpen || this.cursorKeys === null) {
+      return;
+    }
+    if (this.path.length > 0 || nowMs < this.nextKeyboardMoveInputAt) {
+      return;
+    }
+
+    const leftDown = this.cursorKeys.left?.isDown === true;
+    const rightDown = this.cursorKeys.right?.isDown === true;
+    const upDown = this.cursorKeys.up?.isDown === true;
+    const downDown = this.cursorKeys.down?.isDown === true;
+    const moveX = (rightDown ? 1 : 0) - (leftDown ? 1 : 0);
+    const moveY = (downDown ? 1 : 0) - (upDown ? 1 : 0);
+    if (moveX === 0 && moveY === 0) {
+      return;
+    }
+
+    this.nextKeyboardMoveInputAt = nowMs + KEYBOARD_MOVE_INPUT_INTERVAL_MS;
+    const targetTile = {
+      x: Math.round(this.player.position.x) + moveX,
+      y: Math.round(this.player.position.y) + moveY
+    };
+    const nextPath = this.computePathTo(targetTile);
+    if (nextPath.length === 0) {
+      return;
+    }
+
+    this.attackTargetId = null;
+    this.manualMoveTarget = targetTile;
+    this.manualMoveTargetFailures = 0;
+    this.nextManualPathReplanAt = 0;
+    this.path = nextPath;
+    this.run = appendReplayInput(this.run, {
+      type: "move_target",
+      atMs: this.getRunRelativeNowMs(),
+      target: targetTile
+    });
   }
 
   private updatePlayerMovement(dt: number, nowMs: number): void {
@@ -1881,6 +2337,47 @@ export class DungeonScene extends Phaser.Scene {
         to: result.to,
         timestampMs: nowMs
       });
+    }
+    this.updateManualMoveTarget(nowMs);
+  }
+
+  private updateManualMoveTarget(nowMs: number): void {
+    if (this.manualMoveTarget === null || this.runEnded || this.eventPanelOpen) {
+      return;
+    }
+    if (this.attackTargetId !== null) {
+      this.manualMoveTarget = null;
+      this.manualMoveTargetFailures = 0;
+      return;
+    }
+
+    const distance = Math.hypot(
+      this.manualMoveTarget.x - this.player.position.x,
+      this.manualMoveTarget.y - this.player.position.y
+    );
+    if (distance <= 0.2) {
+      this.manualMoveTarget = null;
+      this.manualMoveTargetFailures = 0;
+      this.nextManualPathReplanAt = 0;
+      return;
+    }
+    if (this.path.length > 0 || nowMs < this.nextManualPathReplanAt) {
+      return;
+    }
+
+    this.nextManualPathReplanAt = nowMs + MANUAL_PATH_REPLAN_INTERVAL_MS;
+    const nextPath = this.computePathTo(this.manualMoveTarget);
+    if (nextPath.length > 0) {
+      this.path = nextPath;
+      this.manualMoveTargetFailures = 0;
+      return;
+    }
+
+    this.manualMoveTargetFailures += 1;
+    if (this.manualMoveTargetFailures >= 8) {
+      this.manualMoveTarget = null;
+      this.manualMoveTargetFailures = 0;
+      this.uiManager.appendLog("Pathfinding aborted: cannot reach destination.", "warn", nowMs);
     }
   }
 
@@ -2071,6 +2568,8 @@ export class DungeonScene extends Phaser.Scene {
     this.nextPlayerAttackAt = playerCombat.nextPlayerAttackAt;
 
     if (playerCombat.requestPathTarget !== undefined) {
+      this.manualMoveTarget = null;
+      this.manualMoveTargetFailures = 0;
       this.path = this.computePathTo(playerCombat.requestPathTarget);
     }
 
@@ -2185,12 +2684,33 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private updateMonsters(dt: number, nowMs: number): void {
-    const aiResult = this.aiSystem.updateMonsters(
-      this.entityManager.listLivingMonsters(),
-      this.player,
-      dt,
-      nowMs
+    const livingMonsters = this.entityManager.listLivingMonsters();
+    if (livingMonsters.length === 0) {
+      return;
+    }
+
+    const nearMonsters = this.entityManager.queryMonstersInRadius(
+      this.player.position,
+      AI_ACTIVE_RADIUS_TILES,
+      true
     );
+    this.lastAiNearCount = nearMonsters.length;
+    const nearIds = new Set(nearMonsters.map((monster) => monster.state.id));
+    const farMonsters = livingMonsters.filter((monster) => !nearIds.has(monster.state.id));
+    this.lastAiFarCount = farMonsters.length;
+    const nearResult = this.aiSystem.updateMonsters(nearMonsters, this.player, dt, nowMs);
+    this.aiFrameCounter = (this.aiFrameCounter + 1) % AI_FAR_UPDATE_INTERVAL_FRAMES;
+    const farResult =
+      farMonsters.length > 0 && this.aiFrameCounter === 0
+        ? this.aiSystem.updateMonsters(
+            farMonsters,
+            this.player,
+            dt * AI_FAR_UPDATE_INTERVAL_FRAMES,
+            nowMs
+          )
+        : { transitions: [], supportActions: [] };
+    const aiResult = this.mergeAiResults(nearResult, farResult);
+    this.entityManager.rebuildMonsterSpatialIndex();
 
     for (const transition of aiResult.transitions) {
       this.eventBus.emit("monster:stateChange", transition);
@@ -2205,7 +2725,7 @@ export class DungeonScene extends Phaser.Scene {
       const before = target.state.health;
       target.state.health = Math.min(target.state.maxHealth, target.state.health + action.amount);
       if (target.state.health > before) {
-        this.hud.appendLog(
+        this.uiManager.appendLog(
           `${source.archetype.name} healed ${target.archetype.name} for ${target.state.health - before}.`,
           "info",
           action.timestampMs
@@ -2215,9 +2735,23 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
+  private mergeAiResults(
+    first: MonsterAiUpdateResult,
+    second: MonsterAiUpdateResult
+  ): MonsterAiUpdateResult {
+    return {
+      transitions: [...first.transitions, ...second.transitions],
+      supportActions: [...first.supportActions, ...second.supportActions]
+    };
+  }
+
   private updateMonsterCombat(nowMs: number): void {
     const monsterCombat = this.combatSystem.updateMonsterAttacks(
-      this.entityManager.listLivingMonsters(),
+      this.entityManager.queryMonstersInRadius(
+        this.player.position,
+        MONSTER_COMBAT_RADIUS_TILES,
+        true
+      ),
       this.player,
       nowMs,
       this.combatRng
@@ -2332,7 +2866,14 @@ export class DungeonScene extends Phaser.Scene {
         x: this.bossState.position.x + Math.cos(angle) * 2,
         y: this.bossState.position.y + Math.sin(angle) * 2
       };
-      const state: MonsterState = {
+      const rolledAffixes = rollMonsterAffixes({
+        floor: this.run.currentFloor,
+        isBoss: false,
+        policy: this.run.difficultyModifier.affixPolicy,
+        availableAffixes: this.unlockedAffixIds,
+        rng: this.spawnRng
+      });
+      const state = applyAffixesToMonsterState({
         id: `summon-${idx}-${Math.floor(this.time.now)}`,
         archetypeId: archetype.id,
         level: this.run.currentFloor,
@@ -2346,12 +2887,20 @@ export class DungeonScene extends Phaser.Scene {
         position,
         aiState: "chase",
         aiBehavior: "chase",
-        affixes: []
-      };
+        affixes: rolledAffixes
+      } satisfies MonsterState);
       const runtime = this.renderSystem.spawnMonster(state, archetype, this.origin);
       this.entityLabelById.set(runtime.state.id, runtime.archetype.name);
+      for (const affix of runtime.state.affixes ?? []) {
+        this.eventBus.emit("monster:affixApplied", {
+          monsterId: runtime.state.id,
+          affixId: affix,
+          timestampMs: this.time.now
+        });
+      }
       this.entityManager.listMonsters().push(runtime);
     }
+    this.entityManager.rebuildMonsterSpatialIndex();
   }
 
   private spawnSplitChildren(
@@ -2394,6 +2943,7 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     if (spawnedIds.length > 0) {
+      this.entityManager.rebuildMonsterSpatialIndex();
       this.eventBus.emit("monster:split", {
         sourceMonsterId: sourceState.id,
         spawnedIds,
@@ -2403,7 +2953,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private collectNearbyLoot(nowMs: number): void {
-    const picked = this.entityManager.consumeLootNear(this.player.position, 0.7);
+    const picked = this.entityManager.consumeLootNear(this.player.position, LOOT_PICKUP_RADIUS_TILES);
     if (picked.length === 0) {
       return;
     }
@@ -2429,7 +2979,11 @@ export class DungeonScene extends Phaser.Scene {
       this.dungeon.walkable,
       { width: this.dungeon.width, height: this.dungeon.height },
       this.player.position,
-      target
+      target,
+      {
+        cacheScope: `${this.dungeon.layoutHash}:${this.run.currentFloor}`,
+        nowMs: this.time.now
+      }
     );
   }
 
@@ -2445,6 +2999,7 @@ export class DungeonScene extends Phaser.Scene {
       biomeMonsterPool: this.currentBiome.monsterPool,
       blockedPositions: this.hazards.map((hazard) => hazard.position),
       unlockedAffixes: this.unlockedAffixIds,
+      affixPolicy: this.run.difficultyModifier.affixPolicy,
       rng: this.spawnRng
     });
 
@@ -2546,7 +3101,7 @@ export class DungeonScene extends Phaser.Scene {
     if (this.runEnded) {
       return;
     }
-    this.audioSystem.stopAmbient();
+    this.sfxSystem.stopAmbient();
     this.consumeCurrentEvent();
     this.runEnded = true;
     this.run = {
@@ -2568,11 +3123,11 @@ export class DungeonScene extends Phaser.Scene {
     this.renderHud();
     this.hudDirty = false;
     if (isVictory) {
-      this.hud.hideDeathOverlay();
+      this.uiManager.hideDeathOverlay();
     } else {
-      this.hud.showDeathOverlay(this.lastDeathReason);
+      this.uiManager.showDeathOverlay(this.lastDeathReason);
     }
-    this.hud.showSummary(summary);
+    this.uiManager.showSummary(summary);
 
     const runEndPayload: GameEventMap["run:end"] = {
       summary,
@@ -2584,8 +3139,8 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private resetRun(): void {
-    this.hud.clearSummary();
-    this.bootstrapRun(this.resolveInitialRunSeed());
+    this.uiManager.clearSummary();
+    this.bootstrapRun(this.resolveInitialRunSeed(), this.selectedDifficulty);
     this.hudDirty = true;
   }
 
@@ -2690,7 +3245,7 @@ export class DungeonScene extends Phaser.Scene {
     this.consumables = result.consumables;
     if (result.mappingRevealed) {
       this.mapRevealActive = true;
-      this.hud.appendLog("Objective mapped on HUD.", "info", nowMs);
+      this.uiManager.appendLog("Objective mapped on HUD.", "info", nowMs);
     }
     this.eventBus.emit("consumable:use", {
       playerId: this.player.id,
@@ -2710,6 +3265,7 @@ export class DungeonScene extends Phaser.Scene {
       return {
         id: def.id,
         name: def.name,
+        description: def.description,
         hotkey: def.hotkey ?? "-",
         iconId: CONSUMABLE_ICON_BY_ID[def.id],
         charges: this.consumables.charges[def.id] ?? 0,
@@ -2722,6 +3278,7 @@ export class DungeonScene extends Phaser.Scene {
         return {
           hotkey: String(index + 1),
           name: "Locked",
+          description: "Unlock more skill slots from meta progression.",
           iconId: "meta_unlock_locked",
           cooldownLeftMs: 0,
           outOfMana: false,
@@ -2734,8 +3291,13 @@ export class DungeonScene extends Phaser.Scene {
         id: slot.defId,
         hotkey: String(index + 1),
         name: skillDef?.name ?? slot.defId,
+        description: skillDef?.description ?? "",
         iconId: skillDef?.icon ?? "meta_unlock_available",
         cooldownLeftMs,
+        baseCooldownMs: skillDef?.cooldownMs ?? 0,
+        manaCost: skillDef?.manaCost ?? 0,
+        targeting: skillDef?.targeting ?? "self",
+        range: skillDef?.range ?? 0,
         outOfMana: this.player.mana < (skillDef?.manaCost ?? 0),
         locked: false
       };
@@ -2743,6 +3305,7 @@ export class DungeonScene extends Phaser.Scene {
 
     const runState = {
       floor: this.run.currentFloor,
+      difficulty: this.run.difficulty,
       biome: this.currentBiome.name,
       kills: this.run.kills,
       lootCollected: this.run.lootCollected,
@@ -2762,26 +3325,70 @@ export class DungeonScene extends Phaser.Scene {
           })
     };
 
-    this.hud.render({
+    const viewState = {
       player: this.player,
       run: runState,
       meta: this.meta
+    };
+    const snapshot = createUIStateSnapshot(viewState, {
+      logs: this.uiManager.getLogs(),
+      flags: {
+        runEnded: this.runEnded,
+        eventPanelOpen: this.eventPanelOpen,
+        debugCheatsEnabled: this.debugCheatsEnabled,
+        timestampMs: nowMs
+      }
     });
+    this.uiManager.renderSnapshot(snapshot);
   }
 
   private cleanupScene(): void {
+    if (this.cleanupStarted) {
+      return;
+    }
+    this.cleanupStarted = true;
+    const before =
+      this.diagnosticsEnabled === true
+        ? (() => {
+            try {
+              return this.collectDiagnosticsSnapshot();
+            } catch {
+              return { error: "collect-before-failed" };
+            }
+          })()
+        : null;
+
     this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, this.handleImageLoadError, this);
     this.imageFallbackRetried.clear();
-    this.audioSystem.shutdown();
+    this.sfxSystem.shutdown();
+    this.vfxSystem.shutdown();
     this.eventBus.removeAll();
     this.input.off("pointerdown", this.handlePointerDown, this);
-    this.input.keyboard?.off("keydown", this.handleDebugHotkeys, this);
-    this.hud.hideDeathOverlay();
-    this.hud.hideEventPanel();
+    this.clearKeyboardBindings();
+    this.uiManager.hideDeathOverlay();
+    this.uiManager.hideEventPanel();
+    this.uiManager.resetMinimap();
     this.removeDebugApi();
     this.destroyEventNode();
     this.clearHazards();
+    this.movementSystem.clearPathCache();
+    this.manualMoveTarget = null;
+    this.manualMoveTargetFailures = 0;
+    this.nextManualPathReplanAt = 0;
+    this.nextKeyboardMoveInputAt = 0;
+    this.cursorKeys = null;
     this.entityManager.clear();
+    if (this.perfPanelEl !== null) {
+      this.perfPanelEl.classList.add("hidden");
+      this.perfPanelEl.textContent = "";
+    }
+    if (this.diagnosticsEnabled) {
+      const after = this.collectDiagnosticsSnapshot();
+      console.info("[Blodex] cleanup diagnostics", {
+        before,
+        after
+      });
+    }
   }
 
   private loadMeta(): MetaProgression {

@@ -3,6 +3,10 @@ export interface GridNode {
   y: number;
 }
 
+export interface FindPathOptions {
+  maxExpandedNodes?: number;
+}
+
 function key(x: number, y: number): string {
   return `${x},${y}`;
 }
@@ -51,7 +55,12 @@ function reconstructPath(cameFrom: Map<string, string>, current: string): GridNo
   return path.reverse();
 }
 
-export function findPath(walkable: boolean[][], start: GridNode, target: GridNode): GridNode[] {
+export function findPath(
+  walkable: boolean[][],
+  start: GridNode,
+  target: GridNode,
+  options: FindPathOptions = {}
+): GridNode[] {
   const startKey = key(start.x, start.y);
   const targetKey = key(target.x, target.y);
 
@@ -63,6 +72,10 @@ export function findPath(walkable: boolean[][], start: GridNode, target: GridNod
   const cameFrom = new Map<string, string>();
   const gScore = new Map<string, number>([[startKey, 0]]);
   const fScore = new Map<string, number>([[startKey, heuristic(start, target)]]);
+  const maxExpandedNodes = options.maxExpandedNodes ?? Number.POSITIVE_INFINITY;
+  let expandedNodes = 0;
+  let bestCandidateKey = startKey;
+  let bestCandidateDistance = heuristic(start, target);
 
   while (openSet.size > 0) {
     let current = "";
@@ -80,8 +93,19 @@ export function findPath(walkable: boolean[][], start: GridNode, target: GridNod
       return reconstructPath(cameFrom, current);
     }
 
-    openSet.delete(current);
     const currentNode = fromKey(current);
+    const currentDistance = heuristic(currentNode, target);
+    if (currentDistance < bestCandidateDistance) {
+      bestCandidateDistance = currentDistance;
+      bestCandidateKey = current;
+    }
+
+    expandedNodes += 1;
+    if (expandedNodes >= maxExpandedNodes) {
+      return reconstructPath(cameFrom, bestCandidateKey);
+    }
+
+    openSet.delete(current);
 
     for (const neighbor of neighbors(currentNode, walkable)) {
       const neighborKey = key(neighbor.x, neighbor.y);

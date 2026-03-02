@@ -1,6 +1,7 @@
 import type Phaser from "phaser";
 import type { BossRuntimeState, ItemInstance, MonsterState } from "@blodex/core";
 import type { MonsterArchetypeDef } from "@blodex/content";
+import { SpatialHash } from "./spatialHash";
 
 export interface MonsterRuntime {
   state: MonsterState;
@@ -32,6 +33,7 @@ function distance(a: { x: number; y: number }, b: { x: number; y: number }): num
 
 export class EntityManager {
   private monsters: MonsterRuntime[] = [];
+  private readonly monsterSpatial = new SpatialHash<MonsterRuntime>(2);
   private loot: LootRuntime[] = [];
   private boss: BossRuntime | null = null;
   private staircase: (Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse) | null = null;
@@ -40,6 +42,7 @@ export class EntityManager {
   clear(): void {
     this.destroyAll();
     this.monsters = [];
+    this.monsterSpatial.clear();
     this.loot = [];
     this.boss = null;
     this.staircase = null;
@@ -65,6 +68,7 @@ export class EntityManager {
 
   setMonsters(monsters: MonsterRuntime[]): void {
     this.monsters = monsters;
+    this.rebuildMonsterSpatialIndex();
   }
 
   listMonsters(): MonsterRuntime[] {
@@ -86,14 +90,36 @@ export class EntityManager {
     }
 
     const [removed] = this.monsters.splice(index, 1);
+    if (removed !== undefined) {
+      this.monsterSpatial.remove(removed);
+    }
     return removed ?? null;
+  }
+
+  rebuildMonsterSpatialIndex(): void {
+    this.monsterSpatial.rebuild(this.monsters, (monster) => ({
+      x: monster.state.position.x,
+      y: monster.state.position.y
+    }));
+  }
+
+  queryMonstersInRadius(
+    position: { x: number; y: number },
+    radius: number,
+    onlyLiving = true
+  ): MonsterRuntime[] {
+    const candidates = this.monsterSpatial.queryRadius(position, radius);
+    if (!onlyLiving) {
+      return candidates;
+    }
+    return candidates.filter((monster) => monster.state.health > 0);
   }
 
   pickMonsterAt(position: { x: number; y: number }, pickRadius = 1.1): MonsterRuntime | null {
     let picked: MonsterRuntime | null = null;
     let bestDistance = Number.POSITIVE_INFINITY;
 
-    for (const monster of this.monsters) {
+    for (const monster of this.queryMonstersInRadius(position, pickRadius, true)) {
       if (monster.state.health <= 0) {
         continue;
       }
@@ -158,5 +184,21 @@ export class EntityManager {
       telegraph.destroy();
     }
     this.telegraphs = [];
+  }
+
+  getDiagnostics(): {
+    monsters: number;
+    livingMonsters: number;
+    loot: number;
+    telegraphs: number;
+    bossActive: boolean;
+  } {
+    return {
+      monsters: this.monsters.length,
+      livingMonsters: this.monsters.filter((monster) => monster.state.health > 0).length,
+      loot: this.loot.length,
+      telegraphs: this.telegraphs.length,
+      bossActive: this.boss !== null
+    };
   }
 }
