@@ -3647,8 +3647,10 @@ export class DungeonScene extends Phaser.Scene {
     try {
       this.pendingResumeSave = null;
       this.runSeed = save.runSeed;
+      const rebasedRunStartedAtMs = this.rebaseRunStartedAtMs(save.run, this.time.now);
       this.run = {
         ...save.run,
+        startedAtMs: rebasedRunStartedAtMs,
         runSeed: save.runSeed
       };
       this.selectedDifficulty = normalizeDifficultyMode(save.run.difficulty, "normal");
@@ -3890,6 +3892,22 @@ export class DungeonScene extends Phaser.Scene {
         after
       });
     }
+  }
+
+  private estimateRunElapsedMsFromReplay(run: RunState): number {
+    const inputs = run.replay?.inputs ?? [];
+    let elapsedMs = 0;
+    for (const input of inputs) {
+      if (Number.isFinite(input.atMs) && input.atMs > elapsedMs) {
+        elapsedMs = input.atMs;
+      }
+    }
+    return elapsedMs;
+  }
+
+  private rebaseRunStartedAtMs(run: RunState, nowMs: number): number {
+    const elapsedMs = this.estimateRunElapsedMsFromReplay(run);
+    return nowMs - elapsedMs;
   }
 
   private loadMeta(): MetaProgression {
