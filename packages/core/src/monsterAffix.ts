@@ -31,9 +31,11 @@ export function rollMonsterAffixes(options: MonsterAffixRollOptions): MonsterAff
     return [];
   }
   const pool =
-    options.availableAffixes === undefined || options.availableAffixes.length === 0
+    options.availableAffixes === undefined
       ? MONSTER_AFFIX_IDS
-      : options.availableAffixes;
+      : options.availableAffixes.length === 0 && forceOne
+        ? MONSTER_AFFIX_IDS
+        : options.availableAffixes;
   if (pool.length === 0) {
     return [];
   }

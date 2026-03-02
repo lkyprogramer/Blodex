@@ -54,6 +54,20 @@ describe("monster affix", () => {
     expect(rolled).toHaveLength(1);
   });
 
+  it("does not roll locked affixes when unlocked pool is empty", () => {
+    const rolled = rollMonsterAffixes({
+      floor: 4,
+      isBoss: false,
+      availableAffixes: [],
+      rng: {
+        next: () => 0,
+        pick: <T>(values: readonly T[]) => values[0] as T
+      }
+    });
+
+    expect(rolled).toEqual([]);
+  });
+
   it("applies stat-shaping affixes", () => {
     const frenzied = applyAffixesToMonsterState({
       ...baseMonster(),
