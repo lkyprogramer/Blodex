@@ -257,3 +257,55 @@ export interface UnlockDef {
     | { type: "biome_unlock"; biomeId: string }
     | { type: "event_unlock"; eventId: string };
 }
+
+export type TalentPath = "core" | "warrior" | "ranger" | "arcanist" | "utility";
+
+export type TalentEffect =
+  | {
+      type: "base_stat_flat";
+      stat: "strength" | "dexterity" | "vitality" | "intelligence";
+      value: number;
+    }
+  | {
+      type: "derived_stat_flat";
+      stat: "maxHealth" | "maxMana" | "armor" | "attackPower";
+      value: number;
+    }
+  | {
+      type: "derived_stat_percent";
+      stat: "attackPower" | "attackSpeed" | "moveSpeed" | "critChance";
+      value: number;
+    }
+  | {
+      type: "economy";
+      key: "deathRetention" | "merchantDiscount";
+      value: number;
+    }
+  | {
+      type: "capacity";
+      key: "skillSlots" | "potionCharges";
+      value: number;
+    }
+  | {
+      type: "trigger";
+      key: "lethalGuard" | "phaseDodge" | "manaShield";
+      value: number;
+    };
+
+export interface TalentPrerequisite {
+  talentId: string;
+  minRank: number;
+}
+
+export interface TalentNodeDef {
+  id: string;
+  path: TalentPath;
+  tier: 0 | 1 | 2 | 3 | 4 | 5;
+  name: string;
+  description: string;
+  cost: number;
+  maxRank: number;
+  prerequisites: TalentPrerequisite[];
+  effects: TalentEffect[];
+  uiPosition: { x: number; y: number };
+}

@@ -26,4 +26,28 @@ describe("meta integration", () => {
     expect(next.soulShards).toBe(15);
     expect(next.permanentUpgrades.skillSlots).toBe(migrateMeta({}).permanentUpgrades.skillSlots + 1);
   });
+
+  it("keeps v3 migration idempotent", () => {
+    const migrated = migrateMeta({
+      runsPlayed: 1,
+      bestFloor: 2,
+      bestTimeMs: 2000,
+      soulShards: 50,
+      unlocks: [],
+      cumulativeUnlockProgress: 0,
+      schemaVersion: 2,
+      selectedDifficulty: "normal",
+      difficultyCompletions: { normal: 0, hard: 0, nightmare: 0 },
+      permanentUpgrades: {
+        startingHealth: 10,
+        startingArmor: 2,
+        luckBonus: 0.05,
+        skillSlots: 4,
+        potionCharges: 1
+      }
+    });
+
+    const migratedAgain = migrateMeta(migrated);
+    expect(migratedAgain).toEqual(migrated);
+  });
 });

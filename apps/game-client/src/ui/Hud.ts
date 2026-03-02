@@ -697,4 +697,27 @@ export class Hud {
     this.summaryEl.innerHTML = "";
     this.hideEventPanel();
   }
+
+  reset(): void {
+    this.clearSummary();
+    this.hideDeathOverlay();
+    this.hideEventPanel();
+    this.hideTooltip();
+    this.clearLogs();
+
+    this.metaEl.className = "hidden";
+    this.metaEl.innerHTML = "";
+    this.statsEl.className = "hidden";
+    this.statsEl.innerHTML = "";
+    this.runEl.className = "hidden";
+    this.runEl.innerHTML = "";
+    this.bossBarEl.className = "hidden";
+    this.bossBarEl.innerHTML = "";
+    this.skillBarEl.className = "hidden";
+    this.skillBarEl.innerHTML = "";
+    this.inventoryEl.className = "hidden";
+    this.inventoryEl.innerHTML = "";
+    this.logEl.className = "hidden";
+    this.logEl.innerHTML = "";
+  }
 }

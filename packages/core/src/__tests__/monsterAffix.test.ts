@@ -61,6 +61,7 @@ describe("monster affix", () => {
       availableAffixes: [],
       rng: {
         next: () => 0,
+        nextInt: (min: number) => min,
         pick: <T>(values: readonly T[]) => values[0] as T
       }
     });

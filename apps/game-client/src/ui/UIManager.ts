@@ -1,6 +1,10 @@
 import { Hud, type LogEntry } from "./Hud";
 import type { UIStateSnapshot } from "./state/UIStateAdapter";
-import { Minimap, type MinimapFrame } from "./components/Minimap";
+import {
+  Minimap,
+  type MinimapExplorationSnapshot,
+  type MinimapFrame
+} from "./components/Minimap";
 
 export type UIRenderState = Parameters<Hud["render"]>[0];
 
@@ -58,6 +62,14 @@ export class UIManager {
     this.minimap.reset();
   }
 
+  getMinimapSnapshot(): MinimapExplorationSnapshot | null {
+    return this.minimap.snapshot();
+  }
+
+  restoreMinimap(snapshot: MinimapExplorationSnapshot): void {
+    this.minimap.restore(snapshot);
+  }
+
   showDeathOverlay(...args: Parameters<Hud["showDeathOverlay"]>): void {
     this.hud.showDeathOverlay(...args);
   }
@@ -92,5 +104,11 @@ export class UIManager {
 
   clearSummary(): void {
     this.hud.clearSummary();
+  }
+
+  reset(): void {
+    this.lastSnapshot = null;
+    this.hud.reset();
+    this.minimap.reset();
   }
 }

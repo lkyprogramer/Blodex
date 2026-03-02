@@ -5,6 +5,7 @@ import type {
   ItemInstance,
   PermanentUpgrade
 } from "./contracts/types";
+import type { TalentEffectTotals } from "./talent";
 
 function cloneDerived(stats: DerivedStats): DerivedStats {
   return {
@@ -22,7 +23,8 @@ export function deriveStats(
   base: BaseStats,
   equippedItems: ItemInstance[],
   buffEffects?: AggregatedBuffEffect,
-  permanentUpgrades?: PermanentUpgrade
+  permanentUpgrades?: PermanentUpgrade,
+  talentEffects?: Pick<TalentEffectTotals, "derivedFlat" | "derivedPercent">
 ): DerivedStats {
   const upgrade = permanentUpgrades;
   const baseDerived: DerivedStats = {
@@ -43,6 +45,19 @@ export function deriveStats(
         continue;
       }
       next[key] += value;
+    }
+  }
+
+  if (talentEffects !== undefined) {
+    for (const [key, value] of Object.entries(talentEffects.derivedFlat) as Array<
+      [keyof DerivedStats, number]
+    >) {
+      next[key] += value;
+    }
+    for (const [key, value] of Object.entries(talentEffects.derivedPercent) as Array<
+      [keyof Pick<DerivedStats, "attackPower" | "attackSpeed" | "moveSpeed" | "critChance">, number]
+    >) {
+      next[key] *= 1 + value;
     }
   }
 

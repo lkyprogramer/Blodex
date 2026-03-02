@@ -15,6 +15,7 @@ import {
   applyDamageToBoss,
   applyAffixesToMonsterState,
   applyRunSummaryToMeta,
+  collectTalentEffectTotals,
   applyXpGain,
   canEquip,
   canUseSkill,
@@ -81,8 +82,12 @@ import {
   type MonsterState,
   type PlayerState,
   type RandomEventDef,
+  type RunRngStreamName,
+  type RunSaveDataV1,
+  type RuntimeEventNodeState,
   type RunState,
-  type SkillDef
+  type SkillDef,
+  type TalentEffectTotals
 } from "@blodex/core";
 import {
   BIOME_MAP,
@@ -96,6 +101,7 @@ import {
   LOOT_TABLE_MAP,
   MONSTER_ARCHETYPES,
   SKILL_DEFS,
+  TALENT_DEFS,
   type BiomeDef,
   type FloorConfig
 } from "@blodex/content";
@@ -114,6 +120,7 @@ import {
   type FeedbackAction,
   type FeedbackRouterInput
 } from "../systems/feedbackEventRouter";
+import { SAVE_LEASE_TTL_MS, SaveManager } from "../systems/SaveManager";
 import { UIManager } from "../ui/UIManager";
 import { createUIStateSnapshot } from "../ui/state/UIStateAdapter";
 import {
@@ -126,6 +133,8 @@ import { removeConnectedBackgroundFromTexture } from "../assets/removeBackground
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
+const RUN_SAVE_APP_VERSION = "phase2-4a";
+const AUTO_SAVE_INTERVAL_MS = 60_000;
 const DUNGEON_IMAGE_ASSET_IDS = [
   "player_vanguard",
   "monster_melee_01",
@@ -219,6 +228,8 @@ declare global {
 
 interface DungeonSceneInitData {
   difficulty?: DifficultyMode;
+  resumeSave?: RunSaveDataV1;
+  resumedFromSave?: boolean;
 }
 
 export class DungeonScene extends Phaser.Scene {
@@ -239,10 +250,15 @@ export class DungeonScene extends Phaser.Scene {
 
   private uiManager!: UIManager;
   private meta: MetaProgression = createInitialMeta();
+  private talentEffects: TalentEffectTotals = collectTalentEffectTotals({}, TALENT_DEFS);
+  private readonly saveManager = new SaveManager();
   private run!: RunState;
   private runSeed = "";
   private selectedDifficulty: DifficultyMode = "normal";
   private pendingDifficulty: DifficultyMode | null = null;
+  private pendingResumeSave: RunSaveDataV1 | null = null;
+  private resumedFromSave = false;
+  private lastAutoSaveAt = 0;
 
   private spawnRng!: SeededRng;
   private combatRng!: SeededRng;
@@ -362,6 +378,8 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   init(data: DungeonSceneInitData): void {
+    this.pendingResumeSave = data.resumeSave ?? null;
+    this.resumedFromSave = data.resumedFromSave === true;
     if (data.difficulty === undefined) {
       this.pendingDifficulty = null;
       return;
@@ -421,7 +439,11 @@ export class DungeonScene extends Phaser.Scene {
     this.vfxSystem.setEnabled(!this.resolveDebugFlag(DISABLE_VFX_QUERY));
     this.sfxSystem.setEnabled(!this.resolveDebugFlag(DISABLE_SFX_QUERY));
     this.meta = this.loadMeta();
-    this.selectedDifficulty = this.resolveSelectedDifficultyForRun();
+    this.refreshTalentEffects();
+    this.selectedDifficulty =
+      this.pendingResumeSave === null
+        ? this.resolveSelectedDifficultyForRun()
+        : normalizeDifficultyMode(this.pendingResumeSave.run.difficulty, "normal");
     this.uiManager = new UIManager(
       (itemId) => {
         const item = this.player.inventory.find((candidate) => candidate.id === itemId);
@@ -490,10 +512,7 @@ export class DungeonScene extends Phaser.Scene {
         this.tryUseConsumable(consumableId);
       },
       () => {
-        this.uiManager.clearSummary();
-        this.uiManager.clearLogs();
-        this.uiManager.hideDeathOverlay();
-        this.uiManager.hideEventPanel();
+        this.uiManager.reset();
         this.sfxSystem.stopAmbient();
         this.scene.start("meta-menu");
       }
@@ -507,7 +526,19 @@ export class DungeonScene extends Phaser.Scene {
     this.initDiagnosticsPanel();
     this.bindDomainEventEffects();
     this.clearKeyboardBindings();
-    this.bootstrapRun(this.resolveInitialRunSeed(), this.selectedDifficulty);
+    this.saveManager.bindPageLifecycle(() => {
+      this.flushRunSave();
+    });
+    if (this.pendingResumeSave !== null && this.restoreRunFromSave(this.pendingResumeSave)) {
+      this.saveManager.startLeaseHeartbeat(() => this.buildRunSaveSnapshot(this.time.now));
+      this.uiManager.appendLog("Resumed saved run.", "info", this.time.now);
+      this.flushRunSave();
+    } else {
+      this.bootstrapRun(this.resolveInitialRunSeed(), this.selectedDifficulty);
+      this.saveManager.startLeaseHeartbeat(() => this.buildRunSaveSnapshot(this.time.now));
+      this.flushRunSave();
+    }
+    this.pendingResumeSave = null;
     this.renderDiagnosticsPanel(this.time.now);
 
     this.input.on("pointerdown", this.handlePointerDown, this);
@@ -534,6 +565,10 @@ export class DungeonScene extends Phaser.Scene {
       this.saveMeta(this.meta);
     }
     return resolved;
+  }
+
+  private refreshTalentEffects(): void {
+    this.talentEffects = collectTalentEffectTotals(this.meta.talentPoints, TALENT_DEFS);
   }
 
   private initDiagnosticsPanel(): void {
@@ -640,6 +675,9 @@ export class DungeonScene extends Phaser.Scene {
 
     this.updateFloorProgress(nowMs);
     this.updateMinimap(nowMs);
+    if (nowMs - this.lastAutoSaveAt >= AUTO_SAVE_INTERVAL_MS) {
+      this.flushRunSave();
+    }
 
     if (!this.hudDirty && nowMs >= this.nextTransientHudRefreshAt) {
       this.hudDirty = true;
@@ -905,6 +943,7 @@ export class DungeonScene extends Phaser.Scene {
       });
       this.hudDirty = true;
       this.uiManager.appendLog(`Purchased ${itemName} for ${priceObol} Obol.`, "success", timestampMs);
+      this.scheduleRunSave();
     });
 
     this.eventBus.on("monster:stateChange", ({ monsterId, from, to, timestampMs }) => {
@@ -971,6 +1010,7 @@ export class DungeonScene extends Phaser.Scene {
       const biomeName =
         biomeId === undefined ? "" : ` (${BIOME_MAP[biomeId]?.name ?? biomeId})`;
       this.uiManager.appendLog(`Entered floor ${floor}${biomeName}.`, "info", timestampMs);
+      this.flushRunSave();
     });
 
     this.eventBus.on("floor:clear", ({ floor, kills, timestampMs }) => {
@@ -1507,6 +1547,7 @@ export class DungeonScene extends Phaser.Scene {
   private bootstrapRun(runSeed: string, difficulty: DifficultyMode): void {
     this.runSeed = runSeed;
     this.selectedDifficulty = difficulty;
+    this.resumedFromSave = false;
     this.runEnded = false;
     this.lastDeathReason = "Unknown cause.";
     this.manualMoveTarget = null;
@@ -1542,6 +1583,7 @@ export class DungeonScene extends Phaser.Scene {
     if (this.debugCheatsEnabled) {
       this.debugLog("Cheats enabled (?debugCheats=1). Press Alt+H for command list.");
     }
+    this.lastAutoSaveAt = this.time.now;
   }
 
   private refreshUnlockSnapshots(): void {
@@ -1550,16 +1592,19 @@ export class DungeonScene extends Phaser.Scene {
     this.unlockedEventIds = collectUnlockedEventIds(this.meta, UNLOCK_DEFS);
   }
 
-  private configureRngStreams(floor: number): void {
-    this.spawnRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "spawn"));
-    this.combatRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "combat"));
-    this.lootRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "loot"));
-    this.skillRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "skill"));
-    this.bossRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "boss"));
-    this.biomeRng = new SeededRng(deriveFloorSeed(this.runSeed, 0, "biome"));
-    this.hazardRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "hazard"));
-    this.eventRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "event"));
-    this.merchantRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "merchant"));
+  private configureRngStreams(
+    floor: number,
+    cursor?: Partial<Record<RunRngStreamName, number>>
+  ): void {
+    this.spawnRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "spawn"), cursor?.spawn ?? 0);
+    this.combatRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "combat"), cursor?.combat ?? 0);
+    this.lootRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "loot"), cursor?.loot ?? 0);
+    this.skillRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "skill"), cursor?.skill ?? 0);
+    this.bossRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "boss"), cursor?.boss ?? 0);
+    this.biomeRng = new SeededRng(deriveFloorSeed(this.runSeed, 0, "biome"), cursor?.biome ?? 0);
+    this.hazardRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "hazard"), cursor?.hazard ?? 0);
+    this.eventRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "event"), cursor?.event ?? 0);
+    this.merchantRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "merchant"), cursor?.merchant ?? 0);
   }
 
   private setupFloor(floor: number, initial: boolean): void {
@@ -1746,34 +1791,37 @@ export class DungeonScene extends Phaser.Scene {
         nowMs
       );
       this.hazards.push(runtime);
-
-      const visual = this.renderSystem.spawnTelegraphCircle(position, runtime.radiusTiles, this.origin);
-      const baseAlpha =
-        runtime.type === "damage_zone"
-          ? 0.22
-          : runtime.type === "movement_modifier"
-            ? 0.16
-            : 0.12;
-      visual.setAlpha(baseAlpha);
-      if (visual instanceof Phaser.GameObjects.Image) {
-        const tint =
-          runtime.type === "damage_zone"
-            ? 0xdb694d
-            : runtime.type === "movement_modifier"
-              ? 0x6aa7cf
-              : 0xbfa4d9;
-        visual.setTint(tint);
-      } else if (visual instanceof Phaser.GameObjects.Ellipse) {
-        const fill =
-          runtime.type === "damage_zone"
-            ? 0xdb694d
-            : runtime.type === "movement_modifier"
-              ? 0x6aa7cf
-              : 0xbfa4d9;
-        visual.setFillStyle(fill, baseAlpha);
-      }
-      this.hazardVisuals.push(visual);
+      this.addHazardVisual(runtime);
     }
+  }
+
+  private addHazardVisual(runtime: HazardRuntimeState): void {
+    const visual = this.renderSystem.spawnTelegraphCircle(runtime.position, runtime.radiusTiles, this.origin);
+    const baseAlpha =
+      runtime.type === "damage_zone"
+        ? 0.22
+        : runtime.type === "movement_modifier"
+          ? 0.16
+          : 0.12;
+    visual.setAlpha(baseAlpha);
+    if (visual instanceof Phaser.GameObjects.Image) {
+      const tint =
+        runtime.type === "damage_zone"
+          ? 0xdb694d
+          : runtime.type === "movement_modifier"
+            ? 0x6aa7cf
+            : 0xbfa4d9;
+      visual.setTint(tint);
+    } else if (visual instanceof Phaser.GameObjects.Ellipse) {
+      const fill =
+        runtime.type === "damage_zone"
+          ? 0xdb694d
+          : runtime.type === "movement_modifier"
+            ? 0x6aa7cf
+            : 0xbfa4d9;
+      visual.setFillStyle(fill, baseAlpha);
+    }
+    this.hazardVisuals.push(visual);
   }
 
   private destroyEventNode(): void {
@@ -1835,7 +1883,12 @@ export class DungeonScene extends Phaser.Scene {
     this.createEventNode(eventDef, position, nowMs);
   }
 
-  private createEventNode(eventDef: RandomEventDef, position: { x: number; y: number }, nowMs: number): void {
+  private createEventNode(
+    eventDef: RandomEventDef,
+    position: { x: number; y: number },
+    nowMs: number,
+    options?: { emitSpawnEvent?: boolean }
+  ): void {
     const marker = this.renderSystem.spawnTelegraphCircle(position, 0.8, this.origin);
     marker.setAlpha(0.18);
     if (marker instanceof Phaser.GameObjects.Image) {
@@ -1848,12 +1901,14 @@ export class DungeonScene extends Phaser.Scene {
       marker,
       resolved: false
     };
-    this.eventBus.emit("event:spawn", {
-      eventId: eventDef.id,
-      eventName: eventDef.name,
-      floor: this.run.currentFloor,
-      timestampMs: nowMs
-    });
+    if (options?.emitSpawnEvent !== false) {
+      this.eventBus.emit("event:spawn", {
+        eventId: eventDef.id,
+        eventName: eventDef.name,
+        floor: this.run.currentFloor,
+        timestampMs: nowMs
+      });
+    }
   }
 
   private updateEventInteraction(nowMs: number): void {
@@ -2090,6 +2145,7 @@ export class DungeonScene extends Phaser.Scene {
 
     this.consumeCurrentEvent();
     this.hudDirty = true;
+    this.flushRunSave();
     if (this.player.health <= 0) {
       this.finishRun(false);
     }
@@ -2201,8 +2257,20 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private makeInitialPlayer(): PlayerState {
-    const baseStats = defaultBaseStats();
-    const derivedStats = deriveStats(baseStats, [], undefined, this.meta.permanentUpgrades);
+    const baseStatsSeed = defaultBaseStats();
+    const baseStats = {
+      strength: baseStatsSeed.strength + (this.talentEffects.baseStats.strength ?? 0),
+      dexterity: baseStatsSeed.dexterity + (this.talentEffects.baseStats.dexterity ?? 0),
+      vitality: baseStatsSeed.vitality + (this.talentEffects.baseStats.vitality ?? 0),
+      intelligence: baseStatsSeed.intelligence + (this.talentEffects.baseStats.intelligence ?? 0)
+    };
+    const derivedStats = deriveStats(
+      baseStats,
+      [],
+      undefined,
+      this.meta.permanentUpgrades,
+      this.talentEffects
+    );
 
     const startingSkillIds = this.pickStartingSkillIds();
 
@@ -2236,7 +2304,13 @@ export class DungeonScene extends Phaser.Scene {
 
   private refreshPlayerStatsFromEquipment(player: PlayerState): PlayerState {
     const equipped = Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined);
-    const derivedStats = deriveStats(player.baseStats, equipped, undefined, this.meta.permanentUpgrades);
+    const derivedStats = deriveStats(
+      player.baseStats,
+      equipped,
+      undefined,
+      this.meta.permanentUpgrades,
+      this.talentEffects
+    );
 
     return {
       ...player,
@@ -3136,9 +3210,18 @@ export class DungeonScene extends Phaser.Scene {
       soulShardsEarned: soulShards,
       obolsEarned: this.run.runEconomy.obols
     };
-
-    this.meta = applyRunSummaryToMeta(nextMeta, summary);
-    this.saveMeta(this.meta);
+    const runId = `${this.runSeed}:${this.run.startedAtMs}`;
+    if (!this.saveManager.isRunSettled(runId)) {
+      this.meta = applyRunSummaryToMeta(nextMeta, summary);
+      const committed = this.saveMeta(this.meta);
+      if (committed) {
+        this.saveManager.markRunSettled(runId);
+        this.saveManager.deleteSave();
+      }
+    } else {
+      this.saveManager.deleteSave();
+    }
+    this.saveManager.stopLeaseHeartbeat();
     this.renderHud();
     this.hudDirty = false;
     if (isVictory) {
@@ -3160,6 +3243,8 @@ export class DungeonScene extends Phaser.Scene {
   private resetRun(): void {
     this.uiManager.clearSummary();
     this.bootstrapRun(this.resolveInitialRunSeed(), this.selectedDifficulty);
+    this.saveManager.startLeaseHeartbeat(() => this.buildRunSaveSnapshot(this.time.now));
+    this.flushRunSave();
     this.hudDirty = true;
   }
 
@@ -3211,7 +3296,8 @@ export class DungeonScene extends Phaser.Scene {
             xpResult.player.baseStats,
             Object.values(xpResult.player.equipment).filter((item): item is ItemInstance => item !== undefined),
             undefined,
-            this.meta.permanentUpgrades
+            this.meta.permanentUpgrades,
+            this.talentEffects
           )
         };
       }
@@ -3424,6 +3510,335 @@ export class DungeonScene extends Phaser.Scene {
     this.nextTransientHudRefreshAt = next;
   }
 
+  private collectRngCursor(): Record<RunRngStreamName, number> {
+    return {
+      procgen: 0,
+      spawn: this.spawnRng?.getCursor() ?? 0,
+      combat: this.combatRng?.getCursor() ?? 0,
+      loot: this.lootRng?.getCursor() ?? 0,
+      skill: this.skillRng?.getCursor() ?? 0,
+      boss: this.bossRng?.getCursor() ?? 0,
+      biome: this.biomeRng?.getCursor() ?? 0,
+      hazard: this.hazardRng?.getCursor() ?? 0,
+      event: this.eventRng?.getCursor() ?? 0,
+      merchant: this.merchantRng?.getCursor() ?? 0
+    };
+  }
+
+  private currentEventNodeSnapshot(): RuntimeEventNodeState | null {
+    if (this.eventNode === null) {
+      return null;
+    }
+
+    return {
+      eventId: this.eventNode.eventDef.id,
+      position: { ...this.eventNode.position },
+      resolved: this.eventNode.resolved,
+      ...(this.merchantOffers.length === 0
+        ? {}
+        : { merchantOffers: this.merchantOffers.map((offer) => ({ ...offer })) })
+    };
+  }
+
+  private buildRunSaveSnapshot(nowMs: number): RunSaveDataV1 | null {
+    if (this.runEnded || (this.run as RunState | undefined) === undefined || this.player === undefined) {
+      return null;
+    }
+    const minimapSnapshot = this.uiManager.getMinimapSnapshot() ?? {
+      layoutHash: this.dungeon.layoutHash,
+      exploredKeys: []
+    };
+    const wallNowMs = Date.now();
+
+    return {
+      schemaVersion: 1,
+      savedAtMs: wallNowMs,
+      appVersion: RUN_SAVE_APP_VERSION,
+      runId: `${this.runSeed}:${this.run.startedAtMs}`,
+      runSeed: this.runSeed,
+      run: {
+        ...this.run
+      },
+      player: {
+        ...this.player,
+        position: { ...this.player.position }
+      },
+      consumables: {
+        charges: { ...this.consumables.charges },
+        cooldowns: { ...this.consumables.cooldowns }
+      },
+      dungeon: {
+        ...this.dungeon,
+        walkable: this.dungeon.walkable.map((row) => [...row]),
+        rooms: this.dungeon.rooms.map((room) => ({ ...room })),
+        corridors: this.dungeon.corridors.map((corridor) => ({
+          ...corridor,
+          path: corridor.path.map((point) => ({ ...point }))
+        })),
+        spawnPoints: this.dungeon.spawnPoints.map((point) => ({ ...point })),
+        playerSpawn: { ...this.dungeon.playerSpawn }
+      },
+      staircase: {
+        position: { ...this.staircaseState.position },
+        visible: this.staircaseState.visible
+      },
+      hazards: this.hazards.map((hazard) => ({
+        ...hazard,
+        position: { ...hazard.position }
+      })),
+      boss:
+        this.bossState === null
+          ? null
+          : {
+              ...this.bossState,
+              position: { ...this.bossState.position },
+              attackCooldowns: { ...this.bossState.attackCooldowns }
+            },
+      monsters: this.entityManager.listMonsters().map((monster) => ({
+        state: {
+          ...monster.state,
+          position: { ...monster.state.position },
+          ...(monster.state.affixes === undefined ? {} : { affixes: [...monster.state.affixes] })
+        },
+        nextAttackAt: monster.nextAttackAt,
+        nextSupportAt: monster.nextSupportAt
+      })),
+      lootOnGround: this.entityManager.listLoot().map((drop) => ({
+        item: {
+          ...drop.item,
+          rolledAffixes: { ...drop.item.rolledAffixes },
+          ...(drop.item.rolledSpecialAffixes === undefined
+            ? {}
+            : { rolledSpecialAffixes: { ...drop.item.rolledSpecialAffixes } })
+        },
+        position: { ...drop.position }
+      })),
+      eventNode: this.currentEventNodeSnapshot(),
+      minimap: {
+        layoutHash: minimapSnapshot.layoutHash,
+        exploredKeys: [...minimapSnapshot.exploredKeys]
+      },
+      mapRevealActive: this.mapRevealActive,
+      rngCursor: this.collectRngCursor(),
+      lease: {
+        tabId: this.saveManager.getTabId(),
+        renewedAtMs: wallNowMs,
+        leaseUntilMs: wallNowMs + SAVE_LEASE_TTL_MS
+      }
+    };
+  }
+
+  private flushRunSave(): void {
+    if (this.runEnded) {
+      return;
+    }
+    this.saveManager.flushSave(() => this.buildRunSaveSnapshot(this.time.now));
+    this.lastAutoSaveAt = this.time.now;
+  }
+
+  private scheduleRunSave(): void {
+    if (this.runEnded) {
+      return;
+    }
+    this.saveManager.scheduleSave(() => this.buildRunSaveSnapshot(this.time.now));
+  }
+
+  private restoreRunFromSave(save: RunSaveDataV1): boolean {
+    try {
+      this.pendingResumeSave = null;
+      this.runSeed = save.runSeed;
+      const rebasedRunStartedAtMs = this.rebaseRunStartedAtMs(save.run, this.time.now);
+      this.run = {
+        ...save.run,
+        startedAtMs: rebasedRunStartedAtMs,
+        runSeed: save.runSeed
+      };
+      this.selectedDifficulty = normalizeDifficultyMode(save.run.difficulty, "normal");
+      this.runEnded = false;
+      this.lastDeathReason = "Unknown cause.";
+      this.manualMoveTarget = null;
+      this.manualMoveTargetFailures = 0;
+      this.nextManualPathReplanAt = 0;
+      this.nextKeyboardMoveInputAt = 0;
+      this.entityLabelById.clear();
+      this.newlyAcquiredItemUntilMs.clear();
+      this.previousSkillCooldownLeftById.clear();
+      this.skillReadyFlashUntilMsById.clear();
+      this.nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
+      this.lastAiNearCount = 0;
+      this.lastAiFarCount = 0;
+      this.path = [];
+      this.attackTargetId = null;
+      this.nextPlayerAttackAt = 0;
+      this.nextBossAttackAt = 0;
+      this.uiManager.clearLogs();
+      this.uiManager.hideDeathOverlay();
+      this.uiManager.hideEventPanel();
+      this.eventPanelOpen = false;
+
+      this.refreshUnlockSnapshots();
+      this.consumables = {
+        charges: { ...save.consumables.charges },
+        cooldowns: { ...save.consumables.cooldowns }
+      };
+      this.mapRevealActive = save.mapRevealActive;
+      this.merchantOffers = [];
+
+      this.children.removeAll(true);
+      this.entityManager.clear();
+      this.clearHazards();
+      this.movementSystem.clearPathCache();
+
+      this.floorConfig = getFloorConfig(this.run.currentFloor, this.run.difficultyModifier);
+      this.configureRngStreams(this.run.currentFloor, save.rngCursor);
+      this.currentBiome = BIOME_MAP[this.run.currentBiomeId] ?? BIOME_MAP.forgotten_catacombs;
+      this.dungeon = {
+        ...save.dungeon,
+        walkable: save.dungeon.walkable.map((row) => [...row]),
+        rooms: save.dungeon.rooms.map((room) => ({ ...room })),
+        corridors: save.dungeon.corridors.map((corridor) => ({
+          ...corridor,
+          path: corridor.path.map((point) => ({ ...point }))
+        })),
+        spawnPoints: save.dungeon.spawnPoints.map((point) => ({ ...point })),
+        playerSpawn: { ...save.dungeon.playerSpawn }
+      };
+      this.player = this.refreshPlayerStatsFromEquipment({
+        ...save.player,
+        position: { ...save.player.position },
+        inventory: [...save.player.inventory],
+        equipment: { ...save.player.equipment }
+      });
+      this.staircaseState = {
+        position: { ...save.staircase.position },
+        visible: save.staircase.visible
+      };
+
+      const world = this.renderSystem.computeWorldBounds(this.dungeon);
+      this.origin = world.origin;
+      this.worldBounds = world.worldBounds;
+      this.cameras.main.setBackgroundColor(
+        Phaser.Display.Color.IntegerToColor(this.currentBiome.ambientColor).rgba
+      );
+      this.renderSystem.drawDungeon(
+        this.dungeon,
+        this.origin,
+        this.resolveBiomeTileTint(this.currentBiome.id)
+      );
+
+      const playerRender = this.renderSystem.spawnPlayer(this.player.position, this.origin);
+      this.playerSprite = playerRender.sprite;
+      this.playerYOffset = playerRender.yOffset;
+
+      this.hazards = save.hazards.map((hazard) => ({
+        ...hazard,
+        position: { ...hazard.position }
+      }));
+      for (const hazard of this.hazards) {
+        this.addHazardVisual(hazard);
+      }
+
+      const runtimes = save.monsters
+        .map((monster) => {
+          const archetype = MONSTER_ARCHETYPES.find((entry) => entry.id === monster.state.archetypeId);
+          if (archetype === undefined) {
+            return null;
+          }
+          const runtime = this.renderSystem.spawnMonster(
+            {
+              ...monster.state,
+              position: { ...monster.state.position },
+              ...(monster.state.affixes === undefined
+                ? {}
+                : { affixes: [...monster.state.affixes] })
+            },
+            archetype,
+            this.origin
+          );
+          runtime.nextAttackAt = monster.nextAttackAt;
+          runtime.nextSupportAt = monster.nextSupportAt;
+          this.entityLabelById.set(runtime.state.id, archetype.name);
+          return runtime;
+        })
+        .filter((entry): entry is ReturnType<RenderSystem["spawnMonster"]> => entry !== null);
+      this.entityManager.setMonsters(runtimes);
+
+      for (const drop of save.lootOnGround) {
+        this.entityManager.addLoot({
+          item: {
+            ...drop.item,
+            rolledAffixes: { ...drop.item.rolledAffixes },
+            ...(drop.item.rolledSpecialAffixes === undefined
+              ? {}
+              : { rolledSpecialAffixes: { ...drop.item.rolledSpecialAffixes } })
+          },
+          position: { ...drop.position },
+          sprite: this.renderSystem.spawnLootSprite(drop.item, drop.position, this.origin)
+        });
+      }
+
+      if (save.boss !== null) {
+        this.bossState = {
+          ...save.boss,
+          position: { ...save.boss.position },
+          attackCooldowns: { ...save.boss.attackCooldowns }
+        };
+        this.entityLabelById.set(this.bossDef.id, this.bossDef.name);
+        this.bossSprite = this.renderSystem.spawnBoss(this.bossState.position, this.origin, this.bossDef.spriteKey);
+        this.entityManager.setBoss({
+          state: this.bossState,
+          sprite: this.bossSprite
+        });
+      } else {
+        this.bossState = null;
+        this.bossSprite = null;
+        this.entityManager.setBoss(null);
+      }
+
+      if (this.staircaseState.visible) {
+        this.entityManager.setStaircase(this.renderSystem.spawnStaircase(this.staircaseState.position, this.origin));
+      } else {
+        this.entityManager.setStaircase(null);
+      }
+
+      this.destroyEventNode();
+      const eventNodeSnapshot = save.eventNode;
+      if (eventNodeSnapshot !== null) {
+        const eventDef = RANDOM_EVENT_DEFS.find((entry) => entry.id === eventNodeSnapshot.eventId);
+        if (eventDef !== undefined) {
+          this.createEventNode(eventDef, eventNodeSnapshot.position, this.time.now, { emitSpawnEvent: false });
+          if (this.eventNode !== null) {
+            this.eventNode.resolved = eventNodeSnapshot.resolved;
+          }
+          this.merchantOffers = eventNodeSnapshot.merchantOffers?.map((offer) => ({ ...offer })) ?? [];
+          if (eventNodeSnapshot.resolved) {
+            this.consumeCurrentEvent();
+          }
+        }
+      }
+
+      this.renderSystem.configureCamera(this.cameras.main, this.worldBounds, this.playerSprite);
+      this.uiManager.configureMinimap({
+        width: this.dungeon.width,
+        height: this.dungeon.height,
+        walkable: this.dungeon.walkable,
+        layoutHash: this.dungeon.layoutHash
+      });
+      this.uiManager.resetMinimap();
+      this.uiManager.restoreMinimap(save.minimap);
+      this.lastMinimapRefreshAt = 0;
+      this.updateMinimap(this.time.now);
+
+      this.hudDirty = true;
+      this.resumedFromSave = true;
+      this.lastAutoSaveAt = this.time.now;
+      return true;
+    } catch (error) {
+      console.warn("[Save] Failed to restore run snapshot.", error);
+      return false;
+    }
+  }
+
   private cleanupScene(): void {
     if (this.cleanupStarted) {
       return;
@@ -3442,14 +3857,16 @@ export class DungeonScene extends Phaser.Scene {
 
     this.load.off(Phaser.Loader.Events.FILE_LOAD_ERROR, this.handleImageLoadError, this);
     this.imageFallbackRetried.clear();
+    if (!this.runEnded) {
+      this.flushRunSave();
+    }
+    this.saveManager.dispose();
     this.sfxSystem.shutdown();
     this.vfxSystem.shutdown();
     this.eventBus.removeAll();
     this.input.off("pointerdown", this.handlePointerDown, this);
     this.clearKeyboardBindings();
-    this.uiManager.hideDeathOverlay();
-    this.uiManager.hideEventPanel();
-    this.uiManager.resetMinimap();
+    this.uiManager.reset();
     this.removeDebugApi();
     this.destroyEventNode();
     this.clearHazards();
@@ -3477,6 +3894,22 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
+  private estimateRunElapsedMsFromReplay(run: RunState): number {
+    const inputs = run.replay?.inputs ?? [];
+    let elapsedMs = 0;
+    for (const input of inputs) {
+      if (Number.isFinite(input.atMs) && input.atMs > elapsedMs) {
+        elapsedMs = input.atMs;
+      }
+    }
+    return elapsedMs;
+  }
+
+  private rebaseRunStartedAtMs(run: RunState, nowMs: number): number {
+    const elapsedMs = this.estimateRunElapsedMsFromReplay(run);
+    return nowMs - elapsedMs;
+  }
+
   private loadMeta(): MetaProgression {
     const rawV2 = window.localStorage.getItem(META_STORAGE_KEY_V2);
     if (rawV2 !== null) {
@@ -3501,7 +3934,13 @@ export class DungeonScene extends Phaser.Scene {
     return createInitialMeta();
   }
 
-  private saveMeta(meta: MetaProgression): void {
-    window.localStorage.setItem(META_STORAGE_KEY_V2, JSON.stringify(meta));
+  private saveMeta(meta: MetaProgression): boolean {
+    try {
+      window.localStorage.setItem(META_STORAGE_KEY_V2, JSON.stringify(meta));
+      this.refreshTalentEffects();
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
