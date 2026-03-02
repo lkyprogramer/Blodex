@@ -1,4 +1,4 @@
-import type { DifficultyMode } from "@blodex/core";
+import type { DifficultyMode, TalentPath } from "@blodex/core";
 
 function escapeHtml(raw: string): string {
   return raw
@@ -16,6 +16,13 @@ export interface MetaMenuDifficultyView {
   selected: boolean;
   unlocked: boolean;
   requirement: string;
+}
+
+export interface MetaMenuRunSaveView {
+  canContinue: boolean;
+  canAbandon: boolean;
+  statusText: string;
+  detailText: string;
 }
 
 export interface MetaMenuUnlockCardView {
@@ -37,21 +44,80 @@ export interface MetaMenuUnlockGroupView {
   unlocks: MetaMenuUnlockCardView[];
 }
 
+export interface MetaMenuTalentCardView {
+  id: string;
+  name: string;
+  description: string;
+  path: TalentPath;
+  tier: number;
+  rank: number;
+  maxRank: number;
+  cost: number;
+  statusText: string;
+  purchasable: boolean;
+}
+
+export interface MetaMenuTalentGroupView {
+  path: TalentPath;
+  label: string;
+  talents: MetaMenuTalentCardView[];
+}
+
 export interface MetaMenuPanelView {
   soulShards: number;
   unlockedCount: number;
   totalUnlocks: number;
   difficulties: MetaMenuDifficultyView[];
+  runSave: MetaMenuRunSaveView | null;
+  talentGroups: MetaMenuTalentGroupView[];
   unlockGroups: MetaMenuUnlockGroupView[];
+  startRunEnabled: boolean;
 }
 
 export interface MetaMenuPanelHandlers {
   onPurchase: (index: number) => void;
+  onPurchaseTalent: (talentId: string) => void;
   onSelectDifficulty: (mode: DifficultyMode) => void;
   onStartRun: () => void;
+  onContinueRun: () => void;
+  onAbandonRun: () => void;
+}
+
+function pathLabel(path: TalentPath): string {
+  switch (path) {
+    case "core":
+      return "Core";
+    case "warrior":
+      return "Warrior";
+    case "ranger":
+      return "Ranger";
+    case "arcanist":
+      return "Arcanist";
+    case "utility":
+      return "Utility";
+    default:
+      return path;
+  }
 }
 
 export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
+  const resumeHtml =
+    view.runSave === null
+      ? ""
+      : `
+        <section class="meta-menu-section">
+          <h2>Saved Run</h2>
+          <div class="meta-resume-card ${view.runSave.canContinue ? "" : "blocked"}">
+            <div class="meta-resume-status">${escapeHtml(view.runSave.statusText)}</div>
+            <div class="meta-resume-detail">${escapeHtml(view.runSave.detailText)}</div>
+            <div class="meta-resume-actions">
+              <button data-action="continue" ${view.runSave.canContinue ? "" : "disabled"}>Continue Run</button>
+              <button data-action="abandon" ${view.runSave.canAbandon ? "" : "disabled"}>Abandon Run</button>
+            </div>
+          </div>
+        </section>
+      `;
+
   const difficultyHtml = view.difficulties
     .map((entry) => {
       const status = entry.selected ? "Selected" : entry.unlocked ? "Available" : "Locked";
@@ -77,6 +143,46 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
           </div>
           <div class="meta-difficulty-requirement">${escapeHtml(entry.requirement)}</div>
         </button>
+      `;
+    })
+    .join("");
+
+  const talentGroupsHtml = view.talentGroups
+    .map((group) => {
+      const cards = group.talents
+        .map((talent) => {
+          const classes = [
+            "meta-talent-card",
+            talent.rank >= talent.maxRank ? "unlocked" : "",
+            talent.purchasable ? "available" : "",
+            !talent.purchasable && talent.rank < talent.maxRank ? "locked" : ""
+          ]
+            .filter((className) => className.length > 0)
+            .join(" ");
+          return `
+            <button
+              class="${classes}"
+              data-action="purchase-talent"
+              data-talent-id="${escapeHtml(talent.id)}"
+              ${talent.purchasable ? "" : "disabled"}
+            >
+              <div class="meta-unlock-head">
+                <span class="meta-unlock-name">${escapeHtml(talent.name)}</span>
+                <span class="meta-unlock-cost">${talent.cost}</span>
+              </div>
+              <div class="meta-unlock-description">${escapeHtml(talent.description)}</div>
+              <div class="meta-unlock-effect">Tier ${talent.tier} • Rank ${talent.rank}/${talent.maxRank}</div>
+              <div class="meta-unlock-status">${escapeHtml(talent.statusText)}</div>
+            </button>
+          `;
+        })
+        .join("");
+
+      return `
+        <section class="meta-tier-group" data-path="${group.path}">
+          <h3>${pathLabel(group.path)}</h3>
+          <div class="meta-tier-grid">${cards}</div>
+        </section>
       `;
     })
     .join("");
@@ -130,17 +236,23 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
           <span>Unlocks: ${view.unlockedCount}/${view.totalUnlocks}</span>
         </div>
       </header>
+      ${resumeHtml}
       <section class="meta-menu-section">
         <h2>Difficulty</h2>
         <div class="meta-difficulty-grid">${difficultyHtml}</div>
       </section>
       <section class="meta-menu-section">
-        <h2>Unlock Tree</h2>
+        <h2>Talent Tree</h2>
+        <p class="meta-menu-hint">Purchase talents to improve baseline stats and run economy.</p>
+        ${talentGroupsHtml}
+      </section>
+      <section class="meta-menu-section">
+        <h2>Legacy Unlocks</h2>
         <p class="meta-menu-hint">Hotkeys: unlocks 1-0, difficulty Q/W/E, start Enter.</p>
         ${unlockGroupsHtml}
       </section>
       <footer class="meta-menu-footer">
-        <button class="meta-start-button" data-action="start">Start New Run</button>
+        <button class="meta-start-button" data-action="start" ${view.startRunEnabled ? "" : "disabled"}>Start New Run</button>
       </footer>
     </div>
   `;
@@ -163,6 +275,16 @@ export function bindMetaMenuPanelActions(
     unbindActions.push(() => button.removeEventListener("click", onClick));
   });
 
+  container.querySelectorAll<HTMLButtonElement>("button[data-action='purchase-talent']").forEach((button) => {
+    const talentId = button.dataset.talentId;
+    if (talentId === undefined) {
+      return;
+    }
+    const onClick = () => handlers.onPurchaseTalent(talentId);
+    button.addEventListener("click", onClick);
+    unbindActions.push(() => button.removeEventListener("click", onClick));
+  });
+
   container.querySelectorAll<HTMLButtonElement>("button[data-action='difficulty']").forEach((button) => {
     const mode = button.dataset.mode as DifficultyMode | undefined;
     if (mode === undefined) {
@@ -180,6 +302,19 @@ export function bindMetaMenuPanelActions(
     unbindActions.push(() => startButton.removeEventListener("click", onClick));
   }
 
+  const continueButton = container.querySelector<HTMLButtonElement>("button[data-action='continue']");
+  if (continueButton !== null) {
+    const onClick = () => handlers.onContinueRun();
+    continueButton.addEventListener("click", onClick);
+    unbindActions.push(() => continueButton.removeEventListener("click", onClick));
+  }
+
+  const abandonButton = container.querySelector<HTMLButtonElement>("button[data-action='abandon']");
+  if (abandonButton !== null) {
+    const onClick = () => handlers.onAbandonRun();
+    abandonButton.addEventListener("click", onClick);
+    unbindActions.push(() => abandonButton.removeEventListener("click", onClick));
+  }
+
   return unbindActions;
 }
-

@@ -1193,7 +1193,8 @@ button,
 }
 
 .meta-difficulty-card,
-.meta-unlock-card {
+.meta-unlock-card,
+.meta-talent-card {
   width: 100%;
   border: 1px solid rgba(208, 168, 111, 0.35);
   border-radius: 10px;
@@ -1204,7 +1205,8 @@ button,
 }
 
 .meta-difficulty-card.locked,
-.meta-unlock-card.locked {
+.meta-unlock-card.locked,
+.meta-talent-card.locked {
   opacity: 0.56;
   cursor: not-allowed;
 }
@@ -1253,15 +1255,56 @@ button,
   gap: 8px;
 }
 
-.meta-unlock-card.available:hover {
+.meta-unlock-card.available:hover,
+.meta-talent-card.available:hover {
   transform: translateY(-2px);
   border-color: rgba(227, 193, 131, 0.72);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.26);
 }
 
-.meta-unlock-card.unlocked {
+.meta-unlock-card.unlocked,
+.meta-talent-card.unlocked {
   border-color: rgba(111, 186, 132, 0.62);
   background: rgba(25, 54, 39, 0.58);
+}
+
+.meta-resume-card {
+  border: 1px solid rgba(208, 168, 111, 0.35);
+  border-radius: 10px;
+  background: rgba(17, 23, 31, 0.85);
+  padding: 10px;
+}
+
+.meta-resume-card.blocked {
+  border-color: rgba(212, 121, 121, 0.56);
+  background: rgba(58, 20, 20, 0.5);
+}
+
+.meta-resume-status {
+  font-size: 14px;
+  color: #f1d8b0;
+}
+
+.meta-resume-detail {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #d9c29a;
+}
+
+.meta-resume-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.meta-resume-actions button {
+  border: 1px solid rgba(208, 168, 111, 0.62);
+  border-radius: 8px;
+  background: rgba(208, 168, 111, 0.16);
+  color: #f7e9cc;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
 }
 
 .meta-unlock-head {

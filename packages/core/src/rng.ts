@@ -3,12 +3,17 @@ import type { RngLike } from "./contracts/types";
 
 export class SeededRng implements RngLike {
   private readonly prng: seedrandom.PRNG;
+  private cursor = 0;
 
-  constructor(seed: string) {
+  constructor(seed: string, cursor = 0) {
     this.prng = seedrandom(seed);
+    if (cursor > 0) {
+      this.skip(cursor);
+    }
   }
 
   next(): number {
+    this.cursor += 1;
     return this.prng.quick();
   }
 
@@ -26,5 +31,16 @@ export class SeededRng implements RngLike {
       throw new Error("Random pick index out of bounds.");
     }
     return item;
+  }
+
+  getCursor(): number {
+    return this.cursor;
+  }
+
+  skip(drawCount: number): void {
+    const steps = Math.max(0, Math.floor(drawCount));
+    for (let i = 0; i < steps; i += 1) {
+      this.next();
+    }
   }
 }
