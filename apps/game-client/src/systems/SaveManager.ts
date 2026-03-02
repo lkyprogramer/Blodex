@@ -86,7 +86,12 @@ export class SaveManager {
       return null;
     }
 
-    const raw = this.storage.getItem(this.storageKey);
+    let raw: string | null = null;
+    try {
+      raw = this.storage.getItem(this.storageKey);
+    } catch {
+      return null;
+    }
     if (raw === null) {
       return null;
     }
@@ -108,7 +113,14 @@ export class SaveManager {
   }
 
   deleteSave(): void {
-    this.storage?.removeItem(this.storageKey);
+    if (this.storage === undefined) {
+      return;
+    }
+    try {
+      this.storage.removeItem(this.storageKey);
+    } catch {
+      // Best effort cleanup; keep runtime alive when storage is unavailable.
+    }
   }
 
   scheduleSave(snapshotBuilder: () => RunSaveDataV1 | null): void {
@@ -278,7 +290,11 @@ export class SaveManager {
       return;
     }
     settled.add(runId);
-    this.storage.setItem(this.settledKey, JSON.stringify([...settled.values()]));
+    try {
+      this.storage.setItem(this.settledKey, JSON.stringify([...settled.values()]));
+    } catch {
+      // Ignore transient storage failures.
+    }
   }
 
   dispose(): void {
@@ -295,13 +311,21 @@ export class SaveManager {
       return randomTabId();
     }
 
-    const existing = this.sessionStorage.getItem(SaveManager.TAB_ID_KEY);
-    if (existing !== null && existing.length > 0) {
-      return existing;
+    try {
+      const existing = this.sessionStorage.getItem(SaveManager.TAB_ID_KEY);
+      if (existing !== null && existing.length > 0) {
+        return existing;
+      }
+    } catch {
+      return randomTabId();
     }
 
     const next = randomTabId();
-    this.sessionStorage.setItem(SaveManager.TAB_ID_KEY, next);
+    try {
+      this.sessionStorage.setItem(SaveManager.TAB_ID_KEY, next);
+    } catch {
+      // Keep generated tab id in-memory when sessionStorage write fails.
+    }
     return next;
   }
 
@@ -310,7 +334,12 @@ export class SaveManager {
       return new Set<string>();
     }
 
-    const raw = this.storage.getItem(this.settledKey);
+    let raw: string | null = null;
+    try {
+      raw = this.storage.getItem(this.settledKey);
+    } catch {
+      return new Set<string>();
+    }
     if (raw === null) {
       return new Set<string>();
     }

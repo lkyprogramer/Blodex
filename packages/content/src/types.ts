@@ -22,7 +22,7 @@ export type DamageType = "physical" | "arcane";
 
 export type DifficultyMode = "normal" | "hard" | "nightmare";
 
-export type WeaponType = "sword" | "axe" | "dagger" | "staff" | "hammer";
+export type WeaponType = "sword" | "axe" | "dagger" | "staff" | "hammer" | "sword_master";
 
 export type ItemSpecialAffixKey =
   | "lifesteal"

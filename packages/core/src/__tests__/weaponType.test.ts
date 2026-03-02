@@ -48,6 +48,14 @@ const WEAPON_TYPE_DEFS: Record<WeaponTypeDef["id"], WeaponTypeDef> = {
     damageMultiplier: 1.2,
     mechanic: { type: "stagger", chance: 0.2, slowPercent: 0.3, durationMs: 1200 },
     unlock: { type: "blueprint", blueprintId: "bp_weapon_hammer" }
+  },
+  sword_master: {
+    id: "sword_master",
+    attackSpeedMultiplier: 1.08,
+    attackRange: 1.65,
+    damageMultiplier: 1.1,
+    mechanic: { type: "crit_bonus", critChanceBonus: 0.14, critDamageMultiplier: 2.1 },
+    unlock: { type: "blueprint", blueprintId: "bp_weapon_sword_master" }
   }
 };
 
@@ -80,10 +88,10 @@ describe("weapon type", () => {
   it("collects unlocked weapon types from forged blueprints", () => {
     const meta = {
       ...createInitialMeta(),
-      blueprintForgedIds: ["bp_weapon_axe", "bp_weapon_staff"]
+      blueprintForgedIds: ["bp_weapon_axe", "bp_weapon_staff", "bp_weapon_sword_master"]
     };
     const unlocked = collectUnlockedWeaponTypes(meta, WEAPON_TYPE_DEFS);
-    expect([...unlocked.values()].sort()).toEqual(["axe", "staff", "sword"]);
+    expect([...unlocked.values()].sort()).toEqual(["axe", "staff", "sword", "sword_master"]);
   });
 
   it("filters locked weapon drops", () => {
@@ -106,8 +114,16 @@ describe("weapon type", () => {
       name: "Raider Axe",
       weaponType: "axe"
     };
+    const masterDef: ItemDef = {
+      ...swordDef,
+      id: "sanctified_masterblade",
+      name: "Sanctified Masterblade",
+      weaponType: "sword_master"
+    };
     expect(isItemDefUnlockedByWeaponType(swordDef, unlocked)).toBe(true);
     expect(isItemDefUnlockedByWeaponType(axeDef, unlocked)).toBe(false);
+    expect(isItemDefUnlockedByWeaponType(masterDef, unlocked)).toBe(false);
     expect(resolveItemWeaponType(axeDef)).toBe("axe");
+    expect(resolveItemWeaponType(masterDef)).toBe("sword_master");
   });
 });

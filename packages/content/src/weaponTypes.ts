@@ -40,10 +40,17 @@ export const WEAPON_TYPE_DEFS: WeaponTypeDef[] = [
     damageMultiplier: 1.2,
     mechanic: { type: "stagger", chance: 0.2, slowPercent: 0.3, durationMs: 1200 },
     unlock: { type: "blueprint", blueprintId: "bp_weapon_hammer" }
+  },
+  {
+    id: "sword_master",
+    attackSpeedMultiplier: 1.08,
+    attackRange: 1.65,
+    damageMultiplier: 1.1,
+    mechanic: { type: "crit_bonus", critChanceBonus: 0.14, critDamageMultiplier: 2.1 },
+    unlock: { type: "blueprint", blueprintId: "bp_weapon_sword_master" }
   }
 ];
 
 export const WEAPON_TYPE_DEF_MAP = Object.fromEntries(
   WEAPON_TYPE_DEFS.map((entry) => [entry.id, entry])
 ) as Record<WeaponTypeDef["id"], WeaponTypeDef>;
-

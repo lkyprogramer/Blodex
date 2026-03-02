@@ -8,10 +8,11 @@ import type {
 } from "./contracts/types";
 
 const DEFAULT_WEAPON_TYPE: WeaponType = "sword";
+const KNOWN_WEAPON_TYPES = new Set<WeaponType>(["sword", "axe", "dagger", "staff", "hammer", "sword_master"]);
 
 export function normalizeWeaponType(input: unknown): WeaponType {
-  if (input === "sword" || input === "axe" || input === "dagger" || input === "staff" || input === "hammer") {
-    return input;
+  if (typeof input === "string" && KNOWN_WEAPON_TYPES.has(input as WeaponType)) {
+    return input as WeaponType;
   }
   return DEFAULT_WEAPON_TYPE;
 }
@@ -52,16 +53,11 @@ export function collectUnlockedWeaponTypes(
 ): Set<WeaponType> {
   const unlocked = new Set<WeaponType>();
   const forged = new Set(meta.blueprintForgedIds);
-  const candidateTypes: WeaponType[] = ["sword", "axe", "dagger", "staff", "hammer"];
+  const candidateDefs = Object.values(defs).filter(
+    (weaponTypeDef): weaponTypeDef is WeaponTypeDef => weaponTypeDef !== undefined
+  );
 
-  for (const weaponType of candidateTypes) {
-    const def = defs[weaponType];
-    if (def === undefined) {
-      if (weaponType === DEFAULT_WEAPON_TYPE) {
-        unlocked.add(weaponType);
-      }
-      continue;
-    }
+  for (const def of candidateDefs) {
     if (def.unlock.type === "default") {
       unlocked.add(def.id);
       continue;

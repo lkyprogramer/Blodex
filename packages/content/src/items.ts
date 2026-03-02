@@ -67,7 +67,7 @@ export const ITEM_DEFS: ItemDef[] = [
     id: "sanctified_greatsword",
     name: "Sanctified Greatsword",
     slot: "weapon",
-    weaponType: "sword",
+    weaponType: "sword_master",
     rarity: "rare",
     requiredLevel: 3,
     iconId: "item_weapon_03",

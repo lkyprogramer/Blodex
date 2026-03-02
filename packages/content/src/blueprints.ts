@@ -179,7 +179,7 @@ const EVENT_BLUEPRINTS: BlueprintDef[] = [
     id: "bp_event_merchant_plus",
     name: "Merchant Ledger",
     category: "event",
-    unlockTargetId: "wandering_merchant_plus",
+    unlockTargetId: "wandering_merchant",
     forgeCost: 18,
     rarity: "common",
     dropSources: [{ type: "random_event", sourceId: "wandering_merchant", chance: 0.25, floorMin: 1 }]
@@ -188,7 +188,7 @@ const EVENT_BLUEPRINTS: BlueprintDef[] = [
     id: "bp_event_ritual_chamber",
     name: "Ritual Chamber Plan",
     category: "event",
-    unlockTargetId: "ritual_chamber",
+    unlockTargetId: "unstable_portal",
     forgeCost: 34,
     rarity: "legendary",
     dropSources: [{ type: "boss_kill", sourceId: "bone_sovereign", chance: 0.22, floorMin: 5 }]
