@@ -175,6 +175,8 @@ const AI_ACTIVE_RADIUS_TILES = 10;
 const AI_FAR_UPDATE_INTERVAL_FRAMES = 3;
 const MONSTER_COMBAT_RADIUS_TILES = 12;
 const LOOT_PICKUP_RADIUS_TILES = 1.15;
+const ITEM_NEWLY_ACQUIRED_TTL_MS = 2_000;
+const SKILL_READY_FLASH_DURATION_MS = 480;
 const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
   health_potion: "item_consumable_health_potion_01",
   mana_potion: "item_consumable_mana_potion_01",
@@ -326,6 +328,10 @@ export class DungeonScene extends Phaser.Scene {
   private lastAiFarCount = 0;
   private lastMinimapRefreshAt = 0;
   private aiFrameCounter = 0;
+  private readonly newlyAcquiredItemUntilMs = new Map<string, number>();
+  private readonly previousSkillCooldownLeftById = new Map<string, number>();
+  private readonly skillReadyFlashUntilMsById = new Map<string, number>();
+  private nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
 
   constructor() {
     super("dungeon");
@@ -595,6 +601,9 @@ export class DungeonScene extends Phaser.Scene {
     const nowMs = this.time.now;
 
     if (this.eventPanelOpen) {
+      if (!this.hudDirty && nowMs >= this.nextTransientHudRefreshAt) {
+        this.hudDirty = true;
+      }
       if (this.hudDirty) {
         this.renderHud();
         this.hudDirty = false;
@@ -632,6 +641,9 @@ export class DungeonScene extends Phaser.Scene {
     this.updateFloorProgress(nowMs);
     this.updateMinimap(nowMs);
 
+    if (!this.hudDirty && nowMs >= this.nextTransientHudRefreshAt) {
+      this.hudDirty = true;
+    }
     if (this.hudDirty) {
       this.renderHud();
       this.hudDirty = false;
@@ -807,6 +819,9 @@ export class DungeonScene extends Phaser.Scene {
 
     this.eventBus.on("loot:pickup", ({ item, timestampMs }) => {
       this.hudDirty = true;
+      const expiresAtMs = timestampMs + ITEM_NEWLY_ACQUIRED_TTL_MS;
+      this.newlyAcquiredItemUntilMs.set(item.id, expiresAtMs);
+      this.nextTransientHudRefreshAt = Math.min(this.nextTransientHudRefreshAt, expiresAtMs);
       this.uiManager.appendLog(`Picked up ${item.name}.`, "success", timestampMs);
     });
 
@@ -1499,6 +1514,10 @@ export class DungeonScene extends Phaser.Scene {
     this.nextManualPathReplanAt = 0;
     this.nextKeyboardMoveInputAt = 0;
     this.entityLabelById.clear();
+    this.newlyAcquiredItemUntilMs.clear();
+    this.previousSkillCooldownLeftById.clear();
+    this.skillReadyFlashUntilMsById.clear();
+    this.nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
     this.lastAiNearCount = 0;
     this.lastAiFarCount = 0;
     this.uiManager.clearLogs();
@@ -3259,6 +3278,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private renderHud(): void {
     const nowMs = this.time.now;
+    const newlyAcquiredItemIds = this.collectNewlyAcquiredItemIds(nowMs);
     const consumables = CONSUMABLE_DEFS.map((def) => {
       const cooldownLeftMs = Math.max(0, (this.consumables.cooldowns[def.id] ?? 0) - nowMs);
       const availability = canUseConsumable(this.player, this.consumables, def.id, nowMs);
@@ -3273,6 +3293,8 @@ export class DungeonScene extends Phaser.Scene {
         ...(availability.ok ? {} : { disabledReason: availability.reason })
       };
     });
+    const activeSkillIds = new Set<string>();
+    let hasActiveSkillCooldown = false;
     const skillSlots = (this.player.skills?.skillSlots ?? []).map((slot, index) => {
       if (slot === null) {
         return {
@@ -3285,8 +3307,23 @@ export class DungeonScene extends Phaser.Scene {
           locked: true
         };
       }
+      activeSkillIds.add(slot.defId);
       const skillDef = SKILL_DEF_BY_ID.get(slot.defId);
       const cooldownLeftMs = Math.max(0, (this.player.skills?.cooldowns[slot.defId] ?? 0) - nowMs);
+      if (cooldownLeftMs > 0) {
+        hasActiveSkillCooldown = true;
+      }
+      const previousCooldownLeftMs = this.previousSkillCooldownLeftById.get(slot.defId) ?? 0;
+      if (previousCooldownLeftMs > 0 && cooldownLeftMs === 0) {
+        this.skillReadyFlashUntilMsById.set(slot.defId, nowMs + SKILL_READY_FLASH_DURATION_MS);
+      }
+      this.previousSkillCooldownLeftById.set(slot.defId, cooldownLeftMs);
+      const readyFlashUntilMs = this.skillReadyFlashUntilMsById.get(slot.defId) ?? 0;
+      const readyFlash = readyFlashUntilMs > nowMs;
+      if (!readyFlash && readyFlashUntilMs > 0) {
+        this.skillReadyFlashUntilMsById.delete(slot.defId);
+      }
+      const baseCooldownMs = skillDef?.cooldownMs ?? 0;
       return {
         id: slot.defId,
         hotkey: String(index + 1),
@@ -3294,7 +3331,10 @@ export class DungeonScene extends Phaser.Scene {
         description: skillDef?.description ?? "",
         iconId: skillDef?.icon ?? "meta_unlock_available",
         cooldownLeftMs,
-        baseCooldownMs: skillDef?.cooldownMs ?? 0,
+        baseCooldownMs,
+        cooldownProgress:
+          baseCooldownMs > 0 ? Math.min(1, Math.max(0, cooldownLeftMs / baseCooldownMs)) : 0,
+        readyFlash,
         manaCost: skillDef?.manaCost ?? 0,
         targeting: skillDef?.targeting ?? "self",
         range: skillDef?.range ?? 0,
@@ -3302,6 +3342,12 @@ export class DungeonScene extends Phaser.Scene {
         locked: false
       };
     });
+    for (const skillId of [...this.previousSkillCooldownLeftById.keys()]) {
+      if (!activeSkillIds.has(skillId)) {
+        this.previousSkillCooldownLeftById.delete(skillId);
+        this.skillReadyFlashUntilMsById.delete(skillId);
+      }
+    }
 
     const runState = {
       floor: this.run.currentFloor,
@@ -3313,6 +3359,7 @@ export class DungeonScene extends Phaser.Scene {
       obols: this.run.runEconomy.obols,
       floorGoalReached: this.staircaseState.visible || this.mapRevealActive,
       mappingRevealed: this.mapRevealActive,
+      newlyAcquiredItemIds,
       consumables,
       skillSlots,
       isBossFloor: this.floorConfig.isBossFloor,
@@ -3324,6 +3371,7 @@ export class DungeonScene extends Phaser.Scene {
             bossMaxHealth: this.bossState.maxHealth
           })
     };
+    this.recomputeNextTransientHudRefreshAt(nowMs, hasActiveSkillCooldown);
 
     const viewState = {
       player: this.player,
@@ -3340,6 +3388,40 @@ export class DungeonScene extends Phaser.Scene {
       }
     });
     this.uiManager.renderSnapshot(snapshot);
+  }
+
+  private collectNewlyAcquiredItemIds(nowMs: number): string[] {
+    if (this.newlyAcquiredItemUntilMs.size === 0) {
+      return [];
+    }
+    const inventoryIds = new Set(this.player.inventory.map((item) => item.id));
+    const visibleIds: string[] = [];
+    for (const [itemId, expiresAtMs] of this.newlyAcquiredItemUntilMs) {
+      if (expiresAtMs <= nowMs || !inventoryIds.has(itemId)) {
+        this.newlyAcquiredItemUntilMs.delete(itemId);
+        continue;
+      }
+      visibleIds.push(itemId);
+    }
+    return visibleIds;
+  }
+
+  private recomputeNextTransientHudRefreshAt(nowMs: number, hasActiveSkillCooldown: boolean): void {
+    let next = Number.POSITIVE_INFINITY;
+    for (const expiresAtMs of this.newlyAcquiredItemUntilMs.values()) {
+      if (expiresAtMs > nowMs && expiresAtMs < next) {
+        next = expiresAtMs;
+      }
+    }
+    for (const expiresAtMs of this.skillReadyFlashUntilMsById.values()) {
+      if (expiresAtMs > nowMs && expiresAtMs < next) {
+        next = expiresAtMs;
+      }
+    }
+    if (hasActiveSkillCooldown) {
+      next = Math.min(next, nowMs + 120);
+    }
+    this.nextTransientHudRefreshAt = next;
   }
 
   private cleanupScene(): void {
@@ -3376,6 +3458,10 @@ export class DungeonScene extends Phaser.Scene {
     this.manualMoveTargetFailures = 0;
     this.nextManualPathReplanAt = 0;
     this.nextKeyboardMoveInputAt = 0;
+    this.newlyAcquiredItemUntilMs.clear();
+    this.previousSkillCooldownLeftById.clear();
+    this.skillReadyFlashUntilMsById.clear();
+    this.nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
     this.cursorKeys = null;
     this.entityManager.clear();
     if (this.perfPanelEl !== null) {

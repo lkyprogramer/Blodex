@@ -19,7 +19,7 @@ export interface MinimapFrame {
   revealAll?: boolean;
 }
 
-const MINIMAP_SIZE = 160;
+const MINIMAP_SIZE = 200;
 const FOG_RADIUS = 5;
 
 export class Minimap {
@@ -39,7 +39,13 @@ export class Minimap {
     }
 
     this.root.className = "panel-block minimap-panel";
-    this.root.innerHTML = `<h2>Minimap</h2><canvas width="${MINIMAP_SIZE}" height="${MINIMAP_SIZE}"></canvas>`;
+    this.root.innerHTML = `
+      <div class="minimap-head">
+        <h2>Minimap</h2>
+        <span class="minimap-compass">N</span>
+      </div>
+      <canvas width="${MINIMAP_SIZE}" height="${MINIMAP_SIZE}"></canvas>
+    `;
     this.canvas = this.root.querySelector("canvas");
     this.ctx = this.canvas?.getContext("2d") ?? null;
   }
@@ -100,7 +106,7 @@ export class Minimap {
     if (frame.eventNode !== undefined) {
       this.drawPoint(frame.eventNode, cell, offsetX, offsetY, "#6ea8d7");
     }
-    this.drawPoint(frame.player, cell, offsetX, offsetY, "#f4f7fb");
+    this.drawPlayerPoint(frame.player, cell, offsetX, offsetY);
   }
 
   private drawPoints(
@@ -129,6 +135,27 @@ export class Minimap {
     this.ctx.fillStyle = color;
     this.ctx.beginPath();
     this.ctx.arc(x, y, Math.max(1.2, cell * 0.34), 0, Math.PI * 2);
+    this.ctx.fill();
+  }
+
+  private drawPlayerPoint(point: MinimapPoint, cell: number, offsetX: number, offsetY: number): void {
+    if (this.ctx === null) {
+      return;
+    }
+    const x = offsetX + point.x * cell + cell / 2;
+    const y = offsetY + point.y * cell + cell / 2;
+    const pulseRatio = 0.7 + Math.abs(Math.sin(performance.now() / 260)) * 0.45;
+    const baseRadius = Math.max(1.3, cell * 0.34);
+    const pulseRadius = Math.max(baseRadius + 1.2, baseRadius * pulseRatio);
+
+    this.ctx.fillStyle = "rgba(244, 247, 251, 0.25)";
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, pulseRadius, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = "#f4f7fb";
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, baseRadius, 0, Math.PI * 2);
     this.ctx.fill();
   }
 
