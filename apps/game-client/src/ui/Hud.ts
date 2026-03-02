@@ -70,9 +70,12 @@ interface HudState {
       manaCost?: number;
       targeting?: string;
       range?: number;
+      cooldownProgress?: number;
+      readyFlash?: boolean;
       outOfMana: boolean;
       locked: boolean;
     }>;
+    newlyAcquiredItemIds?: string[];
   };
   meta: MetaProgression;
 }
@@ -169,6 +172,14 @@ function formatTargetingLabel(targeting: string, range: number): string {
   return "-";
 }
 
+function toPercent(current: number, max: number): number {
+  if (!Number.isFinite(max) || max <= 0) {
+    return 0;
+  }
+  const ratio = current / max;
+  return Math.min(100, Math.max(0, ratio * 100));
+}
+
 export class Hud {
   private readonly metaEl = document.querySelector("#meta") as HTMLDivElement;
   private readonly statsEl = document.querySelector("#stats") as HTMLDivElement;
@@ -214,14 +225,44 @@ export class Hud {
     `;
 
     const player = state.player;
+    const hpPercent = toPercent(player.health, player.derivedStats.maxHealth);
+    const manaPercent = toPercent(player.mana, player.derivedStats.maxMana);
+    const xpPercent = toPercent(player.xp, player.xpToNextLevel);
+    const lowHealth = hpPercent <= 25;
     this.statsEl.className = "panel-block compact-block";
     this.statsEl.innerHTML = `
       <h2>Vanguard</h2>
-      <div class="mini-grid mini-2">
+      <div class="player-bars">
+        <div class="player-bar-row ${lowHealth ? "low-health" : ""}">
+          <div class="player-bar-head">
+            <span>HP</span>
+            <span>${Math.floor(player.health)}/${Math.floor(player.derivedStats.maxHealth)}</span>
+          </div>
+          <div class="player-bar-track">
+            <div class="player-bar-fill hp" style="width:${hpPercent.toFixed(2)}%;"></div>
+          </div>
+        </div>
+        <div class="player-bar-row">
+          <div class="player-bar-head">
+            <span>Mana</span>
+            <span>${Math.floor(player.mana)}/${Math.floor(player.derivedStats.maxMana)}</span>
+          </div>
+          <div class="player-bar-track">
+            <div class="player-bar-fill mana" style="width:${manaPercent.toFixed(2)}%;"></div>
+          </div>
+        </div>
+        <div class="player-bar-row">
+          <div class="player-bar-head">
+            <span>XP</span>
+            <span>${player.xp}/${player.xpToNextLevel}</span>
+          </div>
+          <div class="player-bar-track">
+            <div class="player-bar-fill xp" style="width:${xpPercent.toFixed(2)}%;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="mini-grid mini-3">
         <div><span class="k">Lvl</span><span>${player.level}</span></div>
-        <div><span class="k">XP</span><span>${player.xp}/${player.xpToNextLevel}</span></div>
-        <div><span class="k">HP</span><span>${Math.floor(player.health)}/${Math.floor(player.derivedStats.maxHealth)}</span></div>
-        <div><span class="k">Mana</span><span>${Math.floor(player.mana)}/${Math.floor(player.derivedStats.maxMana)}</span></div>
         <div><span class="k">Pow</span><span>${Math.floor(player.derivedStats.attackPower)}</span></div>
         <div><span class="k">Arm</span><span>${Math.floor(player.derivedStats.armor)}</span></div>
       </div>
@@ -278,7 +319,7 @@ export class Hud {
       this.bindQuickbarTooltips();
     }
 
-    this.renderInventory(player);
+    this.renderInventory(player, state.run.newlyAcquiredItemIds ?? []);
   }
 
   appendLog(message: string, level: LogLevel = "info", timestampMs = performance.now()): void {
@@ -321,11 +362,12 @@ export class Hud {
     this.deathOverlayEl.innerHTML = "";
   }
 
-  private renderInventory(player: PlayerState): void {
+  private renderInventory(player: PlayerState, newlyAcquiredItemIds: string[]): void {
     const itemById = new Map<string, ItemInstance>();
     for (const item of player.inventory) {
       itemById.set(item.id, item);
     }
+    const newlyAcquiredSet = new Set(newlyAcquiredItemIds);
     for (const item of Object.values(player.equipment)) {
       if (item !== undefined) {
         itemById.set(item.id, item);
@@ -362,8 +404,9 @@ export class Hud {
     const inventoryGrid = player.inventory
       .map((item) => {
         const equipable = canEquip(player, item);
+        const newlyAcquiredClass = newlyAcquiredSet.has(item.id) ? "newly-acquired" : "";
         return `
-          <div class="inventory-cell ${item.rarity} ${equipable ? "" : "locked"}" data-item-id="${item.id}">
+          <div class="inventory-cell ${item.rarity} ${equipable ? "" : "locked"} ${newlyAcquiredClass}" data-item-id="${item.id}">
             <img class="item-icon" data-asset-id="${item.iconId}" src="${resolveGeneratedAssetUrl(
               item.iconId,
               this.preferredImageFormat

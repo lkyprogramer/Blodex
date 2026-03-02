@@ -70,6 +70,7 @@ describe("createUIStateSnapshot", () => {
           kills: 9,
           lootCollected: 3,
           targetKills: 12,
+          newlyAcquiredItemIds: ["loot_001"],
           floorGoalReached: true,
           isBossFloor: true,
           bossHealth: 450,
@@ -105,6 +106,7 @@ describe("createUIStateSnapshot", () => {
     });
     expect(snapshot.logs).toHaveLength(1);
     expect(snapshot.flags.debugCheatsEnabled).toBe(true);
+    expect(snapshot.run.newlyAcquiredItemIds).toEqual(["loot_001"]);
   });
 
   it("omits boss runtime state on non-boss floors", () => {

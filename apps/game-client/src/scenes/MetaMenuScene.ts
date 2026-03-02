@@ -10,6 +10,12 @@ import {
   type MetaProgression
 } from "@blodex/core";
 import { UNLOCK_DEFS } from "@blodex/content";
+import { UI_POLISH_FLAGS } from "../config/uiFlags";
+import {
+  bindMetaMenuPanelActions,
+  renderMetaMenuPanel,
+  type MetaMenuPanelView
+} from "../ui/components/MetaMenuPanel";
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
@@ -21,8 +27,38 @@ const DIFFICULTY_LABEL: Record<DifficultyMode, string> = {
   nightmare: "Nightmare"
 };
 
+function hotkeyLabelFromKey(eventName: string): string {
+  switch (eventName) {
+    case "ONE":
+      return "1";
+    case "TWO":
+      return "2";
+    case "THREE":
+      return "3";
+    case "FOUR":
+      return "4";
+    case "FIVE":
+      return "5";
+    case "SIX":
+      return "6";
+    case "SEVEN":
+      return "7";
+    case "EIGHT":
+      return "8";
+    case "NINE":
+      return "9";
+    case "ZERO":
+      return "0";
+    default:
+      return eventName;
+  }
+}
+
 export class MetaMenuScene extends Phaser.Scene {
   private meta: MetaProgression = createInitialMeta();
+  private readonly unbindDomActions: Array<() => void> = [];
+  private readonly keyboardBindings: Array<{ eventName: string; handler: () => void }> = [];
+  private menuRoot: HTMLDivElement | null = null;
 
   constructor() {
     super("meta-menu");
@@ -39,6 +75,46 @@ export class MetaMenuScene extends Phaser.Scene {
       this.saveMeta(this.meta);
     }
 
+    this.teardownDomBindings();
+    this.teardownKeyboardBindings();
+    this.hideDomMenu();
+
+    if (UI_POLISH_FLAGS.metaMenuDomEnabled && this.ensureMenuRoot()) {
+      this.renderDomMenu();
+    } else {
+      this.renderLegacyPhaserMenu();
+    }
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.handleSceneTeardown());
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => this.handleSceneTeardown());
+  }
+
+  private renderDomMenu(): void {
+    if (this.menuRoot === null) {
+      return;
+    }
+
+    this.menuRoot.classList.remove("hidden");
+    this.menuRoot.innerHTML = renderMetaMenuPanel(this.buildMenuView());
+
+    this.unbindDomActions.push(
+      ...bindMetaMenuPanelActions(this.menuRoot, {
+        onPurchase: (index) => this.tryPurchase(index),
+        onSelectDifficulty: (mode) => this.selectDifficulty(mode),
+        onStartRun: () => this.startRun()
+      })
+    );
+
+    PURCHASE_HOTKEYS.forEach((key, index) => {
+      this.bindKeyboard(`keydown-${key}`, () => this.tryPurchase(index));
+    });
+    this.bindKeyboard("keydown-Q", () => this.selectDifficulty("normal"));
+    this.bindKeyboard("keydown-W", () => this.selectDifficulty("hard"));
+    this.bindKeyboard("keydown-E", () => this.selectDifficulty("nightmare"));
+    this.bindKeyboard("keydown-ENTER", () => this.startRun());
+  }
+
+  private renderLegacyPhaserMenu(): void {
     const cx = this.scale.width / 2;
 
     this.add
@@ -70,12 +146,7 @@ export class MetaMenuScene extends Phaser.Scene {
       const selected = this.meta.selectedDifficulty === mode;
       const label = DIFFICULTY_LABEL[mode];
       const shortcut = index === 0 ? "Q" : index === 1 ? "W" : "E";
-      const requirement =
-        mode === "hard"
-          ? "Clear 1 Normal run"
-          : mode === "nightmare"
-            ? "Clear 1 Hard run"
-            : "Always available";
+      const requirement = this.difficultyRequirement(mode);
       const color = selected ? "#9ad7ff" : unlocked ? "#d7c49f" : "#7f7b70";
       const status = selected ? "[Selected]" : unlocked ? "[Available]" : `[Locked: ${requirement}]`;
       this.add
@@ -153,12 +224,128 @@ export class MetaMenuScene extends Phaser.Scene {
     startButton.on("pointerdown", () => this.startRun());
 
     PURCHASE_HOTKEYS.forEach((key, index) => {
-      this.input.keyboard?.on(`keydown-${key}`, () => this.tryPurchase(index));
+      this.bindKeyboard(`keydown-${key}`, () => this.tryPurchase(index));
     });
-    this.input.keyboard?.on("keydown-Q", () => this.selectDifficulty("normal"));
-    this.input.keyboard?.on("keydown-W", () => this.selectDifficulty("hard"));
-    this.input.keyboard?.on("keydown-E", () => this.selectDifficulty("nightmare"));
-    this.input.keyboard?.on("keydown-ENTER", () => this.startRun());
+    this.bindKeyboard("keydown-Q", () => this.selectDifficulty("normal"));
+    this.bindKeyboard("keydown-W", () => this.selectDifficulty("hard"));
+    this.bindKeyboard("keydown-E", () => this.selectDifficulty("nightmare"));
+    this.bindKeyboard("keydown-ENTER", () => this.startRun());
+  }
+
+  private buildMenuView(): MetaMenuPanelView {
+    const unlockGroups = new Map<number, MetaMenuPanelView["unlockGroups"][number]>();
+
+    UNLOCK_DEFS.forEach((unlock, index) => {
+      const unlocked = this.meta.unlocks.includes(unlock.id);
+      const requirementReady = this.meta.cumulativeUnlockProgress >= unlock.cumulativeRequirement;
+      const canAfford = this.meta.soulShards >= unlock.cost;
+      const purchasable = !unlocked && requirementReady && canAfford;
+      const statusText = unlocked
+        ? "Unlocked"
+        : !requirementReady
+          ? `Need Progress ${unlock.cumulativeRequirement}`
+          : !canAfford
+            ? "Need Soul Shards"
+            : "Available";
+
+      const group = unlockGroups.get(unlock.tier) ?? {
+        tier: unlock.tier,
+        unlocks: []
+      };
+      group.unlocks.push({
+        index,
+        id: unlock.id,
+        name: unlock.name,
+        description: unlock.description,
+        tier: unlock.tier,
+        cost: unlock.cost,
+        shortcut:
+          PURCHASE_HOTKEYS[index] === undefined ? "-" : hotkeyLabelFromKey(PURCHASE_HOTKEYS[index]),
+        effectText: this.describeEffect(unlock),
+        statusText,
+        unlocked,
+        purchasable
+      });
+      unlockGroups.set(unlock.tier, group);
+    });
+
+    const difficulties = DIFFICULTY_ORDER.map((mode, index) => {
+      const shortcut = index === 0 ? "Q" : index === 1 ? "W" : "E";
+      return {
+        mode,
+        label: DIFFICULTY_LABEL[mode],
+        shortcut,
+        selected: this.meta.selectedDifficulty === mode,
+        unlocked: isDifficultyUnlocked(this.meta, mode),
+        requirement: this.difficultyRequirement(mode)
+      };
+    });
+
+    return {
+      soulShards: this.meta.soulShards,
+      unlockedCount: this.meta.unlocks.length,
+      totalUnlocks: UNLOCK_DEFS.length,
+      difficulties,
+      unlockGroups: [...unlockGroups.values()].sort((left, right) => left.tier - right.tier)
+    };
+  }
+
+  private difficultyRequirement(mode: DifficultyMode): string {
+    if (mode === "hard") {
+      return "Clear 1 Normal run";
+    }
+    if (mode === "nightmare") {
+      return "Clear 1 Hard run";
+    }
+    return "Always available";
+  }
+
+  private bindKeyboard(eventName: string, handler: () => void): void {
+    this.input.keyboard?.on(eventName, handler);
+    this.keyboardBindings.push({
+      eventName,
+      handler
+    });
+  }
+
+  private teardownKeyboardBindings(): void {
+    if (this.keyboardBindings.length === 0) {
+      return;
+    }
+    for (const binding of this.keyboardBindings) {
+      this.input.keyboard?.off(binding.eventName, binding.handler);
+    }
+    this.keyboardBindings.length = 0;
+  }
+
+  private teardownDomBindings(): void {
+    if (this.unbindDomActions.length === 0) {
+      return;
+    }
+    for (const off of this.unbindDomActions) {
+      off();
+    }
+    this.unbindDomActions.length = 0;
+  }
+
+  private ensureMenuRoot(): boolean {
+    this.menuRoot = document.querySelector("#meta-menu") as HTMLDivElement | null;
+    return this.menuRoot !== null;
+  }
+
+  private hideDomMenu(): void {
+    const root = this.menuRoot ?? (document.querySelector("#meta-menu") as HTMLDivElement | null);
+    if (root === null) {
+      return;
+    }
+    root.classList.add("hidden");
+    root.innerHTML = "";
+  }
+
+  private handleSceneTeardown(): void {
+    this.teardownKeyboardBindings();
+    this.teardownDomBindings();
+    this.hideDomMenu();
   }
 
   private tryPurchase(index: number): void {
@@ -187,6 +374,7 @@ export class MetaMenuScene extends Phaser.Scene {
 
   private startRun(): void {
     const difficulty = resolveSelectedDifficulty(this.meta);
+    this.hideDomMenu();
     this.scene.start("dungeon", { difficulty });
   }
 

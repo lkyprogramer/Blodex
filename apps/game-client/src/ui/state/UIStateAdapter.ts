@@ -10,12 +10,14 @@ export interface UIStateView {
     kills: number;
     lootCollected: number;
     targetKills: number;
+    obols?: number;
     floorGoalReached?: boolean;
     isBossFloor?: boolean;
     bossHealth?: number;
     bossMaxHealth?: number;
     bossPhase?: number;
     mappingRevealed?: boolean;
+    newlyAcquiredItemIds?: string[];
   };
   meta: MetaProgression;
 }

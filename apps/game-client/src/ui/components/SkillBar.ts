@@ -3,6 +3,7 @@ import {
   resolveGeneratedAssetUrl,
   type PreferredImageFormat
 } from "../../assets/imageAsset";
+import { UI_POLISH_FLAGS } from "../../config/uiFlags";
 
 function escapeHtml(raw: string): string {
   return raw
@@ -36,6 +37,8 @@ export interface SkillSlotView {
   manaCost?: number;
   targeting?: string;
   range?: number;
+  cooldownProgress?: number;
+  readyFlash?: boolean;
   outOfMana: boolean;
   locked: boolean;
 }
@@ -43,6 +46,10 @@ export interface SkillSlotView {
 export interface SkillBarView {
   consumables?: ConsumableSlotView[];
   skillSlots?: SkillSlotView[];
+}
+
+function clamp01(value: number): number {
+  return Math.min(1, Math.max(0, value));
 }
 
 export function renderSkillBar(view: SkillBarView, preferredImageFormat: PreferredImageFormat): string {
@@ -89,6 +96,14 @@ export function renderSkillBar(view: SkillBarView, preferredImageFormat: Preferr
 
   const skillsHtml = skillSlots
     .map((slot) => {
+      const hasCooldownData = !slot.locked && (slot.baseCooldownMs ?? 0) > 0;
+      const cooldownProgress = hasCooldownData
+        ? clamp01(
+            slot.cooldownProgress ??
+              Math.max(0, slot.cooldownLeftMs) / Math.max(1, slot.baseCooldownMs ?? 1)
+          )
+        : 0;
+      const showCooldownOverlay = hasCooldownData && UI_POLISH_FLAGS.skillCooldownOverlayEnabled;
       const statusText = slot.locked
         ? "Locked"
         : slot.cooldownLeftMs > 0
@@ -98,6 +113,7 @@ export function renderSkillBar(view: SkillBarView, preferredImageFormat: Preferr
         "skill-slot",
         slot.locked ? "locked" : "",
         !slot.locked && slot.cooldownLeftMs > 0 ? "cooldown" : "ready",
+        !slot.locked && slot.readyFlash ? "ready-flash" : "",
         !slot.locked && slot.outOfMana ? "oom" : ""
       ]
         .filter((entry) => entry.length > 0)
@@ -119,6 +135,11 @@ export function renderSkillBar(view: SkillBarView, preferredImageFormat: Preferr
           data-tooltip-out-of-mana="${slot.outOfMana ? "1" : "0"}"
           title="${escapeHtml(slot.locked ? "Locked skill slot" : slot.name)}"
         >
+          ${
+            showCooldownOverlay
+              ? `<span class="skill-cooldown-overlay" style="--cooldown-progress:${cooldownProgress};"></span>`
+              : ""
+          }
           <div class="quick-head">
             <img class="quick-icon" data-asset-id="${iconId}" src="${resolveGeneratedAssetUrl(
               iconId,
