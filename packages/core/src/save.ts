@@ -31,8 +31,8 @@ const RUN_RNG_STREAM_NAMES: RunRngStreamName[] = [
   "merchant"
 ];
 
-type RunStateV1 = Omit<RunState, "challengeSuccessCount" | "inEndless" | "endlessFloor" | "runMode"> &
-  Partial<Pick<RunState, "challengeSuccessCount" | "inEndless" | "endlessFloor" | "runMode" | "dailyDate">>;
+type RunStateV1 = Omit<RunState, "challengeSuccessCount" | "inEndless" | "endlessFloor" | "endlessKills" | "runMode"> &
+  Partial<Pick<RunState, "challengeSuccessCount" | "inEndless" | "endlessFloor" | "endlessKills" | "runMode" | "dailyDate">>;
 
 export interface RuntimeMonsterState {
   state: MonsterState;
@@ -250,6 +250,7 @@ function isRunStateV2(value: unknown): value is RunState {
     isFiniteNumber(value.challengeSuccessCount) &&
     typeof value.inEndless === "boolean" &&
     isFiniteNumber(value.endlessFloor) &&
+    (value.endlessKills === undefined || isFiniteNumber(value.endlessKills)) &&
     (value.runMode === "normal" || value.runMode === "daily")
   );
 }
@@ -333,6 +334,7 @@ function normalizeRunStateFromV1(input: RunStateV1): RunState {
     challengeSuccessCount: Math.max(0, Math.floor(input.challengeSuccessCount ?? 0)),
     inEndless: input.inEndless === true,
     endlessFloor: Math.max(0, Math.floor(input.endlessFloor ?? 0)),
+    endlessKills: Math.max(0, Math.floor(input.endlessKills ?? 0)),
     runMode: input.runMode === "daily" ? "daily" : "normal",
     ...(input.dailyDate === undefined ? {} : { dailyDate: input.dailyDate })
   };

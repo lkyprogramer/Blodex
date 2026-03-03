@@ -6,6 +6,9 @@ export interface UIStateView {
   run: {
     floor: number;
     difficulty?: string;
+    runMode?: "normal" | "daily";
+    inEndless?: boolean;
+    endlessFloor?: number;
     biome?: string;
     kills: number;
     lootCollected: number;

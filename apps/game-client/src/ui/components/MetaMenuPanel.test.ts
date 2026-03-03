@@ -112,7 +112,7 @@ describe("renderMetaMenuPanel", () => {
               id: "bp_weapon_axe",
               name: "Axe Frame",
               category: "weapon",
-              rarity: "common",
+              rarity: "legendary",
               forgeCost: 16,
               unlockTargetId: "weapon_type_axe",
               statusText: "Ready to Forge",
@@ -168,6 +168,10 @@ describe("renderMetaMenuPanel", () => {
     expect(html).toContain('data-action="abandon"');
     expect(html).toContain('data-action="start"');
     expect(html).toContain('data-action="start-daily"');
+    expect(html).toContain('data-action="jump-section"');
+    expect(html).toContain('id="meta-section-talents"');
+    expect(html).toContain('class="meta-rarity-chip rarity-legendary"');
+    expect(html).toContain("meta-talent-meta");
     expect(html).toContain('data-tier="1"');
     expect(html).toContain('data-tier="2"');
     expect(html).toContain("Soul Shards: 120");

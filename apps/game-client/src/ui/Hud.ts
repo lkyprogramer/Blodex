@@ -37,6 +37,9 @@ interface HudState {
   run: {
     floor: number;
     difficulty?: string;
+    runMode?: "normal" | "daily";
+    inEndless?: boolean;
+    endlessFloor?: number;
     biome?: string;
     kills: number;
     lootCollected: number;
@@ -129,6 +132,62 @@ function formatAffixName(key: string): string {
     .trim();
 }
 
+function formatAffixValue(key: string, value: number): string {
+  const normalized = Number.isInteger(value) ? value.toString() : value.toFixed(1);
+  if (
+    key === "lifesteal" ||
+    key === "critDamage" ||
+    key === "dodgeChance" ||
+    key === "xpBonus" ||
+    key === "soulShardBonus" ||
+    key === "cooldownReduction"
+  ) {
+    return `+${normalized}%`;
+  }
+  if (key === "healthRegen") {
+    return `+${normalized}/s`;
+  }
+  return `+${normalized}`;
+}
+
+function formatSignedValue(value: number): string {
+  const normalized = Number.isInteger(value) ? value.toString() : value.toFixed(1);
+  if (value > 0) {
+    return `+${normalized}`;
+  }
+  return normalized;
+}
+
+function collectItemAffixMap(item: ItemInstance): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const [key, value] of Object.entries(item.rolledAffixes)) {
+    if (value !== undefined) {
+      map.set(key, value);
+    }
+  }
+  for (const [key, value] of Object.entries(item.rolledSpecialAffixes ?? {})) {
+    if (value !== undefined) {
+      map.set(key, value);
+    }
+  }
+  return map;
+}
+
+function calculateItemPowerScore(item: ItemInstance): number {
+  let score = 0;
+  for (const value of Object.values(item.rolledAffixes)) {
+    if (value !== undefined) {
+      score += value;
+    }
+  }
+  for (const value of Object.values(item.rolledSpecialAffixes ?? {})) {
+    if (value !== undefined) {
+      score += value;
+    }
+  }
+  return score;
+}
+
 function escapeHtml(raw: string): string {
   return raw
     .replaceAll("&", "&amp;")
@@ -182,13 +241,14 @@ function toPercent(current: number, max: number): number {
 
 export class Hud {
   private readonly metaEl = document.querySelector("#meta") as HTMLDivElement;
+  private readonly hudCriticalEl = document.querySelector("#hud-critical") as HTMLDivElement | null;
   private readonly statsEl = document.querySelector("#stats") as HTMLDivElement;
   private readonly runEl = document.querySelector("#run") as HTMLDivElement;
   private readonly bossBarEl = document.querySelector("#boss-bar") as HTMLDivElement;
   private readonly skillBarEl = document.querySelector("#skillbar") as HTMLDivElement;
   private readonly inventoryEl = document.querySelector("#inventory") as HTMLDivElement;
   private readonly logEl = document.querySelector("#log") as HTMLDivElement;
-  private readonly summaryEl = document.querySelector("#summary") as HTMLDivElement;
+  private readonly summaryEl = document.querySelector("#run-summary-overlay") as HTMLDivElement;
   private readonly deathOverlayEl = document.querySelector("#death-overlay") as HTMLDivElement;
   private readonly eventPanelEl = document.querySelector("#event-panel") as HTMLDivElement;
   private readonly tooltipEl: HTMLDivElement;
@@ -196,6 +256,13 @@ export class Hud {
 
   private logEntries: LogEntry[] = [];
   private nextLogId = 1;
+  private readonly onSummaryContinueKeydown = (event: KeyboardEvent): void => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+    event.preventDefault();
+    this.onNewRun();
+  };
 
   constructor(
     private readonly onEquip: (itemId: string) => void,
@@ -229,6 +296,8 @@ export class Hud {
     const manaPercent = toPercent(player.mana, player.derivedStats.maxMana);
     const xpPercent = toPercent(player.xp, player.xpToNextLevel);
     const lowHealth = hpPercent <= 25;
+    this.hudCriticalEl?.classList.toggle("low-health-critical", lowHealth);
+    document.body.classList.toggle("low-health-critical", lowHealth);
     this.statsEl.className = "panel-block compact-block";
     this.statsEl.innerHTML = `
       <h2>Vanguard</h2>
@@ -269,10 +338,16 @@ export class Hud {
     `;
 
     this.runEl.className = "panel-block compact-block";
+    const modeLabel =
+      state.run.inEndless === true
+        ? `ABYSS${state.run.endlessFloor === undefined ? "" : ` ${state.run.endlessFloor}`}`
+        : state.run.runMode === "daily"
+          ? "DAILY"
+          : (state.run.difficulty ?? "normal").toUpperCase();
     const runBody = `
       <div class="mini-grid mini-2">
         <div><span class="k">Floor</span><span>${state.run.floor}</span></div>
-        <div><span class="k">Mode</span><span>${(state.run.difficulty ?? "normal").toUpperCase()}</span></div>
+        <div><span class="k">Mode</span><span>${modeLabel}</span></div>
         <div><span class="k">Biome</span><span>${state.run.biome ?? "-"}</span></div>
         <div><span class="k">Status</span><span class="${
           player.health <= 0 ? "badge-danger" : "badge-ok"
@@ -285,6 +360,11 @@ export class Hud {
       ${
         state.run.mappingRevealed
           ? `<div class="mapping-hint">Mapping scroll active: objective location revealed.</div>`
+          : ""
+      }
+      ${
+        lowHealth
+          ? '<div class="critical-health-hint">Critical HP: drink potion or disengage.</div>'
           : ""
       }
     `;
@@ -352,7 +432,8 @@ export class Hud {
     this.deathOverlayEl.innerHTML = `
       <div class="death-card">
         <h2>You Died</h2>
-        <p>${escapeHtml(reason)}</p>
+        <p class="death-card-subtitle">The Abyss claims another run.</p>
+        <p class="death-card-reason">${escapeHtml(reason)}</p>
       </div>
     `;
   }
@@ -477,7 +558,11 @@ export class Hud {
         if (item === undefined) {
           return;
         }
-        this.showTooltip(item, event as MouseEvent);
+        this.showTooltip(
+          item,
+          player.equipment[item.slot]?.id === item.id ? undefined : player.equipment[item.slot],
+          event as MouseEvent
+        );
       });
 
       element.addEventListener("mousemove", (event) => {
@@ -489,7 +574,11 @@ export class Hud {
         if (item === undefined) {
           return;
         }
-        this.showTooltip(item, event as MouseEvent);
+        this.showTooltip(
+          item,
+          player.equipment[item.slot]?.id === item.id ? undefined : player.equipment[item.slot],
+          event as MouseEvent
+        );
       });
 
       element.addEventListener("mouseleave", () => {
@@ -636,20 +725,51 @@ export class Hud {
     this.tooltipEl.style.top = `${nextTop}px`;
   }
 
-  private showTooltip(item: ItemInstance, event: MouseEvent): void {
-    const affixes = Object.entries(item.rolledAffixes)
-      .filter(([, value]) => value !== undefined)
-      .map(([key, value]) => `<div>+${value} ${escapeHtml(formatAffixName(key))}</div>`)
+  private showTooltip(item: ItemInstance, compareItem: ItemInstance | undefined, event: MouseEvent): void {
+    const itemAffixes = collectItemAffixMap(item);
+    const compareAffixes = compareItem === undefined ? new Map<string, number>() : collectItemAffixMap(compareItem);
+    const keys = new Set<string>([...itemAffixes.keys(), ...compareAffixes.keys()]);
+    const affixLines = [...keys]
+      .sort((left, right) => left.localeCompare(right))
+      .map((key) => {
+        const itemValue = itemAffixes.get(key) ?? 0;
+        const compareValue = compareAffixes.get(key) ?? 0;
+        const delta = itemValue - compareValue;
+        const deltaClass = delta > 0 ? "delta-up" : delta < 0 ? "delta-down" : "delta-equal";
+        return `
+          <div class="tooltip-affix-line">
+            <span>${escapeHtml(formatAffixName(key))}</span>
+            <span class="tooltip-affix-value ${deltaClass}">${escapeHtml(
+              formatAffixValue(key, itemValue)
+            )}${compareItem === undefined ? "" : ` (${escapeHtml(formatSignedValue(delta))})`}</span>
+          </div>
+        `;
+      })
       .join("");
+    const itemPowerScore = calculateItemPowerScore(item);
+    const comparePowerScore = compareItem === undefined ? 0 : calculateItemPowerScore(compareItem);
+    const powerDelta = itemPowerScore - comparePowerScore;
+    const powerDeltaClass = powerDelta > 0 ? "delta-up" : powerDelta < 0 ? "delta-down" : "delta-equal";
 
     this.showTooltipHtml(
       `
       <div class="tooltip-name">${escapeHtml(item.name)}</div>
       <div class="tooltip-rarity ${item.rarity}">${item.rarity.toUpperCase()}</div>
-      <div class="tooltip-meta">Slot: ${slotLongLabel(item.slot)}</div>
+      <div class="tooltip-meta">Slot: ${slotLongLabel(item.slot)}${item.weaponType === undefined ? "" : ` · ${escapeHtml(item.weaponType.toUpperCase())}`}</div>
       <div class="tooltip-meta">Req Lvl: ${item.requiredLevel}</div>
       <div class="tooltip-divider"></div>
-      <div class="tooltip-affixes">${affixes || "No affixes"}</div>
+      <div class="tooltip-affixes">${affixLines || "No affixes"}</div>
+      ${
+        compareItem === undefined
+          ? ""
+          : `
+            <div class="tooltip-divider"></div>
+            <div class="tooltip-compare-head">Compare: ${escapeHtml(compareItem.name)}</div>
+            <div class="tooltip-compare-score ${powerDeltaClass}">
+              Power Δ ${escapeHtml(formatSignedValue(powerDelta))}
+            </div>
+          `
+      }
     `,
       event
     );
@@ -686,15 +806,16 @@ export class Hud {
   }
 
   showSummary(summary: RunSummary): void {
-    this.summaryEl.classList.remove("hidden");
-    this.summaryEl.className = "panel-block";
+    this.summaryEl.className = "run-summary-overlay";
     this.summaryEl.innerHTML = renderRunSummaryScreen(summary);
     bindRunSummaryActions(this.summaryEl, () => this.onNewRun());
+    document.addEventListener("keydown", this.onSummaryContinueKeydown);
   }
 
   clearSummary(): void {
     this.summaryEl.className = "hidden";
     this.summaryEl.innerHTML = "";
+    document.removeEventListener("keydown", this.onSummaryContinueKeydown);
     this.hideEventPanel();
   }
 
@@ -719,5 +840,7 @@ export class Hud {
     this.inventoryEl.innerHTML = "";
     this.logEl.className = "hidden";
     this.logEl.innerHTML = "";
+    this.hudCriticalEl?.classList.remove("low-health-critical");
+    document.body.classList.remove("low-health-critical");
   }
 }

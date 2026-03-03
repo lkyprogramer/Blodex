@@ -303,7 +303,8 @@ export class CombatSystem {
       run: {
         ...addRunObols(context.run, 1),
         kills: nextKills,
-        totalKills: context.run.totalKills + 1
+        totalKills: context.run.totalKills + 1,
+        endlessKills: (context.run.endlessKills ?? 0) + (context.run.inEndless ? 1 : 0)
       },
       attackTargetId: null,
       nextPlayerAttackAt,

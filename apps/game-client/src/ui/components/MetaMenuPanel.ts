@@ -248,12 +248,15 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
               data-talent-id="${escapeHtml(talent.id)}"
               ${talent.purchasable ? "" : "disabled"}
             >
-              <div class="meta-unlock-head">
+              <div class="meta-unlock-head meta-talent-head">
                 <span class="meta-unlock-name">${escapeHtml(talent.name)}</span>
-                <span class="meta-unlock-cost">${talent.cost}</span>
+                <span class="meta-talent-tier">Tier ${talent.tier}</span>
+              </div>
+              <div class="meta-talent-meta">
+                <span class="meta-unlock-cost">Cost ${talent.cost}</span>
+                <span class="meta-talent-rank">Rank ${talent.rank}/${talent.maxRank}</span>
               </div>
               <div class="meta-unlock-description">${escapeHtml(talent.description)}</div>
-              <div class="meta-unlock-effect">Tier ${talent.tier} • Rank ${talent.rank}/${talent.maxRank}</div>
               <div class="meta-unlock-status">${escapeHtml(talent.statusText)}</div>
             </button>
           `;
@@ -275,6 +278,7 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
         .map((blueprint) => {
           const classes = [
             "meta-blueprint-card",
+            `rarity-${blueprint.rarity}`,
             blueprint.canForge ? "available" : "",
             blueprint.statusText === "Forged" ? "unlocked" : "",
             !blueprint.canForge && blueprint.statusText !== "Forged" ? "locked" : ""
@@ -293,7 +297,11 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
                 <span class="meta-unlock-cost">${blueprint.forgeCost}</span>
               </div>
               <div class="meta-unlock-description">${escapeHtml(blueprint.unlockTargetId)}</div>
-              <div class="meta-unlock-effect">Rarity: ${escapeHtml(blueprint.rarity)}</div>
+              <div class="meta-unlock-effect">
+                <span class="meta-rarity-chip rarity-${escapeHtml(blueprint.rarity)}">${escapeHtml(
+                  blueprint.rarity.toUpperCase()
+                )}</span>
+              </div>
               <div class="meta-unlock-status">${escapeHtml(blueprint.statusText)}</div>
             </button>
           `;
@@ -405,33 +413,41 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
           <span>Unlocks: ${view.unlockedCount}/${view.totalUnlocks}</span>
         </div>
       </header>
+      <nav class="meta-menu-nav" aria-label="Meta sections">
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-difficulty">Difficulty</button>
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-daily">Daily</button>
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-talents">Talents</button>
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-forge">Soul Forge</button>
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-mutations">Mutations</button>
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-unlocks">Legacy</button>
+      </nav>
       ${resumeHtml}
-      <section class="meta-menu-section">
+      <section class="meta-menu-section" id="meta-section-difficulty">
         <h2>Difficulty</h2>
         <div class="meta-difficulty-grid">${difficultyHtml}</div>
       </section>
-      <section class="meta-menu-section">
+      <section class="meta-menu-section" id="meta-section-daily">
         <h2>Daily Challenge</h2>
         <p class="meta-menu-hint">${escapeHtml(view.daily.date)} • ${view.daily.mode === "scored" ? "Scored" : "Practice"}</p>
         <p class="meta-menu-hint">${escapeHtml(view.daily.statusText)}</p>
         <button class="meta-start-button" data-action="start-daily">Start Daily Challenge</button>
       </section>
-      <section class="meta-menu-section">
+      <section class="meta-menu-section" id="meta-section-talents">
         <h2>Talent Tree</h2>
         <p class="meta-menu-hint">Purchase talents to improve baseline stats and run economy.</p>
         ${talentGroupsHtml}
       </section>
-      <section class="meta-menu-section">
+      <section class="meta-menu-section" id="meta-section-forge">
         <h2>Soul Forge</h2>
         <p class="meta-menu-hint">Discover blueprints in runs, then forge discovered plans with Soul Shards.</p>
         ${blueprintGroupsHtml}
       </section>
-      <section class="meta-menu-section">
+      <section class="meta-menu-section" id="meta-section-mutations">
         <h2>Mutation Loadout</h2>
         <p class="meta-menu-hint">Selected ${view.selectedMutations}/${view.mutationSlots}. Click card to toggle, unlock echo mutations with Unlock button.</p>
         ${mutationGroupsHtml}
       </section>
-      <section class="meta-menu-section">
+      <section class="meta-menu-section" id="meta-section-unlocks">
         <h2>Legacy Unlocks</h2>
         <p class="meta-menu-hint">Hotkeys: unlocks 1-0, difficulty Q/W/E, start Enter, daily D.</p>
         ${unlockGroupsHtml}
@@ -537,6 +553,19 @@ export function bindMetaMenuPanelActions(
     abandonButton.addEventListener("click", onClick);
     unbindActions.push(() => abandonButton.removeEventListener("click", onClick));
   }
+
+  container.querySelectorAll<HTMLButtonElement>("button[data-action='jump-section']").forEach((button) => {
+    const targetId = button.dataset.target;
+    if (targetId === undefined || targetId.length === 0) {
+      return;
+    }
+    const onClick = () => {
+      const target = container.querySelector<HTMLElement>(`#${targetId}`);
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    button.addEventListener("click", onClick);
+    unbindActions.push(() => button.removeEventListener("click", onClick));
+  });
 
   return unbindActions;
 }

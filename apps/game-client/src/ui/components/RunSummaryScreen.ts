@@ -10,7 +10,7 @@ function summaryModeLabel(summary: RunSummary): string {
 
 function renderLegacyRunSummary(summary: RunSummary): string {
   return `
-    <h2>${summary.isVictory ? "Run Victory" : "Run Ended"}</h2>
+    <h2>${summary.isVictory ? "Run Victory" : "Run Defeat"}</h2>
     <div class="stat-line"><span>Mode</span><span>${summaryModeLabel(summary)}</span></div>
     <div class="stat-line"><span>Floor</span><span>${summary.floorReached}</span></div>
     <div class="stat-line"><span>Kills</span><span>${summary.kills}</span></div>
@@ -54,7 +54,7 @@ export function renderRunSummaryScreen(summary: RunSummary): string {
 
   return `
     <div class="run-summary-card ${summary.isVictory ? "victory" : "defeat"}">
-      <h2>${summary.isVictory ? "Run Victory" : "Run Ended"}</h2>
+      <h2>${summary.isVictory ? "Run Victory" : "Run Defeat"}</h2>
       <div class="summary-reward" style="--stagger-index:0;">
         <span>Soul Shards</span>
         <strong>+${summary.soulShardsEarned ?? 0}</strong>

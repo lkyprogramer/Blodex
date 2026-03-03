@@ -171,6 +171,7 @@ import {
 import { SAVE_LEASE_TTL_MS, SaveManager } from "../systems/SaveManager";
 import { UIManager } from "../ui/UIManager";
 import { createUIStateSnapshot } from "../ui/state/UIStateAdapter";
+import { hideSceneTransition, playSceneTransition } from "../ui/SceneTransitionOverlay";
 import {
   detectPreferredImageFormat,
   resolveGeneratedAssetUrl,
@@ -254,6 +255,7 @@ const DEBUG_COMMANDS = [
   { combo: "Alt+M", description: "Open wandering merchant panel" },
   { combo: "Alt+K", description: "Clear current floor instantly" },
   { combo: "Alt+X", description: "Force player death (death feedback check)" },
+  { combo: "API.setHealth(value)", description: "Set player HP directly for HUD/feedback validation" },
   { combo: "Alt+1..5", description: "Jump to floor 1-5 (biome/hazard/boss checks)" },
   { combo: "Alt+N", description: "Start a fresh run" },
   { combo: "API.forceChallenge()", description: "Inject a challenge room on current floor" },
@@ -272,6 +274,7 @@ interface BlodexDebugApi {
   openMerchant: () => void;
   clearFloor: () => void;
   jumpFloor: (floor: number) => void;
+  setHealth: (value: number) => number;
   killPlayer: () => void;
   newRun: () => void;
   forceChallenge: () => boolean;
@@ -450,6 +453,7 @@ export class DungeonScene extends Phaser.Scene {
   private perfPanelEl: HTMLDivElement | null = null;
   private nextDiagnosticsAt = 0;
   private cleanupStarted = false;
+  private preserveSceneTransitionOnCleanup = false;
   private lastAiNearCount = 0;
   private lastAiFarCount = 0;
   private lastMinimapRefreshAt = 0;
@@ -547,6 +551,7 @@ export class DungeonScene extends Phaser.Scene {
 
   create(): void {
     this.cleanupStarted = false;
+    this.preserveSceneTransitionOnCleanup = false;
     this.cameras.main.setBackgroundColor("#11161d");
     this.debugCheatsEnabled = this.isDebugCheatsEnabled();
     this.diagnosticsEnabled = this.resolveDebugFlag(DEBUG_DIAGNOSTICS_QUERY) || this.debugCheatsEnabled;
@@ -633,6 +638,13 @@ export class DungeonScene extends Phaser.Scene {
         this.tryUseConsumable(consumableId);
       },
       () => {
+        this.preserveSceneTransitionOnCleanup = true;
+        playSceneTransition({
+          title: "Return to Sanctum",
+          subtitle: "Meta Progression",
+          mode: "scene",
+          durationMs: 520
+        });
         this.uiManager.reset();
         this.sfxSystem.stopAmbient();
         this.scene.start("meta-menu");
@@ -672,6 +684,10 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private resolveSelectedDifficultyForRun(): DifficultyMode {
+    if (this.pendingRunMode === "daily") {
+      this.pendingDifficulty = null;
+      return resolveSelectedDifficulty(this.meta);
+    }
     const requested = this.pendingDifficulty ?? this.meta.selectedDifficulty;
     const normalized = normalizeDifficultyMode(requested, "normal");
     const resolved = isDifficultyUnlocked(this.meta, normalized)
@@ -1183,10 +1199,15 @@ export class DungeonScene extends Phaser.Scene {
         hazardType,
         position
       });
-      this.uiManager.appendLog(`${hazardType} triggered.`, "warn", timestampMs);
+      if (hazardType !== "periodic_trap") {
+        this.uiManager.appendLog(`${hazardType} triggered.`, "warn", timestampMs);
+      }
     });
 
     this.eventBus.on("hazard:damage", ({ hazardType, targetId, amount, remainingHealth, timestampMs }) => {
+      if (hazardType === "periodic_trap" && targetId !== this.player.id) {
+        return;
+      }
       const label = this.resolveEntityLabel(targetId);
       const level = targetId === this.player.id ? "danger" : "info";
       this.uiManager.appendLog(
@@ -1294,6 +1315,7 @@ export class DungeonScene extends Phaser.Scene {
       openMerchant: () => this.debugOpenMerchant(),
       clearFloor: () => this.debugForceClearFloor(),
       jumpFloor: (floor) => this.debugJumpToFloor(floor),
+      setHealth: (value) => this.debugSetHealth(value),
       killPlayer: () => this.debugForceDeath(),
       newRun: () => this.resetRun(),
       forceChallenge: () => this.debugForceChallengeRoom(),
@@ -1782,6 +1804,8 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     let removed = 0;
+    let simulatedDrops = 0;
+    let simulatedLevelUps = 0;
     while (true) {
       const living = [...this.entityManager.listLivingMonsters()];
       if (living.length === 0) {
@@ -1794,6 +1818,41 @@ export class DungeonScene extends Phaser.Scene {
           continue;
         }
         this.onMonsterDefeated(dead.state, nowMs);
+        const xpResult = applyXpGain(this.player, dead.state.xpValue, "strength");
+        this.player = this.refreshPlayerStatsFromEquipment(xpResult.player);
+        if (xpResult.leveledUp) {
+          simulatedLevelUps += 1;
+          this.eventBus.emit("player:levelup", {
+            playerId: this.player.id,
+            level: this.player.level,
+            timestampMs: nowMs
+          });
+          this.refreshSynergyRuntime(false);
+          this.offerLevelupSkill();
+        }
+        const lootTable = LOOT_TABLE_MAP[dead.state.dropTableId];
+        if (lootTable !== undefined) {
+          const droppedItem = rollItemDrop(
+            lootTable,
+            ITEM_DEF_MAP,
+            this.run.currentFloor,
+            this.lootRng,
+            `debug-clear-${this.run.currentFloor}-${dead.state.id}-${Math.floor(nowMs)}`,
+            {
+              isItemEligible: (itemDef) => this.isItemDefUnlocked(itemDef)
+            }
+          );
+          if (droppedItem !== null) {
+            simulatedDrops += 1;
+            this.spawnLootDrop(droppedItem, dead.state.position);
+            this.eventBus.emit("loot:drop", {
+              sourceId: dead.state.id,
+              item: droppedItem,
+              position: dead.state.position,
+              timestampMs: nowMs
+            });
+          }
+        }
         dead.sprite.destroy();
         dead.healthBarBg.destroy();
         dead.healthBarFg.destroy();
@@ -1812,7 +1871,8 @@ export class DungeonScene extends Phaser.Scene {
       {
         ...this.run,
         kills: nextKills,
-        totalKills: this.run.totalKills + removed
+        totalKills: this.run.totalKills + removed,
+        endlessKills: (this.run.endlessKills ?? 0) + (this.run.inEndless ? removed : 0)
       },
       removed
     );
@@ -1833,7 +1893,10 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     this.hudDirty = true;
-    this.debugLog(`Cleared floor instantly (${removed} monsters removed).`, "success");
+    this.debugLog(
+      `Cleared floor instantly (${removed} monsters removed, ${simulatedDrops} drops, +${simulatedLevelUps} levels).`,
+      "success"
+    );
   }
 
   private debugJumpToFloor(targetFloor: number): void {
@@ -1883,6 +1946,21 @@ export class DungeonScene extends Phaser.Scene {
     this.hudDirty = true;
     this.debugLog("Forced player death.", "danger");
     this.finishRun(false);
+  }
+
+  private debugSetHealth(value: number): number {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return this.player.health;
+    }
+    const normalized = Math.max(0, Math.min(this.player.derivedStats.maxHealth, Math.floor(value)));
+    this.player = {
+      ...this.player,
+      health: normalized
+    };
+    this.hudDirty = true;
+    this.debugLog(`Set HP to ${normalized}/${Math.floor(this.player.derivedStats.maxHealth)}.`, "info");
+    return normalized;
   }
 
   private injectDebugLockedEquipment(player: PlayerState, nowMs: number): PlayerState {
@@ -2434,6 +2512,15 @@ export class DungeonScene extends Phaser.Scene {
 
     this.hudDirty = true;
     this.runEnded = false;
+
+    if (!initial) {
+      playSceneTransition({
+        title: `Floor ${floor}`,
+        subtitle: this.currentBiome.name,
+        mode: "floor",
+        durationMs: 420
+      });
+    }
 
     if (!initial) {
       this.eventBus.emit("floor:enter", {
@@ -3845,7 +3932,8 @@ export class DungeonScene extends Phaser.Scene {
         {
           ...this.run,
           kills: this.run.kills + 1,
-          totalKills: this.run.totalKills + 1
+          totalKills: this.run.totalKills + 1,
+          endlessKills: (this.run.endlessKills ?? 0) + (this.run.inEndless ? 1 : 0)
         },
         Math.max(1, Math.floor(obolMultiplier))
       );
@@ -4315,7 +4403,8 @@ export class DungeonScene extends Phaser.Scene {
           {
             ...this.run,
             kills: this.run.kills + 1,
-            totalKills: this.run.totalKills + 1
+            totalKills: this.run.totalKills + 1,
+            endlessKills: (this.run.endlessKills ?? 0) + (this.run.inEndless ? 1 : 0)
           },
           Math.max(1, Math.floor(obolMultiplier))
         );
@@ -4790,7 +4879,10 @@ export class DungeonScene extends Phaser.Scene {
       toFloor: fromFloor + 1
     });
     this.run = enterNextFloor(this.run);
-    this.run = enterEndless(this.run);
+    this.run = {
+      ...enterEndless(this.run),
+      endlessKills: 0
+    };
     this.run = addRunObols(this.run, endlessFloorClearBonus(this.run.currentFloor));
     this.uiManager.appendLog(`Entered Abyss Floor ${this.run.currentFloor}.`, "warn", nowMs);
     this.setupFloor(this.run.currentFloor, false);
@@ -4818,7 +4910,7 @@ export class DungeonScene extends Phaser.Scene {
     const baseSoulShards =
       this.run.inEndless && isVictory === false
         ? (() => {
-            const kills = Math.max(this.run.totalKills, this.run.kills);
+            const kills = Math.max(0, this.run.endlessKills ?? 0);
             const perKillReward = endlessKillShardReward(this.run.currentFloor);
             let floorBonus = 0;
             for (let floor = 6; floor <= this.run.currentFloor; floor += 1) {
@@ -4871,6 +4963,7 @@ export class DungeonScene extends Phaser.Scene {
       this.saveManager.deleteSave();
     }
     this.saveManager.stopLeaseHeartbeat();
+    this.bossState = null;
     this.renderHud();
     this.hudDirty = false;
     if (isVictory) {
@@ -4974,7 +5067,8 @@ export class DungeonScene extends Phaser.Scene {
         {
           ...this.run,
           kills: this.run.kills + kills,
-          totalKills: this.run.totalKills + kills
+          totalKills: this.run.totalKills + kills,
+          endlessKills: (this.run.endlessKills ?? 0) + (this.run.inEndless ? kills : 0)
         },
         Math.max(kills, Math.floor(kills * obolMultiplier))
       );
@@ -5130,6 +5224,9 @@ export class DungeonScene extends Phaser.Scene {
     const runState = {
       floor: this.run.currentFloor,
       difficulty: this.run.difficulty,
+      runMode: this.run.runMode,
+      inEndless: this.run.inEndless,
+      endlessFloor: this.run.endlessFloor,
       biome: this.currentBiome.name,
       kills: this.run.kills,
       lootCollected: this.run.lootCollected,
@@ -5368,7 +5465,8 @@ export class DungeonScene extends Phaser.Scene {
       this.runSeed = save.runSeed;
       this.run = {
         ...save.run,
-        runSeed: save.runSeed
+        runSeed: save.runSeed,
+        endlessKills: Math.max(0, Math.floor(save.run.endlessKills ?? 0))
       };
       this.dailyPracticeMode =
         this.run.runMode === "daily" && this.run.dailyDate !== undefined
@@ -5623,6 +5721,9 @@ export class DungeonScene extends Phaser.Scene {
     this.input.off("pointerdown", this.handlePointerDown, this);
     this.clearKeyboardBindings();
     this.uiManager.reset();
+    if (!this.preserveSceneTransitionOnCleanup) {
+      hideSceneTransition();
+    }
     this.removeDebugApi();
     this.destroyEventNode();
     this.clearHiddenRoomMarkers();

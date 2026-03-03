@@ -40,6 +40,11 @@ export interface RunState {
   challengeSuccessCount: number;
   inEndless: boolean;
   endlessFloor: number;
+  /**
+   * Kills accumulated after entering Abyss/Endless mode.
+   * Used to avoid counting story-floor kills in endless-specific reward formulas.
+   */
+  endlessKills?: number;
   runMode: RunMode;
   dailyDate?: string;
   runEconomy: RunEconomyState;
@@ -111,6 +116,7 @@ export function createRunState(
     challengeSuccessCount: 0,
     inEndless: false,
     endlessFloor: 0,
+    endlessKills: 0,
     runMode: "normal",
     runEconomy: {
       obols: 0,
