@@ -453,6 +453,7 @@ export class DungeonScene extends Phaser.Scene {
   private perfPanelEl: HTMLDivElement | null = null;
   private nextDiagnosticsAt = 0;
   private cleanupStarted = false;
+  private preserveSceneTransitionOnCleanup = false;
   private lastAiNearCount = 0;
   private lastAiFarCount = 0;
   private lastMinimapRefreshAt = 0;
@@ -550,6 +551,7 @@ export class DungeonScene extends Phaser.Scene {
 
   create(): void {
     this.cleanupStarted = false;
+    this.preserveSceneTransitionOnCleanup = false;
     this.cameras.main.setBackgroundColor("#11161d");
     this.debugCheatsEnabled = this.isDebugCheatsEnabled();
     this.diagnosticsEnabled = this.resolveDebugFlag(DEBUG_DIAGNOSTICS_QUERY) || this.debugCheatsEnabled;
@@ -636,6 +638,7 @@ export class DungeonScene extends Phaser.Scene {
         this.tryUseConsumable(consumableId);
       },
       () => {
+        this.preserveSceneTransitionOnCleanup = true;
         playSceneTransition({
           title: "Return to Sanctum",
           subtitle: "Meta Progression",
@@ -5718,7 +5721,9 @@ export class DungeonScene extends Phaser.Scene {
     this.input.off("pointerdown", this.handlePointerDown, this);
     this.clearKeyboardBindings();
     this.uiManager.reset();
-    hideSceneTransition();
+    if (!this.preserveSceneTransitionOnCleanup) {
+      hideSceneTransition();
+    }
     this.removeDebugApi();
     this.destroyEventNode();
     this.clearHiddenRoomMarkers();
