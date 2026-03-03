@@ -831,6 +831,7 @@ export class DungeonScene extends Phaser.Scene {
       nowMs
     });
     this.worldEventController.updatePreResolution(nowMs);
+    this.encounterController.updateChallenge(nowMs);
 
     this.renderSystem.syncPlayerSprite(this.playerSprite, this.player.position, this.playerYOffset, this.origin);
     this.renderSystem.syncMonsterSprites(this.entityManager.listMonsters(), this.origin);

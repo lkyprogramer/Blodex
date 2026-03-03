@@ -19,6 +19,9 @@ export class EncounterController {
     this.deps.updateMonsters(input.deltaSeconds, input.nowMs);
     this.deps.updateMonsterCombat(input.nowMs);
     this.deps.updateBossCombat(input.nowMs);
-    this.deps.updateChallengeRoom(input.nowMs);
+  }
+
+  updateChallenge(nowMs: number): void {
+    this.deps.updateChallengeRoom(nowMs);
   }
 }
