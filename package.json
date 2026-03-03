@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.23.0",
+  "engines": {
+    "node": "22.x",
+    "pnpm": "10.23.0"
+  },
   "scripts": {
     "dev": "pnpm --filter @blodex/core build && pnpm --filter @blodex/content build && pnpm --filter @blodex/game-client dev",
     "build": "pnpm -r build",
@@ -12,8 +16,9 @@
     "check": "pnpm -r typecheck",
     "check:source-hygiene": "./scripts/check-source-hygiene.sh",
     "check:content-i18n": "node --experimental-strip-types scripts/check-content-locale-consistency.ts",
+    "check:toolchain": "node --experimental-strip-types scripts/check-toolchain-consistency.ts",
     "quality:precheck": "./scripts/precheck.sh",
-    "ci:check": "pnpm -r typecheck && pnpm test && pnpm --filter @blodex/game-client i18n:check && pnpm --filter @blodex/game-client css:check && pnpm check:content-i18n && pnpm check:source-hygiene",
+    "ci:check": "pnpm check:toolchain && pnpm -r typecheck && pnpm test && pnpm --filter @blodex/game-client i18n:check && pnpm --filter @blodex/game-client css:check && pnpm check:content-i18n && pnpm check:source-hygiene",
     "assets:compile": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:plan",
     "assets:images:optimize": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:images:optimize",
     "assets:images:report": "pnpm --filter @blodex/tooling build && pnpm --filter @blodex/tooling assets:images:report",

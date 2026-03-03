@@ -7,6 +7,9 @@ cd "$ROOT_DIR"
 echo "[precheck] typecheck"
 pnpm -r typecheck
 
+echo "[precheck] toolchain consistency"
+pnpm check:toolchain
+
 echo "[precheck] tests"
 pnpm test
 

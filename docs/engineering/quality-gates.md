@@ -8,10 +8,25 @@
 | --- | --- | --- |
 | TypeCheck | `pnpm check` | 全工作区 TypeScript 类型检查 |
 | Unit Tests | `pnpm test` | `core` + `game-client` + `content` 测试 |
+| Toolchain Consistency | `pnpm check:toolchain` | 校验 `packageManager` / `engines.pnpm` / CI pnpm 版本一致 |
 | i18n Catalog | `pnpm --filter @blodex/game-client i18n:check` | UI/log key 与占位符一致性 |
 | CSS Architecture | `pnpm --filter @blodex/game-client css:check` | 样式模块结构、导入顺序、特异性与 magic number 门禁 |
 | Content Locale Consistency | `pnpm check:content-i18n` | 内容词条 en-US/zh-CN 覆盖与一致性 |
 | Source Hygiene | `pnpm check:source-hygiene` | 检查 `src/**` 下非法构建产物 |
+
+## 工具链基线（必须）
+
+首次初始化或本地 Node 版本切换后，必须执行：
+
+```bash
+corepack enable
+corepack prepare pnpm@10.23.0 --activate
+pnpm --version
+```
+
+要求：
+- `pnpm --version` 必须输出 `10.23.0`。
+- 若版本不一致，禁止提交；需先修复本地工具链。
 
 ## 本地一键预检
 
