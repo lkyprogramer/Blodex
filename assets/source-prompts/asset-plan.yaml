@@ -300,6 +300,106 @@ assets:
     palette: "charcoal, tarnished gold, muted ember orange"
     constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
 
+  - id: skill_shield_slam
+    category: skill_icon
+    outputName: skill_shield_slam.png
+    prompt: "RPG skill icon for shield slam impact, armored shield crest crashing into fractured stone, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key top-left with compact impact highlight"
+    palette: "dark steel, charcoal, muted dust brown"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: skill_quake_strike
+    category: skill_icon
+    outputName: skill_quake_strike.png
+    prompt: "RPG skill icon for quake strike, heavy weapon slam with radial cracked earth shock ring, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key top-left with restrained debris glow"
+    palette: "charcoal stone, iron blue shadows, muted ember accents"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: skill_execution_drive
+    category: skill_icon
+    outputName: skill_execution_drive.png
+    prompt: "RPG skill icon for execution drive, decisive thrust silhouette with narrow crimson impact line, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key directional light with restrained edge highlight"
+    palette: "cold steel, charcoal, deep crimson accent"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: skill_blade_fan
+    category: skill_icon
+    outputName: skill_blade_fan.png
+    prompt: "RPG skill icon for blade fan, spread of razor blades in short cone with motion trails, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with subtle glint highlights"
+    palette: "steel gray, iron blue shadow, muted ember slashes"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: skill_mark_prey
+    category: skill_icon
+    outputName: skill_mark_prey.png
+    prompt: "RPG skill icon for mark prey, predatory reticle carved into shadowed target sigil, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key contrast with restrained focal glow"
+    palette: "charcoal, muted red, iron blue"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: skill_venom_volley
+    category: skill_icon
+    outputName: skill_venom_volley.png
+    prompt: "RPG skill icon for venom volley, poisoned darts arcing through a toxic mist plume, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with restrained acidic highlights"
+    palette: "swamp green, charcoal, muted yellow-green"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: skill_wind_dash
+    category: skill_icon
+    outputName: skill_wind_dash.png
+    prompt: "RPG skill icon for wind dash, swift blade silhouette wrapped in crescent gust trails, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with cool motion rim"
+    palette: "iron blue, charcoal, pale steel highlights"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: skill_chain_lightning
+    category: skill_icon
+    outputName: skill_chain_lightning.png
+    prompt: "RPG skill icon for chain lightning, branching arc bolts jumping between rune nodes, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with restrained electric edge glow"
+    palette: "cold cyan-blue, charcoal, steel gray"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: skill_spirit_burst
+    category: skill_icon
+    outputName: skill_spirit_burst.png
+    prompt: "RPG skill icon for spirit burst, ghostly shards erupting from a circular sigil, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with soft spectral bloom kept restrained"
+    palette: "pale teal, iron blue, charcoal"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: skill_rift_step
+    category: skill_icon
+    outputName: skill_rift_step.png
+    prompt: "RPG skill icon for rift step, blade silhouette crossing a torn arcane portal seam, painterly dark fantasy"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key with narrow portal rim light"
+    palette: "deep violet-blue, charcoal, cold steel"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
   - id: meta_unlock_locked
     category: ui_icon
     outputName: meta_unlock_locked.png

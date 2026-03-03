@@ -117,14 +117,44 @@ generate_procedural_source() {
     sfx_skill_cleave_01)
       render_dual_tone "$src" 240 360 0.24 0.22 0.09
       ;;
+    sfx_skill_shield_slam_01)
+      render_dual_tone "$src" 180 260 0.26 0.20 0.10
+      ;;
+    sfx_skill_quake_strike_01)
+      render_dual_tone "$src" 140 220 0.34 0.22 0.10
+      ;;
+    sfx_skill_execution_drive_01)
+      render_dual_tone "$src" 250 410 0.26 0.18 0.09
+      ;;
     sfx_skill_shadow_step_01)
       render_dual_tone "$src" 520 760 0.20 0.16 0.08
+      ;;
+    sfx_skill_blade_fan_01)
+      render_dual_tone "$src" 430 610 0.20 0.14 0.08
+      ;;
+    sfx_skill_mark_prey_01)
+      render_dual_tone "$src" 370 520 0.22 0.14 0.08
+      ;;
+    sfx_skill_venom_volley_01)
+      render_dual_tone "$src" 300 470 0.22 0.16 0.08
+      ;;
+    sfx_skill_wind_dash_01)
+      render_dual_tone "$src" 540 740 0.16 0.10 0.07
       ;;
     sfx_skill_blood_drain_01)
       render_dual_tone "$src" 210 290 0.30 0.20 0.09
       ;;
     sfx_skill_frost_nova_01)
       render_dual_tone "$src" 350 700 0.30 0.16 0.09
+      ;;
+    sfx_skill_chain_lightning_01)
+      render_dual_tone "$src" 620 900 0.18 0.12 0.08
+      ;;
+    sfx_skill_spirit_burst_01)
+      render_dual_tone "$src" 320 560 0.24 0.14 0.08
+      ;;
+    sfx_skill_rift_step_01)
+      render_dual_tone "$src" 560 840 0.18 0.10 0.07
       ;;
     sfx_skill_war_cry_01)
       render_dual_tone "$src" 180 270 0.34 0.22 0.10

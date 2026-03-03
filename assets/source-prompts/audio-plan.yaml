@@ -74,6 +74,86 @@ assets:
     license: allowed
     attribution: ""
     outputName: sfx_skill_war_cry_01
+  - id: sfx_skill_shield_slam_01
+    category: sfx
+    eventKey: skill:use:shield_slam
+    sourceType: external
+    sourceRef: sfx_skill_shield_slam_01.ogg
+    license: allowed
+    attribution: ""
+    outputName: sfx_skill_shield_slam_01
+  - id: sfx_skill_quake_strike_01
+    category: sfx
+    eventKey: skill:use:quake_strike
+    sourceType: external
+    sourceRef: sfx_skill_quake_strike_01.ogg
+    license: allowed
+    attribution: ""
+    outputName: sfx_skill_quake_strike_01
+  - id: sfx_skill_execution_drive_01
+    category: sfx
+    eventKey: skill:use:execution_drive
+    sourceType: external
+    sourceRef: sfx_skill_execution_drive_01.ogg
+    license: allowed
+    attribution: ""
+    outputName: sfx_skill_execution_drive_01
+  - id: sfx_skill_blade_fan_01
+    category: sfx
+    eventKey: skill:use:blade_fan
+    sourceType: external
+    sourceRef: sfx_skill_blade_fan_01.ogg
+    license: allowed
+    attribution: ""
+    outputName: sfx_skill_blade_fan_01
+  - id: sfx_skill_mark_prey_01
+    category: sfx
+    eventKey: skill:use:mark_prey
+    sourceType: external
+    sourceRef: sfx_skill_mark_prey_01.ogg
+    license: allowed
+    attribution: ""
+    outputName: sfx_skill_mark_prey_01
+  - id: sfx_skill_venom_volley_01
+    category: sfx
+    eventKey: skill:use:venom_volley
+    sourceType: external
+    sourceRef: sfx_skill_venom_volley_01.ogg
+    license: allowed
+    attribution: ""
+    outputName: sfx_skill_venom_volley_01
+  - id: sfx_skill_wind_dash_01
+    category: sfx
+    eventKey: skill:use:wind_dash
+    sourceType: external
+    sourceRef: sfx_skill_wind_dash_01.ogg
+    license: allowed
+    attribution: ""
+    outputName: sfx_skill_wind_dash_01
+  - id: sfx_skill_chain_lightning_01
+    category: sfx
+    eventKey: skill:use:chain_lightning
+    sourceType: external
+    sourceRef: sfx_skill_chain_lightning_01.ogg
+    license: allowed
+    attribution: ""
+    outputName: sfx_skill_chain_lightning_01
+  - id: sfx_skill_spirit_burst_01
+    category: sfx
+    eventKey: skill:use:spirit_burst
+    sourceType: external
+    sourceRef: sfx_skill_spirit_burst_01.ogg
+    license: allowed
+    attribution: ""
+    outputName: sfx_skill_spirit_burst_01
+  - id: sfx_skill_rift_step_01
+    category: sfx
+    eventKey: skill:use:rift_step
+    sourceType: external
+    sourceRef: sfx_skill_rift_step_01.ogg
+    license: allowed
+    attribution: ""
+    outputName: sfx_skill_rift_step_01
 
   - id: amb_biome_forgotten_catacombs_loop_01
     category: amb
