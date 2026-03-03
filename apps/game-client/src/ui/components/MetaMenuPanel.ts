@@ -25,6 +25,12 @@ export interface MetaMenuRunSaveView {
   detailText: string;
 }
 
+export interface MetaMenuDailyView {
+  date: string;
+  mode: "scored" | "practice";
+  statusText: string;
+}
+
 export interface MetaMenuUnlockCardView {
   index: number;
   id: string;
@@ -106,6 +112,7 @@ export interface MetaMenuPanelView {
   totalUnlocks: number;
   difficulties: MetaMenuDifficultyView[];
   runSave: MetaMenuRunSaveView | null;
+  daily: MetaMenuDailyView;
   talentGroups: MetaMenuTalentGroupView[];
   unlockGroups: MetaMenuUnlockGroupView[];
   blueprintGroups: MetaMenuBlueprintGroupView[];
@@ -123,6 +130,7 @@ export interface MetaMenuPanelHandlers {
   onUnlockMutation: (mutationId: string) => void;
   onToggleMutation: (mutationId: string) => void;
   onStartRun: () => void;
+  onStartDaily: () => void;
   onContinueRun: () => void;
   onAbandonRun: () => void;
 }
@@ -403,6 +411,12 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
         <div class="meta-difficulty-grid">${difficultyHtml}</div>
       </section>
       <section class="meta-menu-section">
+        <h2>Daily Challenge</h2>
+        <p class="meta-menu-hint">${escapeHtml(view.daily.date)} • ${view.daily.mode === "scored" ? "Scored" : "Practice"}</p>
+        <p class="meta-menu-hint">${escapeHtml(view.daily.statusText)}</p>
+        <button class="meta-start-button" data-action="start-daily">Start Daily Challenge</button>
+      </section>
+      <section class="meta-menu-section">
         <h2>Talent Tree</h2>
         <p class="meta-menu-hint">Purchase talents to improve baseline stats and run economy.</p>
         ${talentGroupsHtml}
@@ -419,7 +433,7 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
       </section>
       <section class="meta-menu-section">
         <h2>Legacy Unlocks</h2>
-        <p class="meta-menu-hint">Hotkeys: unlocks 1-0, difficulty Q/W/E, start Enter.</p>
+        <p class="meta-menu-hint">Hotkeys: unlocks 1-0, difficulty Q/W/E, start Enter, daily D.</p>
         ${unlockGroupsHtml}
       </section>
       <footer class="meta-menu-footer">
@@ -501,6 +515,13 @@ export function bindMetaMenuPanelActions(
     const onClick = () => handlers.onStartRun();
     startButton.addEventListener("click", onClick);
     unbindActions.push(() => startButton.removeEventListener("click", onClick));
+  }
+
+  const startDailyButton = container.querySelector<HTMLButtonElement>("button[data-action='start-daily']");
+  if (startDailyButton !== null) {
+    const onClick = () => handlers.onStartDaily();
+    startDailyButton.addEventListener("click", onClick);
+    unbindActions.push(() => startDailyButton.removeEventListener("click", onClick));
   }
 
   const continueButton = container.querySelector<HTMLButtonElement>("button[data-action='continue']");

@@ -13,9 +13,12 @@ import { defaultBaseStats, deriveStats } from "../stats";
 import type { RunState } from "../run";
 import {
   deserializeRunState,
+  deserializeRunStateResult,
+  migrateRunSaveV1ToV2,
   serializeRunState,
   validateSave,
-  type RunSaveDataV1
+  type RunSaveDataV1,
+  type RunSaveDataV2
 } from "../save";
 
 function makeRunState(): RunState {
@@ -31,6 +34,10 @@ function makeRunState(): RunState {
     kills: 3,
     totalKills: 7,
     lootCollected: 2,
+    challengeSuccessCount: 1,
+    inEndless: false,
+    endlessFloor: 0,
+    runMode: "normal",
     runEconomy: {
       obols: 9,
       spentObols: 1
@@ -144,9 +151,9 @@ function makeRngCursor(): Record<RunRngStreamName, number> {
   };
 }
 
-function makeSave(): RunSaveDataV1 {
+function makeSave(): RunSaveDataV2 {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     savedAtMs: 123,
     appVersion: "test",
     runId: "seed-1:100",
@@ -156,6 +163,7 @@ function makeSave(): RunSaveDataV1 {
     consumables: createInitialConsumableState(0),
     dungeon: makeDungeon(),
     staircase: {
+      kind: "single",
       position: { x: 7, y: 7 },
       visible: false
     },
@@ -208,6 +216,23 @@ function makeSave(): RunSaveDataV1 {
   };
 }
 
+function toV1(save: RunSaveDataV2): RunSaveDataV1 {
+  const { challengeSuccessCount, inEndless, endlessFloor, runMode, ...legacyRun } = save.run;
+  void challengeSuccessCount;
+  void inEndless;
+  void endlessFloor;
+  void runMode;
+  return {
+    ...save,
+    schemaVersion: 1,
+    run: legacyRun,
+    staircase: {
+      position: { ...save.staircase.position },
+      visible: save.staircase.visible
+    }
+  };
+}
+
 describe("save", () => {
   it("round-trips a valid run save", () => {
     const save = makeSave();
@@ -221,7 +246,7 @@ describe("save", () => {
   });
 
   it("normalizes legacy draft fields on deserialize", () => {
-    const save = makeSave() as unknown as Record<string, unknown>;
+    const save = toV1(makeSave()) as unknown as Record<string, unknown>;
     delete save.blueprintFoundIdsInRun;
     delete save.selectedMutationIds;
     save.blueprintsFoundThisRun = ["bp_legacy"];
@@ -233,6 +258,25 @@ describe("save", () => {
     expect(loaded?.selectedMutationIds).toEqual(["mut_legacy"]);
     expect("blueprintsFoundThisRun" in (loaded ?? {})).toBe(false);
     expect("selectedMutations" in (loaded ?? {})).toBe(false);
+  });
+
+  it("migrates v1 payload into v2 shape", () => {
+    const saveV1 = toV1(makeSave());
+    const migratedByDeserializer = deserializeRunState(JSON.stringify(saveV1));
+    const migratedByHelper = migrateRunSaveV1ToV2(saveV1);
+
+    expect(migratedByDeserializer?.schemaVersion).toBe(2);
+    expect(migratedByDeserializer?.run.runMode).toBe("normal");
+    expect(migratedByDeserializer?.run.inEndless).toBe(false);
+    expect(migratedByDeserializer).toEqual(migratedByHelper);
+  });
+
+  it("returns source version metadata for v1 migration", () => {
+    const saveV1 = toV1(makeSave());
+    const result = deserializeRunStateResult(JSON.stringify(saveV1));
+    expect(result.sourceVersion).toBe(1);
+    expect(result.migratedFromV1).toBe(true);
+    expect(result.save?.schemaVersion).toBe(2);
   });
 
   it("rejects invalid save payload", () => {

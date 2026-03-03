@@ -170,6 +170,92 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
       healThreshold: 0.65,
       healPower: 24
     }
+  },
+  {
+    id: "wraith_knight",
+    name: "Wraith Knight",
+    healthMultiplier: 1.36,
+    damageMultiplier: 1.08,
+    attackRange: 1.3,
+    moveSpeed: 96,
+    xpValue: 42,
+    spriteId: "monster_elite_01",
+    dropTableId: "catacomb_elite",
+    aiConfig: {
+      behavior: "shield",
+      chaseRange: 8,
+      attackCooldownMs: 1800,
+      shieldThreshold: 0.35
+    }
+  },
+  {
+    id: "soul_eater",
+    name: "Soul Eater",
+    healthMultiplier: 0.88,
+    damageMultiplier: 1.25,
+    attackRange: 1.25,
+    moveSpeed: 126,
+    xpValue: 40,
+    spriteId: "monster_melee_01",
+    dropTableId: "starter_floor",
+    aiConfig: {
+      behavior: "ambush",
+      chaseRange: 8.8,
+      attackCooldownMs: 1500,
+      ambushRadius: 3.8
+    }
+  },
+  {
+    id: "venom_spitter",
+    name: "Venom Spitter",
+    healthMultiplier: 0.84,
+    damageMultiplier: 1.14,
+    attackRange: 5.5,
+    moveSpeed: 108,
+    xpValue: 38,
+    spriteId: "monster_ranged_01",
+    dropTableId: "cathedral_depths",
+    aiConfig: {
+      behavior: "kite",
+      chaseRange: 9.2,
+      attackCooldownMs: 1500,
+      preferredDistance: 5.1
+    }
+  },
+  {
+    id: "swamp_hulk",
+    name: "Swamp Hulk",
+    healthMultiplier: 1.8,
+    damageMultiplier: 1.16,
+    attackRange: 1.3,
+    moveSpeed: 80,
+    xpValue: 46,
+    spriteId: "monster_elite_01",
+    dropTableId: "catacomb_elite",
+    aiConfig: {
+      behavior: "chase",
+      chaseRange: 7.4,
+      attackCooldownMs: 2100
+    }
+  },
+  {
+    id: "fungal_host",
+    name: "Fungal Host",
+    healthMultiplier: 1.02,
+    damageMultiplier: 0.92,
+    attackRange: 3.8,
+    moveSpeed: 94,
+    xpValue: 39,
+    spriteId: "monster_ranged_01",
+    dropTableId: "cathedral_depths",
+    aiConfig: {
+      behavior: "support",
+      chaseRange: 7.8,
+      attackCooldownMs: 1850,
+      supportRange: 5.2,
+      healThreshold: 0.7,
+      healPower: 28
+    }
   }
 ];
 

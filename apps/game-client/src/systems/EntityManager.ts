@@ -36,7 +36,7 @@ export class EntityManager {
   private readonly monsterSpatial = new SpatialHash<MonsterRuntime>(2);
   private loot: LootRuntime[] = [];
   private boss: BossRuntime | null = null;
-  private staircase: (Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse) | null = null;
+  private staircases: Array<Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse> = [];
   private telegraphs: Array<Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse> = [];
 
   clear(): void {
@@ -45,7 +45,7 @@ export class EntityManager {
     this.monsterSpatial.clear();
     this.loot = [];
     this.boss = null;
-    this.staircase = null;
+    this.staircases = [];
     this.telegraphs = [];
   }
 
@@ -60,7 +60,9 @@ export class EntityManager {
       drop.sprite.destroy();
     }
     this.boss?.sprite.destroy();
-    this.staircase?.destroy();
+    for (const staircase of this.staircases) {
+      staircase.destroy();
+    }
     for (const telegraph of this.telegraphs) {
       telegraph.destroy();
     }
@@ -167,12 +169,22 @@ export class EntityManager {
   }
 
   setStaircase(sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse | null): void {
-    this.staircase?.destroy();
-    this.staircase = sprite;
+    this.setStaircases(sprite === null ? [] : [sprite]);
+  }
+
+  setStaircases(sprites: Array<Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse>): void {
+    for (const staircase of this.staircases) {
+      staircase.destroy();
+    }
+    this.staircases = sprites;
   }
 
   getStaircase(): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse | null {
-    return this.staircase;
+    return this.staircases[0] ?? null;
+  }
+
+  getStaircases(): Array<Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse> {
+    return this.staircases;
   }
 
   addTelegraph(sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse): void {

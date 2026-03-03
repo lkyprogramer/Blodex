@@ -5,7 +5,7 @@ import {
   validateSave,
   type RunRngStreamName
 } from "@blodex/core";
-import type { RunSaveDataV1 } from "@blodex/core";
+import type { RunSaveDataV2 } from "@blodex/core";
 import { SAVE_LEASE_TTL_MS, SaveManager } from "../SaveManager";
 
 class MemoryStorage implements Storage {
@@ -63,9 +63,9 @@ function makeCursor(): Record<RunRngStreamName, number> {
   };
 }
 
-function makeSnapshot(nowMs = 100): RunSaveDataV1 {
+function makeSnapshot(nowMs = 100): RunSaveDataV2 {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     savedAtMs: nowMs,
     appVersion: "test",
     runId: "seed:100",
@@ -82,6 +82,10 @@ function makeSnapshot(nowMs = 100): RunSaveDataV1 {
       kills: 0,
       totalKills: 0,
       lootCollected: 0,
+      challengeSuccessCount: 0,
+      inEndless: false,
+      endlessFloor: 0,
+      runMode: "normal",
       runEconomy: { obols: 0, spentObols: 0 }
     },
     player: {
@@ -126,6 +130,7 @@ function makeSnapshot(nowMs = 100): RunSaveDataV1 {
       layoutHash: "layout"
     },
     staircase: {
+      kind: "single",
       position: { x: 1, y: 1 },
       visible: false
     },

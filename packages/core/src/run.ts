@@ -1,5 +1,6 @@
 import type {
   BiomeId,
+  BranchChoice,
   DifficultyMode,
   DifficultyModifier,
   ItemInstance,
@@ -7,6 +8,7 @@ import type {
   PermanentUpgrade,
   PlayerState,
   ReplayInputEvent,
+  RunMode,
   RunEconomyState,
   RunReplay,
   RunRngStreamName,
@@ -34,6 +36,12 @@ export interface RunState {
   kills: number;
   totalKills: number;
   lootCollected: number;
+  branchChoice?: BranchChoice;
+  challengeSuccessCount: number;
+  inEndless: boolean;
+  endlessFloor: number;
+  runMode: RunMode;
+  dailyDate?: string;
   runEconomy: RunEconomyState;
   replay?: RunReplay;
   isVictory?: boolean;
@@ -100,6 +108,10 @@ export function createRunState(
     kills: 0,
     totalKills: 0,
     lootCollected: 0,
+    challengeSuccessCount: 0,
+    inEndless: false,
+    endlessFloor: 0,
+    runMode: "normal",
     runEconomy: {
       obols: 0,
       spentObols: 0
@@ -163,7 +175,7 @@ export function createInitialMeta(): MetaProgression {
     soulShards: 0,
     unlocks: [],
     cumulativeUnlockProgress: 0,
-    schemaVersion: 4,
+    schemaVersion: 5,
     selectedDifficulty: DEFAULT_DIFFICULTY,
     difficultyCompletions: createInitialDifficultyCompletions(),
     talentPoints: {},
@@ -174,6 +186,10 @@ export function createInitialMeta(): MetaProgression {
     mutationSlots: 1,
     mutationUnlockedIds: [],
     selectedMutationIds: [],
+    synergyDiscoveredIds: [],
+    endlessBestFloor: 0,
+    dailyHistory: [],
+    dailyRewardClaimedDates: [],
     permanentUpgrades: createInitialPermanentUpgrades()
   };
 }
@@ -190,7 +206,7 @@ export function enterNextFloor(run: RunState): RunState {
   const next: RunState = {
     ...run,
     currentFloor: nextFloor,
-    currentBiomeId: resolveBiomeForFloorBySeed(nextFloor, run.runSeed),
+    currentBiomeId: resolveBiomeForFloorBySeed(nextFloor, run.runSeed, run.branchChoice),
     floor: nextFloor,
     floorsCleared: run.floorsCleared + 1,
     kills: 0
@@ -247,7 +263,10 @@ export function endRun(
     isVictory: run.isVictory ?? false,
     obolsEarned: run.runEconomy.obols,
     soulShardsEarned: 0,
-    difficulty: run.difficulty
+    difficulty: run.difficulty,
+    challengeSuccessCount: run.challengeSuccessCount,
+    runMode: run.runMode,
+    ...(run.dailyDate === undefined ? {} : { dailyDate: run.dailyDate })
   };
 
   const replay =

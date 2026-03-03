@@ -58,8 +58,11 @@ describe("progression", () => {
         floorsCleared: 1,
         kills: 18,
         totalKills: 18,
-        lootCollected: 5
-        ,
+        lootCollected: 5,
+        challengeSuccessCount: 0,
+        inEndless: false,
+        endlessFloor: 0,
+        runMode: "normal",
         runEconomy: { obols: 12 }
       },
       player(3),

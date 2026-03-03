@@ -3,8 +3,10 @@ import {
   applyRunSummaryToMeta,
   buildMutationDefMap,
   calculateSoulShardReward,
+  canStartDailyScoredAttempt,
   collectUnlockedMutationIds,
   canPurchaseTalent,
+  createDailySeed,
   createInitialMeta,
   endRun,
   forgeBlueprint,
@@ -14,12 +16,13 @@ import {
   purchaseTalent,
   purchaseUnlock,
   resolveSelectedDifficulty,
+  resolveDailyDate,
   unlockEchoMutation,
   validateMutationSelection,
   isDifficultyUnlocked,
   setSelectedDifficulty,
   type MutationDef,
-  type RunSaveDataV1,
+  type RunSaveDataV2,
   type TalentNodeDef,
   type DifficultyMode,
   type MetaProgression
@@ -73,7 +76,7 @@ function hotkeyLabelFromKey(eventName: string): string {
 
 export class MetaMenuScene extends Phaser.Scene {
   private meta: MetaProgression = createInitialMeta();
-  private runSave: RunSaveDataV1 | null = null;
+  private runSave: RunSaveDataV2 | null = null;
   private readonly saveManager = new SaveManager();
   private readonly unbindDomActions: Array<() => void> = [];
   private readonly keyboardBindings: Array<{ eventName: string; handler: () => void }> = [];
@@ -127,6 +130,7 @@ export class MetaMenuScene extends Phaser.Scene {
         onUnlockMutation: (mutationId) => this.tryUnlockEchoMutation(mutationId),
         onToggleMutation: (mutationId) => this.tryToggleMutationSelection(mutationId),
         onStartRun: () => this.startRun(),
+        onStartDaily: () => this.startDailyRun(),
         onContinueRun: () => this.continueRun(),
         onAbandonRun: () => this.abandonRun()
       })
@@ -139,6 +143,7 @@ export class MetaMenuScene extends Phaser.Scene {
     this.bindKeyboard("keydown-W", () => this.selectDifficulty("hard"));
     this.bindKeyboard("keydown-E", () => this.selectDifficulty("nightmare"));
     this.bindKeyboard("keydown-ENTER", () => this.startRun());
+    this.bindKeyboard("keydown-D", () => this.startDailyRun());
     this.bindKeyboard("keydown-C", () => this.continueRun());
     this.bindKeyboard("keydown-B", () => this.abandonRun());
   }
@@ -259,6 +264,7 @@ export class MetaMenuScene extends Phaser.Scene {
     this.bindKeyboard("keydown-W", () => this.selectDifficulty("hard"));
     this.bindKeyboard("keydown-E", () => this.selectDifficulty("nightmare"));
     this.bindKeyboard("keydown-ENTER", () => this.startRun());
+    this.bindKeyboard("keydown-D", () => this.startDailyRun());
   }
 
   private buildMenuView(): MetaMenuPanelView {
@@ -438,6 +444,7 @@ export class MetaMenuScene extends Phaser.Scene {
       totalUnlocks: UNLOCK_DEFS.length,
       difficulties,
       runSave: this.describeRunSave(),
+      daily: this.describeDailyChallenge(),
       talentGroups: [...talentGroups.values()].map((group) => ({
         ...group,
         talents: [...group.talents].sort((left, right) => left.tier - right.tier)
@@ -521,6 +528,18 @@ export class MetaMenuScene extends Phaser.Scene {
       return "Clear 1 Hard run";
     }
     return "Always available";
+  }
+
+  private describeDailyChallenge(): MetaMenuPanelView["daily"] {
+    const date = resolveDailyDate();
+    const canScore = canStartDailyScoredAttempt(this.meta, date);
+    return {
+      date,
+      mode: canScore ? "scored" : "practice",
+      statusText: canScore
+        ? "Scored attempt available. Daily rewards can be claimed once."
+        : "Scored attempt already consumed today. Practice only (no score/reward)."
+    };
   }
 
   private describeRunSave(): MetaMenuPanelView["runSave"] {
@@ -698,7 +717,27 @@ export class MetaMenuScene extends Phaser.Scene {
     }
     const difficulty = resolveSelectedDifficulty(this.meta);
     this.hideDomMenu();
-    this.scene.start("dungeon", { difficulty });
+    this.scene.start("dungeon", {
+      difficulty,
+      runMode: "normal"
+    });
+  }
+
+  private startDailyRun(): void {
+    if (this.runSave !== null) {
+      return;
+    }
+    const dailyDate = resolveDailyDate();
+    const runSeed = createDailySeed(dailyDate);
+    const canScore = canStartDailyScoredAttempt(this.meta, dailyDate);
+    this.hideDomMenu();
+    this.scene.start("dungeon", {
+      difficulty: "hard",
+      runMode: "daily",
+      dailyDate,
+      dailyPractice: !canScore,
+      runSeed
+    });
   }
 
   private continueRun(): void {
@@ -720,7 +759,7 @@ export class MetaMenuScene extends Phaser.Scene {
     });
   }
 
-  private estimateAbandonNowMs(save: RunSaveDataV1): number {
+  private estimateAbandonNowMs(save: RunSaveDataV2): number {
     const inputs = save.run.replay?.inputs ?? [];
     let elapsedMs = 0;
     for (const input of inputs) {

@@ -1,8 +1,10 @@
 import {
-  deserializeRunState,
+  deserializeRunStateResult,
   RUN_SAVE_STORAGE_KEY,
+  RUN_SAVE_STORAGE_KEY_V1,
+  RUN_SAVE_STORAGE_KEY_V2,
   serializeRunState,
-  type RunSaveDataV1
+  type RunSaveDataV2
 } from "@blodex/core";
 
 export const RUN_SETTLED_STORAGE_KEY = "blodex_run_settled_v1";
@@ -15,6 +17,7 @@ export interface SaveManagerOptions {
   sessionStorage?: Storage;
   now?: () => number;
   storageKey?: string;
+  legacyStorageKey?: string;
   settledKey?: string;
   leaseTtlMs?: number;
   leaseHeartbeatMs?: number;
@@ -23,7 +26,7 @@ export interface SaveManagerOptions {
 
 export interface LeaseAcquireResult {
   ok: boolean;
-  save: RunSaveDataV1 | null;
+  save: RunSaveDataV2 | null;
   reason?: "missing_save" | "lease_held" | "write_failed";
   holderTabId?: string;
 }
@@ -53,6 +56,7 @@ export class SaveManager {
   private readonly sessionStorage: Storage | undefined;
   private readonly now: () => number;
   private readonly storageKey: string;
+  private readonly legacyStorageKey: string;
   private readonly settledKey: string;
   private readonly leaseTtlMs: number;
   private readonly leaseHeartbeatMs: number;
@@ -69,7 +73,8 @@ export class SaveManager {
     this.storage = options.storage ?? safeGetWindowStorage("localStorage");
     this.sessionStorage = options.sessionStorage ?? safeGetWindowStorage("sessionStorage");
     this.now = options.now ?? (() => Date.now());
-    this.storageKey = options.storageKey ?? RUN_SAVE_STORAGE_KEY;
+    this.storageKey = options.storageKey ?? RUN_SAVE_STORAGE_KEY_V2 ?? RUN_SAVE_STORAGE_KEY;
+    this.legacyStorageKey = options.legacyStorageKey ?? RUN_SAVE_STORAGE_KEY_V1;
     this.settledKey = options.settledKey ?? RUN_SETTLED_STORAGE_KEY;
     this.leaseTtlMs = options.leaseTtlMs ?? SAVE_LEASE_TTL_MS;
     this.leaseHeartbeatMs = options.leaseHeartbeatMs ?? SAVE_LEASE_HEARTBEAT_MS;
@@ -81,25 +86,55 @@ export class SaveManager {
     return this.tabId;
   }
 
-  readSave(): RunSaveDataV1 | null {
+  readSave(): RunSaveDataV2 | null {
     if (this.storage === undefined) {
       return null;
     }
 
-    let raw: string | null = null;
+    let rawV2: string | null = null;
     try {
-      raw = this.storage.getItem(this.storageKey);
+      rawV2 = this.storage.getItem(this.storageKey);
     } catch {
       return null;
     }
-    if (raw === null) {
+
+    if (rawV2 !== null) {
+      const parsed = deserializeRunStateResult(rawV2);
+      if (parsed.save !== null) {
+        return parsed.save;
+      }
+    }
+
+    let rawV1: string | null = null;
+    try {
+      rawV1 = this.storage.getItem(this.legacyStorageKey);
+    } catch {
+      return null;
+    }
+    if (rawV1 === null) {
       return null;
     }
 
-    return deserializeRunState(raw) as RunSaveDataV1 | null;
+    const migrated = deserializeRunStateResult(rawV1);
+    if (migrated.save === null) {
+      return null;
+    }
+
+    if (migrated.sourceVersion === 1) {
+      const wrote = this.writeSave(migrated.save);
+      if (wrote) {
+        try {
+          this.storage.removeItem(this.legacyStorageKey);
+        } catch {
+          // Keep legacy copy when cleanup fails; v2 still takes precedence.
+        }
+      }
+    }
+
+    return migrated.save;
   }
 
-  writeSave(snapshot: RunSaveDataV1): boolean {
+  writeSave(snapshot: RunSaveDataV2): boolean {
     if (this.storage === undefined) {
       return false;
     }
@@ -118,12 +153,13 @@ export class SaveManager {
     }
     try {
       this.storage.removeItem(this.storageKey);
+      this.storage.removeItem(this.legacyStorageKey);
     } catch {
       // Best effort cleanup; keep runtime alive when storage is unavailable.
     }
   }
 
-  scheduleSave(snapshotBuilder: () => RunSaveDataV1 | null): void {
+  scheduleSave(snapshotBuilder: () => RunSaveDataV2 | null): void {
     if (this.debounceTimer !== null) {
       clearTimeout(this.debounceTimer);
     }
@@ -134,7 +170,7 @@ export class SaveManager {
     }, this.debounceMs);
   }
 
-  flushSave(snapshotBuilder: () => RunSaveDataV1 | null): boolean {
+  flushSave(snapshotBuilder: () => RunSaveDataV2 | null): boolean {
     if (this.debounceTimer !== null) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
@@ -147,7 +183,7 @@ export class SaveManager {
     return this.writeSave(snapshot);
   }
 
-  hasForeignLease(save: RunSaveDataV1 | null, nowMs = this.now()): boolean {
+  hasForeignLease(save: RunSaveDataV2 | null, nowMs = this.now()): boolean {
     if (save?.lease === undefined) {
       return false;
     }
@@ -157,7 +193,7 @@ export class SaveManager {
     return save.lease.tabId !== this.tabId;
   }
 
-  acquireLease(save: RunSaveDataV1 | null = this.readSave(), nowMs = this.now()): LeaseAcquireResult {
+  acquireLease(save: RunSaveDataV2 | null = this.readSave(), nowMs = this.now()): LeaseAcquireResult {
     if (save === null) {
       return {
         ok: false,
@@ -175,7 +211,7 @@ export class SaveManager {
       };
     }
 
-    const leased: RunSaveDataV1 = {
+    const leased: RunSaveDataV2 = {
       ...save,
       lease: {
         tabId: this.tabId,
@@ -198,7 +234,7 @@ export class SaveManager {
     };
   }
 
-  renewLease(snapshotBuilder?: () => RunSaveDataV1 | null): boolean {
+  renewLease(snapshotBuilder?: () => RunSaveDataV2 | null): boolean {
     const nowMs = this.now();
     const save = this.readSave();
     if (save === null) {
@@ -223,7 +259,7 @@ export class SaveManager {
     });
   }
 
-  startLeaseHeartbeat(snapshotBuilder?: () => RunSaveDataV1 | null): void {
+  startLeaseHeartbeat(snapshotBuilder?: () => RunSaveDataV2 | null): void {
     this.stopLeaseHeartbeat();
     this.heartbeatTimer = globalThis.setInterval(() => {
       this.renewLease(snapshotBuilder);

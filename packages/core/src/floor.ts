@@ -1,4 +1,8 @@
 import type { DungeonLayout, FloorConfig, StaircaseState } from "./contracts/types";
+import {
+  createBranchStaircaseState,
+  resolveBranchSideAtPosition
+} from "./pathSelection";
 
 function roomCenter(room: { x: number; y: number; width: number; height: number }): { x: number; y: number } {
   return {
@@ -37,9 +41,14 @@ export function findStaircasePosition(
 
 export function createStaircaseState(
   layout: DungeonLayout,
-  playerSpawn: { x: number; y: number } = layout.playerSpawn
+  playerSpawn: { x: number; y: number } = layout.playerSpawn,
+  floorNumber = 1
 ): StaircaseState {
+  if (floorNumber === 2) {
+    return createBranchStaircaseState(layout, playerSpawn);
+  }
   return {
+    kind: "single",
     position: findStaircasePosition(layout, playerSpawn),
     visible: false
   };
@@ -66,6 +75,9 @@ export function isPlayerOnStaircase(
 ): boolean {
   if (!staircase.visible) {
     return false;
+  }
+  if (staircase.kind === "branch") {
+    return resolveBranchSideAtPosition(staircase, playerPosition, radius) !== undefined;
   }
   return Math.hypot(playerPosition.x - staircase.position.x, playerPosition.y - staircase.position.y) <= radius;
 }

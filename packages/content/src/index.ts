@@ -15,3 +15,4 @@ export * from "./types";
 export * from "./blueprints";
 export * from "./mutations";
 export * from "./weaponTypes";
+export * from "./synergies";
