@@ -575,6 +575,236 @@
     }
   },
   {
+    "id": "skill_shield_slam",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "2f2d58a570",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_shield_slam.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_shield_slam.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_shield_slam.png"
+    }
+  },
+  {
+    "id": "skill_quake_strike",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "597a44d5dd",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_quake_strike.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_quake_strike.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_quake_strike.png"
+    }
+  },
+  {
+    "id": "skill_execution_drive",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "38f589a7d0",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_execution_drive.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_execution_drive.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_execution_drive.png"
+    }
+  },
+  {
+    "id": "skill_blade_fan",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "abfe5ddb99",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_blade_fan.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_blade_fan.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_blade_fan.png"
+    }
+  },
+  {
+    "id": "skill_mark_prey",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "77216090dc",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_mark_prey.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_mark_prey.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_mark_prey.png"
+    }
+  },
+  {
+    "id": "skill_venom_volley",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "ade818d3ca",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_venom_volley.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_venom_volley.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_venom_volley.png"
+    }
+  },
+  {
+    "id": "skill_wind_dash",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "6f2ea8afdc",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_wind_dash.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_wind_dash.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_wind_dash.png"
+    }
+  },
+  {
+    "id": "skill_chain_lightning",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "a509c88d71",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_chain_lightning.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_chain_lightning.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_chain_lightning.png"
+    }
+  },
+  {
+    "id": "skill_spirit_burst",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "f7623b6545",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_spirit_burst.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_spirit_burst.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_spirit_burst.png"
+    }
+  },
+  {
+    "id": "skill_rift_step",
+    "category": "skill_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "8896f0332c",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/skill_rift_step.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/skill_rift_step.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/skill_rift_step.png"
+    }
+  },
+  {
     "id": "meta_unlock_locked",
     "category": "ui_icon",
     "styleTag": "painterly-dark-fantasy-v1",
