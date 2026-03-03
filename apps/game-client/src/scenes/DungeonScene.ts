@@ -158,7 +158,7 @@ import type { MonsterAiUpdateResult } from "../systems/AISystem";
 import { CombatSystem } from "../systems/CombatSystem";
 import { EntityManager } from "../systems/EntityManager";
 import { UI_POLISH_FLAGS } from "../config/uiFlags";
-import { getContentLocalizer, getI18nService, t } from "../i18n";
+import { getContentLocalizer, getI18nService, resolveInitialLocale, setLocale, t } from "../i18n";
 import { gridToIso, isoToGrid } from "../systems/iso";
 import { MonsterSpawnSystem } from "../systems/MonsterSpawnSystem";
 import { MovementSystem } from "../systems/MovementSystem";
@@ -574,6 +574,7 @@ export class DungeonScene extends Phaser.Scene {
     this.vfxSystem.setEnabled(!this.resolveDebugFlag(DISABLE_VFX_QUERY));
     this.sfxSystem.setEnabled(!this.resolveDebugFlag(DISABLE_SFX_QUERY));
     this.meta = this.loadMeta();
+    this.resolveLocalePreference();
     this.normalizeMetaForPhase4B();
     this.refreshTalentEffects();
     this.selectedDifficulty =
@@ -2244,6 +2245,21 @@ export class DungeonScene extends Phaser.Scene {
       this.saveMeta(this.meta);
     } else {
       this.meta = normalized;
+    }
+  }
+
+  private resolveLocalePreference(): void {
+    const locale = resolveInitialLocale({
+      preferredLocale: this.meta.preferredLocale,
+      defaultLocale: "en-US"
+    });
+    setLocale(locale, { persist: this.meta.preferredLocale !== null });
+    if (this.meta.preferredLocale !== null && this.meta.preferredLocale !== locale) {
+      this.meta = {
+        ...this.meta,
+        preferredLocale: locale
+      };
+      this.saveMeta(this.meta);
     }
   }
 

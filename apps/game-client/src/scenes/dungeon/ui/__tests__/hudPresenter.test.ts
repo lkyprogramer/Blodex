@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { HudPresenter } from "../HudPresenter";
 
 const META_MOCK: MetaProgression = {
-  schemaVersion: 5,
+  schemaVersion: 6,
+  preferredLocale: "en-US",
   runsPlayed: 2,
   bestFloor: 3,
   bestTimeMs: 90_000,

@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { createUIStateSnapshot } from "../state/UIStateAdapter";
 
 const META_MOCK: MetaProgression = {
-  schemaVersion: 5,
+  schemaVersion: 6,
+  preferredLocale: "en-US",
   runsPlayed: 3,
   bestFloor: 5,
   bestTimeMs: 123_000,

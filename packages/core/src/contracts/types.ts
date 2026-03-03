@@ -23,6 +23,7 @@ export type MonsterAffixId = "frenzied" | "armored" | "vampiric" | "splitting";
 export type DamageType = "physical" | "arcane";
 
 export type DifficultyMode = "normal" | "hard" | "nightmare";
+export type LocaleCode = "en-US" | "zh-CN";
 
 export type WeaponType = "sword" | "axe" | "dagger" | "staff" | "hammer" | "sword_master";
 export type SkillArchetype = "warrior" | "ranger" | "arcanist";
@@ -684,7 +685,8 @@ export interface MetaProgression {
   soulShards: number;
   unlocks: string[];
   cumulativeUnlockProgress: number;
-  schemaVersion: 5;
+  schemaVersion: 6;
+  preferredLocale: LocaleCode | null;
   selectedDifficulty: DifficultyMode;
   difficultyCompletions: Record<DifficultyMode, number>;
   talentPoints: Record<string, number>;

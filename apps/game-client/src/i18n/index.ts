@@ -6,6 +6,7 @@ import { ZH_CN_CATALOG } from "./catalog/zh-CN";
 import { ContentLocalizer } from "./content/ContentLocalizer";
 import { resolveInitialLocale } from "./resolveInitialLocale";
 import type { I18nService, LocaleCode, MessageParams } from "./types";
+export { normalizeLocale, resolveInitialLocale } from "./resolveInitialLocale";
 
 const catalogRegistry = new CatalogRegistry([EN_US_CATALOG, ZH_CN_CATALOG]);
 const i18nService = new DefaultI18nService(catalogRegistry, {
@@ -17,6 +18,14 @@ const contentLocalizer = new ContentLocalizer(i18nService);
 
 let initialized = false;
 
+function applyLocaleToDocument(locale: LocaleCode): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+  document.body.dataset.locale = locale;
+  document.documentElement.lang = locale;
+}
+
 export function initializeI18n(): void {
   if (initialized) {
     return;
@@ -26,6 +35,7 @@ export function initializeI18n(): void {
     defaultLocale: "en-US"
   });
   i18nService.setLocale(locale);
+  applyLocaleToDocument(locale);
   initialized = true;
 }
 
@@ -33,9 +43,12 @@ export function t(key: string, params?: MessageParams): string {
   return i18nService.t(key, params);
 }
 
-export function setLocale(locale: LocaleCode): void {
+export function setLocale(locale: LocaleCode, options?: { persist?: boolean }): void {
   i18nService.setLocale(locale);
-  localePreferenceStore.setLocale(locale);
+  applyLocaleToDocument(i18nService.getLocale());
+  if (options?.persist !== false) {
+    localePreferenceStore.setLocale(i18nService.getLocale());
+  }
 }
 
 export function getLocale(): LocaleCode {

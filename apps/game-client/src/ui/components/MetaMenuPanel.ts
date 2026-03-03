@@ -1,5 +1,6 @@
 import type { BlueprintDef, DifficultyMode, MutationDef, TalentPath } from "@blodex/core";
 import { t } from "../../i18n";
+import type { LocaleCode } from "../../i18n/types";
 
 function escapeHtml(raw: string): string {
   return raw
@@ -108,6 +109,12 @@ export interface MetaMenuMutationGroupView {
 }
 
 export interface MetaMenuPanelView {
+  locale: LocaleCode;
+  availableLocales: Array<{
+    code: LocaleCode;
+    label: string;
+    selected: boolean;
+  }>;
   soulShards: number;
   echoes: number;
   unlockedCount: number;
@@ -125,6 +132,7 @@ export interface MetaMenuPanelView {
 }
 
 export interface MetaMenuPanelHandlers {
+  onSetLocale: (locale: LocaleCode) => void;
   onPurchase: (index: number) => void;
   onPurchaseTalent: (talentId: string) => void;
   onSelectDifficulty: (mode: DifficultyMode) => void;
@@ -155,6 +163,24 @@ function pathLabel(path: TalentPath): string {
 }
 
 export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
+  const localeSwitcherHtml = view.availableLocales
+    .map((entry) => {
+      const classes = ["meta-locale-chip", entry.selected ? "selected" : ""]
+        .filter((className) => className.length > 0)
+        .join(" ");
+      return `
+        <button
+          class="${classes}"
+          data-action="set-locale"
+          data-locale="${entry.code}"
+          aria-pressed="${entry.selected ? "true" : "false"}"
+        >
+          ${escapeHtml(entry.label)}
+        </button>
+      `;
+    })
+    .join("");
+
   const resumeHtml =
     view.runSave === null
       ? ""
@@ -387,7 +413,13 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
   return `
     <div class="meta-menu-shell">
       <header class="meta-menu-header">
-        <h1>${t("ui.meta.title")}</h1>
+        <div class="meta-menu-header-main">
+          <h1>${t("ui.meta.title")}</h1>
+          <div class="meta-locale-switcher" aria-label="${escapeHtml(t("ui.meta.language.aria_label"))}">
+            <span>${escapeHtml(t("ui.meta.language.label"))}</span>
+            <div class="meta-locale-switcher-options">${localeSwitcherHtml}</div>
+          </div>
+        </div>
         <div class="meta-menu-subhead">
           <span>${t("ui.meta.resources.soul_shards", { value: view.soulShards })}</span>
           <span>${t("ui.meta.resources.echoes", { value: view.echoes })}</span>
@@ -448,6 +480,16 @@ export function bindMetaMenuPanelActions(
   handlers: MetaMenuPanelHandlers
 ): Array<() => void> {
   const unbindActions: Array<() => void> = [];
+
+  container.querySelectorAll<HTMLButtonElement>("button[data-action='set-locale']").forEach((button) => {
+    const locale = button.dataset.locale as LocaleCode | undefined;
+    if (locale === undefined) {
+      return;
+    }
+    const onClick = () => handlers.onSetLocale(locale);
+    button.addEventListener("click", onClick);
+    unbindActions.push(() => button.removeEventListener("click", onClick));
+  });
 
   container.querySelectorAll<HTMLButtonElement>("button[data-action='purchase']").forEach((button) => {
     const onClick = () => {
