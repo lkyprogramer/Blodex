@@ -7,6 +7,8 @@ Isometric fantasy hack-and-slash MVP built with Phaser + TypeScript in a pnpm wo
 ## Quick start
 
 ```bash
+corepack enable
+corepack prepare pnpm@10.23.0 --activate
 pnpm install
 pnpm dev
 ```
@@ -26,6 +28,7 @@ pnpm dev
 - `pnpm check`: TypeScript checks
 - `pnpm quality:precheck`: run local quality gates before commit
 - `pnpm ci:check`: run CI-equivalent quality gates
+- `pnpm check:toolchain`: verify pnpm version consistency across local packageManager/engines and CI workflow
 - `pnpm check:source-hygiene`: block build artifacts under `src/**`
 - `pnpm check:content-i18n`: verify content locale consistency (`en-US` / `zh-CN`)
 - `pnpm assets:compile`: compile image generation jobs from asset plan
