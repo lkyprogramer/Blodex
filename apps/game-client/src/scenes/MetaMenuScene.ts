@@ -22,6 +22,7 @@ import {
   isDifficultyUnlocked,
   setSelectedDifficulty,
   type MutationDef,
+  type MutationEffect,
   type RunSaveDataV2,
   type TalentNodeDef,
   type DifficultyMode,
@@ -29,13 +30,18 @@ import {
 } from "@blodex/core";
 import { BLUEPRINT_DEF_MAP, BLUEPRINT_DEFS, MUTATION_DEFS, TALENT_DEFS, UNLOCK_DEFS } from "@blodex/content";
 import { UI_POLISH_FLAGS } from "../config/uiFlags";
-import { getContentLocalizer, t } from "../i18n";
+import { getContentLocalizer, getLocale, resolveInitialLocale, setLocale, t } from "../i18n";
+import type { LocaleCode } from "../i18n/types";
 import { SaveManager } from "../systems/SaveManager";
 import {
   bindMetaMenuPanelActions,
   renderMetaMenuPanel,
   type MetaMenuPanelView
 } from "../ui/components/MetaMenuPanel";
+import {
+  bindLanguageGateModalActions,
+  renderLanguageGateModal
+} from "../ui/components/LanguageGateModal";
 import { playSceneTransition } from "../ui/SceneTransitionOverlay";
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
@@ -48,6 +54,17 @@ const DIFFICULTY_LABEL_KEY: Record<DifficultyMode, string> = {
   nightmare: "ui.meta.difficulty.nightmare"
 };
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
+const MUTATION_EFFECT_LABEL_KEY: Record<MutationEffect["type"], string> = {
+  on_kill_heal_percent: "ui.meta.mutation.effect.on_kill_heal_percent",
+  on_kill_attack_speed: "ui.meta.mutation.effect.on_kill_attack_speed",
+  on_hit_invuln: "ui.meta.mutation.effect.on_hit_invuln",
+  on_hit_reflect_percent: "ui.meta.mutation.effect.on_hit_reflect_percent",
+  once_per_floor_lethal_guard: "ui.meta.mutation.effect.once_per_floor_lethal_guard",
+  drop_bonus: "ui.meta.mutation.effect.drop_bonus",
+  move_speed_multiplier: "ui.meta.mutation.effect.move_speed_multiplier",
+  potion_heal_amp_and_self_damage: "ui.meta.mutation.effect.potion_heal_amp_and_self_damage",
+  hidden_room_reveal_radius: "ui.meta.mutation.effect.hidden_room_reveal_radius"
+};
 
 function difficultyLabel(mode: DifficultyMode): string {
   return t(DIFFICULTY_LABEL_KEY[mode]);
@@ -86,8 +103,12 @@ export class MetaMenuScene extends Phaser.Scene {
   private runSave: RunSaveDataV2 | null = null;
   private readonly saveManager = new SaveManager();
   private readonly unbindDomActions: Array<() => void> = [];
+  private readonly unbindLanguageGateActions: Array<() => void> = [];
   private readonly keyboardBindings: Array<{ eventName: string; handler: () => void }> = [];
   private menuRoot: HTMLDivElement | null = null;
+  private languageGateRoot: HTMLDivElement | null = null;
+  private languageGateActive = false;
+  private pendingLocaleSelection: LocaleCode = "en-US";
 
   constructor() {
     super("meta-menu");
@@ -95,6 +116,7 @@ export class MetaMenuScene extends Phaser.Scene {
 
   create(): void {
     this.meta = this.loadMeta();
+    this.resolveLocalePreference();
     this.normalizeMetaForPhase4B();
     this.runSave = this.saveManager.readSave();
     const resolvedDifficulty = resolveSelectedDifficulty(this.meta);
@@ -107,13 +129,19 @@ export class MetaMenuScene extends Phaser.Scene {
     }
 
     this.teardownDomBindings();
+    this.teardownLanguageGateBindings();
     this.teardownKeyboardBindings();
     this.hideDomMenu();
+    this.hideLanguageGate();
 
     if (UI_POLISH_FLAGS.metaMenuDomEnabled && this.ensureMenuRoot()) {
       this.renderDomMenu();
     } else {
       this.renderLegacyPhaserMenu();
+    }
+
+    if (this.languageGateActive) {
+      this.showLanguageGate();
     }
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.handleSceneTeardown());
@@ -130,6 +158,7 @@ export class MetaMenuScene extends Phaser.Scene {
 
     this.unbindDomActions.push(
       ...bindMetaMenuPanelActions(this.menuRoot, {
+        onSetLocale: (locale) => this.switchLocale(locale),
         onPurchase: (index) => this.tryPurchase(index),
         onPurchaseTalent: (talentId) => this.tryPurchaseTalent(talentId),
         onSelectDifficulty: (mode) => this.selectDifficulty(mode),
@@ -143,16 +172,18 @@ export class MetaMenuScene extends Phaser.Scene {
       })
     );
 
-    PURCHASE_HOTKEYS.forEach((key, index) => {
-      this.bindKeyboard(`keydown-${key}`, () => this.tryPurchase(index));
-    });
-    this.bindKeyboard("keydown-Q", () => this.selectDifficulty("normal"));
-    this.bindKeyboard("keydown-W", () => this.selectDifficulty("hard"));
-    this.bindKeyboard("keydown-E", () => this.selectDifficulty("nightmare"));
-    this.bindKeyboard("keydown-ENTER", () => this.startRun());
-    this.bindKeyboard("keydown-D", () => this.startDailyRun());
-    this.bindKeyboard("keydown-C", () => this.continueRun());
-    this.bindKeyboard("keydown-B", () => this.abandonRun());
+    if (!this.languageGateActive) {
+      PURCHASE_HOTKEYS.forEach((key, index) => {
+        this.bindKeyboard(`keydown-${key}`, () => this.tryPurchase(index));
+      });
+      this.bindKeyboard("keydown-Q", () => this.selectDifficulty("normal"));
+      this.bindKeyboard("keydown-W", () => this.selectDifficulty("hard"));
+      this.bindKeyboard("keydown-E", () => this.selectDifficulty("nightmare"));
+      this.bindKeyboard("keydown-ENTER", () => this.startRun());
+      this.bindKeyboard("keydown-D", () => this.startDailyRun());
+      this.bindKeyboard("keydown-C", () => this.continueRun());
+      this.bindKeyboard("keydown-B", () => this.abandonRun());
+    }
   }
 
   private renderLegacyPhaserMenu(): void {
@@ -276,6 +307,88 @@ export class MetaMenuScene extends Phaser.Scene {
     this.bindKeyboard("keydown-E", () => this.selectDifficulty("nightmare"));
     this.bindKeyboard("keydown-ENTER", () => this.startRun());
     this.bindKeyboard("keydown-D", () => this.startDailyRun());
+  }
+
+  private resolveLocalePreference(): void {
+    const locale = resolveInitialLocale({
+      preferredLocale: this.meta.preferredLocale,
+      defaultLocale: "en-US"
+    });
+    this.languageGateActive = this.meta.preferredLocale === null;
+    this.pendingLocaleSelection = locale;
+    setLocale(locale, { persist: this.meta.preferredLocale !== null });
+    if (this.meta.preferredLocale !== null && this.meta.preferredLocale !== locale) {
+      this.meta = {
+        ...this.meta,
+        preferredLocale: locale
+      };
+      this.saveMeta(this.meta);
+    }
+  }
+
+  private switchLocale(locale: LocaleCode): void {
+    if (this.languageGateActive) {
+      return;
+    }
+    if (this.meta.preferredLocale === locale && getLocale() === locale) {
+      return;
+    }
+    setLocale(locale);
+    this.meta = {
+      ...this.meta,
+      preferredLocale: locale
+    };
+    this.saveMeta(this.meta);
+    this.scene.restart();
+  }
+
+  private ensureLanguageGateRoot(): boolean {
+    this.languageGateRoot = document.querySelector("#language-gate") as HTMLDivElement | null;
+    return this.languageGateRoot !== null;
+  }
+
+  private showLanguageGate(): void {
+    if (!this.ensureLanguageGateRoot() || this.languageGateRoot === null) {
+      return;
+    }
+    this.teardownLanguageGateBindings();
+    this.languageGateRoot.classList.remove("hidden");
+    this.languageGateRoot.innerHTML = renderLanguageGateModal({
+      selectedLocale: this.pendingLocaleSelection
+    });
+    this.unbindLanguageGateActions.push(
+      ...bindLanguageGateModalActions(this.languageGateRoot, {
+        onSelectLocale: (locale) => {
+          this.pendingLocaleSelection = locale;
+          setLocale(locale, { persist: false });
+          this.showLanguageGate();
+        },
+        onConfirm: () => this.confirmLanguageSelection()
+      })
+    );
+  }
+
+  private hideLanguageGate(): void {
+    const root = this.languageGateRoot ?? (document.querySelector("#language-gate") as HTMLDivElement | null);
+    if (root === null) {
+      return;
+    }
+    root.classList.add("hidden");
+    root.innerHTML = "";
+  }
+
+  private confirmLanguageSelection(): void {
+    const locale = this.pendingLocaleSelection;
+    this.languageGateActive = false;
+    setLocale(locale);
+    this.meta = {
+      ...this.meta,
+      preferredLocale: locale
+    };
+    this.saveMeta(this.meta);
+    this.teardownLanguageGateBindings();
+    this.hideLanguageGate();
+    this.scene.restart();
   }
 
   private buildMenuView(): MetaMenuPanelView {
@@ -450,8 +563,22 @@ export class MetaMenuScene extends Phaser.Scene {
         requirement: this.difficultyRequirement(mode)
       };
     });
+    const currentLocale = getLocale();
 
     return {
+      locale: currentLocale,
+      availableLocales: [
+        {
+          code: "en-US",
+          label: t("ui.locale.english"),
+          selected: currentLocale === "en-US"
+        },
+        {
+          code: "zh-CN",
+          label: t("ui.locale.zh_cn"),
+          selected: currentLocale === "zh-CN"
+        }
+      ],
       soulShards: this.meta.soulShards,
       echoes: this.meta.echoes,
       unlockedCount: this.meta.unlocks.length,
@@ -521,7 +648,10 @@ export class MetaMenuScene extends Phaser.Scene {
 
   private describeMutationEffects(mutation: MutationDef): string {
     return mutation.effects
-      .map((effect) => effect.type.replaceAll("_", " "))
+      .map((effect) => {
+        const key = MUTATION_EFFECT_LABEL_KEY[effect.type];
+        return key === undefined ? effect.type.replaceAll("_", " ") : t(key);
+      })
       .join(" + ");
   }
 
@@ -566,7 +696,7 @@ export class MetaMenuScene extends Phaser.Scene {
     }
     const leaseBlocked = this.saveManager.hasForeignLease(this.runSave);
     const date = new Date(this.runSave.savedAtMs);
-    const when = Number.isNaN(date.valueOf()) ? t("ui.meta.save.unknown_time") : date.toLocaleString();
+    const when = Number.isNaN(date.valueOf()) ? t("ui.meta.save.unknown_time") : date.toLocaleString(getLocale());
     return {
       canContinue: !leaseBlocked,
       canAbandon: !leaseBlocked,
@@ -607,6 +737,16 @@ export class MetaMenuScene extends Phaser.Scene {
     this.unbindDomActions.length = 0;
   }
 
+  private teardownLanguageGateBindings(): void {
+    if (this.unbindLanguageGateActions.length === 0) {
+      return;
+    }
+    for (const off of this.unbindLanguageGateActions) {
+      off();
+    }
+    this.unbindLanguageGateActions.length = 0;
+  }
+
   private ensureMenuRoot(): boolean {
     this.menuRoot = document.querySelector("#meta-menu") as HTMLDivElement | null;
     return this.menuRoot !== null;
@@ -624,7 +764,9 @@ export class MetaMenuScene extends Phaser.Scene {
   private handleSceneTeardown(): void {
     this.teardownKeyboardBindings();
     this.teardownDomBindings();
+    this.teardownLanguageGateBindings();
     this.hideDomMenu();
+    this.hideLanguageGate();
   }
 
   private normalizeMetaForPhase4B(): void {
@@ -638,6 +780,9 @@ export class MetaMenuScene extends Phaser.Scene {
   }
 
   private tryPurchase(index: number): void {
+    if (this.languageGateActive) {
+      return;
+    }
     const unlock = UNLOCK_DEFS[index];
     if (unlock === undefined) {
       return;
@@ -652,6 +797,9 @@ export class MetaMenuScene extends Phaser.Scene {
   }
 
   private tryForgeBlueprint(blueprintId: string): void {
+    if (this.languageGateActive) {
+      return;
+    }
     const blueprint = BLUEPRINT_DEF_MAP[blueprintId];
     if (blueprint === undefined) {
       return;
@@ -666,6 +814,9 @@ export class MetaMenuScene extends Phaser.Scene {
   }
 
   private tryUnlockEchoMutation(mutationId: string): void {
+    if (this.languageGateActive) {
+      return;
+    }
     const mutation = MUTATION_DEF_BY_ID[mutationId];
     if (mutation === undefined) {
       return;
@@ -680,6 +831,9 @@ export class MetaMenuScene extends Phaser.Scene {
   }
 
   private tryToggleMutationSelection(mutationId: string): void {
+    if (this.languageGateActive) {
+      return;
+    }
     const mutation = MUTATION_DEF_BY_ID[mutationId];
     if (mutation === undefined) {
       return;
@@ -710,6 +864,9 @@ export class MetaMenuScene extends Phaser.Scene {
   }
 
   private tryPurchaseTalent(talentId: string): void {
+    if (this.languageGateActive) {
+      return;
+    }
     const talent = TALENT_DEFS.find((entry) => entry.id === talentId);
     if (talent === undefined) {
       return;
@@ -724,6 +881,9 @@ export class MetaMenuScene extends Phaser.Scene {
   }
 
   private selectDifficulty(mode: DifficultyMode): void {
+    if (this.languageGateActive) {
+      return;
+    }
     const next = setSelectedDifficulty(this.meta, mode);
     if (next === this.meta) {
       return;
@@ -734,6 +894,9 @@ export class MetaMenuScene extends Phaser.Scene {
   }
 
   private startRun(): void {
+    if (this.languageGateActive) {
+      return;
+    }
     if (this.runSave !== null) {
       return;
     }
@@ -754,6 +917,9 @@ export class MetaMenuScene extends Phaser.Scene {
   }
 
   private startDailyRun(): void {
+    if (this.languageGateActive) {
+      return;
+    }
     if (this.runSave !== null) {
       return;
     }
@@ -779,6 +945,9 @@ export class MetaMenuScene extends Phaser.Scene {
   }
 
   private continueRun(): void {
+    if (this.languageGateActive) {
+      return;
+    }
     const save = this.saveManager.readSave();
     if (save === null) {
       this.scene.restart();
@@ -818,6 +987,9 @@ export class MetaMenuScene extends Phaser.Scene {
   }
 
   private abandonRun(): void {
+    if (this.languageGateActive) {
+      return;
+    }
     const save = this.saveManager.readSave();
     if (save === null) {
       this.scene.restart();

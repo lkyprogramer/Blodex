@@ -1,6 +1,9 @@
 import type { I18nService } from "../types";
 import {
+  contentAffixDescriptionKey,
+  contentAffixNameKey,
   contentBiomeNameKey,
+  contentBossNameKey,
   contentBlueprintNameKey,
   contentEventChoiceDescriptionKey,
   contentEventChoiceNameKey,
@@ -8,6 +11,7 @@ import {
   contentEventNameKey,
   contentItemNameKey,
   contentMutationNameKey,
+  contentMonsterNameKey,
   contentSkillDescriptionKey,
   contentSkillNameKey,
   contentTalentDescriptionKey,
@@ -73,6 +77,22 @@ export class ContentLocalizer {
 
   biomeName(biomeId: string, fallback: string): string {
     return this.resolve(contentBiomeNameKey(biomeId), fallback);
+  }
+
+  monsterName(monsterId: string, fallback: string): string {
+    return this.resolve(contentMonsterNameKey(monsterId), fallback);
+  }
+
+  affixName(affixId: string, fallback: string): string {
+    return this.resolve(contentAffixNameKey(affixId), fallback);
+  }
+
+  affixDescription(affixId: string, fallback: string): string {
+    return this.resolve(contentAffixDescriptionKey(affixId), fallback);
+  }
+
+  bossName(bossId: string, fallback: string): string {
+    return this.resolve(contentBossNameKey(bossId), fallback);
   }
 
   private resolve(key: string, fallback: string): string {

@@ -4,6 +4,11 @@ import { renderMetaMenuPanel } from "./MetaMenuPanel";
 describe("renderMetaMenuPanel", () => {
   it("renders tier groups and action attributes", () => {
     const html = renderMetaMenuPanel({
+      locale: "en-US",
+      availableLocales: [
+        { code: "en-US", label: "English", selected: true },
+        { code: "zh-CN", label: "简体中文", selected: false }
+      ],
       soulShards: 120,
       echoes: 5,
       unlockedCount: 2,
@@ -160,6 +165,7 @@ describe("renderMetaMenuPanel", () => {
     });
 
     expect(html).toContain('data-action="difficulty"');
+    expect(html).toContain('data-action="set-locale"');
     expect(html).toContain('data-action="purchase"');
     expect(html).toContain('data-action="purchase-talent"');
     expect(html).toContain('data-action="forge-blueprint"');
@@ -181,6 +187,11 @@ describe("renderMetaMenuPanel", () => {
 
   it("applies forged styles without relying on localized status text", () => {
     const html = renderMetaMenuPanel({
+      locale: "zh-CN",
+      availableLocales: [
+        { code: "en-US", label: "English", selected: false },
+        { code: "zh-CN", label: "简体中文", selected: true }
+      ],
       soulShards: 0,
       echoes: 0,
       unlockedCount: 0,

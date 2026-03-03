@@ -19,7 +19,15 @@ function normalizeLocaleCandidate(candidate: string): LocaleCode | null {
   return null;
 }
 
+export function normalizeLocale(input: string | null | undefined): LocaleCode | null {
+  if (input === null || input === undefined) {
+    return null;
+  }
+  return normalizeLocaleCandidate(input);
+}
+
 export function resolveInitialLocale(input?: {
+  preferredLocale?: string | null;
   preferenceStore?: LocalePreferenceStore;
   browserLocales?: readonly string[];
   defaultLocale?: LocaleCode;
@@ -27,12 +35,14 @@ export function resolveInitialLocale(input?: {
   const defaultLocale = input?.defaultLocale ?? "en-US";
   const preferenceStore = input?.preferenceStore ?? new LocalePreferenceStore();
 
-  const preferred = preferenceStore.getLocale();
-  if (preferred !== null) {
-    const normalizedPreferred = normalizeLocaleCandidate(preferred);
-    if (normalizedPreferred !== null) {
-      return normalizedPreferred;
-    }
+  const preferredLocale = normalizeLocale(input?.preferredLocale);
+  if (preferredLocale !== null) {
+    return preferredLocale;
+  }
+
+  const storedLocale = normalizeLocale(preferenceStore.getLocale());
+  if (storedLocale !== null) {
+    return storedLocale;
   }
 
   const browserLocales =
@@ -44,11 +54,11 @@ export function resolveInitialLocale(input?: {
         : [navigator.language]);
 
   for (const candidate of browserLocales) {
-    const normalized = normalizeLocaleCandidate(candidate);
+    const normalized = normalizeLocale(candidate);
     if (normalized !== null) {
       return normalized;
     }
   }
 
-  return defaultLocale;
+  return normalizeLocale(defaultLocale) ?? "en-US";
 }

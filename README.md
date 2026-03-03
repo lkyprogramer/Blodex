@@ -30,6 +30,14 @@ pnpm dev
 
 See `docs/mvp-spec.md` and `docs/art-style-bible.md` for product and art pipeline details.
 
+## Localization
+
+- Supported locales: `en-US`, `zh-CN`
+- First launch requires a language choice in Meta Menu gate
+- Locale preference is persisted in meta progression data (schema v6) and mirrored to local storage during transition
+- i18n checks:
+  - `pnpm --filter @blodex/game-client i18n:check`
+
 ## Imagegen pipeline
 
 `pnpm assets:generate` expects `OPENAI_API_KEY` in your environment and uses:

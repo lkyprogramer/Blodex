@@ -1,5 +1,6 @@
 import type {
   DailyHistoryEntry,
+  LocaleCode,
   MetaProgression,
   PermanentUpgrade,
   RunSummary,
@@ -27,6 +28,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function asNumber(input: unknown, fallback = 0): number {
   return typeof input === "number" && Number.isFinite(input) ? input : fallback;
+}
+
+const SUPPORTED_LOCALES = new Set<LocaleCode>(["en-US", "zh-CN"]);
+
+function normalizePreferredLocale(input: unknown): LocaleCode | null {
+  if (typeof input !== "string") {
+    return null;
+  }
+  return SUPPORTED_LOCALES.has(input as LocaleCode) ? (input as LocaleCode) : null;
 }
 
 function normalizePermanentUpgrades(input: unknown): PermanentUpgrade {
@@ -142,7 +152,8 @@ export function migrateMeta(raw: unknown): MetaProgression {
     soulShards: 0,
     unlocks: [],
     cumulativeUnlockProgress: 0,
-    schemaVersion: 5,
+    schemaVersion: 6,
+    preferredLocale: null,
     selectedDifficulty: DEFAULT_DIFFICULTY,
     difficultyCompletions: createInitialDifficultyCompletions(),
     talentPoints: {},
@@ -187,6 +198,50 @@ export function migrateMeta(raw: unknown): MetaProgression {
   const dailyHistory = normalizeDailyHistory(raw.dailyHistory);
   const dailyRewardClaimedDates = normalizeDailyDateKeys(raw.dailyRewardClaimedDates);
 
+  if (schemaVersion >= 6) {
+    const rawPermanentUpgrades = normalizePermanentUpgrades(raw.permanentUpgrades);
+    let talentPoints = normalizeTalentPoints(raw.talentPoints);
+    if (Object.keys(talentPoints).length === 0) {
+      talentPoints = mapLegacyPermanentUpgradesToTalents(rawPermanentUpgrades);
+    }
+    const permanentUpgrades = derivePermanentUpgradesFromTalents(talentPoints);
+    const totalShardsSpent = normalizeTotalShardsSpent(
+      raw.totalShardsSpent,
+      estimateLegacyShardsSpentFromTalents(talentPoints)
+    );
+    const blueprintFoundIds = normalizeStringArray(raw.blueprintFoundIds);
+    const blueprintForgedIds = normalizeStringArray(raw.blueprintForgedIds);
+    const mutationUnlockedIds = normalizeStringArray(raw.mutationUnlockedIds);
+    const mutationSlots = clampMutationSlots(raw.mutationSlots, base.mutationSlots);
+    const selectedMutationIds = normalizeSelectedMutations(raw.selectedMutationIds, mutationUnlockedIds, mutationSlots);
+
+    return {
+      runsPlayed: asNumber(raw.runsPlayed, 0),
+      bestFloor: asNumber(raw.bestFloor, 0),
+      bestTimeMs: asNumber(raw.bestTimeMs, 0),
+      soulShards: asNumber(raw.soulShards, 0),
+      unlocks: normalizeUnlocks(raw.unlocks),
+      cumulativeUnlockProgress: asNumber(raw.cumulativeUnlockProgress, 0),
+      schemaVersion: 6,
+      preferredLocale: normalizePreferredLocale(raw.preferredLocale),
+      selectedDifficulty,
+      difficultyCompletions,
+      talentPoints,
+      totalShardsSpent,
+      blueprintFoundIds,
+      blueprintForgedIds,
+      echoes: Math.max(0, Math.floor(asNumber(raw.echoes, 0))),
+      mutationSlots,
+      mutationUnlockedIds,
+      selectedMutationIds,
+      synergyDiscoveredIds,
+      endlessBestFloor,
+      dailyHistory,
+      dailyRewardClaimedDates,
+      permanentUpgrades
+    };
+  }
+
   if (schemaVersion >= 5) {
     const rawPermanentUpgrades = normalizePermanentUpgrades(raw.permanentUpgrades);
     let talentPoints = normalizeTalentPoints(raw.talentPoints);
@@ -211,7 +266,8 @@ export function migrateMeta(raw: unknown): MetaProgression {
       soulShards: asNumber(raw.soulShards, 0),
       unlocks: normalizeUnlocks(raw.unlocks),
       cumulativeUnlockProgress: asNumber(raw.cumulativeUnlockProgress, 0),
-      schemaVersion: 5,
+      schemaVersion: 6,
+      preferredLocale: null,
       selectedDifficulty,
       difficultyCompletions,
       talentPoints,
@@ -254,7 +310,8 @@ export function migrateMeta(raw: unknown): MetaProgression {
       soulShards: asNumber(raw.soulShards, 0),
       unlocks: normalizeUnlocks(raw.unlocks),
       cumulativeUnlockProgress: asNumber(raw.cumulativeUnlockProgress, 0),
-      schemaVersion: 5,
+      schemaVersion: 6,
+      preferredLocale: null,
       selectedDifficulty,
       difficultyCompletions,
       talentPoints,
@@ -292,7 +349,8 @@ export function migrateMeta(raw: unknown): MetaProgression {
       soulShards: asNumber(raw.soulShards, 0),
       unlocks: normalizeUnlocks(raw.unlocks),
       cumulativeUnlockProgress: asNumber(raw.cumulativeUnlockProgress, 0),
-      schemaVersion: 5,
+      schemaVersion: 6,
+      preferredLocale: null,
       selectedDifficulty,
       difficultyCompletions,
       talentPoints,
@@ -332,7 +390,8 @@ export function migrateMeta(raw: unknown): MetaProgression {
     soulShards: schemaVersion >= 2 ? asNumber(raw.soulShards, 0) : 0,
     unlocks: schemaVersion >= 2 ? normalizeUnlocks(raw.unlocks) : [],
     cumulativeUnlockProgress: schemaVersion >= 2 ? asNumber(raw.cumulativeUnlockProgress, 0) : 0,
-    schemaVersion: 5,
+    schemaVersion: 6,
+    preferredLocale: null,
     selectedDifficulty,
     difficultyCompletions,
     talentPoints,

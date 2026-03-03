@@ -1,7 +1,10 @@
 import {
   BIOME_MAP,
+  BOSS_DEFS,
   BLUEPRINT_DEFS,
   ITEM_DEFS,
+  MONSTER_AFFIX_DEFS,
+  MONSTER_ARCHETYPES,
   MUTATION_DEFS,
   RANDOM_EVENT_DEFS,
   TALENT_DEFS,
@@ -10,7 +13,10 @@ import {
 } from "@blodex/content";
 import type { MessageCatalog } from "../types";
 import {
+  contentAffixDescriptionKey,
+  contentAffixNameKey,
   contentBiomeNameKey,
+  contentBossNameKey,
   contentBlueprintNameKey,
   contentEventChoiceDescriptionKey,
   contentEventChoiceNameKey,
@@ -18,6 +24,7 @@ import {
   contentEventNameKey,
   contentItemNameKey,
   contentMutationNameKey,
+  contentMonsterNameKey,
   contentSkillDescriptionKey,
   contentSkillNameKey,
   contentTalentDescriptionKey,
@@ -165,6 +172,8 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.meta.resources.soul_shards": "Soul Shards: {value}",
   "ui.meta.resources.echoes": "Echoes: {value}",
   "ui.meta.resources.unlocks": "Unlocks: {count}/{total}",
+  "ui.meta.language.label": "Language",
+  "ui.meta.language.aria_label": "Language switcher",
   "ui.meta.nav.difficulty": "Difficulty",
   "ui.meta.nav.daily": "Daily",
   "ui.meta.nav.talents": "Talents",
@@ -255,6 +264,15 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.meta.mutation.unlock.default": "Default unlock",
   "ui.meta.mutation.unlock.blueprint": "Forge {blueprintId}",
   "ui.meta.mutation.unlock.echo": "Echo unlock ({cost})",
+  "ui.meta.mutation.effect.on_kill_heal_percent": "on kill heal %",
+  "ui.meta.mutation.effect.on_kill_attack_speed": "on kill attack speed",
+  "ui.meta.mutation.effect.on_hit_invuln": "on hit invulnerability",
+  "ui.meta.mutation.effect.on_hit_reflect_percent": "on hit reflect %",
+  "ui.meta.mutation.effect.once_per_floor_lethal_guard": "once per floor lethal guard",
+  "ui.meta.mutation.effect.drop_bonus": "drop bonus",
+  "ui.meta.mutation.effect.move_speed_multiplier": "move speed multiplier",
+  "ui.meta.mutation.effect.potion_heal_amp_and_self_damage": "potion heal amp + self damage",
+  "ui.meta.mutation.effect.hidden_room_reveal_radius": "hidden room reveal radius",
 
   "ui.transition.enter_dungeon.title": "Enter the Dungeon",
   "ui.transition.enter_dungeon.subtitle": "{difficulty} · Floor 1",
@@ -264,6 +282,15 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.transition.resume.subtitle": "Floor {floor} · {difficulty}",
   "ui.transition.return_sanctum.title": "Return to Sanctum",
   "ui.transition.return_sanctum.subtitle": "Meta Progression",
+
+  "ui.locale.english": "English",
+  "ui.locale.zh_cn": "简体中文",
+  "ui.language_gate.title": "Choose Language",
+  "ui.language_gate.subtitle": "Pick your display language before starting the run.",
+  "ui.language_gate.help": "Hotkeys: [1] English, [2] 简体中文, [Enter] Confirm.",
+  "ui.language_gate.confirm": "Confirm Language",
+  "ui.language_gate.option.english_hint": "Default terminology and original phrasing.",
+  "ui.language_gate.option.zh_cn_hint": "Simplified Chinese interface and content labels.",
 
   "ui.legacy.meta.click_unlock_hint": "Click an unlock to purchase. Hotkeys: unlocks 1-0, difficulty Q/W/E.",
 
@@ -321,6 +348,19 @@ function buildContentMessages(): Record<string, string> {
 
   for (const biome of Object.values(BIOME_MAP)) {
     messages[contentBiomeNameKey(biome.id)] = biome.name;
+  }
+
+  for (const monster of MONSTER_ARCHETYPES) {
+    messages[contentMonsterNameKey(monster.id)] = monster.name;
+  }
+
+  for (const affix of MONSTER_AFFIX_DEFS) {
+    messages[contentAffixNameKey(affix.id)] = affix.name;
+    messages[contentAffixDescriptionKey(affix.id)] = affix.description;
+  }
+
+  for (const boss of BOSS_DEFS) {
+    messages[contentBossNameKey(boss.id)] = boss.name;
   }
 
   return messages;

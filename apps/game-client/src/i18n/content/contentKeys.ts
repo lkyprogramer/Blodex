@@ -53,3 +53,19 @@ export function contentMutationNameKey(mutationId: string): string {
 export function contentBiomeNameKey(biomeId: string): string {
   return `content.biome.${biomeId}.name`;
 }
+
+export function contentMonsterNameKey(monsterId: string): string {
+  return `content.monster.${monsterId}.name`;
+}
+
+export function contentAffixNameKey(affixId: string): string {
+  return `content.affix.${affixId}.name`;
+}
+
+export function contentAffixDescriptionKey(affixId: string): string {
+  return `content.affix.${affixId}.description`;
+}
+
+export function contentBossNameKey(bossId: string): string {
+  return `content.boss.${bossId}.name`;
+}
