@@ -4,7 +4,15 @@ import { UI_POLISH_FLAGS } from "./config/uiFlags";
 import { initializeI18n } from "./i18n";
 import { DungeonScene } from "./scenes/DungeonScene";
 import { MetaMenuScene } from "./scenes/MetaMenuScene";
-import "./style.css";
+import "./styles/tokens.css";
+import "./styles/base.css";
+import "./styles/layout.css";
+import "./styles/hud.css";
+import "./styles/components.css";
+import "./styles/overlays.css";
+import "./styles/meta-menu.css";
+import "./styles/responsive.css";
+import "./styles/animations.css";
 
 const root = document.querySelector("#game-root") as HTMLDivElement;
 detectPreferredImageFormat();

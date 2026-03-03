@@ -1,0 +1,51 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Spectral", serif;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(208, 168, 111, 0.14), transparent 34%),
+    radial-gradient(circle at 85% 95%, rgba(76, 110, 130, 0.3), transparent 30%),
+    linear-gradient(160deg, var(--bg-deep), var(--bg-mid));
+  color: var(--text-main);
+}
+
+body[data-locale="zh-CN"] {
+  font-family: "Noto Serif SC", "Source Han Serif SC", "PingFang SC", "Microsoft YaHei", "Spectral", serif;
+}
+
+body[data-locale="zh-CN"] .meta-menu-header h1,
+body[data-locale="zh-CN"] .meta-menu-section h2,
+body[data-locale="zh-CN"] .meta-tier-group h3,
+body[data-locale="zh-CN"] .meta-start-button,
+body[data-locale="zh-CN"] #hud-panel h1,
+body[data-locale="zh-CN"] .compact-block h2 {
+  font-family: "Noto Sans SC", "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  letter-spacing: 0;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-screen-vignette);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease-in-out;
+}
+
+body.low-health-critical::after {
+  opacity: 1;
+  background:
+    radial-gradient(circle at 50% 55%, rgba(128, 12, 12, 0) 48%, rgba(128, 12, 12, 0.28) 100%),
+    radial-gradient(circle at 50% 50%, rgba(198, 58, 58, 0.16), transparent 56%);
+  animation: pulseGlow 900ms ease-in-out infinite;
+}
+
+
+.hidden {
+  display: none;
+}
+

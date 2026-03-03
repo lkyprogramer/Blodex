@@ -21,14 +21,19 @@ pnpm dev
 ## Scripts
 
 - `pnpm dev`: run game locally
-- `pnpm test`: run core tests
+- `pnpm test`: run `core` + `game-client` + `content` tests
 - `pnpm build`: build all packages
 - `pnpm check`: TypeScript checks
+- `pnpm quality:precheck`: run local quality gates before commit
+- `pnpm ci:check`: run CI-equivalent quality gates
+- `pnpm check:source-hygiene`: block build artifacts under `src/**`
+- `pnpm check:content-i18n`: verify content locale consistency (`en-US` / `zh-CN`)
 - `pnpm assets:compile`: compile image generation jobs from asset plan
 - `pnpm assets:generate`: generate game art via imagegen and copy to client public assets
 - `pnpm assets:validate`: validate generated asset manifest
 
 See `docs/mvp-spec.md` and `docs/art-style-bible.md` for product and art pipeline details.
+See `docs/engineering/quality-gates.md` for R4 governance baseline.
 
 ## Localization
 
@@ -37,6 +42,7 @@ See `docs/mvp-spec.md` and `docs/art-style-bible.md` for product and art pipelin
 - Locale preference is persisted in meta progression data (schema v6) and mirrored to local storage during transition
 - i18n checks:
   - `pnpm --filter @blodex/game-client i18n:check`
+  - `pnpm check:content-i18n`
 
 ## Imagegen pipeline
 
