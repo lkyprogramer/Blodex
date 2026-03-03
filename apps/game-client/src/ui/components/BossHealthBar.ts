@@ -13,7 +13,7 @@ export interface BossHealthBarView {
 }
 
 export function renderBossHealthBar(view: BossHealthBarView): string {
-  if (!view.isBossFloor) {
+  if (!view.isBossFloor || view.bossHealth === undefined || view.bossMaxHealth === undefined) {
     return "";
   }
 

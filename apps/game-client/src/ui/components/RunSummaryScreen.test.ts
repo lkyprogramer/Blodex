@@ -43,7 +43,7 @@ describe("renderRunSummaryScreen", () => {
       UI_POLISH_FLAGS.runSummaryV2Enabled = previous;
     }
 
-    expect(html).toContain("Run Ended");
+    expect(html).toContain("Run Defeat");
     expect(html).toContain('class="stat-line"');
     expect(html).not.toContain("run-summary-card");
   });

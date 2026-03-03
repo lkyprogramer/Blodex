@@ -35,6 +35,7 @@ import {
   renderMetaMenuPanel,
   type MetaMenuPanelView
 } from "../ui/components/MetaMenuPanel";
+import { playSceneTransition } from "../ui/SceneTransitionOverlay";
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
@@ -716,6 +717,12 @@ export class MetaMenuScene extends Phaser.Scene {
       return;
     }
     const difficulty = resolveSelectedDifficulty(this.meta);
+    playSceneTransition({
+      title: "Enter the Dungeon",
+      subtitle: `${difficulty.toUpperCase()} · Floor 1`,
+      mode: "scene",
+      durationMs: 620
+    });
     this.hideDomMenu();
     this.scene.start("dungeon", {
       difficulty,
@@ -730,6 +737,12 @@ export class MetaMenuScene extends Phaser.Scene {
     const dailyDate = resolveDailyDate();
     const runSeed = createDailySeed(dailyDate);
     const canScore = canStartDailyScoredAttempt(this.meta, dailyDate);
+    playSceneTransition({
+      title: "Daily Challenge",
+      subtitle: `${dailyDate} · HARD`,
+      mode: "scene",
+      durationMs: 620
+    });
     this.hideDomMenu();
     this.scene.start("dungeon", {
       difficulty: "hard",
@@ -751,6 +764,12 @@ export class MetaMenuScene extends Phaser.Scene {
       this.scene.restart();
       return;
     }
+    playSceneTransition({
+      title: "Resume Expedition",
+      subtitle: `Floor ${lease.save.run.currentFloor} · ${lease.save.run.difficulty.toUpperCase()}`,
+      mode: "scene",
+      durationMs: 620
+    });
     this.hideDomMenu();
     this.scene.start("dungeon", {
       difficulty: lease.save.run.difficulty,
