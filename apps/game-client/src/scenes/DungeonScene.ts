@@ -157,6 +157,7 @@ import { AISystem } from "../systems/AISystem";
 import type { MonsterAiUpdateResult } from "../systems/AISystem";
 import { CombatSystem } from "../systems/CombatSystem";
 import { EntityManager } from "../systems/EntityManager";
+import { UI_POLISH_FLAGS } from "../config/uiFlags";
 import { gridToIso, isoToGrid } from "../systems/iso";
 import { MonsterSpawnSystem } from "../systems/MonsterSpawnSystem";
 import { MovementSystem } from "../systems/MovementSystem";
@@ -170,7 +171,6 @@ import {
 } from "../systems/feedbackEventRouter";
 import { SAVE_LEASE_TTL_MS, SaveManager } from "../systems/SaveManager";
 import { UIManager } from "../ui/UIManager";
-import { createUIStateSnapshot } from "../ui/state/UIStateAdapter";
 import { hideSceneTransition, playSceneTransition } from "../ui/SceneTransitionOverlay";
 import {
   detectPreferredImageFormat,
@@ -179,6 +179,14 @@ import {
   type PreferredImageFormat
 } from "../assets/imageAsset";
 import { removeConnectedBackgroundFromTexture } from "../assets/removeBackground";
+import { DebugApiBinder } from "./dungeon/debug/DebugApiBinder";
+import { DiagnosticsService } from "./dungeon/diagnostics/DiagnosticsService";
+import { EncounterController } from "./dungeon/encounter/EncounterController";
+import { RunLogService } from "./dungeon/logging/RunLogService";
+import { RunFlowOrchestrator } from "./dungeon/orchestrator/RunFlowOrchestrator";
+import { SaveCoordinator } from "./dungeon/save/SaveCoordinator";
+import { HudPresenter } from "./dungeon/ui/HudPresenter";
+import { WorldEventController } from "./dungeon/world/WorldEventController";
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
@@ -330,6 +338,18 @@ export class DungeonScene extends Phaser.Scene {
   private readonly renderSystem: RenderSystem;
   private preferredImageFormat: PreferredImageFormat = "png";
   private readonly imageFallbackRetried = new Set<string>();
+  private readonly debugApiBinder = new DebugApiBinder();
+  private readonly runFlowOrchestrator = new RunFlowOrchestrator();
+  private readonly diagnosticsService = new DiagnosticsService();
+  private readonly hudPresenter = new HudPresenter();
+  private readonly runLog = new RunLogService({
+    append: () => {
+      // UI sink is bound in create().
+    }
+  });
+  private saveCoordinator!: SaveCoordinator;
+  private encounterController!: EncounterController;
+  private worldEventController!: WorldEventController;
 
   private uiManager!: UIManager;
   private meta: MetaProgression = createInitialMeta();
@@ -450,8 +470,6 @@ export class DungeonScene extends Phaser.Scene {
   private mapRevealActive = false;
   private debugCheatsEnabled = false;
   private diagnosticsEnabled = false;
-  private perfPanelEl: HTMLDivElement | null = null;
-  private nextDiagnosticsAt = 0;
   private cleanupStarted = false;
   private preserveSceneTransitionOnCleanup = false;
   private lastAiNearCount = 0;
@@ -481,11 +499,7 @@ export class DungeonScene extends Phaser.Scene {
         onDispatchError: ({ input, error }) => {
           const type = input.type;
           console.warn(`[FeedbackRouter] Failed to dispatch action for ${type}`, error);
-          (this.uiManager as UIManager | undefined)?.appendLog(
-            `Feedback degraded for ${type}; continuing run safely.`,
-            "warn",
-            this.time.now
-          );
+          this.runLog.append(`Feedback degraded for ${type}; continuing run safely.`, "warn", this.time.now);
         }
       }
     );
@@ -568,12 +582,12 @@ export class DungeonScene extends Phaser.Scene {
       (itemId) => {
         const item = this.player.inventory.find((candidate) => candidate.id === itemId);
         if (item === undefined) {
-          this.uiManager.appendLog(`Equip failed: item ${itemId} not found in backpack.`, "warn", this.time.now);
+          this.runLog.append(`Equip failed: item ${itemId} not found in backpack.`, "warn", this.time.now);
           return;
         }
 
         if (!canEquip(this.player, item)) {
-          this.uiManager.appendLog(
+          this.runLog.append(
             `Cannot equip ${item.name}: Need Lv${item.requiredLevel}, current Lv${this.player.level}.`,
             "warn",
             this.time.now
@@ -596,7 +610,7 @@ export class DungeonScene extends Phaser.Scene {
           return;
         }
 
-        this.uiManager.appendLog(`Equip failed: ${item.name} could not be equipped.`, "warn", this.time.now);
+        this.runLog.append(`Equip failed: ${item.name} could not be equipped.`, "warn", this.time.now);
       },
       (slot) => {
         const equipped = this.player.equipment[slot];
@@ -624,7 +638,7 @@ export class DungeonScene extends Phaser.Scene {
       (itemId) => {
         const item = this.player.inventory.find((candidate) => candidate.id === itemId);
         if (item === undefined) {
-          this.uiManager.appendLog(`Discard failed: item ${itemId} not found in backpack.`, "warn", this.time.now);
+          this.runLog.append(`Discard failed: item ${itemId} not found in backpack.`, "warn", this.time.now);
           return;
         }
         this.player = {
@@ -632,7 +646,7 @@ export class DungeonScene extends Phaser.Scene {
           inventory: this.player.inventory.filter((candidate) => candidate.id !== itemId)
         };
         this.hudDirty = true;
-        this.uiManager.appendLog(`Discarded ${item.name}.`, "info", this.time.now);
+        this.runLog.append(`Discarded ${item.name}.`, "info", this.time.now);
       },
       (consumableId) => {
         this.tryUseConsumable(consumableId);
@@ -650,6 +664,30 @@ export class DungeonScene extends Phaser.Scene {
         this.scene.start("meta-menu");
       }
     );
+    this.runLog.setSink({
+      append: (message, level, timestampMs) => {
+        this.uiManager.appendLog(message, level, timestampMs);
+      }
+    });
+    this.saveCoordinator = new SaveCoordinator({
+      saveManager: this.saveManager,
+      isRunEnded: () => this.runEnded,
+      buildSnapshot: () => this.buildRunSaveSnapshot(this.time.now)
+    });
+    this.encounterController = new EncounterController({
+      updateCombat: (nowMs) => this.updateCombat(nowMs),
+      updateMonsters: (deltaSeconds, nowMs) => this.updateMonsters(deltaSeconds, nowMs),
+      updateMonsterCombat: (nowMs) => this.updateMonsterCombat(nowMs),
+      updateBossCombat: (nowMs) => this.updateBossCombat(nowMs),
+      updateChallengeRoom: (nowMs) => this.updateChallengeRoom(nowMs)
+    });
+    this.worldEventController = new WorldEventController({
+      updateHazards: (nowMs) => this.updateHazards(nowMs),
+      collectNearbyLoot: (nowMs) => this.collectNearbyLoot(nowMs),
+      updateEventInteraction: (nowMs) => this.updateEventInteraction(nowMs),
+      updateFloorProgress: (nowMs) => this.updateFloorProgress(nowMs),
+      updateMinimap: (nowMs) => this.updateMinimap(nowMs)
+    });
     this.installDebugApi();
     this.applyRuntimeBackgroundRemoval();
     this.sfxSystem.initialize();
@@ -659,16 +697,14 @@ export class DungeonScene extends Phaser.Scene {
     this.initDiagnosticsPanel();
     this.bindDomainEventEffects();
     this.clearKeyboardBindings();
-    this.saveManager.bindPageLifecycle(() => {
-      this.flushRunSave();
-    });
+    this.saveCoordinator.bindPageLifecycle();
     if (this.pendingResumeSave !== null && this.restoreRunFromSave(this.pendingResumeSave)) {
-      this.saveManager.startLeaseHeartbeat(() => this.buildRunSaveSnapshot(this.time.now));
-      this.uiManager.appendLog("Resumed saved run.", "info", this.time.now);
+      this.saveCoordinator.startHeartbeat();
+      this.runLog.append("Resumed saved run.", "info", this.time.now);
       this.flushRunSave();
     } else {
       this.bootstrapRun(this.resolveInitialRunSeed(), this.selectedDifficulty);
-      this.saveManager.startLeaseHeartbeat(() => this.buildRunSaveSnapshot(this.time.now));
+      this.saveCoordinator.startHeartbeat();
       this.flushRunSave();
     }
     this.pendingResumeSave = null;
@@ -709,35 +745,16 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private initDiagnosticsPanel(): void {
-    this.perfPanelEl = document.querySelector<HTMLDivElement>("#perf-panel");
-    if (this.perfPanelEl === null) {
-      return;
-    }
-    if (!this.diagnosticsEnabled) {
-      this.perfPanelEl.classList.add("hidden");
-      this.perfPanelEl.textContent = "";
-      return;
-    }
-    this.perfPanelEl.classList.remove("hidden");
-    this.perfPanelEl.classList.add("perf-panel");
-    this.nextDiagnosticsAt = 0;
-    this.perfPanelEl.textContent = "Diagnostics pending run bootstrap...";
+    this.diagnosticsService.init(this.diagnosticsEnabled);
   }
 
   private renderDiagnosticsPanel(nowMs: number): void {
-    if (!this.diagnosticsEnabled || this.perfPanelEl === null) {
-      return;
-    }
-    if (nowMs < this.nextDiagnosticsAt) {
-      return;
-    }
-    this.nextDiagnosticsAt = nowMs + 260;
     const entity = this.entityManager.getDiagnostics();
     const vfx = this.vfxSystem.getDiagnostics();
     const sfx = this.sfxSystem.getDiagnostics();
     const render = this.renderSystem.getLastSyncStats();
     const fps = this.game.loop.actualFps;
-    this.perfPanelEl.textContent = [
+    this.diagnosticsService.render(this.diagnosticsEnabled, nowMs, [
       `FPS ${fps.toFixed(1)} | floor ${this.run.currentFloor} ${this.run.difficulty.toUpperCase()}`,
       `AI near/far ${this.lastAiNearCount}/${this.lastAiFarCount}`,
       `Listeners eventBus ${this.eventBus.listenerCount()}`,
@@ -745,7 +762,7 @@ export class DungeonScene extends Phaser.Scene {
       `Render visible/culled ${render.monstersVisible}/${render.monstersCulled}`,
       `VFX active ${vfx.activeTransientObjects} dropped ${vfx.droppedEffects}`,
       `SFX ambient ${sfx.ambientActive ? sfx.ambientKey ?? "on" : "off"}`
-    ].join("\n");
+    ]);
   }
 
   private collectDiagnosticsSnapshot(): Record<string, unknown> {
@@ -767,37 +784,53 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   update(_: number, deltaMs: number): void {
-    if (this.runEnded) {
-      return;
-    }
     const nowMs = this.time.now;
-
-    if (this.eventPanelOpen) {
-      if (!this.hudDirty && nowMs >= this.nextTransientHudRefreshAt) {
-        this.hudDirty = true;
+    if (!UI_POLISH_FLAGS.sceneRefactorR1Enabled) {
+      if (this.runEnded) {
+        return;
       }
-      if (this.hudDirty) {
-        this.renderHud();
-        this.hudDirty = false;
+      if (this.eventPanelOpen) {
+        this.runEventPanelFrame(nowMs);
+        return;
       }
-      this.updateMinimap(nowMs);
-      this.renderDiagnosticsPanel(nowMs);
+      this.runActiveFrame(nowMs, deltaMs);
       return;
     }
+
+    this.runFlowOrchestrator.update({
+      runEnded: this.runEnded,
+      eventPanelOpen: this.eventPanelOpen,
+      nowMs,
+      deltaMs,
+      onEventPanelFrame: (panelNowMs) => this.runEventPanelFrame(panelNowMs),
+      onActiveFrame: (activeNowMs, activeDeltaMs) => this.runActiveFrame(activeNowMs, activeDeltaMs)
+    });
+  }
+
+  private runEventPanelFrame(nowMs: number): void {
+    if (!this.hudDirty && nowMs >= this.nextTransientHudRefreshAt) {
+      this.hudDirty = true;
+    }
+    if (this.hudDirty) {
+      this.renderHud();
+      this.hudDirty = false;
+    }
+    this.updateMinimap(nowMs);
+    this.renderDiagnosticsPanel(nowMs);
+  }
+
+  private runActiveFrame(nowMs: number, deltaMs: number): void {
     const playerHazardMovementMultiplier = this.resolvePlayerHazardMovementMultiplier();
     const mutationMoveMultiplier = this.resolveMutationMoveSpeedMultiplier();
 
     this.updateKeyboardMoveIntent(nowMs);
     this.updatePlayerMovement((deltaMs / 1000) * playerHazardMovementMultiplier * mutationMoveMultiplier, nowMs);
     this.revealNearbyHiddenRoomsByMutation(nowMs);
-    this.updateCombat(nowMs);
-    this.updateMonsters(deltaMs / 1000, nowMs);
-    this.updateMonsterCombat(nowMs);
-    this.updateBossCombat(nowMs);
-    this.updateHazards(nowMs);
-    this.collectNearbyLoot(nowMs);
-    this.updateEventInteraction(nowMs);
-    this.updateChallengeRoom(nowMs);
+    this.encounterController.updateFrame({
+      deltaSeconds: deltaMs / 1000,
+      nowMs
+    });
+    this.worldEventController.updatePreResolution(nowMs);
 
     this.renderSystem.syncPlayerSprite(this.playerSprite, this.player.position, this.playerYOffset, this.origin);
     this.renderSystem.syncMonsterSprites(this.entityManager.listMonsters(), this.origin);
@@ -817,8 +850,7 @@ export class DungeonScene extends Phaser.Scene {
       return;
     }
 
-    this.updateFloorProgress(nowMs);
-    this.updateMinimap(nowMs);
+    this.worldEventController.updatePostResolution(nowMs);
     if (nowMs - this.lastAutoSaveAt >= AUTO_SAVE_INTERVAL_MS) {
       this.flushRunSave();
     }
@@ -945,14 +977,14 @@ export class DungeonScene extends Phaser.Scene {
       const source = this.resolveEntityLabel(combat.sourceId);
       const target = this.resolveEntityLabel(combat.targetId);
       if (combat.targetId === this.player.id) {
-        this.uiManager.appendLog(
+        this.runLog.append(
           `${source} hit ${target} for ${combat.amount} damage.`,
           combat.kind === "crit" ? "danger" : "warn",
           combat.timestampMs
         );
         return;
       }
-      this.uiManager.appendLog(
+      this.runLog.append(
         `${source} ${combat.kind === "crit" ? "critically hit" : "hit"} ${target} for ${combat.amount} damage.`,
         combat.kind === "crit" ? "success" : "info",
         combat.timestampMs
@@ -967,7 +999,7 @@ export class DungeonScene extends Phaser.Scene {
       this.hudDirty = true;
       const source = this.resolveEntityLabel(combat.sourceId);
       const target = this.resolveEntityLabel(combat.targetId);
-      this.uiManager.appendLog(
+      this.runLog.append(
         `${target} dodged ${source}'s attack.`,
         combat.targetId === this.player.id ? "success" : "info",
         combat.timestampMs
@@ -984,15 +1016,15 @@ export class DungeonScene extends Phaser.Scene {
       const target = this.resolveEntityLabel(combat.targetId);
       if (combat.targetId === this.player.id) {
         this.lastDeathReason = `Slain by ${source} (${combat.amount} ${combat.damageType} damage).`;
-        this.uiManager.appendLog(`${target} was slain by ${source}.`, "danger", combat.timestampMs);
+        this.runLog.append(`${target} was slain by ${source}.`, "danger", combat.timestampMs);
         return;
       }
-      this.uiManager.appendLog(`${target} was slain by ${source}.`, "success", combat.timestampMs);
+      this.runLog.append(`${target} was slain by ${source}.`, "success", combat.timestampMs);
     });
 
     this.eventBus.on("loot:drop", ({ sourceId, item, timestampMs }) => {
       this.hudDirty = true;
-      this.uiManager.appendLog(
+      this.runLog.append(
         `${this.resolveEntityLabel(sourceId)} dropped ${item.name}.`,
         "info",
         timestampMs
@@ -1004,22 +1036,22 @@ export class DungeonScene extends Phaser.Scene {
       const expiresAtMs = timestampMs + ITEM_NEWLY_ACQUIRED_TTL_MS;
       this.newlyAcquiredItemUntilMs.set(item.id, expiresAtMs);
       this.nextTransientHudRefreshAt = Math.min(this.nextTransientHudRefreshAt, expiresAtMs);
-      this.uiManager.appendLog(`Picked up ${item.name}.`, "success", timestampMs);
+      this.runLog.append(`Picked up ${item.name}.`, "success", timestampMs);
     });
 
     this.eventBus.on("player:levelup", ({ level, timestampMs }) => {
       this.hudDirty = true;
-      this.uiManager.appendLog(`Level up! Vanguard reached Lv${level}.`, "success", timestampMs);
+      this.runLog.append(`Level up! Vanguard reached Lv${level}.`, "success", timestampMs);
     });
 
     this.eventBus.on("item:equip", ({ item, slot, timestampMs }) => {
       this.hudDirty = true;
-      this.uiManager.appendLog(`Equipped ${item.name} (${slot}).`, "success", timestampMs);
+      this.runLog.append(`Equipped ${item.name} (${slot}).`, "success", timestampMs);
     });
 
     this.eventBus.on("item:unequip", ({ item, slot, timestampMs }) => {
       this.hudDirty = true;
-      this.uiManager.appendLog(`Unequipped ${item.name} (${slot}).`, "info", timestampMs);
+      this.runLog.append(`Unequipped ${item.name} (${slot}).`, "info", timestampMs);
     });
 
     this.eventBus.on("skill:use", ({ playerId, skillId, timestampMs }) => {
@@ -1028,12 +1060,12 @@ export class DungeonScene extends Phaser.Scene {
         skillId,
         playerId
       });
-      this.uiManager.appendLog(`Skill used: ${skillId}.`, "info", timestampMs);
+      this.runLog.append(`Skill used: ${skillId}.`, "info", timestampMs);
     });
 
     this.eventBus.on("skill:cooldown", ({ skillId, readyAtMs }) => {
       const cooldownMs = Math.max(0, readyAtMs - this.time.now);
-      this.uiManager.appendLog(
+      this.runLog.append(
         `${skillId} cooldown ${(cooldownMs / 1000).toFixed(1)}s.`,
         "info",
         this.time.now
@@ -1052,12 +1084,12 @@ export class DungeonScene extends Phaser.Scene {
           : consumableId === "mana_potion"
             ? `Mana potion restored ${amountApplied} mana`
             : "Scroll of Mapping revealed objective";
-      this.uiManager.appendLog(`${label}. Charges left: ${remainingCharges}.`, "success", timestampMs);
+      this.runLog.append(`${label}. Charges left: ${remainingCharges}.`, "success", timestampMs);
     });
 
     this.eventBus.on("consumable:failed", ({ consumableId, reason, timestampMs }) => {
       this.hudDirty = true;
-      this.uiManager.appendLog(`Cannot use ${consumableId}: ${reason}`, "warn", timestampMs);
+      this.runLog.append(`Cannot use ${consumableId}: ${reason}`, "warn", timestampMs);
     });
 
     this.eventBus.on("event:spawn", ({ eventId, eventName, floor, timestampMs }) => {
@@ -1066,19 +1098,19 @@ export class DungeonScene extends Phaser.Scene {
         eventId
       });
       this.hudDirty = true;
-      this.uiManager.appendLog(`Event discovered on floor ${floor}: ${eventName}.`, "info", timestampMs);
+      this.runLog.append(`Event discovered on floor ${floor}: ${eventName}.`, "info", timestampMs);
     });
 
     this.eventBus.on("event:choice", ({ eventId, choiceId, timestampMs }) => {
       this.hudDirty = true;
-      this.uiManager.appendLog(`Event choice selected: ${eventId} -> ${choiceId}.`, "info", timestampMs);
+      this.runLog.append(`Event choice selected: ${eventId} -> ${choiceId}.`, "info", timestampMs);
     });
 
     this.eventBus.on("merchant:offer", ({ floor, offerCount, timestampMs }) => {
       this.routeFeedback({
         type: "merchant:offer"
       });
-      this.uiManager.appendLog(`Merchant opened on floor ${floor} with ${offerCount} offers.`, "info", timestampMs);
+      this.runLog.append(`Merchant opened on floor ${floor} with ${offerCount} offers.`, "info", timestampMs);
     });
 
     this.eventBus.on("merchant:purchase", ({ itemName, priceObol, timestampMs }) => {
@@ -1086,12 +1118,12 @@ export class DungeonScene extends Phaser.Scene {
         type: "merchant:purchase"
       });
       this.hudDirty = true;
-      this.uiManager.appendLog(`Purchased ${itemName} for ${priceObol} Obol.`, "success", timestampMs);
+      this.runLog.append(`Purchased ${itemName} for ${priceObol} Obol.`, "success", timestampMs);
       this.scheduleRunSave();
     });
 
     this.eventBus.on("monster:stateChange", ({ monsterId, from, to, timestampMs }) => {
-      this.uiManager.appendLog(
+      this.runLog.append(
         `${this.resolveEntityLabel(monsterId)} state: ${from} -> ${to}.`,
         "info",
         timestampMs
@@ -1099,7 +1131,7 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("monster:affixApplied", ({ monsterId, affixId, timestampMs }) => {
-      this.uiManager.appendLog(
+      this.runLog.append(
         `${this.resolveEntityLabel(monsterId)} gained affix: ${affixId}.`,
         "warn",
         timestampMs
@@ -1107,7 +1139,7 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("monster:split", ({ sourceMonsterId, spawnedIds, timestampMs }) => {
-      this.uiManager.appendLog(
+      this.runLog.append(
         `${this.resolveEntityLabel(sourceMonsterId)} split into ${spawnedIds.length} fragments.`,
         "warn",
         timestampMs
@@ -1115,7 +1147,7 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("monster:leech", ({ monsterId, amount, targetId, timestampMs }) => {
-      this.uiManager.appendLog(
+      this.runLog.append(
         `${this.resolveEntityLabel(monsterId)} leeched ${amount} HP from ${this.resolveEntityLabel(targetId)}.`,
         "danger",
         timestampMs
@@ -1127,7 +1159,7 @@ export class DungeonScene extends Phaser.Scene {
         type: "run:start",
         biomeId: this.currentBiome.id
       });
-      this.uiManager.appendLog(
+      this.runLog.append(
         `Run started on floor ${floor} (${difficulty.toUpperCase()}, seed ${runSeed}).`,
         "info",
         startedAtMs
@@ -1136,7 +1168,7 @@ export class DungeonScene extends Phaser.Scene {
 
     this.eventBus.on("run:end", ({ summary, finishedAtMs }) => {
       this.hudDirty = true;
-      this.uiManager.appendLog(
+      this.runLog.append(
         summary.isVictory
           ? `Run complete! Floor ${summary.floorReached}, level ${summary.leveledTo}.`
           : `Run ended on floor ${summary.floorReached}, level ${summary.leveledTo}.`,
@@ -1153,13 +1185,13 @@ export class DungeonScene extends Phaser.Scene {
       this.hudDirty = true;
       const biomeName =
         biomeId === undefined ? "" : ` (${BIOME_MAP[biomeId]?.name ?? biomeId})`;
-      this.uiManager.appendLog(`Entered floor ${floor}${biomeName}.`, "info", timestampMs);
+      this.runLog.append(`Entered floor ${floor}${biomeName}.`, "info", timestampMs);
       this.flushRunSave();
     });
 
     this.eventBus.on("floor:clear", ({ floor, kills, timestampMs }) => {
       this.hudDirty = true;
-      this.uiManager.appendLog(`Floor ${floor} cleared with ${kills} kills.`, "success", timestampMs);
+      this.runLog.append(`Floor ${floor} cleared with ${kills} kills.`, "success", timestampMs);
     });
 
     this.eventBus.on("boss:phaseChange", ({ bossId, toPhase, hpRatio, timestampMs }) => {
@@ -1168,7 +1200,7 @@ export class DungeonScene extends Phaser.Scene {
         bossId
       });
       this.hudDirty = true;
-      this.uiManager.appendLog(
+      this.runLog.append(
         `Boss shifted to phase ${toPhase + 1} (${Math.floor(hpRatio * 100)}% HP).`,
         "warn",
         timestampMs
@@ -1176,21 +1208,21 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     this.eventBus.on("boss:summon", ({ count, timestampMs }) => {
-      this.uiManager.appendLog(`Boss summoned ${count} minions.`, "warn", timestampMs);
+      this.runLog.append(`Boss summoned ${count} minions.`, "warn", timestampMs);
     });
 
     this.eventBus.on("hazard:enter", ({ hazardType, targetId, timestampMs }) => {
       if (targetId !== this.player.id) {
         return;
       }
-      this.uiManager.appendLog(`Entered ${hazardType} zone.`, "warn", timestampMs);
+      this.runLog.append(`Entered ${hazardType} zone.`, "warn", timestampMs);
     });
 
     this.eventBus.on("hazard:exit", ({ hazardType, targetId, timestampMs }) => {
       if (targetId !== this.player.id) {
         return;
       }
-      this.uiManager.appendLog(`Left ${hazardType} zone.`, "info", timestampMs);
+      this.runLog.append(`Left ${hazardType} zone.`, "info", timestampMs);
     });
 
     this.eventBus.on("hazard:trigger", ({ hazardType, position, timestampMs }) => {
@@ -1200,7 +1232,7 @@ export class DungeonScene extends Phaser.Scene {
         position
       });
       if (hazardType !== "periodic_trap") {
-        this.uiManager.appendLog(`${hazardType} triggered.`, "warn", timestampMs);
+        this.runLog.append(`${hazardType} triggered.`, "warn", timestampMs);
       }
     });
 
@@ -1210,7 +1242,7 @@ export class DungeonScene extends Phaser.Scene {
       }
       const label = this.resolveEntityLabel(targetId);
       const level = targetId === this.player.id ? "danger" : "info";
-      this.uiManager.appendLog(
+      this.runLog.append(
         `${label} took ${amount} damage from ${hazardType} (${Math.floor(remainingHealth)} HP left).`,
         level,
         timestampMs
@@ -1308,7 +1340,7 @@ export class DungeonScene extends Phaser.Scene {
       this.removeDebugApi();
       return;
     }
-    window.__blodexDebug = {
+    const api: BlodexDebugApi = {
       addObols: (amount = 30) => this.debugAddObols(amount),
       grantConsumables: (charges = 2) => this.debugGrantConsumables(charges),
       spawnEvent: (eventId) => this.debugSpawnEvent(eventId),
@@ -1330,16 +1362,15 @@ export class DungeonScene extends Phaser.Scene {
       stressRuns: (iterations = 12) => this.debugStressRuns(iterations),
       help: () => DEBUG_COMMANDS.map((entry) => `${entry.combo}: ${entry.description}`)
     };
+    this.debugApiBinder.install(api);
   }
 
   private removeDebugApi(): void {
-    if (window.__blodexDebug !== undefined) {
-      delete window.__blodexDebug;
-    }
+    this.debugApiBinder.remove();
   }
 
   private debugLog(message: string, level: "info" | "warn" | "success" | "danger" = "info"): void {
-    this.uiManager.appendLog(`[Debug] ${message}`, level, this.time.now);
+    this.runLog.debug(message, level, this.time.now);
   }
 
   private debugDumpDiagnostics(): Record<string, unknown> {
@@ -1986,7 +2017,7 @@ export class DungeonScene extends Phaser.Scene {
       }
     };
 
-    this.uiManager.appendLog(
+    this.runLog.append(
       `[Debug] Added locked item: ${debugItem.name}. Click E to verify level gate feedback.`,
       "info",
       nowMs
@@ -2066,7 +2097,7 @@ export class DungeonScene extends Phaser.Scene {
       inventory
     };
     nextPlayer = equipItem(nextPlayer, dailyWeapon.id);
-    this.uiManager.appendLog(
+    this.runLog.append(
       `Daily loadout active: ${dailyWeapon.name}.`,
       "info",
       nowMs
@@ -2085,7 +2116,7 @@ export class DungeonScene extends Phaser.Scene {
         : false;
     this.dailyPracticeMode = selectedRunMode === "daily" ? this.pendingDailyPractice || !canScoreDaily : false;
     if (selectedRunMode === "daily" && this.pendingDailyPractice !== this.dailyPracticeMode) {
-      this.uiManager.appendLog(
+      this.runLog.append(
         this.dailyPracticeMode
           ? "Daily scored attempt already consumed today. Switched to Practice mode."
           : "Daily scored attempt unlocked.",
@@ -2279,7 +2310,7 @@ export class DungeonScene extends Phaser.Scene {
     for (const blueprintId of discovered) {
       const blueprint = BLUEPRINT_DEF_MAP[blueprintId];
       const label = blueprint?.name ?? blueprintId;
-      this.uiManager.appendLog(`Blueprint discovered (${sourceLabel}): ${label}.`, "success", nowMs);
+      this.runLog.append(`Blueprint discovered (${sourceLabel}): ${label}.`, "success", nowMs);
     }
     this.scheduleRunSave();
   }
@@ -2601,7 +2632,7 @@ export class DungeonScene extends Phaser.Scene {
       layoutHash: this.dungeon.layoutHash
     });
 
-    this.uiManager.appendLog(
+    this.runLog.append(
       source === "click"
         ? "Cracked wall opened. Hidden room revealed."
         : "Mutation pulse revealed a hidden entrance.",
@@ -2740,7 +2771,7 @@ export class DungeonScene extends Phaser.Scene {
     if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
       this.challengeMarker.setTint(0x9c6ac4);
     }
-    this.uiManager.appendLog(`Challenge room discovered (Waves: ${this.challengeWaveTotal}).`, "info", nowMs);
+    this.runLog.append(`Challenge room discovered (Waves: ${this.challengeWaveTotal}).`, "info", nowMs);
   }
 
   private openChallengeRoomPanel(nowMs: number): void {
@@ -2789,7 +2820,7 @@ export class DungeonScene extends Phaser.Scene {
       },
       () => this.consumeCurrentEvent()
     );
-    this.uiManager.appendLog("Challenge room ready. Confirm entry to start.", "warn", nowMs);
+    this.runLog.append("Challenge room ready. Confirm entry to start.", "warn", nowMs);
   }
 
   private spawnChallengeWave(nowMs: number): void {
@@ -2878,7 +2909,7 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
     this.entityManager.rebuildMonsterSpatialIndex();
-    this.uiManager.appendLog(`Challenge wave ${waveNumber}/${this.challengeWaveTotal} started.`, "warn", nowMs);
+    this.runLog.append(`Challenge wave ${waveNumber}/${this.challengeWaveTotal} started.`, "warn", nowMs);
   }
 
   private startChallengeEncounter(nowMs: number): void {
@@ -2926,7 +2957,7 @@ export class DungeonScene extends Phaser.Scene {
         this.spawnLootDrop(reward, center);
       }
       this.tryDiscoverBlueprints("challenge_room", nowMs, this.challengeRoomState.roomId);
-      this.uiManager.appendLog("Challenge cleared. Rewards granted.", "success", nowMs);
+      this.runLog.append("Challenge cleared. Rewards granted.", "success", nowMs);
       if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
         this.challengeMarker.setTint(0x5abf8a);
       }
@@ -2941,7 +2972,7 @@ export class DungeonScene extends Phaser.Scene {
       this.path = [];
       this.manualMoveTarget = null;
       this.manualMoveTargetFailures = 0;
-      this.uiManager.appendLog(`Challenge failed. Lost ${hpPenalty} HP.`, "danger", nowMs);
+      this.runLog.append(`Challenge failed. Lost ${hpPenalty} HP.`, "danger", nowMs);
       if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
         this.challengeMarker.setTint(0xc66767);
       }
@@ -3016,7 +3047,7 @@ export class DungeonScene extends Phaser.Scene {
       startedAtMs,
       deadlineAtMs: startedAtMs + 30_000
     };
-    this.uiManager.appendLog("Resumed active challenge encounter.", "info", nowMs);
+    this.runLog.append("Resumed active challenge encounter.", "info", nowMs);
   }
 
   private updateChallengeRoom(nowMs: number): void {
@@ -3264,14 +3295,14 @@ export class DungeonScene extends Phaser.Scene {
       (choiceId) => this.resolveEventChoice(choiceId, this.time.now),
       () => this.dismissCurrentEvent(this.time.now)
     );
-    this.uiManager.appendLog(`Event encountered: ${eventDef.name}.`, "info", nowMs);
+    this.runLog.append(`Event encountered: ${eventDef.name}.`, "info", nowMs);
   }
 
   private dismissCurrentEvent(nowMs: number): void {
     if (this.eventNode === null) {
       return;
     }
-    this.uiManager.appendLog(`Left event ${this.eventNode.eventDef.name} without interaction.`, "info", nowMs);
+    this.runLog.append(`Left event ${this.eventNode.eventDef.name} without interaction.`, "info", nowMs);
     this.consumeCurrentEvent();
   }
 
@@ -3286,7 +3317,7 @@ export class DungeonScene extends Phaser.Scene {
     const cost = choice.cost;
     if (!canPayEventCost(cost, this.player.health, this.player.mana, this.run.runEconomy.obols)) {
       const reason = cost === undefined ? "invalid cost" : `need ${cost.amount} ${cost.type}`;
-      this.uiManager.appendLog(`Cannot choose ${choice.name}: ${reason}.`, "warn", nowMs);
+      this.runLog.append(`Cannot choose ${choice.name}: ${reason}.`, "warn", nowMs);
       this.openEventPanel(nowMs);
       return false;
     }
@@ -3305,7 +3336,7 @@ export class DungeonScene extends Phaser.Scene {
       } else {
         this.run = spendRunObols(this.run, cost.amount);
       }
-      this.uiManager.appendLog(
+      this.runLog.append(
         `Event cost paid (${eventId}/${choiceId}): ${cost.amount} ${cost.type}.`,
         "warn",
         nowMs
@@ -3321,7 +3352,7 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         health: Math.min(this.player.derivedStats.maxHealth, this.player.health + reward.amount)
       };
-      this.uiManager.appendLog(`${source}: restored ${reward.amount} HP.`, "success", nowMs);
+      this.runLog.append(`${source}: restored ${reward.amount} HP.`, "success", nowMs);
       return;
     }
     if (reward.type === "mana") {
@@ -3329,18 +3360,18 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         mana: Math.min(this.player.derivedStats.maxMana, this.player.mana + reward.amount)
       };
-      this.uiManager.appendLog(`${source}: restored ${reward.amount} mana.`, "success", nowMs);
+      this.runLog.append(`${source}: restored ${reward.amount} mana.`, "success", nowMs);
       return;
     }
     if (reward.type === "obol") {
       this.run = addRunObols(this.run, reward.amount);
-      this.uiManager.appendLog(`${source}: gained ${reward.amount} Obol.`, "success", nowMs);
+      this.runLog.append(`${source}: gained ${reward.amount} Obol.`, "success", nowMs);
       return;
     }
     if (reward.type === "xp") {
       const xpResult = applyXpGain(this.player, reward.amount, "intelligence");
       this.player = this.refreshPlayerStatsFromEquipment(xpResult.player);
-      this.uiManager.appendLog(`${source}: gained ${reward.amount} XP.`, "success", nowMs);
+      this.runLog.append(`${source}: gained ${reward.amount} XP.`, "success", nowMs);
       if (xpResult.leveledUp) {
         this.eventBus.emit("player:levelup", {
           playerId: this.player.id,
@@ -3353,12 +3384,12 @@ export class DungeonScene extends Phaser.Scene {
     }
     if (reward.type === "mapping") {
       this.mapRevealActive = true;
-      this.uiManager.appendLog(`${source}: mapping scroll revealed objective.`, "info", nowMs);
+      this.runLog.append(`${source}: mapping scroll revealed objective.`, "info", nowMs);
       return;
     }
     if (reward.type === "consumable") {
       this.consumables = grantConsumable(this.consumables, reward.consumableId, reward.amount);
-      this.uiManager.appendLog(
+      this.runLog.append(
         `${source}: gained ${reward.amount}x ${reward.consumableId}.`,
         "success",
         nowMs
@@ -3376,7 +3407,7 @@ export class DungeonScene extends Phaser.Scene {
             entries: [{ itemDefId: reward.itemDefId, weight: 1, minFloor: 1 }]
           };
     if (table === undefined) {
-      this.uiManager.appendLog(`${source}: no valid item reward table.`, "warn", nowMs);
+      this.runLog.append(`${source}: no valid item reward table.`, "warn", nowMs);
       return;
     }
     const item = rollItemDrop(
@@ -3390,7 +3421,7 @@ export class DungeonScene extends Phaser.Scene {
       }
     );
     if (item === null) {
-      this.uiManager.appendLog(`${source}: item roll failed.`, "warn", nowMs);
+      this.runLog.append(`${source}: item roll failed.`, "warn", nowMs);
       return;
     }
     this.player = collectLoot(this.player, item);
@@ -3398,7 +3429,7 @@ export class DungeonScene extends Phaser.Scene {
       ...this.run,
       lootCollected: this.run.lootCollected + 1
     };
-    this.uiManager.appendLog(`${source}: acquired ${item.name}.`, "success", nowMs);
+    this.runLog.append(`${source}: acquired ${item.name}.`, "success", nowMs);
   }
 
   private applyEventPenalty(reward: EventReward, nowMs: number, source: string): void {
@@ -3407,7 +3438,7 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         health: Math.max(0, this.player.health - reward.amount)
       };
-      this.uiManager.appendLog(`${source}: lost ${reward.amount} HP.`, "danger", nowMs);
+      this.runLog.append(`${source}: lost ${reward.amount} HP.`, "danger", nowMs);
       if (this.player.health <= 0) {
         this.lastDeathReason = `Fell to event penalty (${reward.amount} health).`;
       }
@@ -3418,16 +3449,16 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         mana: Math.max(0, this.player.mana - reward.amount)
       };
-      this.uiManager.appendLog(`${source}: lost ${reward.amount} mana.`, "warn", nowMs);
+      this.runLog.append(`${source}: lost ${reward.amount} mana.`, "warn", nowMs);
       return;
     }
     if (reward.type === "obol") {
       const spent = Math.min(this.run.runEconomy.obols, reward.amount);
       this.run = spendRunObols(this.run, spent);
-      this.uiManager.appendLog(`${source}: lost ${spent} Obol.`, "warn", nowMs);
+      this.runLog.append(`${source}: lost ${spent} Obol.`, "warn", nowMs);
       return;
     }
-    this.uiManager.appendLog(`${source}: penalty ignored (${reward.type}).`, "warn", nowMs);
+    this.runLog.append(`${source}: penalty ignored (${reward.type}).`, "warn", nowMs);
   }
 
   private resolveEventChoice(choiceId: string, nowMs: number): void {
@@ -3437,7 +3468,7 @@ export class DungeonScene extends Phaser.Scene {
     const { eventDef } = this.eventNode;
     const choice = eventDef.choices.find((entry) => entry.id === choiceId);
     if (choice === undefined) {
-      this.uiManager.appendLog(`Event choice ${choiceId} not found.`, "warn", nowMs);
+      this.runLog.append(`Event choice ${choiceId} not found.`, "warn", nowMs);
       return;
     }
     if (!this.applyEventCost(nowMs, eventDef.id, choice.id)) {
@@ -3477,7 +3508,7 @@ export class DungeonScene extends Phaser.Scene {
   private openMerchantPanel(nowMs: number): void {
     const merchantPool = LOOT_TABLE_MAP.merchant_pool;
     if (merchantPool === undefined) {
-      this.uiManager.appendLog("Merchant pool missing.", "warn", nowMs);
+      this.runLog.append("Merchant pool missing.", "warn", nowMs);
       this.consumeCurrentEvent();
       return;
     }
@@ -3518,14 +3549,14 @@ export class DungeonScene extends Phaser.Scene {
   private tryBuyMerchantOffer(offerId: string, nowMs: number): void {
     const offer = this.merchantOffers.find((entry) => entry.offerId === offerId);
     if (offer === undefined) {
-      this.uiManager.appendLog(`Offer ${offerId} unavailable.`, "warn", nowMs);
+      this.runLog.append(`Offer ${offerId} unavailable.`, "warn", nowMs);
       this.routeFeedback({
         type: "merchant:fail"
       });
       return;
     }
     if (this.run.runEconomy.obols < offer.priceObol) {
-      this.uiManager.appendLog(`Not enough Obol for ${offer.itemDefId}.`, "warn", nowMs);
+      this.runLog.append(`Not enough Obol for ${offer.itemDefId}.`, "warn", nowMs);
       this.routeFeedback({
         type: "merchant:fail"
       });
@@ -3546,7 +3577,7 @@ export class DungeonScene extends Phaser.Scene {
       }
     );
     if (item === null) {
-      this.uiManager.appendLog(`Merchant failed to deliver ${offer.itemDefId}.`, "warn", nowMs);
+      this.runLog.append(`Merchant failed to deliver ${offer.itemDefId}.`, "warn", nowMs);
       this.routeFeedback({
         type: "merchant:fail"
       });
@@ -3568,7 +3599,7 @@ export class DungeonScene extends Phaser.Scene {
     });
     this.merchantOffers = this.merchantOffers.filter((entry) => entry.offerId !== offer.offerId);
     if (this.merchantOffers.length === 0) {
-      this.uiManager.appendLog("Merchant sold out.", "info", nowMs);
+      this.runLog.append("Merchant sold out.", "info", nowMs);
       this.consumeCurrentEvent();
     } else {
       this.openMerchantPanel(nowMs);
@@ -3819,7 +3850,7 @@ export class DungeonScene extends Phaser.Scene {
     if (this.manualMoveTargetFailures >= 8) {
       this.manualMoveTarget = null;
       this.manualMoveTargetFailures = 0;
-      this.uiManager.appendLog("Pathfinding aborted: cannot reach destination.", "warn", nowMs);
+      this.runLog.append("Pathfinding aborted: cannot reach destination.", "warn", nowMs);
     }
   }
 
@@ -4277,7 +4308,7 @@ export class DungeonScene extends Phaser.Scene {
       const before = target.state.health;
       target.state.health = Math.min(target.state.maxHealth, target.state.health + action.amount);
       if (target.state.health > before) {
-        this.uiManager.appendLog(
+        this.runLog.append(
           `${source.archetype.name} healed ${target.archetype.name} for ${target.state.health - before}.`,
           "info",
           action.timestampMs
@@ -4864,7 +4895,7 @@ export class DungeonScene extends Phaser.Scene {
         this.finishRun(true);
       }
     );
-    this.uiManager.appendLog("Bone Sovereign defeated. Choose your fate.", "success", nowMs);
+    this.runLog.append("Bone Sovereign defeated. Choose your fate.", "success", nowMs);
   }
 
   private enterAbyss(nowMs: number): void {
@@ -4884,7 +4915,7 @@ export class DungeonScene extends Phaser.Scene {
       endlessKills: 0
     };
     this.run = addRunObols(this.run, endlessFloorClearBonus(this.run.currentFloor));
-    this.uiManager.appendLog(`Entered Abyss Floor ${this.run.currentFloor}.`, "warn", nowMs);
+    this.runLog.append(`Entered Abyss Floor ${this.run.currentFloor}.`, "warn", nowMs);
     this.setupFloor(this.run.currentFloor, false);
     this.flushRunSave();
   }
@@ -4962,7 +4993,7 @@ export class DungeonScene extends Phaser.Scene {
     } else {
       this.saveManager.deleteSave();
     }
-    this.saveManager.stopLeaseHeartbeat();
+    this.saveCoordinator.stopHeartbeat();
     this.bossState = null;
     this.renderHud();
     this.hudDirty = false;
@@ -4985,7 +5016,7 @@ export class DungeonScene extends Phaser.Scene {
   private resetRun(): void {
     this.uiManager.clearSummary();
     this.bootstrapRun(this.resolveInitialRunSeed(), this.selectedDifficulty);
-    this.saveManager.startLeaseHeartbeat(() => this.buildRunSaveSnapshot(this.time.now));
+    this.saveCoordinator.startHeartbeat();
     this.flushRunSave();
     this.hudDirty = true;
   }
@@ -5133,7 +5164,7 @@ export class DungeonScene extends Phaser.Scene {
     }
     if (result.mappingRevealed) {
       this.mapRevealActive = true;
-      this.uiManager.appendLog("Objective mapped on HUD.", "info", nowMs);
+      this.runLog.append("Objective mapped on HUD.", "info", nowMs);
     }
     this.eventBus.emit("consumable:use", {
       playerId: this.player.id,
@@ -5253,7 +5284,8 @@ export class DungeonScene extends Phaser.Scene {
       run: runState,
       meta: this.meta
     };
-    const snapshot = createUIStateSnapshot(viewState, {
+    const snapshot = this.hudPresenter.buildSnapshot({
+      view: viewState,
       logs: this.uiManager.getLogs(),
       flags: {
         runEnded: this.runEnded,
@@ -5445,18 +5477,12 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private flushRunSave(): void {
-    if (this.runEnded) {
-      return;
-    }
-    this.saveManager.flushSave(() => this.buildRunSaveSnapshot(this.time.now));
+    this.saveCoordinator.flush();
     this.lastAutoSaveAt = this.time.now;
   }
 
   private scheduleRunSave(): void {
-    if (this.runEnded) {
-      return;
-    }
-    this.saveManager.scheduleSave(() => this.buildRunSaveSnapshot(this.time.now));
+    this.saveCoordinator.schedule();
   }
 
   private restoreRunFromSave(save: RunSaveDataV2): boolean {
@@ -5714,7 +5740,7 @@ export class DungeonScene extends Phaser.Scene {
     if (!this.runEnded) {
       this.flushRunSave();
     }
-    this.saveManager.dispose();
+    this.saveCoordinator.dispose();
     this.sfxSystem.shutdown();
     this.vfxSystem.shutdown();
     this.eventBus.removeAll();
@@ -5739,10 +5765,7 @@ export class DungeonScene extends Phaser.Scene {
     this.nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
     this.cursorKeys = null;
     this.entityManager.clear();
-    if (this.perfPanelEl !== null) {
-      this.perfPanelEl.classList.add("hidden");
-      this.perfPanelEl.textContent = "";
-    }
+    this.diagnosticsService.reset();
     if (this.diagnosticsEnabled) {
       const after = this.collectDiagnosticsSnapshot();
       console.info("[Blodex] cleanup diagnostics", {
