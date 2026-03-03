@@ -1,0 +1,175 @@
+#hud-panel {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(248, 214, 160, 0.08), rgba(248, 214, 160, 0) 24%),
+    var(--panel);
+}
+
+.panel-block {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(208, 168, 111, 0.26);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(250, 224, 182, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+.panel-block::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 4% 8%, rgba(255, 245, 220, 0.06), transparent 34%),
+    radial-gradient(circle at 86% 92%, rgba(95, 134, 161, 0.08), transparent 38%);
+  opacity: 0.55;
+}
+
+button,
+.inventory-cell,
+.equip-slot,
+.dialog-action,
+.event-choice,
+.merchant-offer button {
+  transition:
+    transform var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    opacity var(--motion-fast) var(--ease-standard);
+}
+
+.equip-slot.filled:hover,
+.inventory-cell:hover {
+  transform: translateY(-2px);
+  border-color: rgba(230, 195, 126, 0.52);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(238, 208, 145, 0.22);
+}
+
+.inventory-cell.newly-acquired {
+  animation: pulseBorder 1.2s ease-in-out infinite;
+  box-shadow:
+    0 0 0 1px rgba(244, 208, 118, 0.35),
+    0 0 14px rgba(244, 208, 118, 0.3);
+}
+
+.equip-slot-name,
+.hotkey-badge,
+.slot-status,
+.log-time {
+  font-size: 11px;
+}
+
+.player-bars {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.player-bar-row {
+  display: grid;
+  gap: 4px;
+}
+
+.player-bar-row.low-health .player-bar-track {
+  animation: pulseGlow 900ms ease-in-out infinite;
+  border-color: rgba(218, 113, 113, 0.66);
+}
+
+.player-bar-row.low-health .player-bar-fill.hp {
+  background: linear-gradient(90deg, #9c2f2f, #ce4d4d);
+}
+
+.player-bar-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-subtle);
+}
+
+.player-bar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(208, 168, 111, 0.34);
+  background: rgba(8, 12, 16, 0.88);
+  overflow: hidden;
+}
+
+.player-bar-fill {
+  height: 100%;
+  transition: width var(--motion-base) var(--ease-standard);
+}
+
+.player-bar-fill.hp {
+  background: linear-gradient(90deg, #b94d4d, #d97a60);
+}
+
+.player-bar-fill.mana {
+  background: linear-gradient(90deg, #4a78bf, #79a9eb);
+}
+
+.player-bar-fill.xp {
+  background: linear-gradient(90deg, #baa34a, #e6cf75);
+}
+
+.skill-slot {
+  overflow: hidden;
+}
+
+.skill-slot > *:not(.skill-cooldown-overlay) {
+  position: relative;
+  z-index: 1;
+}
+
+.skill-cooldown-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(10, 14, 20, 0.78), rgba(10, 14, 20, 0.42)),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0.08) 3px,
+      rgba(255, 255, 255, 0) 3px,
+      rgba(255, 255, 255, 0) 6px
+    );
+  transform-origin: top;
+  transform: scaleY(var(--cooldown-progress, 0));
+  transition: transform var(--motion-fast) linear;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.skill-slot.ready-flash {
+  animation: pulseGlow 480ms ease-out 1;
+}
+
+.minimap-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.minimap-compass {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(208, 168, 111, 0.46);
+  background: rgba(208, 168, 111, 0.1);
+  color: #f3dec0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.minimap-panel canvas {
+  max-width: 200px;
+}
+

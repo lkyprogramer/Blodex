@@ -8,3 +8,19 @@ dist
 output/imagegen/raw
 tmp/imagegen
 .claude
+
+# Build artifacts must never be committed under source trees.
+apps/*/src/**/*.js
+apps/*/src/**/*.js.map
+apps/*/src/**/*.d.ts
+apps/*/src/**/*.d.ts.map
+packages/*/src/**/*.js
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
+
+# TypeScript emit from game-client config must stay untracked.
+apps/game-client/vite.config.js
+apps/game-client/vite.config.js.map
+apps/game-client/vite.config.d.ts
+apps/game-client/vite.config.d.ts.map

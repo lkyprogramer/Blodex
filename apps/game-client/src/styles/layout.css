@@ -1,0 +1,183 @@
+#app {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  min-height: 100vh;
+}
+
+#game-root {
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#hud-panel {
+  padding: 10px;
+  background: var(--panel);
+  backdrop-filter: blur(6px);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#hud-critical {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#hud-critical.low-health-critical #stats {
+  border-color: rgba(212, 91, 91, 0.78);
+  box-shadow: 0 0 0 1px rgba(212, 91, 91, 0.22);
+}
+
+#hud-panel h1 {
+  margin: 0;
+  font-family: "Cinzel", serif;
+  font-size: 22px;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+}
+
+.panel-block {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid rgba(208, 168, 111, 0.2);
+  border-radius: var(--radius-lg);
+  background: rgba(10, 14, 18, 0.55);
+}
+
+.compact-block h2 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-family: "Cinzel", serif;
+  letter-spacing: 0.3px;
+  color: var(--text-subtle);
+}
+
+.mini-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.mini-grid.mini-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mini-grid.mini-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mini-grid > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.mini-grid .k {
+  color: var(--text-subtle);
+}
+
+.stat-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.inventory-panel {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#log {
+  margin-top: 0;
+  min-height: 210px;
+}
+
+#boss-bar {
+  margin: 0;
+}
+
+#minimap {
+  margin: 0;
+}
+
+.perf-panel {
+  border: 1px solid rgba(111, 186, 132, 0.35);
+  border-radius: var(--radius-md);
+  background: rgba(10, 24, 18, 0.75);
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #cde9d4;
+  white-space: pre-line;
+}
+
+.minimap-panel {
+  padding: var(--space-3);
+}
+
+.minimap-panel h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-family: "Cinzel", serif;
+  color: var(--text-subtle);
+  letter-spacing: 0.3px;
+}
+
+.minimap-panel canvas {
+  width: 100%;
+  max-width: 160px;
+  height: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(208, 168, 111, 0.26);
+  background: rgba(7, 11, 16, 0.9);
+  display: block;
+}
+
+#skillbar.skillbar-root {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-skillbar);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
+  background: linear-gradient(180deg, rgba(11, 16, 22, 0) 0%, rgba(11, 16, 22, 0.92) 22%);
+}
+
+.equipment-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.equip-slot {
+  border: 1px solid rgba(208, 168, 111, 0.2);
+  border-radius: var(--radius-md);
+  background: rgba(13, 18, 24, 0.75);
+  padding: 4px;
+  min-height: 76px;
+}
+
+.equip-slot-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.equip-slot-name {
+  font-size: 9px;
+  color: var(--text-subtle);
+  letter-spacing: 0.45px;
+}
+
+.equip-slot-empty {
+  font-size: 13px;
+  color: rgba(181, 168, 143, 0.72);
+  text-align: center;
+  margin-top: 8px;
+}
+
