@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 echo "[precheck] typecheck"
-pnpm check
+pnpm -r typecheck
 
 echo "[precheck] tests"
 pnpm test

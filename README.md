@@ -24,7 +24,7 @@ pnpm dev
 - `pnpm test`: run `core` + `game-client` + `content` tests
 - `pnpm build`: build all packages
 - `pnpm check`: TypeScript checks
-- `pnpm precheck`: run local quality gates before commit
+- `pnpm quality:precheck`: run local quality gates before commit
 - `pnpm ci:check`: run CI-equivalent quality gates
 - `pnpm check:source-hygiene`: block build artifacts under `src/**`
 - `pnpm check:content-i18n`: verify content locale consistency (`en-US` / `zh-CN`)

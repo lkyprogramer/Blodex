@@ -16,10 +16,10 @@
 ## 本地一键预检
 
 ```bash
-pnpm precheck
+pnpm quality:precheck
 ```
 
-`precheck` 与 CI 门禁语义一致，建议在提交前执行。
+`quality:precheck` 与 CI 门禁语义一致，建议在提交前执行。
 
 ## CI 规则
 
