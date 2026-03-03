@@ -1,29 +1,11 @@
-import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   checkCatalogCompleteness,
   checkPlaceholderConsistency,
-  collectSourceI18nKeys
+  collectSourceI18nKeys,
+  readCatalogMessages
 } from "../src/i18n/catalogDiagnostics.ts";
-
-const KEY_VALUE_PATTERN = /["'`]((?:ui|log)\.[A-Za-z0-9_.-]+)["'`]\s*:\s*["'`]([^"'`]*)["'`]/g;
-
-function readCatalogMessages(filePath: string): Record<string, string> {
-  const source = fs.readFileSync(filePath, "utf8");
-  const messages: Record<string, string> = {};
-
-  for (const match of source.matchAll(KEY_VALUE_PATTERN)) {
-    const key = match[1];
-    const value = match[2];
-    if (key === undefined || value === undefined) {
-      continue;
-    }
-    messages[key] = value;
-  }
-
-  return messages;
-}
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const srcRoot = path.resolve(scriptDir, "../src");

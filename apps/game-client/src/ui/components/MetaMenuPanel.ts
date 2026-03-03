@@ -78,6 +78,7 @@ export interface MetaMenuBlueprintCardView {
   forgeCost: number;
   unlockTargetId: string;
   statusText: string;
+  forged: boolean;
   canForge: boolean;
 }
 
@@ -260,8 +261,8 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
             "meta-blueprint-card",
             `rarity-${blueprint.rarity}`,
             blueprint.canForge ? "available" : "",
-            blueprint.statusText === "Forged" ? "unlocked" : "",
-            !blueprint.canForge && blueprint.statusText !== "Forged" ? "locked" : ""
+            blueprint.forged ? "unlocked" : "",
+            !blueprint.canForge && !blueprint.forged ? "locked" : ""
           ]
             .filter((className) => className.length > 0)
             .join(" ");

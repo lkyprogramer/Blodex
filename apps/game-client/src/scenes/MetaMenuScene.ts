@@ -377,6 +377,7 @@ export class MetaMenuScene extends Phaser.Scene {
         forgeCost: blueprint.forgeCost,
         unlockTargetId: blueprint.unlockTargetId,
         statusText,
+        forged: isForged,
         canForge
       });
       blueprintGroups.set(blueprint.category, group);

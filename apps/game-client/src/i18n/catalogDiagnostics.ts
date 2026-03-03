@@ -3,6 +3,8 @@ import path from "node:path";
 
 const KEY_LITERAL_PATTERN = /["'`](ui|log)\.[A-Za-z0-9_.-]+["'`]/g;
 const PLACEHOLDER_PATTERN = /\{([a-zA-Z0-9_]+)\}/g;
+const CATALOG_ENTRY_PATTERN =
+  /(["'`])((?:ui|log)\.[A-Za-z0-9_.-]+)\1\s*:\s*(["'`])((?:\\.|(?!\3)[\s\S])*)\3/g;
 
 function shouldScanFile(filePath: string): boolean {
   if (!filePath.endsWith(".ts") && !filePath.endsWith(".tsx")) {
@@ -50,6 +52,23 @@ export function collectSourceI18nKeys(rootDir: string): Set<string> {
     }
   }
   return keys;
+}
+
+export function extractCatalogMessages(source: string): Record<string, string> {
+  const messages: Record<string, string> = {};
+  for (const match of source.matchAll(CATALOG_ENTRY_PATTERN)) {
+    const key = match[2];
+    const value = match[4];
+    if (key === undefined || value === undefined) {
+      continue;
+    }
+    messages[key] = value;
+  }
+  return messages;
+}
+
+export function readCatalogMessages(filePath: string): Record<string, string> {
+  return extractCatalogMessages(fs.readFileSync(filePath, "utf8"));
 }
 
 export function checkCatalogCompleteness(
