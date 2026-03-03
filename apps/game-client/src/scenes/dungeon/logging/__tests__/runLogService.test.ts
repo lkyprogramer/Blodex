@@ -44,4 +44,25 @@ describe("RunLogService", () => {
     expect(secondSink.append).toHaveBeenCalledTimes(1);
     expect(secondSink.append).toHaveBeenCalledWith("after", "info", 2);
   });
+
+  it("resolves key-based log messages with i18n service", () => {
+    const sink = {
+      append: vi.fn()
+    };
+    const runLog = new RunLogService(sink, {
+      getLocale: () => "en-US",
+      setLocale: () => {},
+      getFallbackLocale: () => "en-US",
+      t: (key, params) => `${key}:${params?.value ?? ""}`,
+      hasKey: () => true,
+      getAvailableLocales: () => ["en-US"],
+      getDiagnostics: () => ({ missingKeys: [], missingParams: [] }),
+      resetDiagnostics: () => {}
+    });
+
+    runLog.appendKey("log.sample", { value: 42 }, "success", 789);
+
+    expect(sink.append).toHaveBeenCalledOnce();
+    expect(sink.append).toHaveBeenCalledWith("log.sample:42", "success", 789);
+  });
 });

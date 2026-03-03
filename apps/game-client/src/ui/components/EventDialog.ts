@@ -1,4 +1,5 @@
 import type { EventChoice, MerchantOffer, RandomEventDef } from "@blodex/core";
+import { getContentLocalizer, t } from "../../i18n";
 
 function escapeHtml(raw: string): string {
   return raw
@@ -16,17 +17,26 @@ export interface EventChoiceView {
 }
 
 export function renderEventDialog(eventDef: RandomEventDef, choices: EventChoiceView[]): string {
+  const contentLocalizer = getContentLocalizer();
+  const eventName = contentLocalizer.eventName(eventDef.id, eventDef.name);
+  const eventDescription = contentLocalizer.eventDescription(eventDef.id, eventDef.description);
   const buttons = choices
     .map(({ choice, enabled, disabledReason }) => {
+      const choiceName = contentLocalizer.eventChoiceName(eventDef.id, choice.id, choice.name);
+      const choiceDescription = contentLocalizer.eventChoiceDescription(
+        eventDef.id,
+        choice.id,
+        choice.description
+      );
       return `
         <button
           class="dialog-action ${enabled ? "" : "disabled"}"
           data-choice-id="${choice.id}"
           ${enabled ? "" : "disabled"}
-          title="${escapeHtml(disabledReason ?? choice.description)}"
+          title="${escapeHtml(disabledReason ?? choiceDescription)}"
         >
-          <span class="dialog-action-title">${escapeHtml(choice.name)}</span>
-          <small>${escapeHtml(choice.description)}</small>
+          <span class="dialog-action-title">${escapeHtml(choiceName)}</span>
+          <small>${escapeHtml(choiceDescription)}</small>
         </button>
       `;
     })
@@ -34,10 +44,10 @@ export function renderEventDialog(eventDef: RandomEventDef, choices: EventChoice
 
   return `
     <div class="dialog-card event-dialog-card">
-      <h2>${escapeHtml(eventDef.name)}</h2>
-      <p>${escapeHtml(eventDef.description)}</p>
+      <h2>${escapeHtml(eventName)}</h2>
+      <p>${escapeHtml(eventDescription)}</p>
       <div class="dialog-actions">${buttons}</div>
-      <button class="dialog-close" data-event-close="1">Close</button>
+      <button class="dialog-close" data-event-close="1">${t("ui.event.close")}</button>
     </div>
   `;
 }
@@ -53,7 +63,9 @@ export function renderMerchantDialog(
             <div class="merchant-name">${escapeHtml(offer.itemName)}</div>
             <small class="merchant-rarity ${offer.rarity}">${escapeHtml(offer.rarity.toUpperCase())}</small>
           </div>
-          <button class="dialog-action" data-offer-id="${offer.offerId}">Buy (${offer.priceObol})</button>
+          <button class="dialog-action" data-offer-id="${offer.offerId}">${t("ui.event.merchant.buy", {
+            price: offer.priceObol
+          })}</button>
         </div>
       `;
     })
@@ -61,10 +73,10 @@ export function renderMerchantDialog(
 
   return `
     <div class="dialog-card merchant-dialog-card">
-      <h2>Wandering Merchant</h2>
-      <p>Spend Obol to buy items for this run.</p>
-      <div class="merchant-list">${rows || '<p class="log-empty">Sold out.</p>'}</div>
-      <button class="dialog-close" data-event-close="1">Leave</button>
+      <h2>${t("ui.event.merchant.title")}</h2>
+      <p>${t("ui.event.merchant.subtitle")}</p>
+      <div class="merchant-list">${rows || `<p class="log-empty">${escapeHtml(t("ui.event.merchant.sold_out"))}</p>`}</div>
+      <button class="dialog-close" data-event-close="1">${t("ui.event.leave")}</button>
     </div>
   `;
 }

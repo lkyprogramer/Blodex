@@ -4,6 +4,7 @@ import {
   type PreferredImageFormat
 } from "../../assets/imageAsset";
 import { UI_POLISH_FLAGS } from "../../config/uiFlags";
+import { t } from "../../i18n";
 
 function escapeHtml(raw: string): string {
   return raw
@@ -59,7 +60,10 @@ export function renderSkillBar(view: SkillBarView, preferredImageFormat: Preferr
   const consumablesHtml = consumables
     .map((entry) => {
       const disabled = entry.disabledReason !== undefined;
-      const cooldown = entry.cooldownLeftMs > 0 ? `${(entry.cooldownLeftMs / 1000).toFixed(1)}s` : "Ready";
+      const cooldown =
+        entry.cooldownLeftMs > 0
+          ? `${(entry.cooldownLeftMs / 1000).toFixed(1)}s`
+          : t("ui.skillbar.status.ready");
       const disabledReasonAttr =
         entry.disabledReason === undefined
           ? ""
@@ -78,7 +82,7 @@ export function renderSkillBar(view: SkillBarView, preferredImageFormat: Preferr
           data-tooltip-base-cooldown-ms="${entry.baseCooldownMs ?? 0}"
           ${disabled ? 'aria-disabled="true" tabindex="-1"' : ""}
           ${disabledReasonAttr}
-          title="${escapeHtml(entry.disabledReason ?? `Use ${entry.name}`)}"
+          title="${escapeHtml(entry.disabledReason ?? t("ui.skillbar.use_title", { name: entry.name }))}"
         >
           <div class="quick-head">
             <img class="quick-icon" data-asset-id="${entry.iconId}" src="${resolveGeneratedAssetUrl(
@@ -88,7 +92,9 @@ export function renderSkillBar(view: SkillBarView, preferredImageFormat: Preferr
             <span class="hotkey-badge">${escapeHtml(entry.hotkey)}</span>
           </div>
           <span class="consumable-meta">${escapeHtml(entry.name)}</span>
-          <small class="slot-status">${entry.charges} left · ${cooldown}</small>
+          <small class="slot-status">${escapeHtml(
+            t("ui.skillbar.slot_status", { charges: entry.charges, cooldown })
+          )}</small>
         </button>
       `;
     })
@@ -105,10 +111,10 @@ export function renderSkillBar(view: SkillBarView, preferredImageFormat: Preferr
         : 0;
       const showCooldownOverlay = hasCooldownData && UI_POLISH_FLAGS.skillCooldownOverlayEnabled;
       const statusText = slot.locked
-        ? "Locked"
+        ? t("ui.skillbar.status.locked")
         : slot.cooldownLeftMs > 0
           ? `${(slot.cooldownLeftMs / 1000).toFixed(1)}s`
-          : "Ready";
+          : t("ui.skillbar.status.ready");
       const classes = [
         "skill-slot",
         slot.locked ? "locked" : "",
@@ -133,7 +139,7 @@ export function renderSkillBar(view: SkillBarView, preferredImageFormat: Preferr
           data-tooltip-range="${slot.range ?? 0}"
           data-tooltip-locked="${slot.locked ? "1" : "0"}"
           data-tooltip-out-of-mana="${slot.outOfMana ? "1" : "0"}"
-          title="${escapeHtml(slot.locked ? "Locked skill slot" : slot.name)}"
+          title="${escapeHtml(slot.locked ? t("ui.skillbar.locked_slot_title") : slot.name)}"
         >
           ${
             showCooldownOverlay

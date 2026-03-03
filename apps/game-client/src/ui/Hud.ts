@@ -31,6 +31,7 @@ import {
   bindRunSummaryActions,
   renderRunSummaryScreen
 } from "./components/RunSummaryScreen";
+import { getContentLocalizer, t } from "../i18n";
 
 interface HudState {
   player: PlayerState;
@@ -98,30 +99,30 @@ const MAX_LOG_ENTRIES = 200;
 function slotLabel(slot: EquipmentSlot): string {
   switch (slot) {
     case "weapon":
-      return "WPN";
+      return t("ui.hud.inventory.slot.weapon.short");
     case "helm":
-      return "HELM";
+      return t("ui.hud.inventory.slot.helm.short");
     case "chest":
-      return "CHEST";
+      return t("ui.hud.inventory.slot.chest.short");
     case "boots":
-      return "BOOTS";
+      return t("ui.hud.inventory.slot.boots.short");
     case "ring":
-      return "RING";
+      return t("ui.hud.inventory.slot.ring.short");
   }
 }
 
 function slotLongLabel(slot: EquipmentSlot): string {
   switch (slot) {
     case "weapon":
-      return "Weapon";
+      return t("ui.hud.inventory.slot.weapon.long");
     case "helm":
-      return "Helm";
+      return t("ui.hud.inventory.slot.helm.long");
     case "chest":
-      return "Chest";
+      return t("ui.hud.inventory.slot.chest.long");
     case "boots":
-      return "Boots";
+      return t("ui.hud.inventory.slot.boots.long");
     case "ring":
-      return "Ring";
+      return t("ui.hud.inventory.slot.ring.long");
   }
 }
 
@@ -211,24 +212,34 @@ function parseTooltipNumber(raw: string | undefined): number {
 }
 
 function formatCooldownLabel(cooldownLeftMs: number): string {
-  return cooldownLeftMs > 0 ? `Cooldown ${(cooldownLeftMs / 1000).toFixed(1)}s` : "Ready";
+  return cooldownLeftMs > 0
+    ? t("ui.hud.cooldown.label", {
+        seconds: (cooldownLeftMs / 1000).toFixed(1)
+      })
+    : t("ui.hud.cooldown.ready");
 }
 
 function formatTargetingLabel(targeting: string, range: number): string {
   const roundedRange = Number.isFinite(range) && range > 0 ? Number.parseFloat(range.toFixed(1)) : 0;
   if (targeting === "self") {
-    return "Self";
+    return t("ui.hud.targeting.self");
   }
   if (targeting === "nearest") {
-    return roundedRange > 0 ? `Nearest enemy (${roundedRange} range)` : "Nearest enemy";
+    return roundedRange > 0
+      ? t("ui.hud.targeting.nearest_enemy_range", { range: roundedRange })
+      : t("ui.hud.targeting.nearest_enemy");
   }
   if (targeting === "aoe_around") {
-    return roundedRange > 0 ? `Around you (${roundedRange} radius)` : "Around you";
+    return roundedRange > 0
+      ? t("ui.hud.targeting.around_you_radius", { radius: roundedRange })
+      : t("ui.hud.targeting.around_you");
   }
   if (targeting === "directional") {
-    return roundedRange > 0 ? `Directional (${roundedRange} range)` : "Directional";
+    return roundedRange > 0
+      ? t("ui.hud.targeting.directional_range", { range: roundedRange })
+      : t("ui.hud.targeting.directional");
   }
-  return "-";
+  return t("ui.hud.targeting.unknown");
 }
 
 function toPercent(current: number, max: number): number {
@@ -253,6 +264,7 @@ export class Hud {
   private readonly eventPanelEl = document.querySelector("#event-panel") as HTMLDivElement;
   private readonly tooltipEl: HTMLDivElement;
   private readonly preferredImageFormat = detectPreferredImageFormat();
+  private readonly contentLocalizer = getContentLocalizer();
 
   private logEntries: LogEntry[] = [];
   private nextLogId = 1;
@@ -285,9 +297,9 @@ export class Hud {
     this.metaEl.className = "panel-block compact-block";
     this.metaEl.innerHTML = `
       <div class="mini-grid mini-3">
-        <div><span class="k">Runs</span><span>${state.meta.runsPlayed}</span></div>
-        <div><span class="k">Best F</span><span>${state.meta.bestFloor}</span></div>
-        <div><span class="k">Best T</span><span>${(state.meta.bestTimeMs / 1000).toFixed(1)}s</span></div>
+        <div><span class="k">${t("ui.hud.meta.runs")}</span><span>${state.meta.runsPlayed}</span></div>
+        <div><span class="k">${t("ui.hud.meta.best_floor")}</span><span>${state.meta.bestFloor}</span></div>
+        <div><span class="k">${t("ui.hud.meta.best_time")}</span><span>${(state.meta.bestTimeMs / 1000).toFixed(1)}s</span></div>
       </div>
     `;
 
@@ -300,11 +312,11 @@ export class Hud {
     document.body.classList.toggle("low-health-critical", lowHealth);
     this.statsEl.className = "panel-block compact-block";
     this.statsEl.innerHTML = `
-      <h2>Vanguard</h2>
+      <h2>${t("ui.hud.player.title")}</h2>
       <div class="player-bars">
         <div class="player-bar-row ${lowHealth ? "low-health" : ""}">
           <div class="player-bar-head">
-            <span>HP</span>
+            <span>${t("ui.hud.player.hp")}</span>
             <span>${Math.floor(player.health)}/${Math.floor(player.derivedStats.maxHealth)}</span>
           </div>
           <div class="player-bar-track">
@@ -313,7 +325,7 @@ export class Hud {
         </div>
         <div class="player-bar-row">
           <div class="player-bar-head">
-            <span>Mana</span>
+            <span>${t("ui.hud.player.mana")}</span>
             <span>${Math.floor(player.mana)}/${Math.floor(player.derivedStats.maxMana)}</span>
           </div>
           <div class="player-bar-track">
@@ -322,7 +334,7 @@ export class Hud {
         </div>
         <div class="player-bar-row">
           <div class="player-bar-head">
-            <span>XP</span>
+            <span>${t("ui.hud.player.xp")}</span>
             <span>${player.xp}/${player.xpToNextLevel}</span>
           </div>
           <div class="player-bar-track">
@@ -331,44 +343,46 @@ export class Hud {
         </div>
       </div>
       <div class="mini-grid mini-3">
-        <div><span class="k">Lvl</span><span>${player.level}</span></div>
-        <div><span class="k">Pow</span><span>${Math.floor(player.derivedStats.attackPower)}</span></div>
-        <div><span class="k">Arm</span><span>${Math.floor(player.derivedStats.armor)}</span></div>
+        <div><span class="k">${t("ui.hud.player.level")}</span><span>${player.level}</span></div>
+        <div><span class="k">${t("ui.hud.player.power")}</span><span>${Math.floor(player.derivedStats.attackPower)}</span></div>
+        <div><span class="k">${t("ui.hud.player.armor")}</span><span>${Math.floor(player.derivedStats.armor)}</span></div>
       </div>
     `;
 
     this.runEl.className = "panel-block compact-block";
     const modeLabel =
       state.run.inEndless === true
-        ? `ABYSS${state.run.endlessFloor === undefined ? "" : ` ${state.run.endlessFloor}`}`
+        ? state.run.endlessFloor === undefined
+          ? t("ui.hud.run.mode.abyss_base")
+          : t("ui.hud.run.mode.abyss", { floor: state.run.endlessFloor })
         : state.run.runMode === "daily"
-          ? "DAILY"
+          ? t("ui.hud.run.mode.daily")
           : (state.run.difficulty ?? "normal").toUpperCase();
     const runBody = `
       <div class="mini-grid mini-2">
-        <div><span class="k">Floor</span><span>${state.run.floor}</span></div>
-        <div><span class="k">Mode</span><span>${modeLabel}</span></div>
-        <div><span class="k">Biome</span><span>${state.run.biome ?? "-"}</span></div>
-        <div><span class="k">Status</span><span class="${
+        <div><span class="k">${t("ui.hud.run.floor")}</span><span>${state.run.floor}</span></div>
+        <div><span class="k">${t("ui.hud.run.mode")}</span><span>${modeLabel}</span></div>
+        <div><span class="k">${t("ui.hud.run.biome")}</span><span>${state.run.biome ?? "-"}</span></div>
+        <div><span class="k">${t("ui.hud.run.status")}</span><span class="${
           player.health <= 0 ? "badge-danger" : "badge-ok"
-        }">${player.health <= 0 ? "Dead" : "Hunting"}</span></div>
-        <div><span class="k">Kills</span><span>${state.run.kills}/${state.run.targetKills}</span></div>
-        <div><span class="k">Loot</span><span>${state.run.lootCollected}</span></div>
-        <div><span class="k">Obol</span><span>${state.run.obols ?? 0}</span></div>
-        <div><span class="k">Goal</span><span>${state.run.floorGoalReached ? "Stairs up" : "Hunt"}</span></div>
+        }">${player.health <= 0 ? t("ui.hud.run.status.dead") : t("ui.hud.run.status.hunting")}</span></div>
+        <div><span class="k">${t("ui.hud.run.kills")}</span><span>${state.run.kills}/${state.run.targetKills}</span></div>
+        <div><span class="k">${t("ui.hud.run.loot")}</span><span>${state.run.lootCollected}</span></div>
+        <div><span class="k">${t("ui.hud.run.obol")}</span><span>${state.run.obols ?? 0}</span></div>
+        <div><span class="k">${t("ui.hud.run.goal")}</span><span>${state.run.floorGoalReached ? t("ui.hud.run.goal.stairs_up") : t("ui.hud.run.goal.hunt")}</span></div>
       </div>
       ${
         state.run.mappingRevealed
-          ? `<div class="mapping-hint">Mapping scroll active: objective location revealed.</div>`
+          ? `<div class="mapping-hint">${t("ui.hud.run.mapping_hint")}</div>`
           : ""
       }
       ${
         lowHealth
-          ? '<div class="critical-health-hint">Critical HP: drink potion or disengage.</div>'
+          ? `<div class="critical-health-hint">${t("ui.hud.run.critical_hint")}</div>`
           : ""
       }
     `;
-    this.runEl.innerHTML = renderHudPanel("Run State", runBody);
+    this.runEl.innerHTML = renderHudPanel(t("ui.hud.run.title"), runBody);
 
     const bossBarHtml = renderBossHealthBar(state.run);
     if (bossBarHtml.length === 0) {
@@ -431,8 +445,8 @@ export class Hud {
     this.deathOverlayEl.classList.remove("hidden");
     this.deathOverlayEl.innerHTML = `
       <div class="death-card">
-        <h2>You Died</h2>
-        <p class="death-card-subtitle">The Abyss claims another run.</p>
+        <h2>${t("ui.hud.death.title")}</h2>
+        <p class="death-card-subtitle">${t("ui.hud.death.subtitle")}</p>
         <p class="death-card-reason">${escapeHtml(reason)}</p>
       </div>
     `;
@@ -467,23 +481,27 @@ export class Hud {
           </div>
         `;
       }
+      const equippedName = this.contentLocalizer.itemName(equipped.defId, equipped.name);
 
       return `
         <div class="equip-slot filled ${equipped.rarity}" data-item-id="${equipped.id}">
           <div class="equip-slot-head">
             <div class="equip-slot-name">${slotLabel(slot)}</div>
-            <button data-unequip-slot="${slot}" title="Unequip ${slotLongLabel(slot)}">×</button>
+            <button data-unequip-slot="${slot}" title="${escapeHtml(
+              t("ui.hud.inventory.unequip", { slot: slotLongLabel(slot) })
+            )}">×</button>
           </div>
           <img class="item-icon" data-asset-id="${equipped.iconId}" src="${resolveGeneratedAssetUrl(
             equipped.iconId,
             this.preferredImageFormat
-          )}" alt="${equipped.name}" />
+          )}" alt="${escapeHtml(equippedName)}" />
         </div>
       `;
     }).join("");
 
     const inventoryGrid = player.inventory
       .map((item) => {
+        const itemName = this.contentLocalizer.itemName(item.defId, item.name);
         const equipable = canEquip(player, item);
         const newlyAcquiredClass = newlyAcquiredSet.has(item.id) ? "newly-acquired" : "";
         return `
@@ -491,31 +509,41 @@ export class Hud {
             <img class="item-icon" data-asset-id="${item.iconId}" src="${resolveGeneratedAssetUrl(
               item.iconId,
               this.preferredImageFormat
-            )}" alt="${item.name}" />
+            )}" alt="${escapeHtml(itemName)}" />
             <div class="inventory-cell-actions">
               <button
                 class="${equipable ? "" : "blocked"}"
                 data-item-id="${item.id}"
-                title="${equipable ? `Equip ${item.name}` : `Need level ${item.requiredLevel}`}"
-              >${equipable ? "E" : `Lv${item.requiredLevel}`}</button>
+                title="${escapeHtml(
+                  equipable
+                    ? t("ui.hud.inventory.equip", { item: itemName })
+                    : t("ui.hud.inventory.need_level", { level: item.requiredLevel })
+                )}"
+              >${equipable ? "E" : escapeHtml(t("ui.hud.inventory.need_level_short", { level: item.requiredLevel }))}</button>
               <button
                 class="discard"
                 data-discard-item-id="${item.id}"
-                title="Discard ${item.name}"
+                title="${escapeHtml(t("ui.hud.inventory.discard", { item: itemName }))}"
               >D</button>
             </div>
-            ${equipable ? "" : `<small class="equip-lock-hint">Need Lv${item.requiredLevel}</small>`}
+            ${equipable ? "" : `<small class="equip-lock-hint">${escapeHtml(
+              t("ui.hud.inventory.equip_lock_hint", {
+                level: item.requiredLevel
+              })
+            )}</small>`}
           </div>
         `;
       })
       .join("");
 
     this.inventoryEl.innerHTML = `
-      <h2>Inventory</h2>
+      <h2>${t("ui.hud.inventory.title")}</h2>
       <div class="equipment-grid">${equipmentGrid}</div>
-      <div class="inventory-subhead">Backpack (${player.inventory.length})</div>
+      <div class="inventory-subhead">${t("ui.hud.inventory.subhead", { count: player.inventory.length })}</div>
       <div class="inventory-scroll">
-        <div class="inventory-grid">${inventoryGrid || '<div class="inventory-empty">No drops yet.</div>'}</div>
+        <div class="inventory-grid">${inventoryGrid || `<div class="inventory-empty">${escapeHtml(
+          t("ui.hud.inventory.empty")
+        )}</div>`}</div>
       </div>
     `;
     this.bindGeneratedImageFallbacks(this.inventoryEl);
@@ -601,9 +629,9 @@ export class Hud {
       )
       .join("");
     this.logEl.innerHTML = `
-      <h2>System Log</h2>
+      <h2>${t("ui.hud.log.title")}</h2>
       <div class="log-list">
-        ${rows || '<p class="log-empty">No events yet.</p>'}
+        ${rows || `<p class="log-empty">${escapeHtml(t("ui.hud.log.empty"))}</p>`}
       </div>
     `;
   }
@@ -643,7 +671,7 @@ export class Hud {
   private showQuickbarTooltip(element: HTMLElement, event: MouseEvent): void {
     const kind = element.dataset.tooltipKind;
     if (kind === "consumable") {
-      const name = escapeHtml(element.dataset.tooltipName ?? "Consumable");
+      const name = escapeHtml(element.dataset.tooltipName ?? t("ui.hud.tooltip.consumable_default_name"));
       const descriptionRaw = element.dataset.tooltipDescription ?? "";
       const hotkey = escapeHtml(element.dataset.tooltipHotkey ?? "-");
       const charges = parseTooltipNumber(element.dataset.tooltipCharges);
@@ -653,15 +681,15 @@ export class Hud {
       this.showTooltipHtml(
         `
           <div class="tooltip-name">${name}</div>
-          <div class="tooltip-meta">Hotkey: ${hotkey}</div>
+          <div class="tooltip-meta">${escapeHtml(t("ui.hud.tooltip.hotkey", { hotkey }))}</div>
           ${
             descriptionRaw.length > 0
               ? `<div class="tooltip-body">${escapeHtml(descriptionRaw)}</div>`
               : ""
           }
           <div class="tooltip-divider"></div>
-          <div class="tooltip-meta">Charges: ${charges}</div>
-          <div class="tooltip-meta">Status: ${escapeHtml(status)}</div>
+          <div class="tooltip-meta">${escapeHtml(t("ui.hud.tooltip.charges", { charges }))}</div>
+          <div class="tooltip-meta">${escapeHtml(t("ui.hud.tooltip.status", { status }))}</div>
           ${
             disabledReasonRaw === undefined
               ? ""
@@ -674,7 +702,7 @@ export class Hud {
     }
 
     if (kind === "skill") {
-      const name = escapeHtml(element.dataset.tooltipName ?? "Skill");
+      const name = escapeHtml(element.dataset.tooltipName ?? t("ui.hud.tooltip.skill_default_name"));
       const descriptionRaw = element.dataset.tooltipDescription ?? "";
       const hotkey = escapeHtml(element.dataset.tooltipHotkey ?? "-");
       const cooldownLeftMs = parseTooltipNumber(element.dataset.tooltipCooldownLeftMs);
@@ -684,23 +712,27 @@ export class Hud {
       const range = parseTooltipNumber(element.dataset.tooltipRange);
       const locked = element.dataset.tooltipLocked === "1";
       const outOfMana = element.dataset.tooltipOutOfMana === "1";
-      const status = locked ? "Locked" : formatCooldownLabel(cooldownLeftMs);
+      const status = locked ? t("ui.common.locked") : formatCooldownLabel(cooldownLeftMs);
       const targetingLabel = formatTargetingLabel(targeting, range);
       this.showTooltipHtml(
         `
           <div class="tooltip-name">${name}</div>
-          <div class="tooltip-meta">Hotkey: ${hotkey}</div>
+          <div class="tooltip-meta">${escapeHtml(t("ui.hud.tooltip.hotkey", { hotkey }))}</div>
           ${
             descriptionRaw.length > 0
               ? `<div class="tooltip-body">${escapeHtml(descriptionRaw)}</div>`
               : ""
           }
           <div class="tooltip-divider"></div>
-          <div class="tooltip-meta">Status: ${escapeHtml(status)}</div>
-          ${locked ? "" : `<div class="tooltip-meta">Mana Cost: ${manaCost}</div>`}
-          ${locked || baseCooldownMs <= 0 ? "" : `<div class="tooltip-meta">Base CD: ${(baseCooldownMs / 1000).toFixed(1)}s</div>`}
-          ${locked ? "" : `<div class="tooltip-meta">Target: ${escapeHtml(targetingLabel)}</div>`}
-          ${!locked && outOfMana ? '<div class="tooltip-warning">Not enough mana.</div>' : ""}
+          <div class="tooltip-meta">${escapeHtml(t("ui.hud.tooltip.status", { status }))}</div>
+          ${locked ? "" : `<div class="tooltip-meta">${escapeHtml(t("ui.hud.tooltip.mana_cost", { manaCost }))}</div>`}
+          ${locked || baseCooldownMs <= 0 ? "" : `<div class="tooltip-meta">${escapeHtml(
+            t("ui.hud.tooltip.base_cd", {
+              seconds: (baseCooldownMs / 1000).toFixed(1)
+            })
+          )}</div>`}
+          ${locked ? "" : `<div class="tooltip-meta">${escapeHtml(t("ui.hud.tooltip.target", { target: targetingLabel }))}</div>`}
+          ${!locked && outOfMana ? `<div class="tooltip-warning">${t("ui.hud.tooltip.not_enough_mana")}</div>` : ""}
         `,
         event
       );
@@ -726,6 +758,11 @@ export class Hud {
   }
 
   private showTooltip(item: ItemInstance, compareItem: ItemInstance | undefined, event: MouseEvent): void {
+    const localizedItemName = this.contentLocalizer.itemName(item.defId, item.name);
+    const localizedCompareName =
+      compareItem === undefined
+        ? undefined
+        : this.contentLocalizer.itemName(compareItem.defId, compareItem.name);
     const itemAffixes = collectItemAffixMap(item);
     const compareAffixes = compareItem === undefined ? new Map<string, number>() : collectItemAffixMap(compareItem);
     const keys = new Set<string>([...itemAffixes.keys(), ...compareAffixes.keys()]);
@@ -753,20 +790,30 @@ export class Hud {
 
     this.showTooltipHtml(
       `
-      <div class="tooltip-name">${escapeHtml(item.name)}</div>
+      <div class="tooltip-name">${escapeHtml(localizedItemName)}</div>
       <div class="tooltip-rarity ${item.rarity}">${item.rarity.toUpperCase()}</div>
-      <div class="tooltip-meta">Slot: ${slotLongLabel(item.slot)}${item.weaponType === undefined ? "" : ` · ${escapeHtml(item.weaponType.toUpperCase())}`}</div>
-      <div class="tooltip-meta">Req Lvl: ${item.requiredLevel}</div>
+      <div class="tooltip-meta">${escapeHtml(
+        t("ui.hud.tooltip.slot", {
+          slot: `${slotLongLabel(item.slot)}${item.weaponType === undefined ? "" : ` · ${item.weaponType.toUpperCase()}`}`
+        })
+      )}</div>
+      <div class="tooltip-meta">${escapeHtml(t("ui.hud.tooltip.req_level", { level: item.requiredLevel }))}</div>
       <div class="tooltip-divider"></div>
-      <div class="tooltip-affixes">${affixLines || "No affixes"}</div>
+      <div class="tooltip-affixes">${affixLines || escapeHtml(t("ui.hud.tooltip.no_affixes"))}</div>
       ${
         compareItem === undefined
           ? ""
           : `
             <div class="tooltip-divider"></div>
-            <div class="tooltip-compare-head">Compare: ${escapeHtml(compareItem.name)}</div>
+            <div class="tooltip-compare-head">${escapeHtml(
+              t("ui.hud.tooltip.compare", { name: localizedCompareName ?? compareItem.name })
+            )}</div>
             <div class="tooltip-compare-score ${powerDeltaClass}">
-              Power Δ ${escapeHtml(formatSignedValue(powerDelta))}
+              ${escapeHtml(
+                t("ui.hud.tooltip.power_delta", {
+                  delta: formatSignedValue(powerDelta)
+                })
+              )}
             </div>
           `
       }

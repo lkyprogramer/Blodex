@@ -116,6 +116,7 @@ describe("renderMetaMenuPanel", () => {
               forgeCost: 16,
               unlockTargetId: "weapon_type_axe",
               statusText: "Ready to Forge",
+              forged: false,
               canForge: true
             }
           ]
@@ -176,5 +177,71 @@ describe("renderMetaMenuPanel", () => {
     expect(html).toContain('data-tier="2"');
     expect(html).toContain("Soul Shards: 120");
     expect(html).toContain("Echoes: 5");
+  });
+
+  it("applies forged styles without relying on localized status text", () => {
+    const html = renderMetaMenuPanel({
+      soulShards: 0,
+      echoes: 0,
+      unlockedCount: 0,
+      totalUnlocks: 0,
+      runSave: null,
+      daily: {
+        date: "2026-03-03",
+        mode: "practice",
+        statusText: "Practice only."
+      },
+      difficulties: [
+        {
+          mode: "normal",
+          label: "Normal",
+          shortcut: "Q",
+          selected: true,
+          unlocked: true,
+          requirement: "Always available"
+        }
+      ],
+      talentGroups: [],
+      unlockGroups: [],
+      blueprintGroups: [
+        {
+          category: "weapon",
+          label: "Weapon",
+          blueprints: [
+            {
+              id: "bp_forged",
+              name: "Forged Relic",
+              category: "weapon",
+              rarity: "common",
+              forgeCost: 5,
+              unlockTargetId: "weapon_type_sword",
+              statusText: "已锻造",
+              forged: true,
+              canForge: false
+            },
+            {
+              id: "bp_locked",
+              name: "Locked Relic",
+              category: "weapon",
+              rarity: "common",
+              forgeCost: 5,
+              unlockTargetId: "weapon_type_spear",
+              statusText: "未发现",
+              forged: false,
+              canForge: false
+            }
+          ]
+        }
+      ],
+      mutationGroups: [],
+      mutationSlots: 0,
+      selectedMutations: 0,
+      startRunEnabled: false
+    });
+
+    expect(html).toContain('data-blueprint-id="bp_forged"');
+    expect(html).toContain('data-blueprint-id="bp_locked"');
+    expect(html).toContain('class="meta-blueprint-card rarity-common unlocked"');
+    expect(html).toContain('class="meta-blueprint-card rarity-common locked"');
   });
 });
