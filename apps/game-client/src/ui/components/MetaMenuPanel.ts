@@ -1,4 +1,5 @@
 import type { BlueprintDef, DifficultyMode, MutationDef, TalentPath } from "@blodex/core";
+import { t } from "../../i18n";
 
 function escapeHtml(raw: string): string {
   return raw
@@ -138,47 +139,17 @@ export interface MetaMenuPanelHandlers {
 function pathLabel(path: TalentPath): string {
   switch (path) {
     case "core":
-      return "Core";
+      return t("ui.meta.talent.path.core");
     case "warrior":
-      return "Warrior";
+      return t("ui.meta.talent.path.warrior");
     case "ranger":
-      return "Ranger";
+      return t("ui.meta.talent.path.ranger");
     case "arcanist":
-      return "Arcanist";
+      return t("ui.meta.talent.path.arcanist");
     case "utility":
-      return "Utility";
+      return t("ui.meta.talent.path.utility");
     default:
       return path;
-  }
-}
-
-function blueprintCategoryLabel(category: BlueprintDef["category"]): string {
-  switch (category) {
-    case "skill":
-      return "Skill Blueprints";
-    case "weapon":
-      return "Weapon Blueprints";
-    case "consumable":
-      return "Consumable Blueprints";
-    case "event":
-      return "Event Blueprints";
-    case "mutation":
-      return "Mutation Blueprints";
-    default:
-      return category;
-  }
-}
-
-function mutationCategoryLabel(category: MutationDef["category"]): string {
-  switch (category) {
-    case "offensive":
-      return "Offensive Mutations";
-    case "defensive":
-      return "Defensive Mutations";
-    case "utility":
-      return "Utility Mutations";
-    default:
-      return category;
   }
 }
 
@@ -188,13 +159,13 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
       ? ""
       : `
         <section class="meta-menu-section">
-          <h2>Saved Run</h2>
+          <h2>${t("ui.meta.section.saved_run")}</h2>
           <div class="meta-resume-card ${view.runSave.canContinue ? "" : "blocked"}">
             <div class="meta-resume-status">${escapeHtml(view.runSave.statusText)}</div>
             <div class="meta-resume-detail">${escapeHtml(view.runSave.detailText)}</div>
             <div class="meta-resume-actions">
-              <button data-action="continue" ${view.runSave.canContinue ? "" : "disabled"}>Continue Run</button>
-              <button data-action="abandon" ${view.runSave.canAbandon ? "" : "disabled"}>Abandon Run</button>
+              <button data-action="continue" ${view.runSave.canContinue ? "" : "disabled"}>${t("ui.meta.action.continue_run")}</button>
+              <button data-action="abandon" ${view.runSave.canAbandon ? "" : "disabled"}>${t("ui.meta.action.abandon_run")}</button>
             </div>
           </div>
         </section>
@@ -202,7 +173,11 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
 
   const difficultyHtml = view.difficulties
     .map((entry) => {
-      const status = entry.selected ? "Selected" : entry.unlocked ? "Available" : "Locked";
+      const status = entry.selected
+        ? t("ui.meta.difficulty.selected")
+        : entry.unlocked
+          ? t("ui.meta.difficulty.available")
+          : t("ui.meta.difficulty.locked");
       const classes = [
         "meta-difficulty-card",
         entry.selected ? "selected" : "",
@@ -250,11 +225,16 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
             >
               <div class="meta-unlock-head meta-talent-head">
                 <span class="meta-unlock-name">${escapeHtml(talent.name)}</span>
-                <span class="meta-talent-tier">Tier ${talent.tier}</span>
+                <span class="meta-talent-tier">${escapeHtml(t("ui.meta.talent.tier", { tier: talent.tier }))}</span>
               </div>
               <div class="meta-talent-meta">
-                <span class="meta-unlock-cost">Cost ${talent.cost}</span>
-                <span class="meta-talent-rank">Rank ${talent.rank}/${talent.maxRank}</span>
+                <span class="meta-unlock-cost">${escapeHtml(t("ui.meta.talent.cost", { cost: talent.cost }))}</span>
+                <span class="meta-talent-rank">${escapeHtml(
+                  t("ui.meta.talent.rank", {
+                    rank: talent.rank,
+                    maxRank: talent.maxRank
+                  })
+                )}</span>
               </div>
               <div class="meta-unlock-description">${escapeHtml(talent.description)}</div>
               <div class="meta-unlock-status">${escapeHtml(talent.statusText)}</div>
@@ -330,7 +310,7 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
             .join(" ");
           const actionButton =
             mutation.canUnlockEcho
-              ? `<button class="meta-inline-action" data-action="unlock-mutation" data-mutation-id="${escapeHtml(mutation.id)}">Unlock</button>`
+              ? `<button class="meta-inline-action" data-action="unlock-mutation" data-mutation-id="${escapeHtml(mutation.id)}">${t("ui.meta.action.unlock")}</button>`
               : "";
           return `
             <div class="meta-mutation-item">
@@ -343,7 +323,7 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
               >
                 <div class="meta-unlock-head">
                   <span class="meta-unlock-name">${escapeHtml(mutation.name)}</span>
-                  <span class="meta-unlock-cost">T${mutation.tier}</span>
+                  <span class="meta-unlock-cost">${escapeHtml(t("ui.meta.mutation.tier", { tier: mutation.tier }))}</span>
                 </div>
                 <div class="meta-unlock-description">${escapeHtml(mutation.unlockText)}</div>
                 <div class="meta-unlock-effect">${escapeHtml(mutation.effectText)}</div>
@@ -396,7 +376,7 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
         .join("");
       return `
         <section class="meta-tier-group" data-tier="${group.tier}">
-          <h3>Tier ${group.tier}</h3>
+          <h3>${escapeHtml(t("ui.meta.unlock.tier", { tier: group.tier }))}</h3>
           <div class="meta-tier-grid">${cards}</div>
         </section>
       `;
@@ -406,54 +386,57 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
   return `
     <div class="meta-menu-shell">
       <header class="meta-menu-header">
-        <h1>Blodex Meta Progression</h1>
+        <h1>${t("ui.meta.title")}</h1>
         <div class="meta-menu-subhead">
-          <span>Soul Shards: ${view.soulShards}</span>
-          <span>Echoes: ${view.echoes}</span>
-          <span>Unlocks: ${view.unlockedCount}/${view.totalUnlocks}</span>
+          <span>${t("ui.meta.resources.soul_shards", { value: view.soulShards })}</span>
+          <span>${t("ui.meta.resources.echoes", { value: view.echoes })}</span>
+          <span>${t("ui.meta.resources.unlocks", { count: view.unlockedCount, total: view.totalUnlocks })}</span>
         </div>
       </header>
       <nav class="meta-menu-nav" aria-label="Meta sections">
-        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-difficulty">Difficulty</button>
-        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-daily">Daily</button>
-        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-talents">Talents</button>
-        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-forge">Soul Forge</button>
-        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-mutations">Mutations</button>
-        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-unlocks">Legacy</button>
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-difficulty">${t("ui.meta.nav.difficulty")}</button>
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-daily">${t("ui.meta.nav.daily")}</button>
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-talents">${t("ui.meta.nav.talents")}</button>
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-forge">${t("ui.meta.nav.forge")}</button>
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-mutations">${t("ui.meta.nav.mutations")}</button>
+        <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-unlocks">${t("ui.meta.nav.legacy")}</button>
       </nav>
       ${resumeHtml}
       <section class="meta-menu-section" id="meta-section-difficulty">
-        <h2>Difficulty</h2>
+        <h2>${t("ui.meta.section.difficulty")}</h2>
         <div class="meta-difficulty-grid">${difficultyHtml}</div>
       </section>
       <section class="meta-menu-section" id="meta-section-daily">
-        <h2>Daily Challenge</h2>
-        <p class="meta-menu-hint">${escapeHtml(view.daily.date)} • ${view.daily.mode === "scored" ? "Scored" : "Practice"}</p>
+        <h2>${t("ui.meta.section.daily")}</h2>
+        <p class="meta-menu-hint">${escapeHtml(view.daily.date)} • ${view.daily.mode === "scored" ? t("ui.meta.daily.mode.scored") : t("ui.meta.daily.mode.practice")}</p>
         <p class="meta-menu-hint">${escapeHtml(view.daily.statusText)}</p>
-        <button class="meta-start-button" data-action="start-daily">Start Daily Challenge</button>
+        <button class="meta-start-button" data-action="start-daily">${t("ui.meta.action.start_daily")}</button>
       </section>
       <section class="meta-menu-section" id="meta-section-talents">
-        <h2>Talent Tree</h2>
-        <p class="meta-menu-hint">Purchase talents to improve baseline stats and run economy.</p>
+        <h2>${t("ui.meta.section.talents")}</h2>
+        <p class="meta-menu-hint">${t("ui.meta.hint.talents")}</p>
         ${talentGroupsHtml}
       </section>
       <section class="meta-menu-section" id="meta-section-forge">
-        <h2>Soul Forge</h2>
-        <p class="meta-menu-hint">Discover blueprints in runs, then forge discovered plans with Soul Shards.</p>
+        <h2>${t("ui.meta.section.forge")}</h2>
+        <p class="meta-menu-hint">${t("ui.meta.hint.forge")}</p>
         ${blueprintGroupsHtml}
       </section>
       <section class="meta-menu-section" id="meta-section-mutations">
-        <h2>Mutation Loadout</h2>
-        <p class="meta-menu-hint">Selected ${view.selectedMutations}/${view.mutationSlots}. Click card to toggle, unlock echo mutations with Unlock button.</p>
+        <h2>${t("ui.meta.section.mutations")}</h2>
+        <p class="meta-menu-hint">${t("ui.meta.mutation.selected_count", {
+          selected: view.selectedMutations,
+          slots: view.mutationSlots
+        })}</p>
         ${mutationGroupsHtml}
       </section>
       <section class="meta-menu-section" id="meta-section-unlocks">
-        <h2>Legacy Unlocks</h2>
-        <p class="meta-menu-hint">Hotkeys: unlocks 1-0, difficulty Q/W/E, start Enter, daily D.</p>
+        <h2>${t("ui.meta.section.unlocks")}</h2>
+        <p class="meta-menu-hint">${t("ui.meta.hint.hotkeys")}</p>
         ${unlockGroupsHtml}
       </section>
       <footer class="meta-menu-footer">
-        <button class="meta-start-button" data-action="start" ${view.startRunEnabled ? "" : "disabled"}>Start New Run</button>
+        <button class="meta-start-button" data-action="start" ${view.startRunEnabled ? "" : "disabled"}>${t("ui.meta.action.start_run")}</button>
       </footer>
     </div>
   `;

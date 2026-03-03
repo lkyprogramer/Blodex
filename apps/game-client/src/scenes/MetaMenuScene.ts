@@ -29,6 +29,7 @@ import {
 } from "@blodex/core";
 import { BLUEPRINT_DEF_MAP, BLUEPRINT_DEFS, MUTATION_DEFS, TALENT_DEFS, UNLOCK_DEFS } from "@blodex/content";
 import { UI_POLISH_FLAGS } from "../config/uiFlags";
+import { getContentLocalizer, t } from "../i18n";
 import { SaveManager } from "../systems/SaveManager";
 import {
   bindMetaMenuPanelActions,
@@ -41,12 +42,16 @@ const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
 const PURCHASE_HOTKEYS = ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "ZERO"];
 const DIFFICULTY_ORDER: DifficultyMode[] = ["normal", "hard", "nightmare"];
-const DIFFICULTY_LABEL: Record<DifficultyMode, string> = {
-  normal: "Normal",
-  hard: "Hard",
-  nightmare: "Nightmare"
+const DIFFICULTY_LABEL_KEY: Record<DifficultyMode, string> = {
+  normal: "ui.meta.difficulty.normal",
+  hard: "ui.meta.difficulty.hard",
+  nightmare: "ui.meta.difficulty.nightmare"
 };
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
+
+function difficultyLabel(mode: DifficultyMode): string {
+  return t(DIFFICULTY_LABEL_KEY[mode]);
+}
 
 function hotkeyLabelFromKey(eventName: string): string {
   switch (eventName) {
@@ -76,6 +81,7 @@ function hotkeyLabelFromKey(eventName: string): string {
 }
 
 export class MetaMenuScene extends Phaser.Scene {
+  private readonly contentLocalizer = getContentLocalizer();
   private meta: MetaProgression = createInitialMeta();
   private runSave: RunSaveDataV2 | null = null;
   private readonly saveManager = new SaveManager();
@@ -153,7 +159,7 @@ export class MetaMenuScene extends Phaser.Scene {
     const cx = this.scale.width / 2;
 
     this.add
-      .text(cx, 80, "Blodex Meta Progression", {
+      .text(cx, 80, t("ui.meta.title"), {
         fontFamily: "Cinzel",
         color: "#e8d2ad",
         fontSize: "36px"
@@ -161,7 +167,7 @@ export class MetaMenuScene extends Phaser.Scene {
       .setOrigin(0.5, 0.5);
 
     this.add
-      .text(cx, 134, `Soul Shards: ${this.meta.soulShards}`, {
+      .text(cx, 134, t("ui.meta.resources.soul_shards", { value: this.meta.soulShards }), {
         fontFamily: "Spectral",
         color: "#f5ead2",
         fontSize: "24px"
@@ -169,7 +175,7 @@ export class MetaMenuScene extends Phaser.Scene {
       .setOrigin(0.5, 0.5);
 
     this.add
-      .text(cx, 174, "Difficulty", {
+      .text(cx, 174, t("ui.meta.section.difficulty"), {
         fontFamily: "Cinzel",
         color: "#e1c89b",
         fontSize: "24px"
@@ -179,11 +185,15 @@ export class MetaMenuScene extends Phaser.Scene {
     DIFFICULTY_ORDER.forEach((mode, index) => {
       const unlocked = isDifficultyUnlocked(this.meta, mode);
       const selected = this.meta.selectedDifficulty === mode;
-      const label = DIFFICULTY_LABEL[mode];
+      const label = difficultyLabel(mode);
       const shortcut = index === 0 ? "Q" : index === 1 ? "W" : "E";
       const requirement = this.difficultyRequirement(mode);
       const color = selected ? "#9ad7ff" : unlocked ? "#d7c49f" : "#7f7b70";
-      const status = selected ? "[Selected]" : unlocked ? "[Available]" : `[Locked: ${requirement}]`;
+      const status = selected
+        ? `[${t("ui.meta.difficulty.selected")}]`
+        : unlocked
+          ? `[${t("ui.meta.difficulty.available")}]`
+          : `[${t("ui.meta.difficulty.locked")}: ${requirement}]`;
       this.add
         .text(cx, 204 + index * 30, `[${shortcut}] ${label} ${status}`, {
           fontFamily: "Spectral",
@@ -199,7 +209,7 @@ export class MetaMenuScene extends Phaser.Scene {
     });
 
     this.add
-      .text(cx, 298, "Click an unlock to purchase. Hotkeys: unlocks 1-0, difficulty Q/W/E.", {
+      .text(cx, 298, t("ui.legacy.meta.click_unlock_hint"), {
         fontFamily: "Spectral",
         color: "#dbc8a5",
         fontSize: "15px",
@@ -214,12 +224,12 @@ export class MetaMenuScene extends Phaser.Scene {
       const canAfford = this.meta.soulShards >= unlock.cost;
       const purchasable = !unlocked && requirementReady && canAfford;
       const statusText = unlocked
-        ? "[Unlocked]"
+        ? `[${t("ui.meta.status.unlocked")}]`
         : !requirementReady
-          ? `[Need Progress ${unlock.cumulativeRequirement}]`
+          ? `[${t("ui.meta.status.need_progress", { progress: unlock.cumulativeRequirement })}]`
           : !canAfford
-            ? "[Need Soul Shards]"
-            : "[Available]";
+            ? `[${t("ui.meta.status.need_soul_shards")}]`
+            : `[${t("ui.meta.status.available")}]`;
       const effectText = this.describeEffect(unlock);
       const color = unlocked ? "#7dbd91" : purchasable ? "#d7c49f" : "#7f7b70";
 
@@ -227,7 +237,7 @@ export class MetaMenuScene extends Phaser.Scene {
         .text(
           cx,
           unlockListStartY + index * 30,
-          `${index + 1}. ${unlock.name} (${unlock.cost}) ${statusText}\n   ${effectText}`,
+          `${index + 1}. ${this.contentLocalizer.unlockName(unlock.id, unlock.name)} (${unlock.cost}) ${statusText}\n   ${effectText}`,
           {
             fontFamily: "Spectral",
             color,
@@ -249,7 +259,7 @@ export class MetaMenuScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.add
-      .text(cx, startButtonY, "Start New Run", {
+      .text(cx, startButtonY, t("ui.meta.action.start_run"), {
         fontFamily: "Cinzel",
         color: "#f2e8d7",
         fontSize: "22px"
@@ -277,12 +287,12 @@ export class MetaMenuScene extends Phaser.Scene {
       const canAfford = this.meta.soulShards >= unlock.cost;
       const purchasable = !unlocked && requirementReady && canAfford;
       const statusText = unlocked
-        ? "Unlocked"
+        ? t("ui.meta.status.unlocked")
         : !requirementReady
-          ? `Need Progress ${unlock.cumulativeRequirement}`
+          ? t("ui.meta.status.need_progress", { progress: unlock.cumulativeRequirement })
           : !canAfford
-            ? "Need Soul Shards"
-            : "Available";
+            ? t("ui.meta.status.need_soul_shards")
+            : t("ui.meta.status.available");
 
       const group = unlockGroups.get(unlock.tier) ?? {
         tier: unlock.tier,
@@ -291,8 +301,8 @@ export class MetaMenuScene extends Phaser.Scene {
       group.unlocks.push({
         index,
         id: unlock.id,
-        name: unlock.name,
-        description: unlock.description,
+        name: this.contentLocalizer.unlockName(unlock.id, unlock.name),
+        description: this.contentLocalizer.unlockDescription(unlock.id, unlock.description),
         tier: unlock.tier,
         cost: unlock.cost,
         shortcut:
@@ -311,12 +321,12 @@ export class MetaMenuScene extends Phaser.Scene {
       const purchasable = canPurchaseTalent(this.meta, talent as TalentNodeDef);
       const statusText =
         rank >= talent.maxRank
-          ? "Max Rank"
+          ? t("ui.meta.status.max_rank")
           : purchasable
-            ? "Available"
+            ? t("ui.meta.status.available")
             : this.meta.soulShards < talent.cost
-              ? "Need Soul Shards"
-              : "Prerequisite Required";
+              ? t("ui.meta.status.need_soul_shards")
+              : t("ui.meta.status.prerequisite_required");
       const group = talentGroups.get(talent.path) ?? {
         path: talent.path,
         label: talent.path,
@@ -324,8 +334,8 @@ export class MetaMenuScene extends Phaser.Scene {
       };
       group.talents.push({
         id: talent.id,
-        name: talent.name,
-        description: talent.description,
+        name: this.contentLocalizer.talentName(talent.id, talent.name),
+        description: this.contentLocalizer.talentDescription(talent.id, talent.description),
         path: talent.path,
         tier: talent.tier,
         rank,
@@ -348,12 +358,12 @@ export class MetaMenuScene extends Phaser.Scene {
       const isForged = forgedBlueprints.has(blueprint.id);
       const canForge = isFound && !isForged && this.meta.soulShards >= blueprint.forgeCost;
       const statusText = isForged
-        ? "Forged"
+        ? t("ui.meta.status.forged")
         : isFound
           ? canForge
-            ? "Ready to Forge"
-            : "Need Soul Shards"
-          : "Undiscovered";
+            ? t("ui.meta.status.ready_to_forge")
+            : t("ui.meta.status.need_soul_shards")
+          : t("ui.meta.status.undiscovered");
       const group = blueprintGroups.get(blueprint.category) ?? {
         category: blueprint.category,
         label: this.blueprintCategoryLabel(blueprint.category),
@@ -361,7 +371,7 @@ export class MetaMenuScene extends Phaser.Scene {
       };
       group.blueprints.push({
         id: blueprint.id,
-        name: blueprint.name,
+        name: this.contentLocalizer.blueprintName(blueprint.id, blueprint.name),
         category: blueprint.category,
         rarity: blueprint.rarity,
         forgeCost: blueprint.forgeCost,
@@ -384,7 +394,7 @@ export class MetaMenuScene extends Phaser.Scene {
       const unlocked = unlockedMutationSet.has(mutation.id);
       let canToggle = selected;
       let canUnlockEcho = false;
-      let statusText = selected ? "Selected" : "Locked";
+      let statusText = selected ? t("ui.meta.status.selected") : t("ui.meta.status.locked");
       if (!selected && unlocked) {
         const validation = validateMutationSelection(
           [...selectedMutationIds, mutation.id],
@@ -393,17 +403,19 @@ export class MetaMenuScene extends Phaser.Scene {
           unlockedMutationIds
         );
         canToggle = validation.ok;
-        statusText = validation.ok ? "Available" : this.describeMutationValidationError(validation.reason);
+        statusText = validation.ok
+          ? t("ui.meta.status.available")
+          : this.describeMutationValidationError(validation.reason);
       } else if (!selected && !unlocked) {
         if (mutation.unlock.type === "echo") {
           canUnlockEcho = this.meta.echoes >= mutation.unlock.cost;
           statusText = canUnlockEcho
-            ? `Cost ${mutation.unlock.cost} Echoes`
-            : `Need ${mutation.unlock.cost} Echoes`;
+            ? t("ui.meta.status.cost_echoes", { cost: mutation.unlock.cost })
+            : t("ui.meta.status.need_echoes", { cost: mutation.unlock.cost });
         } else if (mutation.unlock.type === "blueprint") {
           statusText = this.meta.blueprintForgedIds.includes(mutation.unlock.blueprintId)
-            ? "Available next refresh"
-            : `Need ${mutation.unlock.blueprintId}`;
+            ? t("ui.meta.status.available_next_refresh")
+            : t("ui.meta.status.need_blueprint", { blueprintId: mutation.unlock.blueprintId });
         }
       }
       const group = mutationGroups.get(mutation.category) ?? {
@@ -413,7 +425,7 @@ export class MetaMenuScene extends Phaser.Scene {
       };
       group.mutations.push({
         id: mutation.id,
-        name: mutation.name,
+        name: this.contentLocalizer.mutationName(mutation.id, mutation.name),
         category: mutation.category,
         tier: mutation.tier,
         unlockText: this.describeMutationUnlock(mutation),
@@ -430,7 +442,7 @@ export class MetaMenuScene extends Phaser.Scene {
       const shortcut = index === 0 ? "Q" : index === 1 ? "W" : "E";
       return {
         mode,
-        label: DIFFICULTY_LABEL[mode],
+        label: difficultyLabel(mode),
         shortcut,
         selected: this.meta.selectedDifficulty === mode,
         unlocked: isDifficultyUnlocked(this.meta, mode),
@@ -465,15 +477,15 @@ export class MetaMenuScene extends Phaser.Scene {
   private blueprintCategoryLabel(category: MetaMenuPanelView["blueprintGroups"][number]["category"]): string {
     switch (category) {
       case "skill":
-        return "Skill Blueprints";
+        return t("ui.meta.blueprint.category.skill");
       case "weapon":
-        return "Weapon Blueprints";
+        return t("ui.meta.blueprint.category.weapon");
       case "consumable":
-        return "Consumable Blueprints";
+        return t("ui.meta.blueprint.category.consumable");
       case "event":
-        return "Event Blueprints";
+        return t("ui.meta.blueprint.category.event");
       case "mutation":
-        return "Mutation Blueprints";
+        return t("ui.meta.blueprint.category.mutation");
       default:
         return category;
     }
@@ -482,11 +494,11 @@ export class MetaMenuScene extends Phaser.Scene {
   private mutationCategoryLabel(category: MutationDef["category"]): string {
     switch (category) {
       case "offensive":
-        return "Offensive";
+        return t("ui.meta.mutation.category.offensive");
       case "defensive":
-        return "Defensive";
+        return t("ui.meta.mutation.category.defensive");
       case "utility":
-        return "Utility";
+        return t("ui.meta.mutation.category.utility");
       default:
         return category;
     }
@@ -494,12 +506,16 @@ export class MetaMenuScene extends Phaser.Scene {
 
   private describeMutationUnlock(mutation: MutationDef): string {
     if (mutation.unlock.type === "default") {
-      return "Default unlock";
+      return t("ui.meta.mutation.unlock.default");
     }
     if (mutation.unlock.type === "blueprint") {
-      return `Forge ${mutation.unlock.blueprintId}`;
+      return t("ui.meta.mutation.unlock.blueprint", {
+        blueprintId: mutation.unlock.blueprintId
+      });
     }
-    return `Echo unlock (${mutation.unlock.cost})`;
+    return t("ui.meta.mutation.unlock.echo", {
+      cost: mutation.unlock.cost
+    });
   }
 
   private describeMutationEffects(mutation: MutationDef): string {
@@ -510,25 +526,25 @@ export class MetaMenuScene extends Phaser.Scene {
 
   private describeMutationValidationError(reason: string): string {
     if (reason.includes("slot limit")) {
-      return "Slot full";
+      return t("ui.meta.status.slot_full");
     }
     if (reason.includes("conflict")) {
-      return "Conflict with selected";
+      return t("ui.meta.status.conflict_selected");
     }
     if (reason.includes("not unlocked")) {
-      return "Not unlocked";
+      return t("ui.meta.status.not_unlocked");
     }
-    return "Unavailable";
+    return t("ui.meta.status.unavailable");
   }
 
   private difficultyRequirement(mode: DifficultyMode): string {
     if (mode === "hard") {
-      return "Clear 1 Normal run";
+      return t("ui.meta.requirement.hard");
     }
     if (mode === "nightmare") {
-      return "Clear 1 Hard run";
+      return t("ui.meta.requirement.nightmare");
     }
-    return "Always available";
+    return t("ui.meta.requirement.normal");
   }
 
   private describeDailyChallenge(): MetaMenuPanelView["daily"] {
@@ -538,8 +554,8 @@ export class MetaMenuScene extends Phaser.Scene {
       date,
       mode: canScore ? "scored" : "practice",
       statusText: canScore
-        ? "Scored attempt available. Daily rewards can be claimed once."
-        : "Scored attempt already consumed today. Practice only (no score/reward)."
+        ? t("ui.meta.daily.status.scored_available")
+        : t("ui.meta.daily.status.practice_only")
     };
   }
 
@@ -549,12 +565,16 @@ export class MetaMenuScene extends Phaser.Scene {
     }
     const leaseBlocked = this.saveManager.hasForeignLease(this.runSave);
     const date = new Date(this.runSave.savedAtMs);
-    const when = Number.isNaN(date.valueOf()) ? "Unknown time" : date.toLocaleString();
+    const when = Number.isNaN(date.valueOf()) ? t("ui.meta.save.unknown_time") : date.toLocaleString();
     return {
       canContinue: !leaseBlocked,
       canAbandon: !leaseBlocked,
-      statusText: leaseBlocked ? "Run is active in another tab." : "Saved run ready to continue.",
-      detailText: `Floor ${this.runSave.run.currentFloor} • ${(this.runSave.run.difficulty ?? "normal").toUpperCase()} • ${when}`
+      statusText: leaseBlocked ? t("ui.meta.save.active_in_another_tab") : t("ui.meta.save.ready_to_continue"),
+      detailText: t("ui.meta.save.detail", {
+        floor: this.runSave.run.currentFloor,
+        difficulty: (this.runSave.run.difficulty ?? "normal").toUpperCase(),
+        when
+      })
     };
   }
 
@@ -718,8 +738,10 @@ export class MetaMenuScene extends Phaser.Scene {
     }
     const difficulty = resolveSelectedDifficulty(this.meta);
     playSceneTransition({
-      title: "Enter the Dungeon",
-      subtitle: `${difficulty.toUpperCase()} · Floor 1`,
+      title: t("ui.transition.enter_dungeon.title"),
+      subtitle: t("ui.transition.enter_dungeon.subtitle", {
+        difficulty: difficulty.toUpperCase()
+      }),
       mode: "scene",
       durationMs: 620
     });
@@ -738,8 +760,10 @@ export class MetaMenuScene extends Phaser.Scene {
     const runSeed = createDailySeed(dailyDate);
     const canScore = canStartDailyScoredAttempt(this.meta, dailyDate);
     playSceneTransition({
-      title: "Daily Challenge",
-      subtitle: `${dailyDate} · HARD`,
+      title: t("ui.transition.daily.title"),
+      subtitle: t("ui.transition.daily.subtitle", {
+        date: dailyDate
+      }),
       mode: "scene",
       durationMs: 620
     });
@@ -765,8 +789,11 @@ export class MetaMenuScene extends Phaser.Scene {
       return;
     }
     playSceneTransition({
-      title: "Resume Expedition",
-      subtitle: `Floor ${lease.save.run.currentFloor} · ${lease.save.run.difficulty.toUpperCase()}`,
+      title: t("ui.transition.resume.title"),
+      subtitle: t("ui.transition.resume.subtitle", {
+        floor: lease.save.run.currentFloor,
+        difficulty: lease.save.run.difficulty.toUpperCase()
+      }),
       mode: "scene",
       durationMs: 620
     });
@@ -866,17 +893,28 @@ export class MetaMenuScene extends Phaser.Scene {
 
   private describeEffect(unlock: (typeof UNLOCK_DEFS)[number]): string {
     if (unlock.effect.type === "permanent_upgrade") {
-      return `Permanent: ${unlock.effect.key} +${unlock.effect.value}`;
+      return t("ui.meta.effect.permanent", {
+        key: unlock.effect.key,
+        value: unlock.effect.value
+      });
     }
     if (unlock.effect.type === "skill_unlock") {
-      return `Skill unlock: ${unlock.effect.skillId}`;
+      return t("ui.meta.effect.skill_unlock", {
+        skillId: unlock.effect.skillId
+      });
     }
     if (unlock.effect.type === "affix_unlock") {
-      return `Affix unlock: ${unlock.effect.affixId}`;
+      return t("ui.meta.effect.affix_unlock", {
+        affixId: unlock.effect.affixId
+      });
     }
     if (unlock.effect.type === "biome_unlock") {
-      return `Biome unlock: ${unlock.effect.biomeId}`;
+      return t("ui.meta.effect.biome_unlock", {
+        biomeId: unlock.effect.biomeId
+      });
     }
-    return `Event unlock: ${unlock.effect.eventId}`;
+    return t("ui.meta.effect.event_unlock", {
+      eventId: unlock.effect.eventId
+    });
   }
 }
