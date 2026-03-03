@@ -437,6 +437,8 @@ export function collectUnlockedBiomeIds(meta: MetaProgression, unlockDefs: Unloc
     "forgotten_catacombs",
     "molten_caverns",
     "frozen_halls",
+    "phantom_graveyard",
+    "venom_swamp",
     "bone_throne"
   ]);
   for (const unlockId of meta.unlocks) {
