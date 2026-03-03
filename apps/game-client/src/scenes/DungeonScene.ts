@@ -183,6 +183,13 @@ import { removeConnectedBackgroundFromTexture } from "../assets/removeBackground
 import { DebugApiBinder } from "./dungeon/debug/DebugApiBinder";
 import { DiagnosticsService } from "./dungeon/diagnostics/DiagnosticsService";
 import { EncounterController } from "./dungeon/encounter/EncounterController";
+import {
+  consumableFailureReasonLabel,
+  difficultyLabel,
+  entityLabel,
+  equipmentSlotLabel,
+  hazardTypeLabel
+} from "./dungeon/logging/labelResolvers";
 import { RunLogService } from "./dungeon/logging/RunLogService";
 import { RunFlowOrchestrator } from "./dungeon/orchestrator/RunFlowOrchestrator";
 import { SaveCoordinator } from "./dungeon/save/SaveCoordinator";
@@ -1126,7 +1133,7 @@ export class DungeonScene extends Phaser.Scene {
         "log.item.equipped",
         {
           itemName: this.contentLocalizer.itemName(item.defId, item.name),
-          slot: this.resolveEquipmentSlotLabel(slot)
+          slot: equipmentSlotLabel(slot)
         },
         "success",
         timestampMs
@@ -1139,7 +1146,7 @@ export class DungeonScene extends Phaser.Scene {
         "log.item.unequipped",
         {
           itemName: this.contentLocalizer.itemName(item.defId, item.name),
-          slot: this.resolveEquipmentSlotLabel(slot)
+          slot: equipmentSlotLabel(slot)
         },
         "info",
         timestampMs
@@ -1219,7 +1226,7 @@ export class DungeonScene extends Phaser.Scene {
         "log.consumable.cannot_use",
         {
           consumableId,
-          reason: this.resolveConsumableFailureReason(reason)
+          reason: consumableFailureReasonLabel(reason)
         },
         "warn",
         timestampMs
@@ -1347,7 +1354,7 @@ export class DungeonScene extends Phaser.Scene {
         "log.run.started",
         {
           floor,
-          difficulty: this.resolveDifficultyLabel(difficulty),
+          difficulty: difficultyLabel(difficulty),
           runSeed
         },
         "info",
@@ -1445,7 +1452,7 @@ export class DungeonScene extends Phaser.Scene {
       this.runLog.appendKey(
         "log.hazard.entered_zone",
         {
-          hazardType: this.resolveHazardTypeLabel(hazardType)
+          hazardType: hazardTypeLabel(hazardType)
         },
         "warn",
         timestampMs
@@ -1459,7 +1466,7 @@ export class DungeonScene extends Phaser.Scene {
       this.runLog.appendKey(
         "log.hazard.left_zone",
         {
-          hazardType: this.resolveHazardTypeLabel(hazardType)
+          hazardType: hazardTypeLabel(hazardType)
         },
         "info",
         timestampMs
@@ -1476,7 +1483,7 @@ export class DungeonScene extends Phaser.Scene {
         this.runLog.appendKey(
           "log.hazard.triggered",
           {
-            hazardType: this.resolveHazardTypeLabel(hazardType)
+            hazardType: hazardTypeLabel(hazardType)
           },
           "warn",
           timestampMs
@@ -1495,7 +1502,7 @@ export class DungeonScene extends Phaser.Scene {
         {
           target: label,
           amount,
-          hazardType: this.resolveHazardTypeLabel(hazardType),
+          hazardType: hazardTypeLabel(hazardType),
           remainingHealth: Math.floor(remainingHealth)
         },
         level,
@@ -4723,88 +4730,15 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  private resolveDifficultyLabel(difficulty: DifficultyMode): string {
-    switch (difficulty) {
-      case "normal":
-        return t("ui.meta.difficulty.normal");
-      case "hard":
-        return t("ui.meta.difficulty.hard");
-      case "nightmare":
-        return t("ui.meta.difficulty.nightmare");
-    }
-  }
-
-  private resolveEquipmentSlotLabel(slot: string): string {
-    switch (slot) {
-      case "weapon":
-        return t("ui.hud.inventory.slot.weapon.long");
-      case "helm":
-        return t("ui.hud.inventory.slot.helm.long");
-      case "chest":
-        return t("ui.hud.inventory.slot.chest.long");
-      case "boots":
-        return t("ui.hud.inventory.slot.boots.long");
-      case "ring":
-        return t("ui.hud.inventory.slot.ring.long");
-      default:
-        return slot;
-    }
-  }
-
-  private resolveHazardTypeLabel(hazardType: string): string {
-    switch (hazardType) {
-      case "damage_zone":
-        return t("log.hazard.type.damage_zone");
-      case "movement_modifier":
-        return t("log.hazard.type.movement_modifier");
-      case "periodic_trap":
-        return t("log.hazard.type.periodic_trap");
-      default:
-        return hazardType;
-    }
-  }
-
-  private resolveConsumableFailureReason(reason: string): string {
-    if (reason === "No charges left.") {
-      return t("log.consumable.reason.no_charges");
-    }
-    if (reason === "HP already full.") {
-      return t("log.consumable.reason.hp_full");
-    }
-    if (reason === "Mana already full.") {
-      return t("log.consumable.reason.mana_full");
-    }
-    const cooldownMatch = /^Cooldown ([0-9]+(?:\.[0-9]+)?)s\.$/.exec(reason);
-    if (cooldownMatch?.[1] !== undefined) {
-      return t("log.consumable.reason.cooldown", {
-        seconds: cooldownMatch[1]
-      });
-    }
-    return reason;
-  }
-
   private resolveEntityLabel(entityId: string): string {
-    const cached = this.entityLabelById.get(entityId);
-    if (cached !== undefined) {
-      return cached;
-    }
-
-    if (entityId === this.player.id) {
-      return t("ui.hud.player.title");
-    }
-
-    if (entityId === this.bossDef.id) {
-      return this.bossDef.name;
-    }
-
-    const monster = this.entityManager.findMonsterById(entityId);
-    if (monster !== undefined) {
-      const name = monster.archetype.name;
-      this.entityLabelById.set(entityId, name);
-      return name;
-    }
-
-    return entityId;
+    return entityLabel({
+      entityId,
+      entityLabelById: this.entityLabelById,
+      playerId: this.player.id,
+      bossId: this.bossDef.id,
+      bossName: this.bossDef.name,
+      findMonsterById: (targetId) => this.entityManager.findMonsterById(targetId)
+    });
   }
 
   private updateMonsters(dt: number, nowMs: number): void {
