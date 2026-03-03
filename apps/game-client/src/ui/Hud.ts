@@ -95,6 +95,38 @@ export interface LogEntry {
 
 const EQUIPMENT_SLOTS: EquipmentSlot[] = ["weapon", "helm", "chest", "boots", "ring"];
 const MAX_LOG_ENTRIES = 200;
+const AFFIX_LABEL_KEYS: Readonly<Record<string, string>> = {
+  maxHealth: "ui.hud.affix.maxHealth",
+  maxMana: "ui.hud.affix.maxMana",
+  armor: "ui.hud.affix.armor",
+  attackPower: "ui.hud.affix.attackPower",
+  critChance: "ui.hud.affix.critChance",
+  attackSpeed: "ui.hud.affix.attackSpeed",
+  moveSpeed: "ui.hud.affix.moveSpeed",
+  lifesteal: "ui.hud.affix.lifesteal",
+  critDamage: "ui.hud.affix.critDamage",
+  aoeRadius: "ui.hud.affix.aoeRadius",
+  damageOverTime: "ui.hud.affix.damageOverTime",
+  thorns: "ui.hud.affix.thorns",
+  healthRegen: "ui.hud.affix.healthRegen",
+  dodgeChance: "ui.hud.affix.dodgeChance",
+  xpBonus: "ui.hud.affix.xpBonus",
+  soulShardBonus: "ui.hud.affix.soulShardBonus",
+  cooldownReduction: "ui.hud.affix.cooldownReduction"
+};
+const RARITY_LABEL_KEYS: Readonly<Record<string, string>> = {
+  common: "ui.hud.rarity.common",
+  magic: "ui.hud.rarity.magic",
+  rare: "ui.hud.rarity.rare"
+};
+const WEAPON_TYPE_LABEL_KEYS: Readonly<Record<string, string>> = {
+  sword: "ui.hud.weapon_type.sword",
+  axe: "ui.hud.weapon_type.axe",
+  dagger: "ui.hud.weapon_type.dagger",
+  staff: "ui.hud.weapon_type.staff",
+  hammer: "ui.hud.weapon_type.hammer",
+  sword_master: "ui.hud.weapon_type.sword_master"
+};
 
 function slotLabel(slot: EquipmentSlot): string {
   switch (slot) {
@@ -126,11 +158,38 @@ function slotLongLabel(slot: EquipmentSlot): string {
   }
 }
 
-function formatAffixName(key: string): string {
+function formatAffixNameFallback(key: string): string {
   return key
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (char) => char.toUpperCase())
     .trim();
+}
+
+function localizeAffixName(key: string): string {
+  const i18nKey = AFFIX_LABEL_KEYS[key];
+  if (i18nKey === undefined) {
+    return formatAffixNameFallback(key);
+  }
+  const localized = t(i18nKey);
+  return localized === i18nKey ? formatAffixNameFallback(key) : localized;
+}
+
+function localizeRarity(rarity: string): string {
+  const i18nKey = RARITY_LABEL_KEYS[rarity];
+  if (i18nKey === undefined) {
+    return rarity.toUpperCase();
+  }
+  const localized = t(i18nKey);
+  return localized === i18nKey ? rarity.toUpperCase() : localized;
+}
+
+function localizeWeaponType(weaponType: string): string {
+  const i18nKey = WEAPON_TYPE_LABEL_KEYS[weaponType];
+  if (i18nKey === undefined) {
+    return weaponType.toUpperCase();
+  }
+  const localized = t(i18nKey);
+  return localized === i18nKey ? weaponType.toUpperCase() : localized;
 }
 
 function formatAffixValue(key: string, value: number): string {
@@ -296,10 +355,19 @@ export class Hud {
   render(state: HudState): void {
     this.metaEl.className = "panel-block compact-block";
     this.metaEl.innerHTML = `
-      <div class="mini-grid mini-3">
-        <div><span class="k">${t("ui.hud.meta.runs")}</span><span>${state.meta.runsPlayed}</span></div>
-        <div><span class="k">${t("ui.hud.meta.best_floor")}</span><span>${state.meta.bestFloor}</span></div>
-        <div><span class="k">${t("ui.hud.meta.best_time")}</span><span>${(state.meta.bestTimeMs / 1000).toFixed(1)}s</span></div>
+      <div class="hud-meta-grid">
+        <div class="hud-meta-item">
+          <span class="hud-meta-label">${t("ui.hud.meta.runs")}</span>
+          <span class="hud-meta-value">${state.meta.runsPlayed}</span>
+        </div>
+        <div class="hud-meta-item">
+          <span class="hud-meta-label">${t("ui.hud.meta.best_floor")}</span>
+          <span class="hud-meta-value">${state.meta.bestFloor}</span>
+        </div>
+        <div class="hud-meta-item">
+          <span class="hud-meta-label">${t("ui.hud.meta.best_time")}</span>
+          <span class="hud-meta-value">${(state.meta.bestTimeMs / 1000).toFixed(1)}s</span>
+        </div>
       </div>
     `;
 
@@ -775,7 +843,7 @@ export class Hud {
         const deltaClass = delta > 0 ? "delta-up" : delta < 0 ? "delta-down" : "delta-equal";
         return `
           <div class="tooltip-affix-line">
-            <span>${escapeHtml(formatAffixName(key))}</span>
+            <span>${escapeHtml(localizeAffixName(key))}</span>
             <span class="tooltip-affix-value ${deltaClass}">${escapeHtml(
               formatAffixValue(key, itemValue)
             )}${compareItem === undefined ? "" : ` (${escapeHtml(formatSignedValue(delta))})`}</span>
@@ -791,10 +859,12 @@ export class Hud {
     this.showTooltipHtml(
       `
       <div class="tooltip-name">${escapeHtml(localizedItemName)}</div>
-      <div class="tooltip-rarity ${item.rarity}">${item.rarity.toUpperCase()}</div>
+      <div class="tooltip-rarity ${item.rarity}">${escapeHtml(localizeRarity(item.rarity))}</div>
       <div class="tooltip-meta">${escapeHtml(
         t("ui.hud.tooltip.slot", {
-          slot: `${slotLongLabel(item.slot)}${item.weaponType === undefined ? "" : ` · ${item.weaponType.toUpperCase()}`}`
+          slot: `${slotLongLabel(item.slot)}${
+            item.weaponType === undefined ? "" : ` · ${localizeWeaponType(item.weaponType)}`
+          }`
         })
       )}</div>
       <div class="tooltip-meta">${escapeHtml(t("ui.hud.tooltip.req_level", { level: item.requiredLevel }))}</div>

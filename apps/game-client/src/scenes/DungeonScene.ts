@@ -1000,15 +1000,25 @@ export class DungeonScene extends Phaser.Scene {
       const source = this.resolveEntityLabel(combat.sourceId);
       const target = this.resolveEntityLabel(combat.targetId);
       if (combat.targetId === this.player.id) {
-        this.runLog.append(
-          `${source} hit ${target} for ${combat.amount} damage.`,
+        this.runLog.appendKey(
+          "log.combat.player_hit",
+          {
+            source,
+            target,
+            amount: combat.amount
+          },
           combat.kind === "crit" ? "danger" : "warn",
           combat.timestampMs
         );
         return;
       }
-      this.runLog.append(
-        `${source} ${combat.kind === "crit" ? "critically hit" : "hit"} ${target} for ${combat.amount} damage.`,
+      this.runLog.appendKey(
+        combat.kind === "crit" ? "log.combat.critical_hit" : "log.combat.hit",
+        {
+          source,
+          target,
+          amount: combat.amount
+        },
         combat.kind === "crit" ? "success" : "info",
         combat.timestampMs
       );
@@ -1022,8 +1032,12 @@ export class DungeonScene extends Phaser.Scene {
       this.hudDirty = true;
       const source = this.resolveEntityLabel(combat.sourceId);
       const target = this.resolveEntityLabel(combat.targetId);
-      this.runLog.append(
-        `${target} dodged ${source}'s attack.`,
+      this.runLog.appendKey(
+        "log.combat.dodge",
+        {
+          source,
+          target
+        },
         combat.targetId === this.player.id ? "success" : "info",
         combat.timestampMs
       );
@@ -1038,17 +1052,41 @@ export class DungeonScene extends Phaser.Scene {
       const source = this.resolveEntityLabel(combat.sourceId);
       const target = this.resolveEntityLabel(combat.targetId);
       if (combat.targetId === this.player.id) {
-        this.lastDeathReason = `Slain by ${source} (${combat.amount} ${combat.damageType} damage).`;
-        this.runLog.append(`${target} was slain by ${source}.`, "danger", combat.timestampMs);
+        this.lastDeathReason = t("log.combat.death_reason", {
+          source,
+          amount: combat.amount,
+          damageType: combat.damageType
+        });
+        this.runLog.appendKey(
+          "log.combat.slain",
+          {
+            source,
+            target
+          },
+          "danger",
+          combat.timestampMs
+        );
         return;
       }
-      this.runLog.append(`${target} was slain by ${source}.`, "success", combat.timestampMs);
+      this.runLog.appendKey(
+        "log.combat.slain",
+        {
+          source,
+          target
+        },
+        "success",
+        combat.timestampMs
+      );
     });
 
     this.eventBus.on("loot:drop", ({ sourceId, item, timestampMs }) => {
       this.hudDirty = true;
-      this.runLog.append(
-        `${this.resolveEntityLabel(sourceId)} dropped ${this.contentLocalizer.itemName(item.defId, item.name)}.`,
+      this.runLog.appendKey(
+        "log.loot.drop",
+        {
+          source: this.resolveEntityLabel(sourceId),
+          itemName: this.contentLocalizer.itemName(item.defId, item.name)
+        },
         "info",
         timestampMs
       );
@@ -1059,8 +1097,11 @@ export class DungeonScene extends Phaser.Scene {
       const expiresAtMs = timestampMs + ITEM_NEWLY_ACQUIRED_TTL_MS;
       this.newlyAcquiredItemUntilMs.set(item.id, expiresAtMs);
       this.nextTransientHudRefreshAt = Math.min(this.nextTransientHudRefreshAt, expiresAtMs);
-      this.runLog.append(
-        `Picked up ${this.contentLocalizer.itemName(item.defId, item.name)}.`,
+      this.runLog.appendKey(
+        "log.loot.pickup",
+        {
+          itemName: this.contentLocalizer.itemName(item.defId, item.name)
+        },
         "success",
         timestampMs
       );
@@ -1068,13 +1109,25 @@ export class DungeonScene extends Phaser.Scene {
 
     this.eventBus.on("player:levelup", ({ level, timestampMs }) => {
       this.hudDirty = true;
-      this.runLog.append(`Level up! Vanguard reached Lv${level}.`, "success", timestampMs);
+      this.runLog.appendKey(
+        "log.player.level_up",
+        {
+          player: this.resolveEntityLabel(this.player.id),
+          level
+        },
+        "success",
+        timestampMs
+      );
     });
 
     this.eventBus.on("item:equip", ({ item, slot, timestampMs }) => {
       this.hudDirty = true;
-      this.runLog.append(
-        `Equipped ${this.contentLocalizer.itemName(item.defId, item.name)} (${slot}).`,
+      this.runLog.appendKey(
+        "log.item.equipped",
+        {
+          itemName: this.contentLocalizer.itemName(item.defId, item.name),
+          slot: this.resolveEquipmentSlotLabel(slot)
+        },
         "success",
         timestampMs
       );
@@ -1082,8 +1135,12 @@ export class DungeonScene extends Phaser.Scene {
 
     this.eventBus.on("item:unequip", ({ item, slot, timestampMs }) => {
       this.hudDirty = true;
-      this.runLog.append(
-        `Unequipped ${this.contentLocalizer.itemName(item.defId, item.name)} (${slot}).`,
+      this.runLog.appendKey(
+        "log.item.unequipped",
+        {
+          itemName: this.contentLocalizer.itemName(item.defId, item.name),
+          slot: this.resolveEquipmentSlotLabel(slot)
+        },
         "info",
         timestampMs
       );
@@ -1095,13 +1152,24 @@ export class DungeonScene extends Phaser.Scene {
         skillId,
         playerId
       });
-      this.runLog.append(`Skill used: ${skillId}.`, "info", timestampMs);
+      this.runLog.appendKey(
+        "log.skill.used",
+        {
+          skillId
+        },
+        "info",
+        timestampMs
+      );
     });
 
     this.eventBus.on("skill:cooldown", ({ skillId, readyAtMs }) => {
       const cooldownMs = Math.max(0, readyAtMs - this.time.now);
-      this.runLog.append(
-        `${skillId} cooldown ${(cooldownMs / 1000).toFixed(1)}s.`,
+      this.runLog.appendKey(
+        "log.skill.cooldown",
+        {
+          skillId,
+          seconds: (cooldownMs / 1000).toFixed(1)
+        },
         "info",
         this.time.now
       );
@@ -1113,18 +1181,49 @@ export class DungeonScene extends Phaser.Scene {
         consumableId
       });
       this.hudDirty = true;
-      const label =
-        consumableId === "health_potion"
-          ? `Health potion restored ${amountApplied} HP`
-          : consumableId === "mana_potion"
-            ? `Mana potion restored ${amountApplied} mana`
-            : "Scroll of Mapping revealed objective";
-      this.runLog.append(`${label}. Charges left: ${remainingCharges}.`, "success", timestampMs);
+      if (consumableId === "health_potion") {
+        this.runLog.appendKey(
+          "log.consumable.health_potion_used",
+          {
+            amount: amountApplied,
+            remainingCharges
+          },
+          "success",
+          timestampMs
+        );
+      } else if (consumableId === "mana_potion") {
+        this.runLog.appendKey(
+          "log.consumable.mana_potion_used",
+          {
+            amount: amountApplied,
+            remainingCharges
+          },
+          "success",
+          timestampMs
+        );
+      } else {
+        this.runLog.appendKey(
+          "log.consumable.scroll_mapping_used",
+          {
+            remainingCharges
+          },
+          "success",
+          timestampMs
+        );
+      }
     });
 
     this.eventBus.on("consumable:failed", ({ consumableId, reason, timestampMs }) => {
       this.hudDirty = true;
-      this.runLog.append(`Cannot use ${consumableId}: ${reason}`, "warn", timestampMs);
+      this.runLog.appendKey(
+        "log.consumable.cannot_use",
+        {
+          consumableId,
+          reason: this.resolveConsumableFailureReason(reason)
+        },
+        "warn",
+        timestampMs
+      );
     });
 
     this.eventBus.on("event:spawn", ({ eventId, eventName, floor, timestampMs }) => {
@@ -1133,19 +1232,43 @@ export class DungeonScene extends Phaser.Scene {
         eventId
       });
       this.hudDirty = true;
-      this.runLog.append(`Event discovered on floor ${floor}: ${eventName}.`, "info", timestampMs);
+      this.runLog.appendKey(
+        "log.event.discovered",
+        {
+          floor,
+          eventName
+        },
+        "info",
+        timestampMs
+      );
     });
 
     this.eventBus.on("event:choice", ({ eventId, choiceId, timestampMs }) => {
       this.hudDirty = true;
-      this.runLog.append(`Event choice selected: ${eventId} -> ${choiceId}.`, "info", timestampMs);
+      this.runLog.appendKey(
+        "log.event.choice_selected",
+        {
+          eventId,
+          choiceId
+        },
+        "info",
+        timestampMs
+      );
     });
 
     this.eventBus.on("merchant:offer", ({ floor, offerCount, timestampMs }) => {
       this.routeFeedback({
         type: "merchant:offer"
       });
-      this.runLog.append(`Merchant opened on floor ${floor} with ${offerCount} offers.`, "info", timestampMs);
+      this.runLog.appendKey(
+        "log.merchant.opened",
+        {
+          floor,
+          offerCount
+        },
+        "info",
+        timestampMs
+      );
     });
 
     this.eventBus.on("merchant:purchase", ({ itemName, priceObol, timestampMs }) => {
@@ -1153,37 +1276,63 @@ export class DungeonScene extends Phaser.Scene {
         type: "merchant:purchase"
       });
       this.hudDirty = true;
-      this.runLog.append(`Purchased ${itemName} for ${priceObol} Obol.`, "success", timestampMs);
+      this.runLog.appendKey(
+        "log.merchant.purchased",
+        {
+          itemName,
+          priceObol
+        },
+        "success",
+        timestampMs
+      );
       this.scheduleRunSave();
     });
 
     this.eventBus.on("monster:stateChange", ({ monsterId, from, to, timestampMs }) => {
-      this.runLog.append(
-        `${this.resolveEntityLabel(monsterId)} state: ${from} -> ${to}.`,
+      this.runLog.appendKey(
+        "log.monster.state_changed",
+        {
+          monsterName: this.resolveEntityLabel(monsterId),
+          from,
+          to
+        },
         "info",
         timestampMs
       );
     });
 
     this.eventBus.on("monster:affixApplied", ({ monsterId, affixId, timestampMs }) => {
-      this.runLog.append(
-        `${this.resolveEntityLabel(monsterId)} gained affix: ${affixId}.`,
+      this.runLog.appendKey(
+        "log.monster.affix_applied",
+        {
+          monsterName: this.resolveEntityLabel(monsterId),
+          affixId
+        },
         "warn",
         timestampMs
       );
     });
 
     this.eventBus.on("monster:split", ({ sourceMonsterId, spawnedIds, timestampMs }) => {
-      this.runLog.append(
-        `${this.resolveEntityLabel(sourceMonsterId)} split into ${spawnedIds.length} fragments.`,
+      this.runLog.appendKey(
+        "log.monster.split",
+        {
+          monsterName: this.resolveEntityLabel(sourceMonsterId),
+          count: spawnedIds.length
+        },
         "warn",
         timestampMs
       );
     });
 
     this.eventBus.on("monster:leech", ({ monsterId, amount, targetId, timestampMs }) => {
-      this.runLog.append(
-        `${this.resolveEntityLabel(monsterId)} leeched ${amount} HP from ${this.resolveEntityLabel(targetId)}.`,
+      this.runLog.appendKey(
+        "log.monster.leech",
+        {
+          monsterName: this.resolveEntityLabel(monsterId),
+          amount,
+          target: this.resolveEntityLabel(targetId)
+        },
         "danger",
         timestampMs
       );
@@ -1194,8 +1343,13 @@ export class DungeonScene extends Phaser.Scene {
         type: "run:start",
         biomeId: this.currentBiome.id
       });
-      this.runLog.append(
-        `Run started on floor ${floor} (${difficulty.toUpperCase()}, seed ${runSeed}).`,
+      this.runLog.appendKey(
+        "log.run.started",
+        {
+          floor,
+          difficulty: this.resolveDifficultyLabel(difficulty),
+          runSeed
+        },
         "info",
         startedAtMs
       );
@@ -1203,10 +1357,12 @@ export class DungeonScene extends Phaser.Scene {
 
     this.eventBus.on("run:end", ({ summary, finishedAtMs }) => {
       this.hudDirty = true;
-      this.runLog.append(
-        summary.isVictory
-          ? `Run complete! Floor ${summary.floorReached}, level ${summary.leveledTo}.`
-          : `Run ended on floor ${summary.floorReached}, level ${summary.leveledTo}.`,
+      this.runLog.appendKey(
+        summary.isVictory ? "log.run.completed_victory" : "log.run.completed_defeat",
+        {
+          floor: summary.floorReached,
+          level: summary.leveledTo
+        },
         summary.isVictory ? "success" : "danger",
         finishedAtMs
       );
@@ -1221,17 +1377,37 @@ export class DungeonScene extends Phaser.Scene {
       const biomeName =
         biomeId === undefined
           ? ""
-          : ` (${this.contentLocalizer.biomeName(
+          : this.contentLocalizer.biomeName(
               biomeId,
               BIOME_MAP[biomeId]?.name ?? biomeId
-            )})`;
-      this.runLog.append(`Entered floor ${floor}${biomeName}.`, "info", timestampMs);
+            );
+      this.runLog.appendKey(
+        biomeName.length > 0 ? "log.floor.entered_biome" : "log.floor.entered",
+        biomeName.length > 0
+          ? {
+              floor,
+              biomeName
+            }
+          : {
+              floor
+            },
+        "info",
+        timestampMs
+      );
       this.flushRunSave();
     });
 
     this.eventBus.on("floor:clear", ({ floor, kills, timestampMs }) => {
       this.hudDirty = true;
-      this.runLog.append(`Floor ${floor} cleared with ${kills} kills.`, "success", timestampMs);
+      this.runLog.appendKey(
+        "log.floor.cleared",
+        {
+          floor,
+          kills
+        },
+        "success",
+        timestampMs
+      );
     });
 
     this.eventBus.on("boss:phaseChange", ({ bossId, toPhase, hpRatio, timestampMs }) => {
@@ -1240,29 +1416,54 @@ export class DungeonScene extends Phaser.Scene {
         bossId
       });
       this.hudDirty = true;
-      this.runLog.append(
-        `Boss shifted to phase ${toPhase + 1} (${Math.floor(hpRatio * 100)}% HP).`,
+      this.runLog.appendKey(
+        "log.boss.phase_shifted",
+        {
+          phase: toPhase + 1,
+          hpPercent: Math.floor(hpRatio * 100)
+        },
         "warn",
         timestampMs
       );
     });
 
     this.eventBus.on("boss:summon", ({ count, timestampMs }) => {
-      this.runLog.append(`Boss summoned ${count} minions.`, "warn", timestampMs);
+      this.runLog.appendKey(
+        "log.boss.summoned_minions",
+        {
+          count
+        },
+        "warn",
+        timestampMs
+      );
     });
 
     this.eventBus.on("hazard:enter", ({ hazardType, targetId, timestampMs }) => {
       if (targetId !== this.player.id) {
         return;
       }
-      this.runLog.append(`Entered ${hazardType} zone.`, "warn", timestampMs);
+      this.runLog.appendKey(
+        "log.hazard.entered_zone",
+        {
+          hazardType: this.resolveHazardTypeLabel(hazardType)
+        },
+        "warn",
+        timestampMs
+      );
     });
 
     this.eventBus.on("hazard:exit", ({ hazardType, targetId, timestampMs }) => {
       if (targetId !== this.player.id) {
         return;
       }
-      this.runLog.append(`Left ${hazardType} zone.`, "info", timestampMs);
+      this.runLog.appendKey(
+        "log.hazard.left_zone",
+        {
+          hazardType: this.resolveHazardTypeLabel(hazardType)
+        },
+        "info",
+        timestampMs
+      );
     });
 
     this.eventBus.on("hazard:trigger", ({ hazardType, position, timestampMs }) => {
@@ -1272,7 +1473,14 @@ export class DungeonScene extends Phaser.Scene {
         position
       });
       if (hazardType !== "periodic_trap") {
-        this.runLog.append(`${hazardType} triggered.`, "warn", timestampMs);
+        this.runLog.appendKey(
+          "log.hazard.triggered",
+          {
+            hazardType: this.resolveHazardTypeLabel(hazardType)
+          },
+          "warn",
+          timestampMs
+        );
       }
     });
 
@@ -1282,8 +1490,14 @@ export class DungeonScene extends Phaser.Scene {
       }
       const label = this.resolveEntityLabel(targetId);
       const level = targetId === this.player.id ? "danger" : "info";
-      this.runLog.append(
-        `${label} took ${amount} damage from ${hazardType} (${Math.floor(remainingHealth)} HP left).`,
+      this.runLog.appendKey(
+        "log.hazard.damage",
+        {
+          target: label,
+          amount,
+          hazardType: this.resolveHazardTypeLabel(hazardType),
+          remainingHealth: Math.floor(remainingHealth)
+        },
         level,
         timestampMs
       );
@@ -2137,8 +2351,11 @@ export class DungeonScene extends Phaser.Scene {
       inventory
     };
     nextPlayer = equipItem(nextPlayer, dailyWeapon.id);
-    this.runLog.append(
-      `Daily loadout active: ${dailyWeapon.name}.`,
+    this.runLog.appendKey(
+      "log.run.daily_loadout_active",
+      {
+        weaponName: dailyWeapon.name
+      },
       "info",
       nowMs
     );
@@ -2365,8 +2582,19 @@ export class DungeonScene extends Phaser.Scene {
     }
     for (const blueprintId of discovered) {
       const blueprint = BLUEPRINT_DEF_MAP[blueprintId];
-      const label = blueprint?.name ?? blueprintId;
-      this.runLog.append(`Blueprint discovered (${sourceLabel}): ${label}.`, "success", nowMs);
+      const label =
+        blueprint === undefined
+          ? blueprintId
+          : this.contentLocalizer.blueprintName(blueprint.id, blueprint.name);
+      this.runLog.appendKey(
+        "log.blueprint.discovered",
+        {
+          sourceLabel,
+          blueprintName: label
+        },
+        "success",
+        nowMs
+      );
     }
     this.scheduleRunSave();
   }
@@ -2538,7 +2766,7 @@ export class DungeonScene extends Phaser.Scene {
     if (initial && this.isDebugLockedEquipEnabled()) {
       this.player = this.injectDebugLockedEquipment(this.player, this.time.now);
     }
-    this.entityLabelById.set(this.player.id, "Vanguard");
+    this.entityLabelById.set(this.player.id, t("ui.hud.player.title"));
 
     this.path = [];
     this.attackTargetId = null;
@@ -2688,10 +2916,9 @@ export class DungeonScene extends Phaser.Scene {
       layoutHash: this.dungeon.layoutHash
     });
 
-    this.runLog.append(
-      source === "click"
-        ? "Cracked wall opened. Hidden room revealed."
-        : "Mutation pulse revealed a hidden entrance.",
+    this.runLog.appendKey(
+      source === "click" ? "log.hidden_room.revealed_click" : "log.hidden_room.revealed_mutation",
+      undefined,
       "success",
       nowMs
     );
@@ -2827,7 +3054,14 @@ export class DungeonScene extends Phaser.Scene {
     if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
       this.challengeMarker.setTint(0x9c6ac4);
     }
-    this.runLog.append(`Challenge room discovered (Waves: ${this.challengeWaveTotal}).`, "info", nowMs);
+    this.runLog.appendKey(
+      "log.challenge.discovered",
+      {
+        waves: this.challengeWaveTotal
+      },
+      "info",
+      nowMs
+    );
   }
 
   private openChallengeRoomPanel(nowMs: number): void {
@@ -2876,7 +3110,7 @@ export class DungeonScene extends Phaser.Scene {
       },
       () => this.consumeCurrentEvent()
     );
-    this.runLog.append("Challenge room ready. Confirm entry to start.", "warn", nowMs);
+    this.runLog.appendKey("log.challenge.ready_confirm", undefined, "warn", nowMs);
   }
 
   private spawnChallengeWave(nowMs: number): void {
@@ -2965,7 +3199,15 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
     this.entityManager.rebuildMonsterSpatialIndex();
-    this.runLog.append(`Challenge wave ${waveNumber}/${this.challengeWaveTotal} started.`, "warn", nowMs);
+    this.runLog.appendKey(
+      "log.challenge.wave_started",
+      {
+        waveNumber,
+        waveTotal: this.challengeWaveTotal
+      },
+      "warn",
+      nowMs
+    );
   }
 
   private startChallengeEncounter(nowMs: number): void {
@@ -3013,7 +3255,7 @@ export class DungeonScene extends Phaser.Scene {
         this.spawnLootDrop(reward, center);
       }
       this.tryDiscoverBlueprints("challenge_room", nowMs, this.challengeRoomState.roomId);
-      this.runLog.append("Challenge cleared. Rewards granted.", "success", nowMs);
+      this.runLog.appendKey("log.challenge.cleared_rewards", undefined, "success", nowMs);
       if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
         this.challengeMarker.setTint(0x5abf8a);
       }
@@ -3028,7 +3270,14 @@ export class DungeonScene extends Phaser.Scene {
       this.path = [];
       this.manualMoveTarget = null;
       this.manualMoveTargetFailures = 0;
-      this.runLog.append(`Challenge failed. Lost ${hpPenalty} HP.`, "danger", nowMs);
+      this.runLog.appendKey(
+        "log.challenge.failed_lost_hp",
+        {
+          hpPenalty
+        },
+        "danger",
+        nowMs
+      );
       if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
         this.challengeMarker.setTint(0xc66767);
       }
@@ -3103,7 +3352,7 @@ export class DungeonScene extends Phaser.Scene {
       startedAtMs,
       deadlineAtMs: startedAtMs + 30_000
     };
-    this.runLog.append("Resumed active challenge encounter.", "info", nowMs);
+    this.runLog.appendKey("log.challenge.resumed", undefined, "info", nowMs);
   }
 
   private updateChallengeRoom(nowMs: number): void {
@@ -3358,8 +3607,11 @@ export class DungeonScene extends Phaser.Scene {
       (choiceId) => this.resolveEventChoice(choiceId, this.time.now),
       () => this.dismissCurrentEvent(this.time.now)
     );
-    this.runLog.append(
-      `Event encountered: ${this.contentLocalizer.eventName(eventDef.id, eventDef.name)}.`,
+    this.runLog.appendKey(
+      "log.event.encountered",
+      {
+        eventName: this.contentLocalizer.eventName(eventDef.id, eventDef.name)
+      },
       "info",
       nowMs
     );
@@ -3369,8 +3621,11 @@ export class DungeonScene extends Phaser.Scene {
     if (this.eventNode === null) {
       return;
     }
-    this.runLog.append(
-      `Left event ${this.contentLocalizer.eventName(this.eventNode.eventDef.id, this.eventNode.eventDef.name)} without interaction.`,
+    this.runLog.appendKey(
+      "log.event.left_without_interaction",
+      {
+        eventName: this.contentLocalizer.eventName(this.eventNode.eventDef.id, this.eventNode.eventDef.name)
+      },
       "info",
       nowMs
     );
@@ -3394,8 +3649,12 @@ export class DungeonScene extends Phaser.Scene {
               amount: cost.amount,
               type: cost.type
             });
-      this.runLog.append(
-        `Cannot choose ${this.contentLocalizer.eventChoiceName(eventId, choice.id, choice.name)}: ${reason}.`,
+      this.runLog.appendKey(
+        "log.event.choice_cannot_choose",
+        {
+          choiceName: this.contentLocalizer.eventChoiceName(eventId, choice.id, choice.name),
+          reason
+        },
         "warn",
         nowMs
       );
@@ -3417,8 +3676,14 @@ export class DungeonScene extends Phaser.Scene {
       } else {
         this.run = spendRunObols(this.run, cost.amount);
       }
-      this.runLog.append(
-        `Event cost paid (${eventId}/${choiceId}): ${cost.amount} ${cost.type}.`,
+      this.runLog.appendKey(
+        "log.event.cost_paid",
+        {
+          eventId,
+          choiceId,
+          amount: cost.amount,
+          costType: cost.type
+        },
         "warn",
         nowMs
       );
@@ -3433,7 +3698,15 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         health: Math.min(this.player.derivedStats.maxHealth, this.player.health + reward.amount)
       };
-      this.runLog.append(`${source}: restored ${reward.amount} HP.`, "success", nowMs);
+      this.runLog.appendKey(
+        "log.event.reward.health",
+        {
+          source,
+          amount: reward.amount
+        },
+        "success",
+        nowMs
+      );
       return;
     }
     if (reward.type === "mana") {
@@ -3441,18 +3714,42 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         mana: Math.min(this.player.derivedStats.maxMana, this.player.mana + reward.amount)
       };
-      this.runLog.append(`${source}: restored ${reward.amount} mana.`, "success", nowMs);
+      this.runLog.appendKey(
+        "log.event.reward.mana",
+        {
+          source,
+          amount: reward.amount
+        },
+        "success",
+        nowMs
+      );
       return;
     }
     if (reward.type === "obol") {
       this.run = addRunObols(this.run, reward.amount);
-      this.runLog.append(`${source}: gained ${reward.amount} Obol.`, "success", nowMs);
+      this.runLog.appendKey(
+        "log.event.reward.obol",
+        {
+          source,
+          amount: reward.amount
+        },
+        "success",
+        nowMs
+      );
       return;
     }
     if (reward.type === "xp") {
       const xpResult = applyXpGain(this.player, reward.amount, "intelligence");
       this.player = this.refreshPlayerStatsFromEquipment(xpResult.player);
-      this.runLog.append(`${source}: gained ${reward.amount} XP.`, "success", nowMs);
+      this.runLog.appendKey(
+        "log.event.reward.xp",
+        {
+          source,
+          amount: reward.amount
+        },
+        "success",
+        nowMs
+      );
       if (xpResult.leveledUp) {
         this.eventBus.emit("player:levelup", {
           playerId: this.player.id,
@@ -3465,13 +3762,25 @@ export class DungeonScene extends Phaser.Scene {
     }
     if (reward.type === "mapping") {
       this.mapRevealActive = true;
-      this.runLog.append(`${source}: mapping scroll revealed objective.`, "info", nowMs);
+      this.runLog.appendKey(
+        "log.event.reward.mapping",
+        {
+          source
+        },
+        "info",
+        nowMs
+      );
       return;
     }
     if (reward.type === "consumable") {
       this.consumables = grantConsumable(this.consumables, reward.consumableId, reward.amount);
-      this.runLog.append(
-        `${source}: gained ${reward.amount}x ${reward.consumableId}.`,
+      this.runLog.appendKey(
+        "log.event.reward.consumable",
+        {
+          source,
+          amount: reward.amount,
+          consumableId: reward.consumableId
+        },
         "success",
         nowMs
       );
@@ -3488,7 +3797,14 @@ export class DungeonScene extends Phaser.Scene {
             entries: [{ itemDefId: reward.itemDefId, weight: 1, minFloor: 1 }]
           };
     if (table === undefined) {
-      this.runLog.append(`${source}: no valid item reward table.`, "warn", nowMs);
+      this.runLog.appendKey(
+        "log.event.reward.item_table_missing",
+        {
+          source
+        },
+        "warn",
+        nowMs
+      );
       return;
     }
     const item = rollItemDrop(
@@ -3502,7 +3818,14 @@ export class DungeonScene extends Phaser.Scene {
       }
     );
     if (item === null) {
-      this.runLog.append(`${source}: item roll failed.`, "warn", nowMs);
+      this.runLog.appendKey(
+        "log.event.reward.item_roll_failed",
+        {
+          source
+        },
+        "warn",
+        nowMs
+      );
       return;
     }
     this.player = collectLoot(this.player, item);
@@ -3510,8 +3833,12 @@ export class DungeonScene extends Phaser.Scene {
       ...this.run,
       lootCollected: this.run.lootCollected + 1
     };
-    this.runLog.append(
-      `${source}: acquired ${this.contentLocalizer.itemName(item.defId, item.name)}.`,
+    this.runLog.appendKey(
+      "log.event.reward.item_acquired",
+      {
+        source,
+        itemName: this.contentLocalizer.itemName(item.defId, item.name)
+      },
       "success",
       nowMs
     );
@@ -3523,9 +3850,17 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         health: Math.max(0, this.player.health - reward.amount)
       };
-      this.runLog.append(`${source}: lost ${reward.amount} HP.`, "danger", nowMs);
+      this.runLog.appendKey(
+        "log.event.penalty.health",
+        {
+          source,
+          amount: reward.amount
+        },
+        "danger",
+        nowMs
+      );
       if (this.player.health <= 0) {
-        this.lastDeathReason = `Fell to event penalty (${reward.amount} health).`;
+        this.lastDeathReason = t("log.event.penalty.death_reason", { amount: reward.amount });
       }
       return;
     }
@@ -3534,16 +3869,40 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player,
         mana: Math.max(0, this.player.mana - reward.amount)
       };
-      this.runLog.append(`${source}: lost ${reward.amount} mana.`, "warn", nowMs);
+      this.runLog.appendKey(
+        "log.event.penalty.mana",
+        {
+          source,
+          amount: reward.amount
+        },
+        "warn",
+        nowMs
+      );
       return;
     }
     if (reward.type === "obol") {
       const spent = Math.min(this.run.runEconomy.obols, reward.amount);
       this.run = spendRunObols(this.run, spent);
-      this.runLog.append(`${source}: lost ${spent} Obol.`, "warn", nowMs);
+      this.runLog.appendKey(
+        "log.event.penalty.obol",
+        {
+          source,
+          amount: spent
+        },
+        "warn",
+        nowMs
+      );
       return;
     }
-    this.runLog.append(`${source}: penalty ignored (${reward.type}).`, "warn", nowMs);
+    this.runLog.appendKey(
+      "log.event.penalty.ignored",
+      {
+        source,
+        rewardType: reward.type
+      },
+      "warn",
+      nowMs
+    );
   }
 
   private resolveEventChoice(choiceId: string, nowMs: number): void {
@@ -3553,7 +3912,14 @@ export class DungeonScene extends Phaser.Scene {
     const { eventDef } = this.eventNode;
     const choice = eventDef.choices.find((entry) => entry.id === choiceId);
     if (choice === undefined) {
-      this.runLog.append(`Event choice ${choiceId} not found.`, "warn", nowMs);
+      this.runLog.appendKey(
+        "log.event.choice_not_found",
+        {
+          choiceId
+        },
+        "warn",
+        nowMs
+      );
       return;
     }
     if (!this.applyEventCost(nowMs, eventDef.id, choice.id)) {
@@ -3568,13 +3934,18 @@ export class DungeonScene extends Phaser.Scene {
     });
 
     const localizedEventName = this.contentLocalizer.eventName(eventDef.id, eventDef.name);
+    const eventSource = t("log.event.source", { eventName: localizedEventName });
     for (const reward of choice.rewards) {
-      this.applyEventReward(reward, nowMs, `Event ${localizedEventName}`);
+      this.applyEventReward(reward, nowMs, eventSource);
     }
     this.tryDiscoverBlueprints("random_event", nowMs, eventDef.id);
 
     if (rollEventRisk(choice, this.eventRng) && choice.risk !== undefined) {
-      this.applyEventPenalty(choice.risk.penalty, nowMs, `${localizedEventName} backlash`);
+      this.applyEventPenalty(
+        choice.risk.penalty,
+        nowMs,
+        t("log.event.backlash_source", { eventName: localizedEventName })
+      );
     }
 
     if (eventDef.id === "wandering_merchant" && choice.id === "browse") {
@@ -3594,7 +3965,7 @@ export class DungeonScene extends Phaser.Scene {
   private openMerchantPanel(nowMs: number): void {
     const merchantPool = LOOT_TABLE_MAP.merchant_pool;
     if (merchantPool === undefined) {
-      this.runLog.append("Merchant pool missing.", "warn", nowMs);
+      this.runLog.appendKey("log.merchant.pool_missing", undefined, "warn", nowMs);
       this.consumeCurrentEvent();
       return;
     }
@@ -3638,14 +4009,28 @@ export class DungeonScene extends Phaser.Scene {
   private tryBuyMerchantOffer(offerId: string, nowMs: number): void {
     const offer = this.merchantOffers.find((entry) => entry.offerId === offerId);
     if (offer === undefined) {
-      this.runLog.append(`Offer ${offerId} unavailable.`, "warn", nowMs);
+      this.runLog.appendKey(
+        "log.merchant.offer_unavailable",
+        {
+          offerId
+        },
+        "warn",
+        nowMs
+      );
       this.routeFeedback({
         type: "merchant:fail"
       });
       return;
     }
     if (this.run.runEconomy.obols < offer.priceObol) {
-      this.runLog.append(`Not enough Obol for ${offer.itemDefId}.`, "warn", nowMs);
+      this.runLog.appendKey(
+        "log.merchant.not_enough_obol",
+        {
+          itemDefId: offer.itemDefId
+        },
+        "warn",
+        nowMs
+      );
       this.routeFeedback({
         type: "merchant:fail"
       });
@@ -3666,7 +4051,14 @@ export class DungeonScene extends Phaser.Scene {
       }
     );
     if (item === null) {
-      this.runLog.append(`Merchant failed to deliver ${offer.itemDefId}.`, "warn", nowMs);
+      this.runLog.appendKey(
+        "log.merchant.delivery_failed",
+        {
+          itemDefId: offer.itemDefId
+        },
+        "warn",
+        nowMs
+      );
       this.routeFeedback({
         type: "merchant:fail"
       });
@@ -3688,7 +4080,7 @@ export class DungeonScene extends Phaser.Scene {
     });
     this.merchantOffers = this.merchantOffers.filter((entry) => entry.offerId !== offer.offerId);
     if (this.merchantOffers.length === 0) {
-      this.runLog.append("Merchant sold out.", "info", nowMs);
+      this.runLog.appendKey("log.merchant.sold_out", undefined, "info", nowMs);
       this.consumeCurrentEvent();
     } else {
       this.openMerchantPanel(nowMs);
@@ -3939,7 +4331,7 @@ export class DungeonScene extends Phaser.Scene {
     if (this.manualMoveTargetFailures >= 8) {
       this.manualMoveTarget = null;
       this.manualMoveTargetFailures = 0;
-      this.runLog.append("Pathfinding aborted: cannot reach destination.", "warn", nowMs);
+      this.runLog.appendKey("log.pathfinding.aborted_unreachable", undefined, "warn", nowMs);
     }
   }
 
@@ -4331,6 +4723,66 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
+  private resolveDifficultyLabel(difficulty: DifficultyMode): string {
+    switch (difficulty) {
+      case "normal":
+        return t("ui.meta.difficulty.normal");
+      case "hard":
+        return t("ui.meta.difficulty.hard");
+      case "nightmare":
+        return t("ui.meta.difficulty.nightmare");
+    }
+  }
+
+  private resolveEquipmentSlotLabel(slot: string): string {
+    switch (slot) {
+      case "weapon":
+        return t("ui.hud.inventory.slot.weapon.long");
+      case "helm":
+        return t("ui.hud.inventory.slot.helm.long");
+      case "chest":
+        return t("ui.hud.inventory.slot.chest.long");
+      case "boots":
+        return t("ui.hud.inventory.slot.boots.long");
+      case "ring":
+        return t("ui.hud.inventory.slot.ring.long");
+      default:
+        return slot;
+    }
+  }
+
+  private resolveHazardTypeLabel(hazardType: string): string {
+    switch (hazardType) {
+      case "damage_zone":
+        return t("log.hazard.type.damage_zone");
+      case "movement_modifier":
+        return t("log.hazard.type.movement_modifier");
+      case "periodic_trap":
+        return t("log.hazard.type.periodic_trap");
+      default:
+        return hazardType;
+    }
+  }
+
+  private resolveConsumableFailureReason(reason: string): string {
+    if (reason === "No charges left.") {
+      return t("log.consumable.reason.no_charges");
+    }
+    if (reason === "HP already full.") {
+      return t("log.consumable.reason.hp_full");
+    }
+    if (reason === "Mana already full.") {
+      return t("log.consumable.reason.mana_full");
+    }
+    const cooldownMatch = /^Cooldown ([0-9]+(?:\.[0-9]+)?)s\.$/.exec(reason);
+    if (cooldownMatch?.[1] !== undefined) {
+      return t("log.consumable.reason.cooldown", {
+        seconds: cooldownMatch[1]
+      });
+    }
+    return reason;
+  }
+
   private resolveEntityLabel(entityId: string): string {
     const cached = this.entityLabelById.get(entityId);
     if (cached !== undefined) {
@@ -4338,7 +4790,7 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     if (entityId === this.player.id) {
-      return "Vanguard";
+      return t("ui.hud.player.title");
     }
 
     if (entityId === this.bossDef.id) {
@@ -4397,8 +4849,13 @@ export class DungeonScene extends Phaser.Scene {
       const before = target.state.health;
       target.state.health = Math.min(target.state.maxHealth, target.state.health + action.amount);
       if (target.state.health > before) {
-        this.runLog.append(
-          `${source.archetype.name} healed ${target.archetype.name} for ${target.state.health - before}.`,
+        this.runLog.appendKey(
+          "log.monster.support_heal",
+          {
+            sourceName: source.archetype.name,
+            targetName: target.archetype.name,
+            amount: target.state.health - before
+          },
           "info",
           action.timestampMs
         );
@@ -4984,7 +5441,7 @@ export class DungeonScene extends Phaser.Scene {
         this.finishRun(true);
       }
     );
-    this.runLog.append("Bone Sovereign defeated. Choose your fate.", "success", nowMs);
+    this.runLog.appendKey("log.boss.bone_sovereign_defeated", undefined, "success", nowMs);
   }
 
   private enterAbyss(nowMs: number): void {
@@ -5004,7 +5461,14 @@ export class DungeonScene extends Phaser.Scene {
       endlessKills: 0
     };
     this.run = addRunObols(this.run, endlessFloorClearBonus(this.run.currentFloor));
-    this.runLog.append(`Entered Abyss Floor ${this.run.currentFloor}.`, "warn", nowMs);
+    this.runLog.appendKey(
+      "log.run.entered_abyss_floor",
+      {
+        floor: this.run.currentFloor
+      },
+      "warn",
+      nowMs
+    );
     this.setupFloor(this.run.currentFloor, false);
     this.flushRunSave();
   }

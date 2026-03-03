@@ -26,6 +26,31 @@
   opacity: 0.55;
 }
 
+.hud-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.hud-meta-item {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hud-meta-label {
+  font-size: 11px;
+  color: var(--text-subtle);
+  line-height: 1.15;
+}
+
+.hud-meta-value {
+  font-size: 16px;
+  color: var(--text-main);
+  line-height: 1.1;
+}
+
 button,
 .inventory-cell,
 .equip-slot,
@@ -170,6 +195,5 @@ button,
 }
 
 .minimap-panel canvas {
-  max-width: 200px;
+  max-width: 100%;
 }
-

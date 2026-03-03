@@ -3,6 +3,15 @@
     grid-template-columns: 1fr;
   }
 
+  #game-root > #minimap {
+    top: 10px;
+    left: 10px;
+  }
+
+  #game-root > #minimap .minimap-panel {
+    width: min(190px, 36vw);
+  }
+
   #hud-panel {
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     height: auto;
@@ -43,12 +52,21 @@
 }
 
 @media (min-width: 1400px) {
-  .minimap-panel canvas {
-    max-width: 240px;
+  #game-root > #minimap .minimap-panel {
+    width: min(220px, 18vw);
   }
 }
 
 @media (max-width: 640px) {
+  #game-root > #minimap {
+    top: 8px;
+    left: 8px;
+  }
+
+  #game-root > #minimap .minimap-panel {
+    width: min(160px, 42vw);
+  }
+
   #hud-panel {
     max-height: 60vh;
     padding: var(--space-3);
