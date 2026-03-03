@@ -1,4 +1,10 @@
-import type { MetaProgression, PermanentUpgrade, RunSummary, UnlockDef } from "./contracts/types";
+import type {
+  DailyHistoryEntry,
+  MetaProgression,
+  PermanentUpgrade,
+  RunSummary,
+  UnlockDef
+} from "./contracts/types";
 import type { RunState } from "./run";
 import {
   createInitialDifficultyCompletions,
@@ -71,6 +77,39 @@ function normalizeStringArray(input: unknown): string[] {
   return next;
 }
 
+function isDailyDateKey(input: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(input);
+}
+
+function normalizeDailyDateKeys(input: unknown): string[] {
+  return normalizeStringArray(input).filter((entry) => isDailyDateKey(entry));
+}
+
+function normalizeDailyHistory(input: unknown): DailyHistoryEntry[] {
+  if (!Array.isArray(input)) {
+    return [];
+  }
+  const normalized: DailyHistoryEntry[] = [];
+  for (const entry of input) {
+    if (!isRecord(entry) || typeof entry.date !== "string" || !isDailyDateKey(entry.date)) {
+      continue;
+    }
+    normalized.push({
+      date: entry.date,
+      score: Math.max(0, Math.floor(asNumber(entry.score, 0))),
+      floorReached: Math.max(0, Math.floor(asNumber(entry.floorReached, 0))),
+      kills: Math.max(0, Math.floor(asNumber(entry.kills, 0))),
+      clearTimeMs: Math.max(0, Math.floor(asNumber(entry.clearTimeMs, 0))),
+      challengeSuccessCount: Math.max(0, Math.floor(asNumber(entry.challengeSuccessCount, 0))),
+      seed: typeof entry.seed === "string" ? entry.seed : "",
+      rewarded: entry.rewarded === true
+    });
+  }
+  normalized.sort((left, right) => left.date.localeCompare(right.date));
+  const trimmed = normalized.slice(-30);
+  return trimmed;
+}
+
 function clampMutationSlots(input: unknown, fallback = 1): number {
   const raw = Math.floor(asNumber(input, fallback));
   return Math.max(1, Math.min(3, raw));
@@ -103,7 +142,7 @@ export function migrateMeta(raw: unknown): MetaProgression {
     soulShards: 0,
     unlocks: [],
     cumulativeUnlockProgress: 0,
-    schemaVersion: 4,
+    schemaVersion: 5,
     selectedDifficulty: DEFAULT_DIFFICULTY,
     difficultyCompletions: createInitialDifficultyCompletions(),
     talentPoints: {},
@@ -114,6 +153,10 @@ export function migrateMeta(raw: unknown): MetaProgression {
     mutationSlots: 1,
     mutationUnlockedIds: [],
     selectedMutationIds: [],
+    synergyDiscoveredIds: [],
+    endlessBestFloor: 0,
+    dailyHistory: [],
+    dailyRewardClaimedDates: [],
     permanentUpgrades: {
       startingHealth: 0,
       startingArmor: 0,
@@ -139,6 +182,54 @@ export function migrateMeta(raw: unknown): MetaProgression {
     difficultyCompletions
   });
 
+  const synergyDiscoveredIds = normalizeStringArray(raw.synergyDiscoveredIds);
+  const endlessBestFloor = Math.max(0, Math.floor(asNumber(raw.endlessBestFloor, 0)));
+  const dailyHistory = normalizeDailyHistory(raw.dailyHistory);
+  const dailyRewardClaimedDates = normalizeDailyDateKeys(raw.dailyRewardClaimedDates);
+
+  if (schemaVersion >= 5) {
+    const rawPermanentUpgrades = normalizePermanentUpgrades(raw.permanentUpgrades);
+    let talentPoints = normalizeTalentPoints(raw.talentPoints);
+    if (Object.keys(talentPoints).length === 0) {
+      talentPoints = mapLegacyPermanentUpgradesToTalents(rawPermanentUpgrades);
+    }
+    const permanentUpgrades = derivePermanentUpgradesFromTalents(talentPoints);
+    const totalShardsSpent = normalizeTotalShardsSpent(
+      raw.totalShardsSpent,
+      estimateLegacyShardsSpentFromTalents(talentPoints)
+    );
+    const blueprintFoundIds = normalizeStringArray(raw.blueprintFoundIds);
+    const blueprintForgedIds = normalizeStringArray(raw.blueprintForgedIds);
+    const mutationUnlockedIds = normalizeStringArray(raw.mutationUnlockedIds);
+    const mutationSlots = clampMutationSlots(raw.mutationSlots, base.mutationSlots);
+    const selectedMutationIds = normalizeSelectedMutations(raw.selectedMutationIds, mutationUnlockedIds, mutationSlots);
+
+    return {
+      runsPlayed: asNumber(raw.runsPlayed, 0),
+      bestFloor: asNumber(raw.bestFloor, 0),
+      bestTimeMs: asNumber(raw.bestTimeMs, 0),
+      soulShards: asNumber(raw.soulShards, 0),
+      unlocks: normalizeUnlocks(raw.unlocks),
+      cumulativeUnlockProgress: asNumber(raw.cumulativeUnlockProgress, 0),
+      schemaVersion: 5,
+      selectedDifficulty,
+      difficultyCompletions,
+      talentPoints,
+      totalShardsSpent,
+      blueprintFoundIds,
+      blueprintForgedIds,
+      echoes: Math.max(0, Math.floor(asNumber(raw.echoes, 0))),
+      mutationSlots,
+      mutationUnlockedIds,
+      selectedMutationIds,
+      synergyDiscoveredIds,
+      endlessBestFloor,
+      dailyHistory,
+      dailyRewardClaimedDates,
+      permanentUpgrades
+    };
+  }
+
   if (schemaVersion >= 4) {
     const rawPermanentUpgrades = normalizePermanentUpgrades(raw.permanentUpgrades);
     let talentPoints = normalizeTalentPoints(raw.talentPoints);
@@ -163,7 +254,7 @@ export function migrateMeta(raw: unknown): MetaProgression {
       soulShards: asNumber(raw.soulShards, 0),
       unlocks: normalizeUnlocks(raw.unlocks),
       cumulativeUnlockProgress: asNumber(raw.cumulativeUnlockProgress, 0),
-      schemaVersion: 4,
+      schemaVersion: 5,
       selectedDifficulty,
       difficultyCompletions,
       talentPoints,
@@ -174,6 +265,10 @@ export function migrateMeta(raw: unknown): MetaProgression {
       mutationSlots,
       mutationUnlockedIds,
       selectedMutationIds,
+      synergyDiscoveredIds,
+      endlessBestFloor,
+      dailyHistory,
+      dailyRewardClaimedDates,
       permanentUpgrades
     };
   }
@@ -197,7 +292,7 @@ export function migrateMeta(raw: unknown): MetaProgression {
       soulShards: asNumber(raw.soulShards, 0),
       unlocks: normalizeUnlocks(raw.unlocks),
       cumulativeUnlockProgress: asNumber(raw.cumulativeUnlockProgress, 0),
-      schemaVersion: 4,
+      schemaVersion: 5,
       selectedDifficulty,
       difficultyCompletions,
       talentPoints,
@@ -208,6 +303,10 @@ export function migrateMeta(raw: unknown): MetaProgression {
       mutationSlots: 1,
       mutationUnlockedIds: [],
       selectedMutationIds: [],
+      synergyDiscoveredIds: [],
+      endlessBestFloor: 0,
+      dailyHistory: [],
+      dailyRewardClaimedDates: [],
       permanentUpgrades
     };
   }
@@ -233,7 +332,7 @@ export function migrateMeta(raw: unknown): MetaProgression {
     soulShards: schemaVersion >= 2 ? asNumber(raw.soulShards, 0) : 0,
     unlocks: schemaVersion >= 2 ? normalizeUnlocks(raw.unlocks) : [],
     cumulativeUnlockProgress: schemaVersion >= 2 ? asNumber(raw.cumulativeUnlockProgress, 0) : 0,
-    schemaVersion: 4,
+    schemaVersion: 5,
     selectedDifficulty,
     difficultyCompletions,
     talentPoints,
@@ -244,6 +343,10 @@ export function migrateMeta(raw: unknown): MetaProgression {
     mutationSlots: 1,
     mutationUnlockedIds: [],
     selectedMutationIds: [],
+    synergyDiscoveredIds: [],
+    endlessBestFloor: 0,
+    dailyHistory: [],
+    dailyRewardClaimedDates: [],
     permanentUpgrades
   };
 }
@@ -334,6 +437,8 @@ export function collectUnlockedBiomeIds(meta: MetaProgression, unlockDefs: Unloc
     "forgotten_catacombs",
     "molten_caverns",
     "frozen_halls",
+    "phantom_graveyard",
+    "venom_swamp",
     "bone_throne"
   ]);
   for (const unlockId of meta.unlocks) {

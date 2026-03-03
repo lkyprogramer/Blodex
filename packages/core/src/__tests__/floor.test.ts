@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createStaircaseState, findStaircasePosition, shouldRevealStaircase } from "../floor";
+import { createStaircaseState, findStaircasePosition, isPlayerOnStaircase, shouldRevealStaircase } from "../floor";
 import type { DungeonLayout, FloorConfig } from "../contracts/types";
 
 const floorConfig: FloorConfig = {
@@ -43,5 +43,20 @@ describe("floor", () => {
   it("creates hidden staircase state by default", () => {
     const state = createStaircaseState(makeLayout());
     expect(state.visible).toBe(false);
+  });
+
+  it("creates branch staircase on floor 2", () => {
+    const state = createStaircaseState(makeLayout(), undefined, 2);
+    expect(state.kind).toBe("branch");
+    if (state.kind !== "branch" || state.options === undefined) {
+      return;
+    }
+    expect(state.options).toHaveLength(2);
+    const option0 = state.options[0]!;
+    const visible = {
+      ...state,
+      visible: true
+    };
+    expect(isPlayerOnStaircase(option0.position, visible, 0.8)).toBe(true);
   });
 });

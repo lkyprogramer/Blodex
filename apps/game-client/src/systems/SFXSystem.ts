@@ -41,6 +41,8 @@ const BIOME_AMBIENT_MAP: Record<BiomeId, AudioKey> = {
   forgotten_catacombs: "amb_biome_forgotten_catacombs_loop_01",
   molten_caverns: "amb_biome_molten_caverns_loop_01",
   frozen_halls: "amb_biome_frozen_halls_loop_01",
+  phantom_graveyard: "amb_biome_frozen_halls_loop_01",
+  venom_swamp: "amb_biome_molten_caverns_loop_01",
   bone_throne: "amb_biome_bone_throne_loop_01"
 };
 

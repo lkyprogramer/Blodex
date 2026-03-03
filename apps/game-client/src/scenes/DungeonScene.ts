@@ -2,6 +2,9 @@ import Phaser from "phaser";
 import {
   applyHazardDamage,
   addRunObols,
+  advanceEndlessFloor,
+  buildDailyHistoryEntry,
+  canStartDailyScoredAttempt,
   canPayEventCost,
   canUseConsumable,
   collectUnlockedAffixIds,
@@ -13,8 +16,10 @@ import {
   buildMutationDefMap,
   createInitialConsumableState,
   createMerchantOffers,
+  createChallengeRoomState,
   createHazardRuntimeState,
   appendReplayInput,
+  advanceChallengeRoomWave,
   applyDamageToBoss,
   applyAffixesToMonsterState,
   collectActiveMutationEffects,
@@ -25,6 +30,7 @@ import {
   canUseSkill,
   collectLoot,
   grantConsumable,
+  hasClaimedDailyReward,
   hasMonsterAffix,
   isItemDefUnlockedByWeaponType,
   isInsideHazard,
@@ -33,11 +39,17 @@ import {
   nextHazardTickAt,
   nextHazardTriggerAt,
   normalizeMutationMetaState,
+  mergeSynergyDiscoveries,
+  resolveSynergyRuntimeEffects,
   validateMutationSelection,
   pickRandomEvent,
-  resolveBiomeForFloor,
-  resolveMidBiomeOrder,
+  resolveBiomeForFloorBySeed,
+  resolveBranchChoiceFromSide,
+  resolveBranchSideAtPosition,
+  resolveDailyDate,
   resolveEquippedWeaponType,
+  resolveEndlessAffixBonusCount,
+  recordEndlessBestFloor,
   resolveWeaponTypeDef,
   rollBlueprintDiscoveries,
   rollEventRisk,
@@ -46,24 +58,35 @@ import {
   createInitialMeta,
   createRunSeed,
   createRunState,
+  createSkillDefForLevel,
   createStaircaseState,
   defaultBaseStats,
   deriveFloorSeed,
   deriveStats,
+  endlessFloorClearBonus,
+  endlessKillShardReward,
   endRun,
+  enterEndless,
   enterNextFloor,
   equipItem,
+  failChallengeRoom,
   findStaircasePosition,
   generateBossRoom,
   generateDungeon,
   initBossState,
   isPlayerOnStaircase,
   markBossAttackUsed,
+  markDailyRewardClaimed,
   markSkillUsed,
   migrateMeta,
   normalizeDifficultyMode,
-  pickSkillChoices,
+  pickSkillChoicesWeighted,
   rollMonsterAffixes,
+  shouldFailChallengeRoomByTimeout,
+  shouldSpawnChallengeRoom,
+  startChallengeRoom,
+  chooseChallengeRoom,
+  markRoomAsChallenge,
   resolveSelectedDifficulty,
   spendRunObols,
   shouldRunHazardTick,
@@ -75,9 +98,11 @@ import {
   selectBossAttack,
   resolveBossAttack,
   useConsumable,
+  upsertDailyHistory,
   type CombatEvent,
   type BossDef,
   type BossRuntimeState,
+  type ChallengeRoomState,
   type ConsumableId,
   type ConsumableState,
   type DungeonLayout,
@@ -95,11 +120,14 @@ import {
   type MonsterState,
   type PlayerState,
   type RandomEventDef,
+  type RunMode,
   type RunRngStreamName,
-  type RunSaveDataV1,
+  type RunSaveDataV2,
   type RuntimeEventNodeState,
   type RunState,
+  type StaircaseState,
   type SkillDef,
+  type SynergyRuntimeEffects,
   type TalentEffectTotals,
   type WeaponType
 } from "@blodex/core";
@@ -120,6 +148,7 @@ import {
   LOOT_TABLE_MAP,
   MONSTER_ARCHETYPES,
   SKILL_DEFS,
+  SYNERGY_DEFS,
   TALENT_DEFS,
   type BiomeDef,
   type FloorConfig
@@ -152,7 +181,7 @@ import { removeConnectedBackgroundFromTexture } from "../assets/removeBackground
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
-const RUN_SAVE_APP_VERSION = "phase2-4b";
+const RUN_SAVE_APP_VERSION = "phase2-4c";
 const AUTO_SAVE_INTERVAL_MS = 60_000;
 const DUNGEON_IMAGE_ASSET_IDS = [
   "player_vanguard",
@@ -212,6 +241,9 @@ const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
 };
 const SKILL_DEF_BY_ID = new Map(SKILL_DEFS.map((entry) => [entry.id, entry]));
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
+const DAILY_WEAPON_ROTATION: WeaponType[] = ["sword", "axe", "dagger", "staff", "hammer"];
+const DAILY_MUTATION_COUNT = 2;
+const ABYSS_VICTORY_EVENT_ID = "boss_victory_choice";
 const DEBUG_COMMANDS = [
   { combo: "Alt+H", description: "Show cheat commands" },
   { combo: "Alt+L", description: "Dump diagnostics snapshot to console/log" },
@@ -223,7 +255,14 @@ const DEBUG_COMMANDS = [
   { combo: "Alt+K", description: "Clear current floor instantly" },
   { combo: "Alt+X", description: "Force player death (death feedback check)" },
   { combo: "Alt+1..5", description: "Jump to floor 1-5 (biome/hazard/boss checks)" },
-  { combo: "Alt+N", description: "Start a fresh run" }
+  { combo: "Alt+N", description: "Start a fresh run" },
+  { combo: "API.forceChallenge()", description: "Inject a challenge room on current floor" },
+  { combo: "API.startChallenge()", description: "Start challenge encounter immediately" },
+  { combo: "API.settleChallenge(true|false)", description: "Force challenge success/failure" },
+  { combo: "API.openBossVictory()", description: "Open boss victory choice instantly" },
+  { combo: "API.enterAbyss()", description: "Force enter abyss/endless" },
+  { combo: "API.nextFloor()", description: "Advance to next floor immediately" },
+  { combo: "API.forceSynergy(id)", description: "Inject loadout to activate a synergy quickly" }
 ] as const;
 
 interface BlodexDebugApi {
@@ -235,6 +274,13 @@ interface BlodexDebugApi {
   jumpFloor: (floor: number) => void;
   killPlayer: () => void;
   newRun: () => void;
+  forceChallenge: () => boolean;
+  startChallenge: () => boolean;
+  settleChallenge: (success?: boolean) => boolean;
+  openBossVictory: () => boolean;
+  enterAbyss: () => boolean;
+  nextFloor: () => boolean;
+  forceSynergy: (synergyId?: string) => string[];
   diagnostics: () => Record<string, unknown>;
   stressRuns: (iterations?: number) => Record<string, unknown>;
   help: () => string[];
@@ -248,8 +294,12 @@ declare global {
 
 interface DungeonSceneInitData {
   difficulty?: DifficultyMode;
-  resumeSave?: RunSaveDataV1;
+  resumeSave?: RunSaveDataV2;
   resumedFromSave?: boolean;
+  runMode?: RunMode;
+  dailyDate?: string;
+  dailyPractice?: boolean;
+  runSeed?: string;
 }
 
 interface MutationRuntimeState {
@@ -292,13 +342,26 @@ export class DungeonScene extends Phaser.Scene {
     onHitInvulnCooldownUntilMs: 0,
     lethalGuardUsedFloors: new Set<number>()
   };
+  private synergyRuntime: SynergyRuntimeEffects = {
+    activeSynergyIds: [],
+    skillDamagePercent: {},
+    skillModifiers: {},
+    statPercent: {},
+    cooldownOverridesMs: {}
+  };
   private readonly hiddenEntranceMarkers = new Map<string, Phaser.GameObjects.Ellipse>();
   private readonly saveManager = new SaveManager();
   private run!: RunState;
   private runSeed = "";
   private selectedDifficulty: DifficultyMode = "normal";
   private pendingDifficulty: DifficultyMode | null = null;
-  private pendingResumeSave: RunSaveDataV1 | null = null;
+  private pendingResumeSave: RunSaveDataV2 | null = null;
+  private pendingRunMode: RunMode = "normal";
+  private pendingDailyDate: string | undefined;
+  private pendingDailyPractice = false;
+  private pendingRunSeed: string | undefined;
+  private dailyPracticeMode = false;
+  private dailyFixedWeaponType: WeaponType | null = null;
   private resumedFromSave = false;
   private lastAutoSaveAt = 0;
 
@@ -339,7 +402,8 @@ export class DungeonScene extends Phaser.Scene {
   private bossState: BossRuntimeState | null = null;
   private bossSprite: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle | null = null;
 
-  private staircaseState = {
+  private staircaseState: StaircaseState = {
+    kind: "single",
     position: { x: 0, y: 0 },
     visible: false
   };
@@ -374,6 +438,10 @@ export class DungeonScene extends Phaser.Scene {
     marker: Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
     resolved: boolean;
   } | null = null;
+  private challengeRoomState: ChallengeRoomState | null = null;
+  private challengeWaveTotal = 0;
+  private challengeMarker: Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse | null = null;
+  private readonly challengeMonsterIds = new Set<string>();
   private merchantOffers: MerchantOffer[] = [];
   private eventPanelOpen = false;
   private mapRevealActive = false;
@@ -422,6 +490,10 @@ export class DungeonScene extends Phaser.Scene {
   init(data: DungeonSceneInitData): void {
     this.pendingResumeSave = data.resumeSave ?? null;
     this.resumedFromSave = data.resumedFromSave === true;
+    this.pendingRunMode = data.runMode === "daily" ? "daily" : "normal";
+    this.pendingDailyDate = data.dailyDate;
+    this.pendingDailyPractice = data.dailyPractice === true;
+    this.pendingRunSeed = data.runSeed;
     if (data.difficulty === undefined) {
       this.pendingDifficulty = null;
       return;
@@ -504,9 +576,12 @@ export class DungeonScene extends Phaser.Scene {
           return;
         }
 
-        this.player = equipItem(this.player, itemId);
+        this.player = this.refreshPlayerStatsFromEquipment(equipItem(this.player, itemId));
         const equipped = this.player.equipment[item.slot];
         if (equipped?.id === item.id) {
+          this.refreshSynergyRuntime();
+          this.hudDirty = true;
+          this.scheduleRunSave();
           this.eventBus.emit("item:equip", {
             playerId: this.player.id,
             slot: item.slot,
@@ -530,6 +605,9 @@ export class DungeonScene extends Phaser.Scene {
         };
         this.player = this.refreshPlayerStatsFromEquipment(unequippedPlayer);
         if (equipped !== undefined) {
+          this.refreshSynergyRuntime();
+          this.hudDirty = true;
+          this.scheduleRunSave();
           this.eventBus.emit("item:unequip", {
             playerId: this.player.id,
             slot,
@@ -703,6 +781,7 @@ export class DungeonScene extends Phaser.Scene {
     this.updateHazards(nowMs);
     this.collectNearbyLoot(nowMs);
     this.updateEventInteraction(nowMs);
+    this.updateChallengeRoom(nowMs);
 
     this.renderSystem.syncPlayerSprite(this.playerSprite, this.player.position, this.playerYOffset, this.origin);
     this.renderSystem.syncMonsterSprites(this.entityManager.listMonsters(), this.origin);
@@ -714,7 +793,11 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     if (this.floorConfig.isBossFloor && this.bossState !== null && this.bossState.health <= 0) {
-      this.finishRun(true);
+      if (this.run.inEndless) {
+        this.finishRun(true);
+      } else {
+        this.openBossVictoryChoice(nowMs);
+      }
       return;
     }
 
@@ -1167,6 +1250,9 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private resolveInitialRunSeed(): string {
+    if (this.pendingRunSeed !== undefined && this.pendingRunSeed.trim().length > 0) {
+      return this.pendingRunSeed.trim();
+    }
     const requested = new URLSearchParams(window.location.search).get("seed");
     if (requested !== null && requested.trim().length > 0) {
       return requested.trim();
@@ -1210,6 +1296,14 @@ export class DungeonScene extends Phaser.Scene {
       jumpFloor: (floor) => this.debugJumpToFloor(floor),
       killPlayer: () => this.debugForceDeath(),
       newRun: () => this.resetRun(),
+      forceChallenge: () => this.debugForceChallengeRoom(),
+      startChallenge: () => this.debugStartChallenge(),
+      settleChallenge: (success = true) => this.debugSettleChallenge(success),
+      openBossVictory: () => this.debugOpenBossVictoryChoice(),
+      enterAbyss: () => this.debugEnterAbyss(),
+      nextFloor: () => this.debugAdvanceFloor(),
+      forceSynergy: (synergyId = "syn_staff_chain_lightning_overload") =>
+        this.debugForceSynergy(synergyId),
       diagnostics: () => this.debugDumpDiagnostics(),
       stressRuns: (iterations = 12) => this.debugStressRuns(iterations),
       help: () => DEBUG_COMMANDS.map((entry) => `${entry.combo}: ${entry.description}`)
@@ -1440,6 +1534,231 @@ export class DungeonScene extends Phaser.Scene {
     this.debugLog("Opened wandering merchant panel.");
   }
 
+  private debugForceChallengeRoom(): boolean {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return false;
+    }
+    if (this.floorConfig.isBossFloor) {
+      this.debugLog("Challenge room is unavailable on boss floor.", "warn");
+      return false;
+    }
+    if (this.eventPanelOpen) {
+      this.consumeCurrentEvent();
+    }
+
+    let challengeRoom = this.dungeon.rooms.find((room) => room.roomType === "challenge");
+    if (challengeRoom === undefined) {
+      const picked = chooseChallengeRoom(this.dungeon, this.eventRng);
+      if (picked === null) {
+        this.debugLog("No room available for challenge injection.", "warn");
+        return false;
+      }
+      this.dungeon = markRoomAsChallenge(this.dungeon, picked.id);
+      challengeRoom = this.dungeon.rooms.find((room) => room.id === picked.id);
+    }
+    if (challengeRoom === undefined) {
+      this.debugLog("Challenge room injection failed.", "warn");
+      return false;
+    }
+
+    this.removeChallengeMonsters();
+    this.clearChallengeState();
+    this.challengeRoomState = createChallengeRoomState(challengeRoom.id);
+    this.challengeWaveTotal = this.resolveChallengeWaveTotal(challengeRoom.id);
+    const center = this.challengeRoomCenter(challengeRoom.id);
+    if (center !== null) {
+      this.challengeMarker = this.renderSystem.spawnTelegraphCircle(center, 0.95, this.origin);
+      this.challengeMarker.setAlpha(0.2);
+      if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
+        this.challengeMarker.setTint(0x9c6ac4);
+      }
+    }
+    this.hudDirty = true;
+    this.scheduleRunSave();
+    this.debugLog(`Challenge room ready (${this.challengeWaveTotal} waves).`, "success");
+    return true;
+  }
+
+  private debugStartChallenge(): boolean {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return false;
+    }
+    if (this.challengeRoomState === null && !this.debugForceChallengeRoom()) {
+      return false;
+    }
+    if (this.challengeRoomState === null) {
+      return false;
+    }
+    if (this.challengeRoomState.finished) {
+      this.debugLog("Challenge already finished on this floor.", "warn");
+      return false;
+    }
+    if (!this.challengeRoomState.started) {
+      this.startChallengeEncounter(this.time.now);
+      this.debugLog("Challenge encounter started.", "success");
+    } else {
+      this.debugLog("Challenge encounter already active.", "info");
+    }
+    return true;
+  }
+
+  private debugSettleChallenge(success: boolean): boolean {
+    if (!this.debugStartChallenge() || this.challengeRoomState === null) {
+      return false;
+    }
+    if (this.challengeRoomState.finished) {
+      this.debugLog("Challenge already settled.", "warn");
+      return false;
+    }
+    this.finishChallengeEncounter(success, this.time.now);
+    this.debugLog(`Challenge forced to ${success ? "success" : "failure"}.`, success ? "success" : "warn");
+    return true;
+  }
+
+  private debugOpenBossVictoryChoice(): boolean {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return false;
+    }
+    if (!this.floorConfig.isBossFloor) {
+      this.debugLog("Boss victory choice is only available on boss floor.", "warn");
+      return false;
+    }
+    if (this.bossState !== null && this.bossState.health > 0) {
+      this.bossState = {
+        ...this.bossState,
+        health: 0
+      };
+    }
+    this.openBossVictoryChoice(this.time.now);
+    this.hudDirty = true;
+    this.debugLog("Boss victory choice opened.", "success");
+    return true;
+  }
+
+  private debugEnterAbyss(): boolean {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return false;
+    }
+    if (this.run.runMode === "daily") {
+      this.debugLog("Daily mode cannot enter abyss.", "warn");
+      return false;
+    }
+    if (this.run.inEndless) {
+      this.debugLog("Already in abyss/endless.", "info");
+      return true;
+    }
+    if (this.run.currentFloor < 5) {
+      this.debugLog("Abyss entry requires reaching floor 5.", "warn");
+      return false;
+    }
+    if (this.floorConfig.isBossFloor && this.bossState !== null && this.bossState.health > 0) {
+      this.bossState = {
+        ...this.bossState,
+        health: 0
+      };
+    }
+    this.enterAbyss(this.time.now);
+    this.debugLog(`Forced abyss entry at floor ${this.run.currentFloor}.`, "success");
+    return true;
+  }
+
+  private debugAdvanceFloor(): boolean {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return false;
+    }
+    if (this.floorConfig.isBossFloor && !this.run.inEndless) {
+      return this.debugOpenBossVictoryChoice();
+    }
+    const fromFloor = this.run.currentFloor;
+    this.run = appendReplayInput(this.run, {
+      type: "floor_transition",
+      atMs: this.getRunRelativeNowMs(),
+      fromFloor,
+      toFloor: fromFloor + 1
+    });
+    this.run = enterNextFloor(this.run);
+    if (this.run.inEndless) {
+      this.run = advanceEndlessFloor(this.run);
+      this.run = addRunObols(this.run, endlessFloorClearBonus(this.run.currentFloor));
+    } else {
+      this.run = addRunObols(this.run, 5);
+    }
+    this.setupFloor(this.run.currentFloor, false);
+    this.flushRunSave();
+    this.debugLog(
+      `Advanced to floor ${this.run.currentFloor}${this.run.inEndless ? ` (endless ${this.run.endlessFloor})` : ""}.`,
+      "success"
+    );
+    return true;
+  }
+
+  private debugForceSynergy(synergyId: string): string[] {
+    if (this.runEnded) {
+      this.debugLog("Run already ended; start a new run first.", "warn");
+      return [];
+    }
+    if (synergyId !== "syn_staff_chain_lightning_overload") {
+      this.debugLog(`Unsupported synergy preset: ${synergyId}.`, "warn");
+      return [...this.synergyRuntime.activeSynergyIds];
+    }
+
+    const nowMs = this.time.now;
+    const existingSkills = this.player.skills;
+    if (existingSkills === undefined) {
+      this.debugLog("Player skills are unavailable; cannot inject synergy preset.", "warn");
+      return [...this.synergyRuntime.activeSynergyIds];
+    }
+    const slots = [...existingSkills.skillSlots];
+    slots[0] = { defId: "chain_lightning", level: 1 };
+    const staffItem: ItemInstance = {
+      id: `debug_synergy_staff_${Math.floor(nowMs)}`,
+      defId: "sovereign_requiem",
+      name: "Debug Sovereign Requiem",
+      kind: "unique",
+      slot: "weapon",
+      weaponType: "staff",
+      rarity: "rare",
+      requiredLevel: 1,
+      iconId: "item_weapon_03",
+      seed: `debug-synergy-${this.runSeed}`,
+      rolledAffixes: {
+        attackPower: 22,
+        critChance: 4,
+        attackSpeed: 4
+      },
+      rolledSpecialAffixes: {
+        lifesteal: 6,
+        critDamage: 22
+      }
+    };
+    this.player = this.refreshPlayerStatsFromEquipment({
+      ...this.player,
+      equipment: {
+        ...this.player.equipment,
+        weapon: staffItem
+      },
+      skills: {
+        ...existingSkills,
+        skillSlots: slots,
+        cooldowns: {
+          ...existingSkills.cooldowns,
+          chain_lightning: 0
+        }
+      }
+    });
+    this.refreshSynergyRuntime();
+    this.hudDirty = true;
+    this.scheduleRunSave();
+    const activeSynergyIds = [...this.synergyRuntime.activeSynergyIds];
+    this.debugLog(`Forced synergy preset ${synergyId}. Active: ${activeSynergyIds.join(", ") || "none"}.`, "success");
+    return activeSynergyIds;
+  }
+
   private debugForceClearFloor(): void {
     if (this.runEnded) {
       this.debugLog("Run already ended; start a new run first.", "warn");
@@ -1462,18 +1781,29 @@ export class DungeonScene extends Phaser.Scene {
       return;
     }
 
-    const living = [...this.entityManager.listLivingMonsters()];
     let removed = 0;
-    for (const monster of living) {
-      const dead = this.entityManager.removeMonsterById(monster.state.id);
-      if (dead === null) {
-        continue;
+    while (true) {
+      const living = [...this.entityManager.listLivingMonsters()];
+      if (living.length === 0) {
+        break;
       }
-      dead.sprite.destroy();
-      dead.healthBarBg.destroy();
-      dead.healthBarFg.destroy();
-      dead.affixMarker?.destroy();
-      removed += 1;
+      let removedThisPass = 0;
+      for (const monster of living) {
+        const dead = this.entityManager.removeMonsterById(monster.state.id);
+        if (dead === null) {
+          continue;
+        }
+        this.onMonsterDefeated(dead.state, nowMs);
+        dead.sprite.destroy();
+        dead.healthBarBg.destroy();
+        dead.healthBarFg.destroy();
+        dead.affixMarker?.destroy();
+        removed += 1;
+        removedThisPass += 1;
+      }
+      if (removedThisPass === 0) {
+        break;
+      }
     }
 
     const revealThreshold = Math.ceil(this.floorConfig.monsterCount * this.floorConfig.clearThreshold);
@@ -1492,7 +1822,7 @@ export class DungeonScene extends Phaser.Scene {
         ...this.staircaseState,
         visible: true
       };
-      this.entityManager.setStaircase(this.renderSystem.spawnStaircase(this.staircaseState.position, this.origin));
+      this.renderStaircases();
       this.eventBus.emit("floor:clear", {
         floor: this.run.currentFloor,
         kills: this.run.kills,
@@ -1590,9 +1920,103 @@ export class DungeonScene extends Phaser.Scene {
     };
   }
 
+  private resolveDailyWeaponType(runSeed: string): WeaponType {
+    let hash = 0;
+    for (let idx = 0; idx < runSeed.length; idx += 1) {
+      hash = (hash * 31 + runSeed.charCodeAt(idx)) >>> 0;
+    }
+    return DAILY_WEAPON_ROTATION[hash % DAILY_WEAPON_ROTATION.length] ?? "sword";
+  }
+
+  private resolveDailyMutationIds(runSeed: string): string[] {
+    const candidates = MUTATION_DEFS.map((entry) => entry.id).sort((left, right) => left.localeCompare(right));
+    if (candidates.length === 0) {
+      return [];
+    }
+    let hash = 2166136261;
+    for (let idx = 0; idx < runSeed.length; idx += 1) {
+      hash ^= runSeed.charCodeAt(idx);
+      hash = Math.imul(hash, 16777619);
+    }
+    const picked: string[] = [];
+    const pool = [...candidates];
+    while (picked.length < DAILY_MUTATION_COUNT && pool.length > 0) {
+      const index = hash % pool.length;
+      const [selected] = pool.splice(index, 1);
+      if (selected !== undefined) {
+        picked.push(selected);
+      }
+      hash = Math.imul(hash ^ 0x9e3779b9, 16777619) >>> 0;
+    }
+    return picked;
+  }
+
+  private createDailyWeaponInstance(weaponType: WeaponType): ItemInstance {
+    const baseAttackPower =
+      weaponType === "hammer" ? 9 : weaponType === "staff" ? 7 : weaponType === "axe" ? 8 : 7;
+    const baseCritChance = weaponType === "dagger" ? 4 : weaponType === "staff" ? 1 : 2;
+    return {
+      id: `daily_weapon_${weaponType}_${this.runSeed.slice(0, 8)}`,
+      defId: `daily_weapon_${weaponType}`,
+      name: `Daily Armament (${weaponType})`,
+      slot: "weapon",
+      kind: "equipment",
+      weaponType,
+      rarity: "magic",
+      requiredLevel: 1,
+      iconId: "item_weapon_02",
+      seed: `${this.runSeed}:daily_weapon:${weaponType}`,
+      rolledAffixes: {
+        attackPower: baseAttackPower,
+        critChance: baseCritChance,
+        attackSpeed: 2
+      }
+    };
+  }
+
+  private applyDailyLoadout(player: PlayerState, nowMs: number): PlayerState {
+    if (this.dailyFixedWeaponType === null) {
+      return player;
+    }
+    const dailyWeapon = this.createDailyWeaponInstance(this.dailyFixedWeaponType);
+    const inventory = [
+      ...player.inventory.filter((entry) => !(entry.slot === "weapon" && entry.id.startsWith("daily_weapon_"))),
+      dailyWeapon
+    ];
+    let nextPlayer: PlayerState = {
+      ...player,
+      inventory
+    };
+    nextPlayer = equipItem(nextPlayer, dailyWeapon.id);
+    this.uiManager.appendLog(
+      `Daily loadout active: ${dailyWeapon.name}.`,
+      "info",
+      nowMs
+    );
+    return this.refreshPlayerStatsFromEquipment(nextPlayer);
+  }
+
   private bootstrapRun(runSeed: string, difficulty: DifficultyMode): void {
     this.runSeed = runSeed;
-    this.selectedDifficulty = difficulty;
+    const requestedMode: RunMode = this.pendingRunMode === "daily" ? "daily" : "normal";
+    const selectedRunMode: RunMode = requestedMode;
+    const resolvedDailyDate = selectedRunMode === "daily" ? this.pendingDailyDate ?? resolveDailyDate() : undefined;
+    const canScoreDaily =
+      selectedRunMode === "daily" && resolvedDailyDate !== undefined
+        ? canStartDailyScoredAttempt(this.meta, resolvedDailyDate)
+        : false;
+    this.dailyPracticeMode = selectedRunMode === "daily" ? this.pendingDailyPractice || !canScoreDaily : false;
+    if (selectedRunMode === "daily" && this.pendingDailyPractice !== this.dailyPracticeMode) {
+      this.uiManager.appendLog(
+        this.dailyPracticeMode
+          ? "Daily scored attempt already consumed today. Switched to Practice mode."
+          : "Daily scored attempt unlocked.",
+        "info",
+        this.time.now
+      );
+    }
+    this.dailyFixedWeaponType = selectedRunMode === "daily" ? this.resolveDailyWeaponType(runSeed) : null;
+    this.selectedDifficulty = selectedRunMode === "daily" ? "hard" : difficulty;
     this.resumedFromSave = false;
     this.runEnded = false;
     this.lastDeathReason = "Unknown cause.";
@@ -1612,13 +2036,25 @@ export class DungeonScene extends Phaser.Scene {
     this.uiManager.hideEventPanel();
     this.blueprintFoundIdsInRun = [];
     this.refreshUnlockSnapshots();
-    this.resetMutationRuntimeState(this.meta.selectedMutationIds);
+    if (selectedRunMode === "daily") {
+      this.resetMutationRuntimeState(this.resolveDailyMutationIds(runSeed));
+    } else {
+      this.resetMutationRuntimeState(this.meta.selectedMutationIds);
+    }
     this.consumables = createInitialConsumableState(this.meta.permanentUpgrades.potionCharges);
     this.mapRevealActive = false;
     this.eventPanelOpen = false;
     this.merchantOffers = [];
     this.destroyEventNode();
-    this.run = createRunState(runSeed, this.time.now, difficulty);
+    const run = createRunState(runSeed, this.time.now, this.selectedDifficulty);
+    this.run =
+      selectedRunMode === "daily"
+        ? {
+            ...run,
+            runMode: "daily",
+            ...(resolvedDailyDate === undefined ? {} : { dailyDate: resolvedDailyDate })
+          }
+        : run;
     this.setupFloor(1, true);
 
     this.eventBus.emit("run:start", {
@@ -1631,6 +2067,10 @@ export class DungeonScene extends Phaser.Scene {
     if (this.debugCheatsEnabled) {
       this.debugLog("Cheats enabled (?debugCheats=1). Press Alt+H for command list.");
     }
+    this.pendingRunMode = "normal";
+    this.pendingDailyDate = undefined;
+    this.pendingDailyPractice = false;
+    this.pendingRunSeed = undefined;
     this.lastAutoSaveAt = this.time.now;
   }
 
@@ -1669,6 +2109,68 @@ export class DungeonScene extends Phaser.Scene {
       onHitInvulnCooldownUntilMs: 0,
       lethalGuardUsedFloors: new Set<number>()
     };
+  }
+
+  private applySynergyDerivedStatPercents(player: PlayerState): PlayerState {
+    const baseline = this.refreshPlayerStatsFromEquipment(player);
+    const nextDerived = { ...baseline.derivedStats };
+    for (const [stat, percent] of Object.entries(this.synergyRuntime.statPercent)) {
+      if (!(stat in nextDerived)) {
+        continue;
+      }
+      const key = stat as keyof typeof nextDerived;
+      const baseValue = nextDerived[key];
+      const scaled = baseValue * (1 + percent);
+      nextDerived[key] =
+        key === "critChance" || key === "attackSpeed" || key === "moveSpeed"
+          ? Math.max(0, scaled)
+          : Math.max(0, Math.floor(scaled));
+    }
+    return {
+      ...baseline,
+      derivedStats: nextDerived,
+      health: Math.min(baseline.health, nextDerived.maxHealth),
+      mana: Math.min(baseline.mana, nextDerived.maxMana)
+    };
+  }
+
+  private refreshSynergyRuntime(persistDiscovery = true): void {
+    if (this.player === undefined) {
+      this.synergyRuntime = {
+        activeSynergyIds: [],
+        skillDamagePercent: {},
+        skillModifiers: {},
+        statPercent: {},
+        cooldownOverridesMs: {}
+      };
+      return;
+    }
+
+    const activeSkills =
+      this.player.skills?.skillSlots
+        .filter((slot): slot is NonNullable<(typeof this.player.skills.skillSlots)[number]> => slot !== null)
+        .map((slot) => ({
+          id: slot.defId,
+          level: slot.level
+        })) ?? [];
+
+    this.synergyRuntime = resolveSynergyRuntimeEffects(SYNERGY_DEFS, {
+      weaponType: resolveEquippedWeaponType(this.player),
+      activeSkills,
+      talentPoints: this.meta.talentPoints,
+      selectedMutationIds: this.mutationRuntime.activeIds,
+      equipment: Object.values(this.player.equipment)
+    });
+    this.player = this.applySynergyDerivedStatPercents(this.player);
+
+    const discoveredMeta = mergeSynergyDiscoveries(this.meta, this.synergyRuntime.activeSynergyIds);
+    if (discoveredMeta !== this.meta) {
+      this.meta = discoveredMeta;
+      if (persistDiscovery) {
+        this.saveMeta(discoveredMeta);
+      }
+    }
+    this.hudDirty = true;
   }
 
   private collectKnownBlueprintIds(): string[] {
@@ -1842,12 +2344,12 @@ export class DungeonScene extends Phaser.Scene {
     this.entityManager.clear();
     this.clearHazards();
     this.clearHiddenRoomMarkers();
+    this.clearChallengeState();
     this.movementSystem.clearPathCache();
 
     this.floorConfig = getFloorConfig(floor, this.run.difficultyModifier);
     this.configureRngStreams(floor);
-    const midBiomeOrder = resolveMidBiomeOrder(this.biomeRng);
-    const rolledBiomeId = resolveBiomeForFloor(floor, midBiomeOrder);
+    const rolledBiomeId = resolveBiomeForFloorBySeed(floor, this.runSeed, this.run.branchChoice);
     const biomeId = this.unlockedBiomeIds.has(rolledBiomeId) ? rolledBiomeId : "forgotten_catacombs";
     this.currentBiome = BIOME_MAP[biomeId] ?? BIOME_MAP.forgotten_catacombs;
     this.mapRevealActive = false;
@@ -1865,6 +2367,9 @@ export class DungeonScene extends Phaser.Scene {
       ...this.player,
       position: { ...this.dungeon.playerSpawn }
     };
+    if (initial && this.run.runMode === "daily") {
+      this.player = this.applyDailyLoadout(this.player, this.time.now);
+    }
     if (initial && this.isDebugLockedEquipEnabled()) {
       this.player = this.injectDebugLockedEquipment(this.player, this.time.now);
     }
@@ -1879,7 +2384,7 @@ export class DungeonScene extends Phaser.Scene {
     this.nextBossAttackAt = 0;
     this.bossState = null;
     this.bossSprite = null;
-    this.staircaseState = createStaircaseState(this.dungeon, this.dungeon.playerSpawn);
+    this.staircaseState = createStaircaseState(this.dungeon, this.dungeon.playerSpawn, floor);
 
     const world = this.renderSystem.computeWorldBounds(this.dungeon);
     this.origin = world.origin;
@@ -1904,6 +2409,7 @@ export class DungeonScene extends Phaser.Scene {
     } else {
       this.spawnMonsters();
       this.setupFloorEvent(this.time.now);
+      this.initializeChallengeRoom(this.time.now);
     }
 
     this.renderSystem.configureCamera(this.cameras.main, this.worldBounds, this.playerSprite);
@@ -1924,6 +2430,7 @@ export class DungeonScene extends Phaser.Scene {
     this.uiManager.resetMinimap();
     this.lastMinimapRefreshAt = 0;
     this.updateMinimap(this.time.now);
+    this.refreshSynergyRuntime();
 
     this.hudDirty = true;
     this.runEnded = false;
@@ -2053,6 +2560,395 @@ export class DungeonScene extends Phaser.Scene {
         continue;
       }
       this.revealHiddenRoom(hiddenRoom.roomId, nowMs, "mutation");
+    }
+  }
+
+  private clearChallengeState(): void {
+    this.challengeMarker?.destroy();
+    this.challengeMarker = null;
+    this.challengeRoomState = null;
+    this.challengeWaveTotal = 0;
+    this.challengeMonsterIds.clear();
+  }
+
+  private resolveChallengeWaveTotal(roomId: string): number {
+    const seed = `${this.runSeed}:${this.run.currentFloor}:${roomId}`;
+    let hash = 2166136261;
+    for (let index = 0; index < seed.length; index += 1) {
+      hash ^= seed.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0) % 2 === 0 ? 2 : 3;
+  }
+
+  private inferChallengeWaveFromMonsterId(monsterId: string): number | null {
+    const match = /^challenge-(\d+)-(\d+)-/.exec(monsterId);
+    if (match === null) {
+      return null;
+    }
+    const floor = Number.parseInt(match[1] ?? "", 10);
+    const wave = Number.parseInt(match[2] ?? "", 10);
+    if (!Number.isFinite(floor) || !Number.isFinite(wave) || floor !== this.run.currentFloor || wave < 1) {
+      return null;
+    }
+    return wave;
+  }
+
+  private removeChallengeMonsters(): void {
+    if (this.challengeMonsterIds.size === 0) {
+      return;
+    }
+    const trackedIds = [...this.challengeMonsterIds];
+    for (const monsterId of trackedIds) {
+      const dead = this.entityManager.removeMonsterById(monsterId);
+      if (dead === null) {
+        continue;
+      }
+      dead.sprite.destroy();
+      dead.healthBarBg.destroy();
+      dead.healthBarFg.destroy();
+      dead.affixMarker?.destroy();
+    }
+  }
+
+  private findChallengeRoomById(roomId: string) {
+    return this.dungeon.rooms.find((room) => room.id === roomId);
+  }
+
+  private challengeRoomCenter(roomId: string): { x: number; y: number } | null {
+    const room = this.findChallengeRoomById(roomId);
+    if (room === undefined) {
+      return null;
+    }
+    return {
+      x: Math.floor(room.x + room.width / 2),
+      y: Math.floor(room.y + room.height / 2)
+    };
+  }
+
+  private initializeChallengeRoom(nowMs: number): void {
+    if (this.floorConfig.isBossFloor || this.run.currentFloor < 2) {
+      return;
+    }
+    const existing = this.dungeon.rooms.find((room) => room.roomType === "challenge");
+    let selected = existing;
+    if (selected === undefined && shouldSpawnChallengeRoom(this.run.currentFloor, this.eventRng)) {
+      const chosen = chooseChallengeRoom(this.dungeon, this.eventRng);
+      if (chosen !== null) {
+        this.dungeon = markRoomAsChallenge(this.dungeon, chosen.id);
+        selected = this.dungeon.rooms.find((room) => room.id === chosen.id);
+      }
+    }
+    if (selected === undefined) {
+      return;
+    }
+    this.challengeRoomState = createChallengeRoomState(selected.id);
+    this.challengeWaveTotal = this.resolveChallengeWaveTotal(selected.id);
+    const center = this.challengeRoomCenter(selected.id);
+    if (center === null) {
+      return;
+    }
+    this.challengeMarker = this.renderSystem.spawnTelegraphCircle(center, 0.95, this.origin);
+    this.challengeMarker.setAlpha(0.2);
+    if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
+      this.challengeMarker.setTint(0x9c6ac4);
+    }
+    this.uiManager.appendLog(`Challenge room discovered (Waves: ${this.challengeWaveTotal}).`, "info", nowMs);
+  }
+
+  private openChallengeRoomPanel(nowMs: number): void {
+    if (
+      this.challengeRoomState === null ||
+      this.challengeRoomState.started ||
+      this.challengeRoomState.finished ||
+      this.eventPanelOpen
+    ) {
+      return;
+    }
+    const eventDef: RandomEventDef = {
+      id: `challenge_${this.challengeRoomState.roomId}`,
+      name: "Challenge Room",
+      description: "Seal the room and survive timed waves for bonus rewards.",
+      floorRange: { min: this.run.currentFloor, max: this.run.currentFloor },
+      spawnWeight: 1,
+      choices: [
+        {
+          id: "enter",
+          name: "Enter Challenge",
+          description: "Begin timed waves immediately.",
+          rewards: []
+        },
+        {
+          id: "skip",
+          name: "Leave",
+          description: "Keep exploring this floor.",
+          rewards: []
+        }
+      ]
+    };
+    const choices = eventDef.choices.map((choice) => ({
+      choice,
+      enabled: true as const
+    }));
+    this.eventPanelOpen = true;
+    this.uiManager.showEventDialog(
+      eventDef,
+      choices,
+      (choiceId) => {
+        this.consumeCurrentEvent();
+        if (choiceId === "enter") {
+          this.startChallengeEncounter(this.time.now);
+        }
+      },
+      () => this.consumeCurrentEvent()
+    );
+    this.uiManager.appendLog("Challenge room ready. Confirm entry to start.", "warn", nowMs);
+  }
+
+  private spawnChallengeWave(nowMs: number): void {
+    if (this.challengeRoomState === null || !this.challengeRoomState.started || this.challengeRoomState.finished) {
+      return;
+    }
+    const room = this.findChallengeRoomById(this.challengeRoomState.roomId);
+    if (room === undefined) {
+      this.finishChallengeEncounter(false, nowMs);
+      return;
+    }
+    const walkableTiles: Array<{ x: number; y: number }> = [];
+    for (let y = room.y; y < room.y + room.height; y += 1) {
+      for (let x = room.x; x < room.x + room.width; x += 1) {
+        if (!this.dungeon.walkable[y]?.[x]) {
+          continue;
+        }
+        walkableTiles.push({ x, y });
+      }
+    }
+    if (walkableTiles.length === 0) {
+      this.finishChallengeEncounter(false, nowMs);
+      return;
+    }
+
+    const waveNumber = this.challengeRoomState.waveIndex + 1;
+    const spawnCount = Math.max(2, 1 + waveNumber);
+    const archetypeById = new Map(MONSTER_ARCHETYPES.map((entry) => [entry.id, entry]));
+    const pooled = this.currentBiome.monsterPool
+      .map((id) => archetypeById.get(id))
+      .filter((entry): entry is (typeof MONSTER_ARCHETYPES)[number] => entry !== undefined);
+    const spawnPool = pooled.length > 0 ? pooled : MONSTER_ARCHETYPES;
+    const endlessAffixBonus = this.run.inEndless ? resolveEndlessAffixBonusCount(this.run.currentFloor) : 0;
+    const monsters = this.entityManager.listMonsters();
+    for (let idx = 0; idx < spawnCount; idx += 1) {
+      const tile = this.spawnRng.pick(walkableTiles);
+      const archetype = this.spawnRng.pick(spawnPool);
+      const baseAffixes = rollMonsterAffixes({
+        floor: this.run.currentFloor,
+        isBoss: false,
+        ...(this.run.difficultyModifier.affixPolicy === undefined
+          ? {}
+          : { policy: this.run.difficultyModifier.affixPolicy }),
+        availableAffixes: this.unlockedAffixIds,
+        rng: this.spawnRng
+      });
+      const affixes = [...baseAffixes];
+      if (endlessAffixBonus > 0) {
+        const pool = [...this.unlockedAffixIds].filter((affixId) => !affixes.includes(affixId));
+        while (pool.length > 0 && affixes.length < baseAffixes.length + endlessAffixBonus) {
+          const pickedIndex = this.spawnRng.nextInt(0, pool.length - 1);
+          const [pickedAffix] = pool.splice(pickedIndex, 1);
+          if (pickedAffix !== undefined) {
+            affixes.push(pickedAffix);
+          }
+        }
+      }
+      const state = applyAffixesToMonsterState({
+        id: `challenge-${this.run.currentFloor}-${waveNumber}-${idx}-${Math.floor(nowMs)}`,
+        archetypeId: archetype.id,
+        level: this.run.currentFloor,
+        health: Math.floor(GAME_CONFIG.enemyBaseHealth * archetype.healthMultiplier * this.floorConfig.monsterHpMultiplier),
+        maxHealth: Math.floor(
+          GAME_CONFIG.enemyBaseHealth * archetype.healthMultiplier * this.floorConfig.monsterHpMultiplier
+        ),
+        damage: Math.floor(GAME_CONFIG.enemyBaseDamage * archetype.damageMultiplier * this.floorConfig.monsterDmgMultiplier),
+        attackRange: archetype.attackRange,
+        moveSpeed: archetype.moveSpeed,
+        xpValue: archetype.xpValue,
+        dropTableId: archetype.dropTableId,
+        position: { x: tile.x, y: tile.y },
+        aiState: archetype.aiConfig.behavior === "ambush" ? "ambush" : "idle",
+        aiBehavior: archetype.aiConfig.behavior,
+        ...(affixes.length === 0 ? {} : { affixes })
+      });
+      const runtime = this.renderSystem.spawnMonster(state, archetype, this.origin);
+      monsters.push(runtime);
+      this.challengeMonsterIds.add(runtime.state.id);
+      this.entityLabelById.set(runtime.state.id, `${archetype.name} (Challenge)`);
+      for (const affix of runtime.state.affixes ?? []) {
+        this.eventBus.emit("monster:affixApplied", {
+          monsterId: runtime.state.id,
+          affixId: affix,
+          timestampMs: nowMs
+        });
+      }
+    }
+    this.entityManager.rebuildMonsterSpatialIndex();
+    this.uiManager.appendLog(`Challenge wave ${waveNumber}/${this.challengeWaveTotal} started.`, "warn", nowMs);
+  }
+
+  private startChallengeEncounter(nowMs: number): void {
+    if (this.challengeRoomState === null || this.challengeRoomState.started || this.challengeRoomState.finished) {
+      return;
+    }
+    this.challengeRoomState = startChallengeRoom(this.challengeRoomState, nowMs);
+    this.challengeMonsterIds.clear();
+    this.spawnChallengeWave(nowMs);
+    this.scheduleRunSave();
+    this.hudDirty = true;
+  }
+
+  private finishChallengeEncounter(success: boolean, nowMs: number): void {
+    if (this.challengeRoomState === null || this.challengeRoomState.finished) {
+      return;
+    }
+    this.challengeRoomState = success ? { ...this.challengeRoomState, finished: true, success: true } : failChallengeRoom(this.challengeRoomState);
+    this.removeChallengeMonsters();
+    this.challengeMonsterIds.clear();
+    if (success) {
+      this.run = addRunObols(
+        {
+          ...this.run,
+          challengeSuccessCount: this.run.challengeSuccessCount + 1
+        },
+        12
+      );
+      const rewardTable = LOOT_TABLE_MAP.catacomb_elite ?? LOOT_TABLE_MAP.cathedral_depths;
+      const reward =
+        rewardTable === undefined
+          ? null
+          : rollItemDrop(
+              rewardTable,
+              ITEM_DEF_MAP,
+              Math.max(3, this.run.currentFloor),
+              this.lootRng,
+              `challenge-reward-${this.run.currentFloor}-${Math.floor(nowMs)}`,
+              {
+                isItemEligible: (itemDef) => this.isItemDefUnlocked(itemDef)
+              }
+            );
+      const center = this.challengeRoomCenter(this.challengeRoomState.roomId);
+      if (reward !== null && center !== null) {
+        this.spawnLootDrop(reward, center);
+      }
+      this.tryDiscoverBlueprints("challenge_room", nowMs, this.challengeRoomState.roomId);
+      this.uiManager.appendLog("Challenge cleared. Rewards granted.", "success", nowMs);
+      if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
+        this.challengeMarker.setTint(0x5abf8a);
+      }
+      this.challengeMarker?.setAlpha(0.12);
+    } else {
+      const hpPenalty = Math.max(1, Math.floor(this.player.derivedStats.maxHealth * 0.2));
+      this.player = {
+        ...this.player,
+        health: Math.max(1, this.player.health - hpPenalty),
+        position: { ...this.dungeon.playerSpawn }
+      };
+      this.path = [];
+      this.manualMoveTarget = null;
+      this.manualMoveTargetFailures = 0;
+      this.uiManager.appendLog(`Challenge failed. Lost ${hpPenalty} HP.`, "danger", nowMs);
+      if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
+        this.challengeMarker.setTint(0xc66767);
+      }
+      this.challengeMarker?.setAlpha(0.16);
+    }
+    this.scheduleRunSave();
+    this.hudDirty = true;
+  }
+
+  private onMonsterDefeated(monsterState: MonsterState, nowMs: number): void {
+    if (
+      this.challengeRoomState === null ||
+      !this.challengeRoomState.started ||
+      this.challengeRoomState.finished ||
+      !this.challengeMonsterIds.delete(monsterState.id)
+    ) {
+      return;
+    }
+    if (this.challengeMonsterIds.size > 0) {
+      return;
+    }
+    const advanced = advanceChallengeRoomWave(this.challengeRoomState, this.challengeWaveTotal);
+    if (advanced.finished && advanced.success) {
+      this.finishChallengeEncounter(true, nowMs);
+      return;
+    }
+    this.challengeRoomState = advanced;
+    this.spawnChallengeWave(nowMs);
+  }
+
+  private restoreChallengeRoom(nowMs: number): void {
+    if (this.floorConfig.isBossFloor || this.run.currentFloor < 2) {
+      return;
+    }
+    const challengeRoom = this.dungeon.rooms.find((room) => room.roomType === "challenge");
+    if (challengeRoom === undefined) {
+      return;
+    }
+    this.challengeRoomState = createChallengeRoomState(challengeRoom.id);
+    this.challengeWaveTotal = this.resolveChallengeWaveTotal(challengeRoom.id);
+    const center = this.challengeRoomCenter(challengeRoom.id);
+    if (center !== null) {
+      this.challengeMarker = this.renderSystem.spawnTelegraphCircle(center, 0.95, this.origin);
+      this.challengeMarker.setAlpha(0.2);
+      if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
+        this.challengeMarker.setTint(0x9c6ac4);
+      }
+    }
+
+    const floorPrefix = `challenge-${this.run.currentFloor}-`;
+    const challengeMonsters = this.entityManager
+      .listMonsters()
+      .filter((monster) => monster.state.id.startsWith(floorPrefix));
+    if (challengeMonsters.length === 0) {
+      return;
+    }
+
+    let maxWave = 1;
+    for (const monster of challengeMonsters) {
+      this.challengeMonsterIds.add(monster.state.id);
+      const inferredWave = this.inferChallengeWaveFromMonsterId(monster.state.id);
+      if (inferredWave !== null) {
+        maxWave = Math.max(maxWave, inferredWave);
+      }
+    }
+
+    const startedAtMs = Math.max(0, nowMs - 1_000);
+    this.challengeRoomState = {
+      ...this.challengeRoomState,
+      started: true,
+      waveIndex: Math.max(0, maxWave - 1),
+      startedAtMs,
+      deadlineAtMs: startedAtMs + 30_000
+    };
+    this.uiManager.appendLog("Resumed active challenge encounter.", "info", nowMs);
+  }
+
+  private updateChallengeRoom(nowMs: number): void {
+    if (this.challengeRoomState === null || this.challengeRoomState.finished) {
+      return;
+    }
+    if (!this.challengeRoomState.started) {
+      const center = this.challengeRoomCenter(this.challengeRoomState.roomId);
+      if (center === null) {
+        return;
+      }
+      const distance = Math.hypot(this.player.position.x - center.x, this.player.position.y - center.y);
+      if (distance <= 1.1) {
+        this.openChallengeRoomPanel(nowMs);
+      }
+      return;
+    }
+    if (shouldFailChallengeRoomByTimeout(this.challengeRoomState, nowMs)) {
+      this.finishChallengeEncounter(false, nowMs);
     }
   }
 
@@ -2935,6 +3831,7 @@ export class DungeonScene extends Phaser.Scene {
       if (dead === null) {
         continue;
       }
+      this.onMonsterDefeated(dead.state, nowMs);
       for (const affixId of dead.state.affixes ?? []) {
         this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
       }
@@ -3051,6 +3948,7 @@ export class DungeonScene extends Phaser.Scene {
         level: this.player.level,
         timestampMs: nowMs
       });
+      this.refreshSynergyRuntime(false);
       this.offerLevelupSkill();
     }
 
@@ -3062,6 +3960,7 @@ export class DungeonScene extends Phaser.Scene {
       }
       const dead = this.entityManager.removeMonsterById(playerCombat.killedMonsterId);
       if (dead !== null) {
+        this.onMonsterDefeated(dead.state, nowMs);
         for (const affixId of dead.state.affixes ?? []) {
           this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
         }
@@ -3105,18 +4004,47 @@ export class DungeonScene extends Phaser.Scene {
       }
       return this.meta.unlocks.includes(skill.unlockCondition) || forgedSkillUnlocks.has(skill.unlockCondition);
     });
-    const choices = pickSkillChoices(pool, this.skillRng, 3);
+    const ownedSkillIds = this.player.skills.skillSlots
+      .filter((entry): entry is NonNullable<(typeof this.player.skills.skillSlots)[number]> => entry !== null)
+      .map((entry) => entry.defId);
+    const strongestStat =
+      this.player.baseStats.strength >= this.player.baseStats.dexterity &&
+      this.player.baseStats.strength >= this.player.baseStats.intelligence
+        ? "strength"
+        : this.player.baseStats.dexterity >= this.player.baseStats.intelligence
+          ? "dexterity"
+          : "intelligence";
+    const choices = pickSkillChoicesWeighted(
+      pool,
+      this.skillRng,
+      {
+        strongestStat,
+        ownedSkillIds
+      },
+      3
+    );
     if (choices.length === 0) {
       return;
     }
 
     const pick = choices[0]!;
     const slots = [...this.player.skills.skillSlots];
-    const firstEmpty = slots.findIndex((entry) => entry === null);
-    if (firstEmpty >= 0) {
-      slots[firstEmpty] = { defId: pick.id, level: 1 };
+    const existingIndex = slots.findIndex((entry) => entry?.defId === pick.id);
+    if (existingIndex >= 0) {
+      const existing = slots[existingIndex];
+      if (existing !== null && existing !== undefined) {
+        slots[existingIndex] = {
+          defId: existing.defId,
+          level: Math.min(3, existing.level + 1)
+        };
+      }
     } else {
-      slots[0] = { defId: pick.id, level: 1 };
+      const firstEmpty = slots.findIndex((entry) => entry === null);
+      if (firstEmpty >= 0) {
+        slots[firstEmpty] = { defId: pick.id, level: 1 };
+      } else {
+        slots[0] = { defId: pick.id, level: 1 };
+      }
     }
 
     this.player = {
@@ -3125,6 +4053,59 @@ export class DungeonScene extends Phaser.Scene {
         ...this.player.skills,
         skillSlots: slots
       }
+    };
+    this.refreshSynergyRuntime();
+    this.hudDirty = true;
+    this.scheduleRunSave();
+  }
+
+  private applySynergyToSkillDef(skillDef: SkillDef): SkillDef {
+    const damagePercent = this.synergyRuntime.skillDamagePercent[skillDef.id] ?? 0;
+    const modifiers = this.synergyRuntime.skillModifiers[skillDef.id] ?? {};
+    const cooldownOverride = this.synergyRuntime.cooldownOverridesMs[skillDef.id];
+    const effectDamageScale = 1 + damagePercent;
+    const manaCostScale = 1 + (modifiers.manaCost ?? 0);
+
+    return {
+      ...skillDef,
+      cooldownMs:
+        cooldownOverride === undefined
+          ? skillDef.cooldownMs
+          : Math.max(100, Math.floor(cooldownOverride)),
+      manaCost: Math.max(0, Math.floor(skillDef.manaCost * manaCostScale)),
+      effects: skillDef.effects.map((effect) => {
+        let next = effect;
+        if (effect.type === "damage" && damagePercent !== 0) {
+          if (typeof effect.value === "number") {
+            next = {
+              ...next,
+              value: effect.value * effectDamageScale
+            };
+          } else {
+            next = {
+              ...next,
+              value: {
+                ...effect.value,
+                base: effect.value.base * effectDamageScale,
+                ratio: effect.value.ratio * effectDamageScale
+              }
+            };
+          }
+        }
+        if (modifiers.radius !== undefined && next.radius !== undefined) {
+          next = {
+            ...next,
+            radius: Math.max(0.1, next.radius * (1 + modifiers.radius))
+          };
+        }
+        if (modifiers.duration !== undefined && next.duration !== undefined) {
+          next = {
+            ...next,
+            duration: Math.max(100, Math.floor(next.duration * (1 + modifiers.duration)))
+          };
+        }
+        return next;
+      })
     };
   }
 
@@ -3320,6 +4301,7 @@ export class DungeonScene extends Phaser.Scene {
         if (dead === null) {
           continue;
         }
+        this.onMonsterDefeated(dead.state, nowMs);
         dead.sprite.destroy();
         dead.healthBarBg.destroy();
         dead.healthBarFg.destroy();
@@ -3588,6 +4570,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private spawnMonsters(): void {
+    const endlessAffixBonus = this.run.inEndless ? resolveEndlessAffixBonusCount(this.run.currentFloor) : 0;
     const monsters = this.monsterSpawnSystem.createMonsters({
       dungeon: this.dungeon,
       playerPosition: this.player.position,
@@ -3599,6 +4582,7 @@ export class DungeonScene extends Phaser.Scene {
       biomeMonsterPool: this.currentBiome.monsterPool,
       blockedPositions: this.hazards.map((hazard) => hazard.position),
       unlockedAffixes: this.unlockedAffixIds,
+      extraAffixCount: endlessAffixBonus,
       affixPolicy: this.run.difficultyModifier.affixPolicy,
       rng: this.spawnRng
     });
@@ -3636,6 +4620,20 @@ export class DungeonScene extends Phaser.Scene {
     });
   }
 
+  private renderStaircases(): void {
+    if (!this.staircaseState.visible) {
+      this.entityManager.setStaircases([]);
+      return;
+    }
+    if (this.staircaseState.kind === "branch" && this.staircaseState.options !== undefined) {
+      this.entityManager.setStaircases(
+        this.staircaseState.options.map((option) => this.renderSystem.spawnStaircase(option.position, this.origin))
+      );
+      return;
+    }
+    this.entityManager.setStaircase(this.renderSystem.spawnStaircase(this.staircaseState.position, this.origin));
+  }
+
   private syncBossSprite(): void {
     if (this.bossState === null || this.bossSprite === null) {
       return;
@@ -3665,7 +4663,7 @@ export class DungeonScene extends Phaser.Scene {
         ...this.staircaseState,
         visible: true
       };
-      this.entityManager.setStaircase(this.renderSystem.spawnStaircase(this.staircaseState.position, this.origin));
+      this.renderStaircases();
       this.eventBus.emit("floor:clear", {
         floor: this.run.currentFloor,
         kills: this.run.kills,
@@ -3682,7 +4680,23 @@ export class DungeonScene extends Phaser.Scene {
       return;
     }
 
-    if (this.run.currentFloor >= (GAME_CONFIG.maxFloors ?? 5)) {
+    if (this.staircaseState.kind === "branch") {
+      const side = resolveBranchSideAtPosition(this.staircaseState, this.player.position, 0.85);
+      if (side === undefined) {
+        return;
+      }
+      this.staircaseState = {
+        ...this.staircaseState,
+        selected: side
+      };
+      this.run = {
+        ...this.run,
+        branchChoice: resolveBranchChoiceFromSide(side)
+      };
+    }
+
+    const storyMaxFloor = GAME_CONFIG.maxFloors ?? 5;
+    if (!this.run.inEndless && this.run.currentFloor >= storyMaxFloor) {
       return;
     }
 
@@ -3694,8 +4708,93 @@ export class DungeonScene extends Phaser.Scene {
       toFloor: fromFloor + 1
     });
     this.run = enterNextFloor(this.run);
-    this.run = addRunObols(this.run, 5);
+    if (this.run.inEndless) {
+      this.run = advanceEndlessFloor(this.run);
+      this.run = addRunObols(this.run, endlessFloorClearBonus(this.run.currentFloor));
+    } else {
+      this.run = addRunObols(this.run, 5);
+    }
     this.setupFloor(this.run.currentFloor, false);
+  }
+
+  private openBossVictoryChoice(nowMs: number): void {
+    if (this.eventPanelOpen || this.runEnded) {
+      return;
+    }
+    const canEnterAbyss = this.run.runMode !== "daily";
+    const eventDef: RandomEventDef = {
+      id: ABYSS_VICTORY_EVENT_ID,
+      name: "Bone Throne Cleared",
+      description: canEnterAbyss
+        ? "Claim victory now or descend into the Abyss for endless escalation."
+        : "Daily mode only allows Claim Victory.",
+      floorRange: { min: this.run.currentFloor, max: this.run.currentFloor },
+      spawnWeight: 1,
+      choices: [
+        {
+          id: "claim_victory",
+          name: "Claim Victory",
+          description: "End run and secure rewards.",
+          rewards: []
+        },
+        {
+          id: "enter_abyss",
+          name: "Enter Abyss",
+          description: "Continue to endless floors with escalating danger.",
+          rewards: []
+        }
+      ]
+    };
+    const choices = eventDef.choices.map((choice) => {
+      if (choice.id === "enter_abyss" && !canEnterAbyss) {
+        return {
+          choice,
+          enabled: false as const,
+          disabledReason: "Daily mode does not support Abyss."
+        };
+      }
+      return {
+        choice,
+        enabled: true as const
+      };
+    });
+    this.eventPanelOpen = true;
+    this.uiManager.showEventDialog(
+      eventDef,
+      choices,
+      (choiceId) => {
+        this.consumeCurrentEvent();
+        if (choiceId === "enter_abyss" && canEnterAbyss) {
+          this.enterAbyss(this.time.now);
+          return;
+        }
+        this.finishRun(true);
+      },
+      () => {
+        this.consumeCurrentEvent();
+        this.finishRun(true);
+      }
+    );
+    this.uiManager.appendLog("Bone Sovereign defeated. Choose your fate.", "success", nowMs);
+  }
+
+  private enterAbyss(nowMs: number): void {
+    if (this.run.inEndless) {
+      return;
+    }
+    const fromFloor = this.run.currentFloor;
+    this.run = appendReplayInput(this.run, {
+      type: "floor_transition",
+      atMs: this.getRunRelativeNowMs(),
+      fromFloor,
+      toFloor: fromFloor + 1
+    });
+    this.run = enterNextFloor(this.run);
+    this.run = enterEndless(this.run);
+    this.run = addRunObols(this.run, endlessFloorClearBonus(this.run.currentFloor));
+    this.uiManager.appendLog(`Entered Abyss Floor ${this.run.currentFloor}.`, "warn", nowMs);
+    this.setupFloor(this.run.currentFloor, false);
+    this.flushRunSave();
   }
 
   private finishRun(isVictory: boolean): void {
@@ -3716,16 +4815,52 @@ export class DungeonScene extends Phaser.Scene {
 
     const { summary: baseSummary, meta: nextMeta, replay } = endRun(this.run, this.player, this.time.now, this.meta);
     const { soulShardMultiplier } = this.resolveMutationDropBonus();
-    const soulShards = Math.max(0, Math.floor(calculateSoulShardReward(this.run, isVictory) * soulShardMultiplier));
-    const summary = {
+    const baseSoulShards =
+      this.run.inEndless && isVictory === false
+        ? (() => {
+            const kills = Math.max(this.run.totalKills, this.run.kills);
+            const perKillReward = endlessKillShardReward(this.run.currentFloor);
+            let floorBonus = 0;
+            for (let floor = 6; floor <= this.run.currentFloor; floor += 1) {
+              floorBonus += endlessFloorClearBonus(floor);
+            }
+            return kills * perKillReward + floorBonus;
+          })()
+        : calculateSoulShardReward(this.run, isVictory);
+    let soulShards = Math.max(0, Math.floor(baseSoulShards * soulShardMultiplier));
+    if (this.run.runMode === "daily" && this.dailyPracticeMode) {
+      soulShards = 0;
+    }
+    let summary = {
       ...baseSummary,
       isVictory,
       soulShardsEarned: soulShards,
       obolsEarned: this.run.runEconomy.obols
     };
+    let mergedMeta = mergeFoundBlueprints(nextMeta, this.blueprintFoundIdsInRun);
+    if (this.run.inEndless) {
+      mergedMeta = recordEndlessBestFloor(mergedMeta, this.run.currentFloor);
+    }
+    if (this.run.runMode === "daily" && this.run.dailyDate !== undefined) {
+      summary = {
+        ...summary,
+        dailyDate: this.run.dailyDate
+      };
+      if (!this.dailyPracticeMode) {
+        const rewarded = !hasClaimedDailyReward(mergedMeta, this.run.dailyDate);
+        const dailyEntry = buildDailyHistoryEntry(this.run.dailyDate, this.runSeed, summary, rewarded);
+        summary = {
+          ...summary,
+          score: dailyEntry.score
+        };
+        mergedMeta = upsertDailyHistory(mergedMeta, dailyEntry);
+        if (rewarded) {
+          mergedMeta = markDailyRewardClaimed(mergedMeta, this.run.dailyDate);
+        }
+      }
+    }
     const runId = `${this.runSeed}:${this.run.startedAtMs}`;
     if (!this.saveManager.isRunSettled(runId)) {
-      const mergedMeta = mergeFoundBlueprints(nextMeta, this.blueprintFoundIdsInRun);
       this.meta = applyRunSummaryToMeta(mergedMeta, summary);
       const committed = this.saveMeta(this.meta);
       if (committed) {
@@ -3766,6 +4901,7 @@ export class DungeonScene extends Phaser.Scene {
     if (this.player.skills === undefined || this.runEnded || this.eventPanelOpen) {
       return;
     }
+    const nowMs = this.time.now;
 
     const slot = this.player.skills.skillSlots[slotIndex];
     if (slot === null || slot === undefined) {
@@ -3776,8 +4912,10 @@ export class DungeonScene extends Phaser.Scene {
     if (def === undefined) {
       return;
     }
+    const scaledDef = createSkillDefForLevel(def, slot.level);
+    const runtimeSkillDef = this.applySynergyToSkillDef(scaledDef);
 
-    if (!canUseSkill(this.player, this.player.skills, def, this.time.now)) {
+    if (!canUseSkill(this.player, this.player.skills, runtimeSkillDef, nowMs)) {
       return;
     }
 
@@ -3785,14 +4923,14 @@ export class DungeonScene extends Phaser.Scene {
     const resolution = this.combatSystem.useSkill(
       this.player,
       monsters,
-      def as SkillDef,
+      runtimeSkillDef as SkillDef,
       this.skillRng,
-      this.time.now,
+      nowMs,
       WEAPON_TYPE_DEF_MAP
     );
     this.player = {
       ...resolution.player,
-      skills: markSkillUsed(this.player.skills, def as SkillDef, this.time.now)
+      skills: markSkillUsed(this.player.skills, runtimeSkillDef as SkillDef, nowMs)
     };
 
     let kills = 0;
@@ -3802,16 +4940,17 @@ export class DungeonScene extends Phaser.Scene {
       }
       const dead = this.entityManager.removeMonsterById(event.targetId);
       if (dead !== null) {
+        this.onMonsterDefeated(dead.state, nowMs);
         dead.sprite.destroy();
         dead.healthBarBg.destroy();
         dead.healthBarFg.destroy();
         dead.affixMarker?.destroy();
         for (const affixId of dead.state.affixes ?? []) {
-          this.tryDiscoverBlueprints("monster_affix", this.time.now, affixId);
+          this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
         }
-        this.applyOnKillMutationEffects(this.time.now);
+        this.applyOnKillMutationEffects(nowMs);
         if (hasMonsterAffix(dead.state, "splitting")) {
-          this.spawnSplitChildren(dead.state, dead.archetype, this.time.now);
+          this.spawnSplitChildren(dead.state, dead.archetype, nowMs);
         }
 
         const xpResult = applyXpGain(this.player, dead.state.xpValue, "strength");
@@ -3844,14 +4983,15 @@ export class DungeonScene extends Phaser.Scene {
     this.eventBus.emit("skill:use", {
       playerId: this.player.id,
       skillId: def.id,
-      timestampMs: this.time.now,
+      timestampMs: nowMs,
       resolution
     });
     this.eventBus.emit("skill:cooldown", {
       playerId: this.player.id,
       skillId: def.id,
-      readyAtMs: this.player.skills?.cooldowns[def.id] ?? this.time.now
+      readyAtMs: this.player.skills?.cooldowns[def.id] ?? nowMs
     });
+    this.refreshSynergyRuntime();
     this.hudDirty = true;
   }
 
@@ -3944,6 +5084,9 @@ export class DungeonScene extends Phaser.Scene {
       }
       activeSkillIds.add(slot.defId);
       const skillDef = SKILL_DEF_BY_ID.get(slot.defId);
+      const scaledSkillDef = skillDef === undefined ? undefined : createSkillDefForLevel(skillDef, slot.level);
+      const runtimeSkillDef =
+        scaledSkillDef === undefined ? undefined : this.applySynergyToSkillDef(scaledSkillDef);
       const cooldownLeftMs = Math.max(0, (this.player.skills?.cooldowns[slot.defId] ?? 0) - nowMs);
       if (cooldownLeftMs > 0) {
         hasActiveSkillCooldown = true;
@@ -3958,22 +5101,22 @@ export class DungeonScene extends Phaser.Scene {
       if (!readyFlash && readyFlashUntilMs > 0) {
         this.skillReadyFlashUntilMsById.delete(slot.defId);
       }
-      const baseCooldownMs = skillDef?.cooldownMs ?? 0;
+      const baseCooldownMs = runtimeSkillDef?.cooldownMs ?? scaledSkillDef?.cooldownMs ?? skillDef?.cooldownMs ?? 0;
       return {
         id: slot.defId,
         hotkey: String(index + 1),
-        name: skillDef?.name ?? slot.defId,
-        description: skillDef?.description ?? "",
-        iconId: skillDef?.icon ?? "meta_unlock_available",
+        name: `${runtimeSkillDef?.name ?? scaledSkillDef?.name ?? skillDef?.name ?? slot.defId} Lv.${slot.level}`,
+        description: runtimeSkillDef?.description ?? scaledSkillDef?.description ?? skillDef?.description ?? "",
+        iconId: runtimeSkillDef?.icon ?? scaledSkillDef?.icon ?? skillDef?.icon ?? "meta_unlock_available",
         cooldownLeftMs,
         baseCooldownMs,
         cooldownProgress:
           baseCooldownMs > 0 ? Math.min(1, Math.max(0, cooldownLeftMs / baseCooldownMs)) : 0,
         readyFlash,
-        manaCost: skillDef?.manaCost ?? 0,
-        targeting: skillDef?.targeting ?? "self",
-        range: skillDef?.range ?? 0,
-        outOfMana: this.player.mana < (skillDef?.manaCost ?? 0),
+        manaCost: runtimeSkillDef?.manaCost ?? scaledSkillDef?.manaCost ?? skillDef?.manaCost ?? 0,
+        targeting: runtimeSkillDef?.targeting ?? scaledSkillDef?.targeting ?? skillDef?.targeting ?? "self",
+        range: runtimeSkillDef?.range ?? scaledSkillDef?.range ?? skillDef?.range ?? 0,
+        outOfMana: this.player.mana < (runtimeSkillDef?.manaCost ?? scaledSkillDef?.manaCost ?? skillDef?.manaCost ?? 0),
         locked: false
       };
     });
@@ -4089,7 +5232,7 @@ export class DungeonScene extends Phaser.Scene {
     };
   }
 
-  private buildRunSaveSnapshot(nowMs: number): RunSaveDataV1 | null {
+  private buildRunSaveSnapshot(nowMs: number): RunSaveDataV2 | null {
     if (this.runEnded || (this.run as RunState | undefined) === undefined || this.player === undefined) {
       return null;
     }
@@ -4098,9 +5241,31 @@ export class DungeonScene extends Phaser.Scene {
       exploredKeys: []
     };
     const wallNowMs = Date.now();
+    const staircaseSnapshot: StaircaseState = {
+      position: { ...this.staircaseState.position },
+      visible: this.staircaseState.visible
+    };
+    if (this.staircaseState.kind !== undefined) {
+      staircaseSnapshot.kind = this.staircaseState.kind;
+    }
+    if (this.staircaseState.options !== undefined) {
+      staircaseSnapshot.options = [
+        {
+          ...this.staircaseState.options[0],
+          position: { ...this.staircaseState.options[0].position }
+        },
+        {
+          ...this.staircaseState.options[1],
+          position: { ...this.staircaseState.options[1].position }
+        }
+      ];
+    }
+    if (this.staircaseState.selected !== undefined) {
+      staircaseSnapshot.selected = this.staircaseState.selected;
+    }
 
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       savedAtMs: wallNowMs,
       appVersion: RUN_SAVE_APP_VERSION,
       runId: `${this.runSeed}:${this.run.startedAtMs}`,
@@ -4133,10 +5298,7 @@ export class DungeonScene extends Phaser.Scene {
           rewardsClaimed: room.rewardsClaimed
         }))
       },
-      staircase: {
-        position: { ...this.staircaseState.position },
-        visible: this.staircaseState.visible
-      },
+      staircase: staircaseSnapshot,
       hazards: this.hazards.map((hazard) => ({
         ...hazard,
         position: { ...hazard.position }
@@ -4200,7 +5362,7 @@ export class DungeonScene extends Phaser.Scene {
     this.saveManager.scheduleSave(() => this.buildRunSaveSnapshot(this.time.now));
   }
 
-  private restoreRunFromSave(save: RunSaveDataV1): boolean {
+  private restoreRunFromSave(save: RunSaveDataV2): boolean {
     try {
       this.pendingResumeSave = null;
       this.runSeed = save.runSeed;
@@ -4208,6 +5370,11 @@ export class DungeonScene extends Phaser.Scene {
         ...save.run,
         runSeed: save.runSeed
       };
+      this.dailyPracticeMode =
+        this.run.runMode === "daily" && this.run.dailyDate !== undefined
+          ? !canStartDailyScoredAttempt(this.meta, this.run.dailyDate)
+          : false;
+      this.dailyFixedWeaponType = this.run.runMode === "daily" ? this.resolveDailyWeaponType(save.runSeed) : null;
       this.selectedDifficulty = normalizeDifficultyMode(save.run.difficulty, "normal");
       this.runEnded = false;
       this.lastDeathReason = "Unknown cause.";
@@ -4243,6 +5410,7 @@ export class DungeonScene extends Phaser.Scene {
       this.children.removeAll(true);
       this.entityManager.clear();
       this.clearHazards();
+      this.clearChallengeState();
       this.movementSystem.clearPathCache();
 
       this.floorConfig = getFloorConfig(this.run.currentFloor, this.run.difficultyModifier);
@@ -4273,7 +5441,23 @@ export class DungeonScene extends Phaser.Scene {
       });
       this.staircaseState = {
         position: { ...save.staircase.position },
-        visible: save.staircase.visible
+        visible: save.staircase.visible,
+        ...(save.staircase.kind === undefined ? {} : { kind: save.staircase.kind }),
+        ...(save.staircase.options === undefined
+          ? {}
+          : {
+              options: [
+                {
+                  ...save.staircase.options[0],
+                  position: { ...save.staircase.options[0].position }
+                },
+                {
+                  ...save.staircase.options[1],
+                  position: { ...save.staircase.options[1].position }
+                }
+              ]
+            }),
+        ...(save.staircase.selected === undefined ? {} : { selected: save.staircase.selected })
       };
 
       const world = this.renderSystem.computeWorldBounds(this.dungeon);
@@ -4358,11 +5542,7 @@ export class DungeonScene extends Phaser.Scene {
         this.entityManager.setBoss(null);
       }
 
-      if (this.staircaseState.visible) {
-        this.entityManager.setStaircase(this.renderSystem.spawnStaircase(this.staircaseState.position, this.origin));
-      } else {
-        this.entityManager.setStaircase(null);
-      }
+      this.renderStaircases();
 
       this.destroyEventNode();
       const eventNodeSnapshot = save.eventNode;
@@ -4379,6 +5559,7 @@ export class DungeonScene extends Phaser.Scene {
           }
         }
       }
+      this.restoreChallengeRoom(this.time.now);
 
       this.renderSystem.configureCamera(this.cameras.main, this.worldBounds, this.playerSprite);
       this.uiManager.configureMinimap({
@@ -4406,6 +5587,7 @@ export class DungeonScene extends Phaser.Scene {
       this.resetMutationRuntimeState(
         selectionValidation.ok ? selectionValidation.selected : this.meta.selectedMutationIds
       );
+      this.refreshSynergyRuntime();
       return true;
     } catch (error) {
       console.warn("[Save] Failed to restore run snapshot.", error);

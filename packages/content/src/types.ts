@@ -10,6 +10,8 @@ export type BiomeId =
   | "forgotten_catacombs"
   | "molten_caverns"
   | "frozen_halls"
+  | "phantom_graveyard"
+  | "venom_swamp"
   | "bone_throne";
 
 export type HazardType = "damage_zone" | "movement_modifier" | "periodic_trap";
@@ -23,6 +25,7 @@ export type DamageType = "physical" | "arcane";
 export type DifficultyMode = "normal" | "hard" | "nightmare";
 
 export type WeaponType = "sword" | "axe" | "dagger" | "staff" | "hammer" | "sword_master";
+export type SkillArchetype = "warrior" | "ranger" | "arcanist";
 
 export type ItemSpecialAffixKey =
   | "lifesteal"
@@ -237,6 +240,7 @@ export interface SkillDef {
   name: string;
   description: string;
   icon: string;
+  archetype?: SkillArchetype;
   cooldownMs: number;
   manaCost: number;
   damageType: DamageType;
@@ -378,3 +382,33 @@ export interface WeaponTypeDef {
     | { type: "default" }
     | { type: "blueprint"; blueprintId: string };
 }
+
+export interface SynergyDef {
+  id: string;
+  category: "weapon_skill" | "skill_skill" | "talent_mutation" | "equipment";
+  conditions: SynergyCondition[];
+  effects: SynergyEffect[];
+}
+
+export type SynergyCondition =
+  | { type: "weapon_type"; value: WeaponType }
+  | { type: "skill_equipped"; value: string }
+  | { type: "skill_level_at_least"; skillId: string; level: number }
+  | { type: "talent_rank_at_least"; talentId: string; rank: number }
+  | { type: "mutation_equipped"; value: string }
+  | { type: "special_affix_at_least"; key: ItemSpecialAffixKey; value: number };
+
+export type SynergyEffect =
+  | { type: "skill_damage_percent"; skillId: string; value: number }
+  | {
+      type: "skill_modifier";
+      skillId: string;
+      key: "radius" | "duration" | "manaCost";
+      value: number;
+    }
+  | {
+      type: "stat_percent";
+      stat: "maxHealth" | "maxMana" | "armor" | "attackPower" | "critChance" | "attackSpeed" | "moveSpeed";
+      value: number;
+    }
+  | { type: "cooldown_override"; key: string; valueMs: number };

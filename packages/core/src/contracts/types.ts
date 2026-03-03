@@ -10,6 +10,8 @@ export type BiomeId =
   | "forgotten_catacombs"
   | "molten_caverns"
   | "frozen_halls"
+  | "phantom_graveyard"
+  | "venom_swamp"
   | "bone_throne";
 
 export type HazardType = "damage_zone" | "movement_modifier" | "periodic_trap";
@@ -23,6 +25,9 @@ export type DamageType = "physical" | "arcane";
 export type DifficultyMode = "normal" | "hard" | "nightmare";
 
 export type WeaponType = "sword" | "axe" | "dagger" | "staff" | "hammer" | "sword_master";
+export type SkillArchetype = "warrior" | "ranger" | "arcanist";
+export type BranchChoice = "molten_route" | "frozen_route";
+export type RunMode = "normal" | "daily";
 
 export interface DifficultyModifier {
   monsterHealthMultiplier: number;
@@ -231,6 +236,7 @@ export interface SkillDef {
   name: string;
   description: string;
   icon: string;
+  archetype?: SkillArchetype;
   cooldownMs: number;
   manaCost: number;
   damageType: DamageType;
@@ -238,6 +244,11 @@ export interface SkillDef {
   range: number;
   effects: SkillEffect[];
   unlockCondition?: string;
+}
+
+export interface SkillOfferWeightContext {
+  strongestStat: "strength" | "dexterity" | "intelligence";
+  ownedSkillIds: string[];
 }
 
 export interface SkillInstance {
@@ -307,6 +318,7 @@ export interface DungeonRoom {
   y: number;
   width: number;
   height: number;
+  roomType?: "normal" | "challenge";
 }
 
 export interface DungeonCorridor {
@@ -388,9 +400,28 @@ export interface MonsterAffixDef {
   description: string;
 }
 
+export interface BranchStairOption {
+  position: { x: number; y: number };
+  targetBiome: BiomeId;
+  label: string;
+}
+
 export interface StaircaseState {
+  kind?: "single" | "branch";
   position: { x: number; y: number };
   visible: boolean;
+  options?: [BranchStairOption, BranchStairOption];
+  selected?: "left" | "right";
+}
+
+export interface ChallengeRoomState {
+  roomId: string;
+  started: boolean;
+  finished: boolean;
+  success: boolean;
+  waveIndex: number;
+  startedAtMs?: number;
+  deadlineAtMs?: number;
 }
 
 export interface BossAttack {
@@ -514,6 +545,10 @@ export interface RunSummary {
   soulShardsEarned?: number;
   obolsEarned?: number;
   difficulty?: DifficultyMode;
+  challengeSuccessCount?: number;
+  runMode?: RunMode;
+  dailyDate?: string;
+  score?: number;
 }
 
 export interface PermanentUpgrade {
@@ -649,7 +684,7 @@ export interface MetaProgression {
   soulShards: number;
   unlocks: string[];
   cumulativeUnlockProgress: number;
-  schemaVersion: 4;
+  schemaVersion: 5;
   selectedDifficulty: DifficultyMode;
   difficultyCompletions: Record<DifficultyMode, number>;
   talentPoints: Record<string, number>;
@@ -660,8 +695,49 @@ export interface MetaProgression {
   mutationSlots: number;
   mutationUnlockedIds: string[];
   selectedMutationIds: string[];
+  synergyDiscoveredIds: string[];
+  endlessBestFloor: number;
+  dailyHistory: DailyHistoryEntry[];
+  dailyRewardClaimedDates: string[];
   permanentUpgrades: PermanentUpgrade;
 }
+
+export interface DailyHistoryEntry {
+  date: string;
+  score: number;
+  floorReached: number;
+  kills: number;
+  clearTimeMs: number;
+  challengeSuccessCount: number;
+  seed: string;
+  rewarded: boolean;
+}
+
+export interface SynergyDef {
+  id: string;
+  category: "weapon_skill" | "skill_skill" | "talent_mutation" | "equipment";
+  conditions: SynergyCondition[];
+  effects: SynergyEffect[];
+}
+
+export type SynergyCondition =
+  | { type: "weapon_type"; value: WeaponType }
+  | { type: "skill_equipped"; value: string }
+  | { type: "skill_level_at_least"; skillId: string; level: number }
+  | { type: "talent_rank_at_least"; talentId: string; rank: number }
+  | { type: "mutation_equipped"; value: string }
+  | { type: "special_affix_at_least"; key: ItemSpecialAffixKey; value: number };
+
+export type SynergyEffect =
+  | { type: "skill_damage_percent"; skillId: string; value: number }
+  | {
+      type: "skill_modifier";
+      skillId: string;
+      key: "radius" | "duration" | "manaCost";
+      value: number;
+    }
+  | { type: "stat_percent"; stat: keyof DerivedStats; value: number }
+  | { type: "cooldown_override"; key: string; valueMs: number };
 
 export interface UnlockDef {
   id: string;

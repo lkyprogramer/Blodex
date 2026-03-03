@@ -14,6 +14,11 @@ describe("renderMetaMenuPanel", () => {
         statusText: "Saved run found",
         detailText: "Floor 2 · Normal"
       },
+      daily: {
+        date: "2026-03-03",
+        mode: "scored",
+        statusText: "Scored attempt available."
+      },
       difficulties: [
         {
           mode: "normal",
@@ -162,6 +167,7 @@ describe("renderMetaMenuPanel", () => {
     expect(html).toContain('data-action="continue"');
     expect(html).toContain('data-action="abandon"');
     expect(html).toContain('data-action="start"');
+    expect(html).toContain('data-action="start-daily"');
     expect(html).toContain('data-tier="1"');
     expect(html).toContain('data-tier="2"');
     expect(html).toContain("Soul Shards: 120");

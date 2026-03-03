@@ -3,9 +3,11 @@ import type {
   CombatEvent,
   MonsterState,
   PlayerState,
+  SkillArchetype,
   RngLike,
   SkillDef,
   SkillEffect,
+  SkillOfferWeightContext,
   SkillInstance,
   PlayerSkillState,
   SkillResolution
@@ -44,6 +46,48 @@ function selectTargets(player: PlayerState, monsters: MonsterState[], def: Skill
 
 export interface ResolveSkillOptions {
   damageMultiplier?: number;
+}
+
+function clampSkillLevel(level: number): 1 | 2 | 3 {
+  if (level <= 1) {
+    return 1;
+  }
+  if (level >= 3) {
+    return 3;
+  }
+  return 2;
+}
+
+function skillLevelEffectMultiplier(level: number): number {
+  const normalized = clampSkillLevel(level);
+  if (normalized === 2) {
+    return 1.3;
+  }
+  if (normalized === 3) {
+    return 1.6;
+  }
+  return 1;
+}
+
+function skillLevelCooldownMultiplier(level: number): number {
+  const normalized = clampSkillLevel(level);
+  if (normalized === 2) {
+    return 0.9;
+  }
+  if (normalized === 3) {
+    return 0.8;
+  }
+  return 1;
+}
+
+function statToArchetype(stat: SkillOfferWeightContext["strongestStat"]): SkillArchetype {
+  if (stat === "strength") {
+    return "warrior";
+  }
+  if (stat === "dexterity") {
+    return "ranger";
+  }
+  return "arcanist";
 }
 
 export function canUseSkill(
@@ -176,6 +220,32 @@ export function markSkillUsed(
   };
 }
 
+export function createSkillDefForLevel(skillDef: SkillDef, level: number): SkillDef {
+  const effectScale = skillLevelEffectMultiplier(level);
+  const cooldownScale = skillLevelCooldownMultiplier(level);
+
+  return {
+    ...skillDef,
+    cooldownMs: Math.max(100, Math.floor(skillDef.cooldownMs * cooldownScale)),
+    effects: skillDef.effects.map((effect) => {
+      if (typeof effect.value === "number") {
+        return {
+          ...effect,
+          value: effect.value * effectScale
+        };
+      }
+      return {
+        ...effect,
+        value: {
+          ...effect.value,
+          base: effect.value.base * effectScale,
+          ratio: effect.value.ratio * effectScale
+        }
+      };
+    })
+  };
+}
+
 export function assignSkillToSlot(
   skillState: PlayerSkillState,
   skill: SkillInstance,
@@ -214,6 +284,50 @@ export function pickSkillChoices(pool: SkillDef[], rng: RngLike, count = 3): Ski
   while (picked.length < count && remaining.length > 0) {
     const idx = rng.nextInt(0, remaining.length - 1);
     const selected = remaining.splice(idx, 1)[0];
+    if (selected !== undefined) {
+      picked.push(selected);
+    }
+  }
+
+  return picked;
+}
+
+export function computeSkillOfferWeight(skill: SkillDef, context: SkillOfferWeightContext): number {
+  const preferredArchetype = statToArchetype(context.strongestStat);
+  const sameArchetype = skill.archetype !== undefined && skill.archetype === preferredArchetype;
+  const owned = context.ownedSkillIds.includes(skill.id);
+  let weight = sameArchetype ? 2 : 1;
+  if (owned) {
+    weight *= 0.5;
+  }
+  return Math.max(0.01, weight);
+}
+
+export function pickSkillChoicesWeighted(
+  pool: SkillDef[],
+  rng: RngLike,
+  context: SkillOfferWeightContext,
+  count = 3
+): SkillDef[] {
+  const remaining = [...pool].sort((left, right) => left.id.localeCompare(right.id));
+  const picked: SkillDef[] = [];
+
+  while (picked.length < count && remaining.length > 0) {
+    const weighted = remaining.map((skill) => ({
+      skill,
+      weight: computeSkillOfferWeight(skill, context)
+    }));
+    const totalWeight = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = rng.next() * totalWeight;
+    let chosenIndex = weighted.length - 1;
+    for (let index = 0; index < weighted.length; index += 1) {
+      roll -= weighted[index]!.weight;
+      if (roll <= 0) {
+        chosenIndex = index;
+        break;
+      }
+    }
+    const [selected] = remaining.splice(chosenIndex, 1);
     if (selected !== undefined) {
       picked.push(selected);
     }

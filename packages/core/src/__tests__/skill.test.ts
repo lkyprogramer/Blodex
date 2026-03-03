@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { SeededRng } from "../rng";
-import { canUseSkill, markSkillUsed, pickSkillChoices, resolveSkill } from "../skill";
+import {
+  canUseSkill,
+  createSkillDefForLevel,
+  markSkillUsed,
+  pickSkillChoices,
+  pickSkillChoicesWeighted,
+  resolveSkill
+} from "../skill";
 import type { MonsterState, PlayerState, SkillDef } from "../contracts/types";
 
 const PLAYER: PlayerState = {
@@ -147,6 +154,46 @@ describe("skill", () => {
     const first = pickSkillChoices(pool, rng, 3).map((entry) => entry.id);
     const second = pickSkillChoices(pool, new SeededRng("choices"), 3).map((entry) => entry.id);
     expect(first).toEqual(second);
+  });
+
+  it("scales effect/cooldown by skill level", () => {
+    const level2 = createSkillDefForLevel(CLEAVE, 2);
+    const level3 = createSkillDefForLevel(CLEAVE, 3);
+    expect(level2.cooldownMs).toBe(2700);
+    expect(level3.cooldownMs).toBe(2400);
+    const effect2 = level2.effects[0];
+    const effect3 = level3.effects[0];
+    if (effect2 === undefined || effect3 === undefined) {
+      return;
+    }
+    const value2 = effect2.value;
+    const value3 = effect3.value;
+    if (typeof value2 === "number" || typeof value3 === "number") {
+      return;
+    }
+    expect(value2.ratio).toBeCloseTo(1.56);
+    expect(value3.ratio).toBeCloseTo(1.92);
+  });
+
+  it("weights skill offers by strongest stat and owned skills", () => {
+    const rng = new SeededRng("weighted");
+    const pool: SkillDef[] = [
+      { ...CLEAVE, id: "warrior_a", archetype: "warrior" },
+      { ...CLEAVE, id: "warrior_b", archetype: "warrior" },
+      { ...CLEAVE, id: "ranger_a", archetype: "ranger" },
+      { ...CLEAVE, id: "arcane_a", archetype: "arcanist" }
+    ];
+    const picked = pickSkillChoicesWeighted(
+      pool,
+      rng,
+      {
+        strongestStat: "strength",
+        ownedSkillIds: ["warrior_a"]
+      },
+      3
+    );
+    expect(picked).toHaveLength(3);
+    expect(picked.map((entry) => entry.id)).toContain("warrior_b");
   });
 });
 

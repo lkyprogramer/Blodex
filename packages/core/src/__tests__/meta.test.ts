@@ -29,15 +29,17 @@ function makeUnlock(overrides: Partial<UnlockDef> = {}): UnlockDef {
 }
 
 describe("meta", () => {
-  it("migrates v1/v2 data into v4 schema", () => {
+  it("migrates v1/v2 data into v5 schema", () => {
     const migrated = migrateMeta({ runsPlayed: 3, bestFloor: 2, bestTimeMs: 12345 });
-    expect(migrated.schemaVersion).toBe(4);
+    expect(migrated.schemaVersion).toBe(5);
     expect(migrated.runsPlayed).toBe(3);
     expect(migrated.soulShards).toBe(0);
     expect(migrated.talentPoints).toEqual({});
     expect(migrated.totalShardsSpent).toBe(0);
     expect(migrated.blueprintFoundIds).toEqual([]);
     expect(migrated.selectedMutationIds).toEqual([]);
+    expect(migrated.synergyDiscoveredIds).toEqual([]);
+    expect(migrated.dailyHistory).toEqual([]);
   });
 
   it("calculates rewards", () => {
@@ -53,6 +55,10 @@ describe("meta", () => {
       kills: 12,
       totalKills: 30,
       lootCollected: 7,
+      challengeSuccessCount: 0,
+      inEndless: false,
+      endlessFloor: 0,
+      runMode: "normal",
       runEconomy: { obols: 20 }
     };
     expect(calculateSoulShardReward(run, true)).toBeGreaterThan(0);

@@ -44,6 +44,34 @@ export const BIOME_DEFS: BiomeDef[] = [
     }
   },
   {
+    id: "phantom_graveyard",
+    name: "Phantom Graveyard",
+    ambientColor: 0x1a1d2d,
+    floorTilesetKey: "tile_floor_01",
+    wallStyleKey: "spectral_stone",
+    roomCount: { min: 10, max: 14 },
+    monsterPool: ["wraith_knight", "soul_eater", "shadow_lurker", "bone_priest"],
+    hazardPool: ["bone_spike", "ice_patch"],
+    lootBias: {
+      weapon: 1.15,
+      ring: 1.2
+    }
+  },
+  {
+    id: "venom_swamp",
+    name: "Venom Swamp",
+    ambientColor: 0x152317,
+    floorTilesetKey: "tile_floor_01",
+    wallStyleKey: "swamp_roots",
+    roomCount: { min: 10, max: 14 },
+    monsterPool: ["venom_spitter", "swamp_hulk", "fungal_host", "magma_crawler"],
+    hazardPool: ["bone_spike", "lava_pool"],
+    lootBias: {
+      boots: 1.15,
+      chest: 1.2
+    }
+  },
+  {
     id: "bone_throne",
     name: "Bone Throne",
     ambientColor: 0x1a1218,
@@ -62,4 +90,3 @@ export const BIOME_DEFS: BiomeDef[] = [
 export const BIOME_MAP: Record<BiomeDef["id"], BiomeDef> = Object.fromEntries(
   BIOME_DEFS.map((biome) => [biome.id, biome])
 ) as Record<BiomeDef["id"], BiomeDef>;
-

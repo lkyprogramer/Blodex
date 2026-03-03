@@ -42,6 +42,10 @@ describe("run replay determinism", () => {
         kills: 0,
         totalKills: 0,
         lootCollected: 0,
+        challengeSuccessCount: 0,
+        inEndless: false,
+        endlessFloor: 0,
+        runMode: "normal",
         runEconomy: { obols: 0 },
         replay: createReplay(sample, 1)
       };

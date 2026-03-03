@@ -1,4 +1,5 @@
 import {
+  MONSTER_AFFIX_IDS,
   applyAffixesToMonsterState,
   rollMonsterAffixes,
   type DungeonLayout,
@@ -26,6 +27,7 @@ export interface MonsterSpawnOptions {
   biomeMonsterPool?: string[];
   blockedPositions?: Array<{ x: number; y: number }>;
   unlockedAffixes?: MonsterAffixId[];
+  extraAffixCount?: number;
   rng: RngLike;
 }
 
@@ -111,13 +113,29 @@ export class MonsterSpawnSystem {
     for (let i = 0; i < points.length; i += 1) {
       const point = points[i]!;
       const archetype = options.rng.pick(spawnPool);
-      const rolledAffixes = rollMonsterAffixes({
+      const baseAffixes = rollMonsterAffixes({
         floor: options.floor,
         isBoss: options.floorConfig?.isBossFloor ?? false,
         ...(options.affixPolicy === undefined ? {} : { policy: options.affixPolicy }),
         ...(options.unlockedAffixes === undefined ? {} : { availableAffixes: options.unlockedAffixes }),
         rng: options.rng
       });
+      const affixes = [...baseAffixes];
+      const extraAffixCount = Math.max(0, Math.floor(options.extraAffixCount ?? 0));
+      if (extraAffixCount > 0) {
+        const availableAffixPool =
+          options.unlockedAffixes === undefined || options.unlockedAffixes.length === 0
+            ? [...MONSTER_AFFIX_IDS]
+            : [...options.unlockedAffixes];
+        const extraPool = availableAffixPool.filter((affixId) => !affixes.includes(affixId));
+        while (extraPool.length > 0 && affixes.length < baseAffixes.length + extraAffixCount) {
+          const pickedIndex = options.rng.nextInt(0, extraPool.length - 1);
+          const [pickedAffix] = extraPool.splice(pickedIndex, 1);
+          if (pickedAffix !== undefined) {
+            affixes.push(pickedAffix);
+          }
+        }
+      }
       const nextState = applyAffixesToMonsterState({
         id: `monster-${i}`,
         archetypeId: archetype.id,
@@ -132,7 +150,7 @@ export class MonsterSpawnSystem {
         position: { x: point.x, y: point.y },
         aiState: archetype.aiConfig.behavior === "ambush" ? "ambush" : "idle",
         aiBehavior: archetype.aiConfig.behavior,
-        affixes: rolledAffixes
+        ...(affixes.length === 0 ? {} : { affixes })
       });
 
       monsters.push({

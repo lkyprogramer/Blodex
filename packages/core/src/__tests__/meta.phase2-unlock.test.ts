@@ -51,7 +51,14 @@ describe("meta phase2 unlock collection", () => {
   it("includes default biome availability and no affixes before unlocks", () => {
     const meta = createInitialMeta();
     expect(collectUnlockedBiomeIds(meta, PHASE2_UNLOCKS)).toEqual(
-      expect.arrayContaining(["forgotten_catacombs", "molten_caverns", "frozen_halls", "bone_throne"])
+      expect.arrayContaining([
+        "forgotten_catacombs",
+        "molten_caverns",
+        "frozen_halls",
+        "phantom_graveyard",
+        "venom_swamp",
+        "bone_throne"
+      ])
     );
     expect(collectUnlockedAffixIds(meta, PHASE2_UNLOCKS)).toEqual([]);
     expect(collectUnlockedEventIds(meta, PHASE2_UNLOCKS)).toEqual([]);
