@@ -100,6 +100,14 @@ rg -n "UI_POLISH_FLAGS|sceneRefactorR1Enabled|metaMenuDomEnabled|runSummaryV2Ena
 
 核查结论：当前 `apps/game-client/src/systems/__tests__/` 下未发现上述 3 个系统的专属测试文件。
 
+复核命令（期望输出为空；若为空由 `echo` 给出提示行）：
+
+```bash
+rg --files apps/game-client/src/systems/__tests__ \
+  | rg -i "(ai|movement|monster.?spawn)" \
+  || echo "[expected-empty] no dedicated tests found for AISystem/MovementSystem/MonsterSpawnSystem"
+```
+
 建议：在 4.4（E4）之前补齐最小行为覆盖，并纳入阶段门禁。
 
 ---
@@ -113,5 +121,7 @@ wc -l apps/game-client/src/scenes/DungeonScene.ts \
       apps/game-client/src/scenes/MetaMenuScene.ts \
       packages/core/src/contracts/types.ts
 rg -n "UI_POLISH_FLAGS|sceneRefactorR1Enabled|metaMenuDomEnabled|runSummaryV2Enabled|skillCooldownOverlayEnabled|i18nInfrastructureEnabled" apps/game-client/src -S
-rg --files | rg "AISystem|MovementSystem|MonsterSpawnSystem"
+rg --files apps/game-client/src/systems/__tests__ \
+  | rg -i "(ai|movement|monster.?spawn)" \
+  || echo "[expected-empty] no dedicated tests found for AISystem/MovementSystem/MonsterSpawnSystem"
 ```
