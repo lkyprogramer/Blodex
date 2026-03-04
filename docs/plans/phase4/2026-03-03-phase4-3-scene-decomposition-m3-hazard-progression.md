@@ -75,11 +75,24 @@
    - Challenge/Progression: `createChallengeRoomState/startChallengeRoom/advanceChallengeRoomWave/shouldFailChallengeRoomByTimeout`
    - Floor/Endless: `enterNextFloor/advanceEndlessFloor/endlessFloorClearBonus`
 
+### 3.4 阶段起点刷新（执行前必做）
+
+1. 4.3 的输入基线应取 4.2 出口实测值，不得沿用固定写死数字。
+2. 执行前必须回填：
+   - `DungeonScene.ts` 当前行数
+   - 预算脚本输出中的 methods 统计
+3. 刷新命令：
+
+```bash
+wc -l apps/game-client/src/scenes/DungeonScene.ts
+pnpm check:architecture-budget
+```
+
 ---
 
 ## 4. 范围与非目标
 
-## 4.1 范围
+### 4.1 范围
 
 1. `HazardRuntimeModule` 落地：
    - hazard 初始化、更新、接触与伤害流程迁移。
@@ -92,7 +105,7 @@
    - `runActiveFrame` 拆为可测试 phase pipeline，Scene 保留编排壳层。
 4. 模块测试与回归补齐。
 
-## 4.2 非目标
+### 4.2 非目标
 
 1. 不调整 hazard 数值、challenge 奖励表、楼层数值配置。
 2. 不改 Boss telegraph 与 Event 设计内容（4.6 处理）。
@@ -336,4 +349,3 @@ pnpm ci:check
    - `UI_POLISH_FLAGS` 清理；
    - `Hud.ts` 面板化拆分；
    - `AISystem/MovementSystem/MonsterSpawnSystem` 测试补齐。
-

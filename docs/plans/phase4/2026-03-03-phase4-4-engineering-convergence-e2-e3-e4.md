@@ -97,18 +97,32 @@
 
 4.4 需要把阈值调整到“接近目标态”的工程门槛。
 
+### 3.5 阶段起点刷新（执行前必做）
+
+1. 4.4 的输入基线应取 4.3 出口实测值（而不是 4.0/4.1 的历史值）。
+2. `DungeonScene <= 2500` 的收敛来源包含：
+   - flag 分支与迁移期壳层清理（Scene 降行）
+   - HUD 容器化（Hud 降行）
+   - 调用链收敛（Scene 残余委托清理）
+3. 执行前刷新命令：
+
+```bash
+wc -l apps/game-client/src/scenes/DungeonScene.ts apps/game-client/src/ui/Hud.ts
+pnpm check:architecture-budget
+```
+
 ---
 
 ## 4. 范围与非目标
 
-## 4.1 范围
+### 4.1 范围
 
 1. E2：`UI_POLISH_FLAGS` 业务引用清理、常量化行为落地。
 2. E3：`Hud.ts` 模块化拆分 + 容器化 + 增量渲染路径收敛。
 3. E4：`AISystem/MovementSystem/MonsterSpawnSystem` 单测补齐。
 4. 门禁收紧：预算脚本阈值更新、CI 过线标准更新。
 
-## 4.2 非目标
+### 4.2 非目标
 
 1. 不改玩法规则与数值。
 2. 不改 i18n 词条语义，仅保证拆分后 key 使用一致。
@@ -359,4 +373,3 @@ pnpm ci:check
 2. 关键 UI 与系统边界稳定，不再阻碍 G1/G2/G3/G5 交付。
 3. 已记录 4.4 后体量与预算快照，作为 4.5 起点。
 4. 4.5 的 `PR-14~17` 已明确仅做体验增强，不回流架构债。
-

@@ -40,6 +40,8 @@
    - Event/Boss 模块通过 ports 协作，禁止互相直接访问 Scene 私有状态。
 5. **阶段边界约束**
    - 不在 4.2 中引入 Boss telegraph 新玩法（属于 4.6 / G4）。
+6. **Combat 边界约束**
+   - 不新增 `CombatRuntimeModule`；战斗执行继续由 `CombatSystem + EncounterController` 承担。
 
 ---
 
@@ -71,11 +73,22 @@
    - Boss: `selectBossAttack/resolveBossAttack/markBossAttackUsed/applyDamageToBoss`
    - Event: `pickRandomEvent/canPayEventCost/rollEventRisk/createMerchantOffers`
 
+### 3.4 阶段起点刷新（执行前必做）
+
+1. 4.2 的输入基线应取 4.1 出口实测值，不得继续复用 4.0 的 6301 历史值。
+2. 当前样例（2026-03-04 / `origin/main@8031f3a`）：`DungeonScene.ts = 5200`。
+3. 执行前用以下命令刷新并写回 PR 模板：
+
+```bash
+wc -l apps/game-client/src/scenes/DungeonScene.ts
+pnpm check:architecture-budget
+```
+
 ---
 
 ## 4. 范围与非目标
 
-## 4.1 范围
+### 4.1 范围
 
 1. EventRuntimeModule 落地：
    - 楼层事件生成、交互、选择结算
@@ -88,7 +101,7 @@
    - 由 controller 调用模块 ports，Scene 仅保留装配与壳层委托
 4. 模块测试与回归补齐。
 
-## 4.2 非目标
+### 4.2 非目标
 
 1. 不调整事件内容设计（G7 在 4.6 处理）。
 2. 不实现 Boss 预警机制（G4 在 4.6 处理）。
@@ -310,4 +323,3 @@ pnpm ci:check
 2. `EncounterController` 与 `WorldEventController` 的调用边界清晰。
 3. 主循环中剩余高复杂簇主要集中于 Hazard/Progression，便于 4.3 接管。
 4. 已记录 4.2 迁移后的行数与方法数快照，作为 4.3 起点。
-

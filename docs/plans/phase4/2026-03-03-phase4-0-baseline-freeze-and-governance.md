@@ -27,14 +27,14 @@
 
 ## 2. 范围与非目标
 
-## 2.1 范围
+### 2.1 范围
 
 1. 计划与执行文档治理（统一主计划、旧文档迁移说明、阶段文档建立）。
 2. 架构预算门禁治理（脚本、CI 接入、预算白名单与收紧策略）。
 3. PR 验收矩阵与执行模板治理（开发过程标准化）。
 4. 4.0 基线数据冻结（可量化指标与核验命令）。
 
-## 2.2 非目标
+### 2.2 非目标
 
 1. 不进行 `DungeonScene` 业务逻辑迁移（4.1 起执行）。
 2. 不进行 HUD/Boss/Endless 等功能增强（4.4+ / 4.5+ 执行）。
@@ -186,7 +186,7 @@
 
 ## 6. 执行步骤（可直接照做）
 
-## 6.1 Step A：文档统一
+### 6.1 Step A：文档统一
 
 ```bash
 # 1) 确认主计划存在
@@ -197,7 +197,7 @@ sed -n '1,10p' docs/plans/phase4/2026-03-03-phase4-review-and-roadmap.md
 sed -n '1,10p' docs/plans/phase4/2026-03-03-dungeon-deep-refactor-foundation.md
 ```
 
-## 6.2 Step B：门禁核验
+### 6.2 Step B：门禁核验
 
 ```bash
 # 1) 独立运行预算检查
@@ -207,7 +207,7 @@ pnpm check:architecture-budget
 node -e "const p=require('./package.json');console.log(p.scripts['ci:check'])"
 ```
 
-## 6.3 Step C：基线快照冻结
+### 6.3 Step C：基线快照冻结
 
 ```bash
 # 文件体量
@@ -220,7 +220,7 @@ wc -l apps/game-client/src/scenes/DungeonScene.ts \
 rg -n "UI_POLISH_FLAGS|sceneRefactorR1Enabled|metaMenuDomEnabled|runSummaryV2Enabled|skillCooldownOverlayEnabled|i18nInfrastructureEnabled" apps/game-client/src -S
 ```
 
-## 6.4 Step D：模板与快照文件核验
+### 6.4 Step D：模板与快照文件核验
 
 ```bash
 # 模板文件存在性

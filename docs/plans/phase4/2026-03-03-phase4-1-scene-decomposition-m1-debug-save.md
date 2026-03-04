@@ -21,7 +21,7 @@
 
 4.1 完成后的硬结果：
 
-1. `DungeonScene.ts` 行数由当前 6301 降到 `<= 5200`。
+1. `DungeonScene.ts` 行数由 4.0 冻结的 6301 降到 `<= 5200`（2026-03-04 已达成 5200）。
 2. Debug/Save 核心实现不再驻留在 Scene。
 3. 读档、自动保存、多 tab lease、debug API 行为保持等价。
 4. 为 4.2（Event/Boss）预留稳定扩展边界。
@@ -47,8 +47,9 @@
 
 ### 3.1 体量与预算
 
-1. `DungeonScene.ts`: 6301 行，161 methods。
-2. 架构预算白名单当前阈值：`DungeonScene 7000/220`。
+1. 历史起点（4.0 冻结）：`DungeonScene.ts` 6301 行，161 methods。
+2. 当前 main 实测（2026-03-04）：`DungeonScene.ts` 5200 行，129 methods。
+3. 架构预算白名单当前阈值：`DungeonScene 7000/220`。
 
 ### 3.2 Debug 职责分布（Scene 内）
 
@@ -74,7 +75,7 @@
 
 ## 4. 范围与非目标
 
-## 4.1 范围
+### 4.1 范围
 
 1. 抽离 Debug Runtime Module：
    - debug API 构建与绑定
@@ -87,7 +88,7 @@
 3. 更新 Scene 装配逻辑与调用链。
 4. 增补对应单测与回归检查。
 
-## 4.2 非目标
+### 4.2 非目标
 
 1. 不迁移 Event/Boss/Hazard 逻辑（属于 4.2/4.3）。
 2. 不清理 `UI_POLISH_FLAGS`（属于 4.4）。
@@ -300,4 +301,3 @@ pnpm ci:check
 2. 读档、重置、结算、切楼层流程已稳定。
 3. 新增模块接口文档已补齐（types + 用法说明）。
 4. 4.2 的 PR-04/05/06 不再改动 Debug/Save 迁移代码。
-

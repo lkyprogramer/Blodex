@@ -36,6 +36,12 @@
 | E-01 | Event Room | 阶段涉及事件系统改动时必测 | 事件选择、奖励、状态变更正确 | ... | Pass / Fail | 截图/日志 |
 | E-02 | Merchant | 阶段涉及商店改动时必测 | 价格、购买、库存刷新正确 | ... | Pass / Fail | 截图/日志 |
 | E-03 | Meta Progression | 阶段涉及 meta 改动时必测 | 结算写入、菜单读取与展示一致 | ... | Pass / Fail | 截图/日志 |
+| E-04 | Biome Visual | 阶段涉及 G1 时必测 | 6 种 biome 视觉可辨识，无错贴图 | ... | Pass / Fail | 截图/录像 |
+| E-05 | Weapon Feedback | 阶段涉及 G2 时必测 | 武器差异反馈可感知，伤害语义不变 | ... | Pass / Fail | 截图/日志 |
+| E-06 | LevelUp VFX/SFX | 阶段涉及 G3 时必测 | 升级时视觉与音效同步触发 | ... | Pass / Fail | 截图/录像 |
+| E-07 | Boss Telegraph | 阶段涉及 G4 时必测 | 预警->执行时序正确，可规避窗口生效 | ... | Pass / Fail | 截图/日志 |
+| E-08 | Endless Mutator | 阶段涉及 G6 时必测 | 8/11/14 层规则突变按期生效 | ... | Pass / Fail | 截图/日志 |
+| E-09 | Deferred Outcome | 阶段涉及 G7 时必测 | 保存恢复后延迟收益不丢失且不重复结算 | ... | Pass / Fail | 截图/日志 |
 
 ---
 

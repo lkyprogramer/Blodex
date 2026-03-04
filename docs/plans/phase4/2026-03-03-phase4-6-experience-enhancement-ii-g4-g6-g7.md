@@ -19,6 +19,7 @@
 2. G6（Endless Mutator）：在现有 endless 线性缩放上叠加阶段性规则突变（第 8/11/14 层作为里程碑）。
 3. G7（Event/Merchant 深化）：引入条件化与延迟收益分支，提升策略分化并保持 deterministic。
 4. PR-21 负责兼容收口：如新增 Meta/Run 状态字段，必须提供迁移与回归测试。
+5. 状态归属冻结：G6 mutator 状态落 `RunState`；G7 延迟收益落 `RunSaveDataV2.deferredOutcomes[]`（可选字段）。
 
 4.6 完成后的硬结果：
 
@@ -41,6 +42,9 @@
    - 规则放在 `@blodex/core` 或 runtime module；表现层仅负责反馈呈现。
 5. **阶段边界约束**
    - 4.6 不做 4.7 发布收口工作（发布与全量复盘留给 4.7）。
+6. **状态归属约束**
+   - G6 的 mutator 激活/运行状态仅保存在单局 `RunState`；`MetaProgression` 仅保存长期解锁与统计，不保存运行态。
+   - G7 的延迟收益状态必须可序列化到 `RunSaveDataV2`，并满足幂等结算。
 
 ---
 
@@ -84,14 +88,14 @@
 
 ## 4. 范围与非目标
 
-## 4.1 范围
+### 4.1 范围
 
 1. G4：Boss 攻击预警运行时接入（至少覆盖 `heavy_strike`、`bone_spikes`）。
 2. G6：Endless mutator 体系（规则层 + 运行时接入 + UI/日志可观测）。
 3. G7：事件/商店策略深化（条件化分支、延迟收益、难度维度）。
 4. 迁移与兼容：必要字段演进 + 迁移 + fixture 回归。
 
-## 4.2 非目标
+### 4.2 非目标
 
 1. 不重写 Boss 全套 AI，仅在现有攻击选择链路上增强 telegraph。
 2. 不调整 4.5 的 Biome/武器/升级/装备对比目标。
@@ -202,6 +206,9 @@ export interface EndlessMutator {
 1. 定义第 8/11/14 层 mutator 激活规则（可叠加，可观测）。
 2. mutator 作用于至少两个维度（示例：怪物行为、战斗节奏、资源获取、环境压力）。
 3. 通过事件/日志/HUD 暴露当前 mutator 集合与效果摘要。
+4. 持久化字段（建议）：
+   - `RunState.mutatorActiveIds?: string[]`
+   - `RunState.mutatorState?: Record<string, { activatedAtFloor: number; stacks?: number }>`
 
 **验收标准**:
 1. 第 8/11/14 层均有可观察规则变化。
@@ -229,6 +236,8 @@ export interface EndlessMutator {
 1. 至少新增 3 个非同质事件分支（条件化、延迟收益、对赌型收益）。
 2. 商店策略增加后期维度（库存稀缺、楼层系数、阶段策略商品）。
 3. 延迟收益需可保存恢复（与 save snapshot 一致）。
+4. 延迟收益字段（建议）：
+   - `RunSaveDataV2.deferredOutcomes?: Array<{ outcomeId: string; source: \"event\" | \"merchant\"; trigger: { type: \"floor_reached\" | \"boss_kill\" | \"run_end\"; value?: number }; reward: { obol?: number; shard?: number; itemDefId?: string }; status: \"pending\" | \"settled\" }>`
 
 **验收标准**:
 1. 事件分支在中后期提供可辨识策略差异。
@@ -258,6 +267,10 @@ export interface EndlessMutator {
 1. 若新增 Meta 字段，升级 `schemaVersion`（建议 `6 -> 7`）并提供默认迁移。
 2. 若新增 run/runtime 持久字段，确保 V1/V2 存档迁移链仍可通过。
 3. 补齐跨版本 fixture（旧存档、旧 meta、混合字段）回归。
+4. 默认迁移值：
+   - `run.mutatorActiveIds` 缺失 -> `[]`
+   - `run.mutatorState` 缺失 -> `{}`
+   - `deferredOutcomes` 缺失 -> `[]`
 
 **验收标准**:
 1. 老存档与老 meta 能正确加载并自动迁移。
@@ -352,4 +365,3 @@ pnpm ci:check
 2. 所有新增字段迁移已完成并在 CI 稳定通过。
 3. 风险项与已知限制清单已沉淀到发布候选文档。
 4. 4.7 可专注执行最终收口：全量回归、性能对比、发布说明与 DoD 勾验。
-
