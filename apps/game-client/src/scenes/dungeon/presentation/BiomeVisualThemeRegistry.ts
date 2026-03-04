@@ -38,7 +38,7 @@ export const BIOME_VISUAL_THEME_REGISTRY: Record<BiomeDef["id"], BiomeVisualThem
     hazeAlpha: 0.1
   },
   venom_swamp: {
-    floorTileKey: "biome_molten_tile_floor_01",
+    floorTileKey: "biome_venom_tile_floor_01",
     tileTint: 0xb9d7a9,
     accentColor: 0x93bd7c,
     hazeAlpha: 0.1

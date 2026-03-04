@@ -14,8 +14,8 @@ describe("BiomeVisualThemeRegistry", () => {
     }
   });
 
-  it("keeps at least four distinct floor tile materials", () => {
+  it("keeps at least five distinct floor tile materials", () => {
     const tileKeys = new Set(BIOME_DEFS.map((biome) => resolveBiomeVisualTheme(biome).floorTileKey));
-    expect(tileKeys.size).toBeGreaterThanOrEqual(4);
+    expect(tileKeys.size).toBeGreaterThanOrEqual(5);
   });
 });

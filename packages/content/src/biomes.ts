@@ -61,7 +61,7 @@ export const BIOME_DEFS: BiomeDef[] = [
     id: "venom_swamp",
     name: "Venom Swamp",
     ambientColor: 0x152317,
-    floorTilesetKey: "biome_molten_tile_floor_01",
+    floorTilesetKey: "biome_venom_tile_floor_01",
     wallStyleKey: "swamp_roots",
     roomCount: { min: 10, max: 14 },
     monsterPool: ["venom_spitter", "swamp_hulk", "fungal_host", "magma_crawler"],

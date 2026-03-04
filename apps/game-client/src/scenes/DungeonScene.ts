@@ -237,6 +237,7 @@ const DUNGEON_IMAGE_ASSET_IDS = [
   "tile_floor_01",
   "biome_catacombs_tile_floor_01",
   "biome_molten_tile_floor_01",
+  "biome_venom_tile_floor_01",
   "biome_frozen_tile_floor_01",
   "biome_bone_tile_floor_01",
   "item_weapon_01",
