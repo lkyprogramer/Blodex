@@ -370,6 +370,24 @@
   color: #d3bf9d;
 }
 
+.tooltip-compare-summary {
+  margin-top: 4px;
+  display: grid;
+  gap: 3px;
+}
+
+.tooltip-compare-summary-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: #cdbb9d;
+}
+
+.tooltip-compare-summary-value {
+  font-weight: 700;
+}
+
 .tooltip-compare-score {
   margin-top: 3px;
   font-size: 12px;

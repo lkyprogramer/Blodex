@@ -32,6 +32,13 @@ import {
   renderRunSummaryScreen
 } from "../components/RunSummaryScreen";
 import { getContentLocalizer, t } from "../../i18n";
+import {
+  buildEquipmentDeltaSummary,
+  resolveDeltaDirection,
+  type DeltaDirection,
+  type EquipmentDeltaSummaryKey
+} from "./compare/EquipmentDeltaPresenter";
+import type { HudStatHighlight } from "./compare/StatDeltaHighlighter";
 
 interface HudState {
   player: PlayerState;
@@ -80,6 +87,8 @@ interface HudState {
       locked: boolean;
     }>;
     newlyAcquiredItemIds?: string[];
+    levelUpPulseLevel?: number;
+    statHighlights?: HudStatHighlight[];
   };
   meta: MetaProgression;
 }
@@ -216,6 +225,39 @@ function formatSignedValue(value: number): string {
     return `+${normalized}`;
   }
   return normalized;
+}
+
+function directionToDeltaClass(direction: DeltaDirection): string {
+  switch (direction) {
+    case "up":
+      return "delta-up";
+    case "down":
+      return "delta-down";
+    case "equal":
+      return "delta-equal";
+  }
+}
+
+function directionSymbol(direction: DeltaDirection): string {
+  switch (direction) {
+    case "up":
+      return "↑";
+    case "down":
+      return "↓";
+    case "equal":
+      return "≈";
+  }
+}
+
+function summaryLabel(key: EquipmentDeltaSummaryKey): string {
+  switch (key) {
+    case "offense":
+      return t("ui.hud.tooltip.summary.offense");
+    case "defense":
+      return t("ui.hud.tooltip.summary.defense");
+    case "utility":
+      return t("ui.hud.tooltip.summary.utility");
+  }
 }
 
 function collectItemAffixMap(item: ItemInstance): Map<string, number> {
@@ -376,6 +418,21 @@ export class HudContainer {
     const manaPercent = toPercent(player.mana, player.derivedStats.maxMana);
     const xpPercent = toPercent(player.xp, player.xpToNextLevel);
     const lowHealth = hpPercent <= 25;
+    const levelUpPulseLevel = state.run.levelUpPulseLevel;
+    const levelUpPulseActive = levelUpPulseLevel !== undefined;
+    const statHighlightByKey = new Map(
+      (state.run.statHighlights ?? []).map((entry) => [entry.key, entry.direction] as const)
+    );
+    const attackPowerHighlightClass =
+      statHighlightByKey.get("attackPower") === undefined
+        ? ""
+        : directionToDeltaClass(statHighlightByKey.get("attackPower")!);
+    const armorHighlightClass =
+      statHighlightByKey.get("armor") === undefined ? "" : directionToDeltaClass(statHighlightByKey.get("armor")!);
+    const critHighlightClass =
+      statHighlightByKey.get("critChance") === undefined
+        ? ""
+        : directionToDeltaClass(statHighlightByKey.get("critChance")!);
     this.hudCriticalEl?.classList.toggle("low-health-critical", lowHealth);
     document.body.classList.toggle("low-health-critical", lowHealth);
     this.statsEl.className = "panel-block compact-block";
@@ -400,7 +457,7 @@ export class HudContainer {
             <div class="player-bar-fill mana" style="width:${manaPercent.toFixed(2)}%;"></div>
           </div>
         </div>
-        <div class="player-bar-row">
+        <div class="player-bar-row ${levelUpPulseActive ? "level-up-pulse" : ""}">
           <div class="player-bar-head">
             <span>${t("ui.hud.player.xp")}</span>
             <span>${player.xp}/${player.xpToNextLevel}</span>
@@ -410,10 +467,27 @@ export class HudContainer {
           </div>
         </div>
       </div>
-      <div class="mini-grid mini-3">
+      ${
+        levelUpPulseActive
+          ? `<div class="level-up-banner">${escapeHtml(
+              t("ui.hud.player.level_up", { level: levelUpPulseLevel ?? player.level })
+            )}</div>`
+          : ""
+      }
+      <div class="mini-grid mini-2">
         <div><span class="k">${t("ui.hud.player.level")}</span><span>${player.level}</span></div>
-        <div><span class="k">${t("ui.hud.player.power")}</span><span>${Math.floor(player.derivedStats.attackPower)}</span></div>
-        <div><span class="k">${t("ui.hud.player.armor")}</span><span>${Math.floor(player.derivedStats.armor)}</span></div>
+        <div class="hud-stat-cell ${attackPowerHighlightClass}">
+          <span class="k">${t("ui.hud.player.power")}</span>
+          <span>${Math.floor(player.derivedStats.attackPower)}</span>
+        </div>
+        <div class="hud-stat-cell ${armorHighlightClass}">
+          <span class="k">${t("ui.hud.player.armor")}</span>
+          <span>${Math.floor(player.derivedStats.armor)}</span>
+        </div>
+        <div class="hud-stat-cell ${critHighlightClass}">
+          <span class="k">${t("ui.hud.player.crit")}</span>
+          <span>${(player.derivedStats.critChance * 100).toFixed(1)}%</span>
+        </div>
       </div>
     `;
 
@@ -571,7 +645,21 @@ export class HudContainer {
       .map((item) => {
         const itemName = this.contentLocalizer.itemName(item.defId, item.name);
         const equipable = canEquip(player, item);
+        const compareItem = player.equipment[item.slot];
+        const powerDelta =
+          compareItem === undefined
+            ? 0
+            : calculateItemPowerScore(item) - calculateItemPowerScore(compareItem);
+        const isDowngrade = equipable && compareItem !== undefined && powerDelta < 0;
         const newlyAcquiredClass = newlyAcquiredSet.has(item.id) ? "newly-acquired" : "";
+        const equipActionTitle = equipable
+          ? isDowngrade
+            ? t("ui.hud.inventory.equip_downgrade", {
+                item: itemName,
+                delta: formatSignedValue(powerDelta)
+              })
+            : t("ui.hud.inventory.equip", { item: itemName })
+          : t("ui.hud.inventory.need_level", { level: item.requiredLevel });
         return `
           <div class="inventory-cell ${item.rarity} ${equipable ? "" : "locked"} ${newlyAcquiredClass}" data-item-id="${item.id}">
             <img class="item-icon" data-asset-id="${item.iconId}" src="${resolveGeneratedAssetUrl(
@@ -580,13 +668,9 @@ export class HudContainer {
             )}" alt="${escapeHtml(itemName)}" />
             <div class="inventory-cell-actions">
               <button
-                class="${equipable ? "" : "blocked"}"
+                class="${equipable ? "" : "blocked"} ${isDowngrade ? "downgrade" : ""}"
                 data-item-id="${item.id}"
-                title="${escapeHtml(
-                  equipable
-                    ? t("ui.hud.inventory.equip", { item: itemName })
-                    : t("ui.hud.inventory.need_level", { level: item.requiredLevel })
-                )}"
+                title="${escapeHtml(equipActionTitle)}"
               >${equipable ? "E" : escapeHtml(t("ui.hud.inventory.need_level_short", { level: item.requiredLevel }))}</button>
               <button
                 class="discard"
@@ -594,6 +678,15 @@ export class HudContainer {
                 title="${escapeHtml(t("ui.hud.inventory.discard", { item: itemName }))}"
               >D</button>
             </div>
+            ${
+              isDowngrade
+                ? `<small class="equip-downgrade-hint">${escapeHtml(
+                    t("ui.hud.inventory.downgrade_hint", {
+                      delta: formatSignedValue(powerDelta)
+                    })
+                  )}</small>`
+                : ""
+            }
             ${equipable ? "" : `<small class="equip-lock-hint">${escapeHtml(
               t("ui.hud.inventory.equip_lock_hint", {
                 level: item.requiredLevel
@@ -840,7 +933,7 @@ export class HudContainer {
         const itemValue = itemAffixes.get(key) ?? 0;
         const compareValue = compareAffixes.get(key) ?? 0;
         const delta = itemValue - compareValue;
-        const deltaClass = delta > 0 ? "delta-up" : delta < 0 ? "delta-down" : "delta-equal";
+        const deltaClass = directionToDeltaClass(resolveDeltaDirection(delta));
         return `
           <div class="tooltip-affix-line">
             <span>${escapeHtml(localizeAffixName(key))}</span>
@@ -854,7 +947,19 @@ export class HudContainer {
     const itemPowerScore = calculateItemPowerScore(item);
     const comparePowerScore = compareItem === undefined ? 0 : calculateItemPowerScore(compareItem);
     const powerDelta = itemPowerScore - comparePowerScore;
-    const powerDeltaClass = powerDelta > 0 ? "delta-up" : powerDelta < 0 ? "delta-down" : "delta-equal";
+    const powerDeltaDirection = resolveDeltaDirection(powerDelta);
+    const powerDeltaClass = directionToDeltaClass(powerDeltaDirection);
+    const compareSummaryLines =
+      compareItem === undefined
+        ? []
+        : buildEquipmentDeltaSummary(item, compareItem).map((line) => `
+            <div class="tooltip-compare-summary-line">
+              <span>${escapeHtml(summaryLabel(line.key))}</span>
+              <span class="tooltip-compare-summary-value ${directionToDeltaClass(line.direction)}">${directionSymbol(
+                line.direction
+              )}</span>
+            </div>
+          `);
 
     this.showTooltipHtml(
       `
@@ -878,6 +983,9 @@ export class HudContainer {
             <div class="tooltip-compare-head">${escapeHtml(
               t("ui.hud.tooltip.compare", { name: localizedCompareName ?? compareItem.name })
             )}</div>
+            <div class="tooltip-compare-summary">
+              ${compareSummaryLines.join("")}
+            </div>
             <div class="tooltip-compare-score ${powerDeltaClass}">
               ${escapeHtml(
                 t("ui.hud.tooltip.power_delta", {

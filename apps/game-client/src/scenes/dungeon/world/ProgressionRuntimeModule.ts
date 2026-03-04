@@ -39,7 +39,7 @@ import { gridToIso } from "../../../systems/iso";
 import { playSceneTransition } from "../../../ui/SceneTransitionOverlay";
 import { resolveDebugLockedEquipEnabled } from "../debug/debugFlags";
 import { injectDebugLockedEquipment } from "../debug/injectDebugLockedEquipment";
-import { resolveBiomeTileTint } from "./resolveBiomeTileTint";
+import { resolveBiomeVisualTheme } from "../presentation/BiomeVisualThemeRegistry";
 
 type ProgressionHost = Record<string, any>;
 
@@ -111,8 +111,12 @@ export class ProgressionRuntimeModule {
     const world = host.renderSystem.computeWorldBounds(host.dungeon);
     host.origin = world.origin;
     host.worldBounds = world.worldBounds;
+    const biomeVisualTheme = resolveBiomeVisualTheme(host.currentBiome);
     host.cameras.main.setBackgroundColor(Phaser.Display.Color.IntegerToColor(host.currentBiome.ambientColor).rgba);
-    host.renderSystem.drawDungeon(host.dungeon, host.origin, resolveBiomeTileTint(host.currentBiome.id));
+    host.renderSystem.drawDungeon(host.dungeon, host.origin, {
+      tileKey: biomeVisualTheme.floorTileKey,
+      tintColor: biomeVisualTheme.tileTint
+    });
     this.renderHiddenRoomMarkers();
 
     const playerRender = host.renderSystem.spawnPlayer(host.player.position, host.origin);

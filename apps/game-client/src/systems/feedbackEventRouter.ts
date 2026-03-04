@@ -1,10 +1,11 @@
-import type { BiomeId, CombatEvent, ConsumableId, HazardType } from "@blodex/core";
+import type { BiomeId, CombatEvent, ConsumableId, HazardType, WeaponType } from "@blodex/core";
 
 export type FeedbackAction =
   | {
       channel: "sfx";
       cue: "combat_hit";
       critical: boolean;
+      weaponType?: WeaponType;
     }
   | {
       channel: "sfx";
@@ -64,11 +65,17 @@ export type FeedbackAction =
       hazardType: HazardType;
     }
   | {
+      channel: "sfx";
+      cue: "level_up";
+      level: number;
+    }
+  | {
       channel: "vfx";
       cue: "combat_hit";
       targetId: string;
       amount: number;
       critical: boolean;
+      weaponType?: WeaponType;
     }
   | {
       channel: "vfx";
@@ -96,12 +103,19 @@ export type FeedbackAction =
       cue: "hazard_trigger";
       hazardType: HazardType;
       position: { x: number; y: number };
+    }
+  | {
+      channel: "vfx";
+      cue: "level_up";
+      playerId: string;
+      level: number;
     };
 
 export type FeedbackRouterInput =
   | {
       type: "combat:hit";
       combat: CombatEvent;
+      weaponType?: WeaponType;
     }
   | {
       type: "combat:dodge";
@@ -149,6 +163,11 @@ export type FeedbackRouterInput =
       type: "hazard:trigger";
       hazardType: HazardType;
       position: { x: number; y: number };
+    }
+  | {
+      type: "player:levelup";
+      playerId: string;
+      level: number;
     };
 
 function unreachableFeedbackAction(action: never): never {
@@ -159,7 +178,7 @@ export function feedbackActionKey(action: FeedbackAction): string {
   if (action.channel === "sfx") {
     switch (action.cue) {
       case "combat_hit":
-        return `sfx:${action.cue}:${action.critical ? "crit" : "normal"}`;
+        return `sfx:${action.cue}:${action.critical ? "crit" : "normal"}:${action.weaponType ?? "none"}`;
       case "skill_use":
         return `sfx:${action.cue}:${action.skillId}`;
       case "consumable_use":
@@ -170,6 +189,8 @@ export function feedbackActionKey(action: FeedbackAction): string {
         return `sfx:${action.cue}:${action.biomeId}`;
       case "hazard_trigger":
         return `sfx:${action.cue}:${action.hazardType}`;
+      case "level_up":
+        return `sfx:${action.cue}:${action.level}`;
       default:
         return `sfx:${action.cue}`;
     }
@@ -177,7 +198,7 @@ export function feedbackActionKey(action: FeedbackAction): string {
 
   switch (action.cue) {
     case "combat_hit":
-      return `vfx:${action.cue}:${action.targetId}:${action.amount}:${action.critical ? "crit" : "normal"}`;
+      return `vfx:${action.cue}:${action.targetId}:${action.amount}:${action.critical ? "crit" : "normal"}:${action.weaponType ?? "none"}`;
     case "combat_dodge":
     case "combat_death":
       return `vfx:${action.cue}:${action.targetId}`;
@@ -187,6 +208,8 @@ export function feedbackActionKey(action: FeedbackAction): string {
       return `vfx:${action.cue}:${action.bossId}`;
     case "hazard_trigger":
       return `vfx:${action.cue}:${action.hazardType}:${action.position.x},${action.position.y}`;
+    case "level_up":
+      return `vfx:${action.cue}:${action.playerId}:${action.level}`;
     default:
       return unreachableFeedbackAction(action);
   }
@@ -213,14 +236,16 @@ export function deriveFeedbackActions(input: FeedbackRouterInput): FeedbackActio
         {
           channel: "sfx",
           cue: "combat_hit",
-          critical: input.combat.kind === "crit"
+          critical: input.combat.kind === "crit",
+          ...(input.weaponType === undefined ? {} : { weaponType: input.weaponType })
         },
         {
           channel: "vfx",
           cue: "combat_hit",
           targetId: input.combat.targetId,
           amount: input.combat.amount,
-          critical: input.combat.kind === "crit"
+          critical: input.combat.kind === "crit",
+          ...(input.weaponType === undefined ? {} : { weaponType: input.weaponType })
         }
       ];
     case "combat:dodge":
@@ -331,6 +356,20 @@ export function deriveFeedbackActions(input: FeedbackRouterInput): FeedbackActio
           cue: "hazard_trigger",
           hazardType: input.hazardType,
           position: input.position
+        }
+      ];
+    case "player:levelup":
+      return [
+        {
+          channel: "sfx",
+          cue: "level_up",
+          level: input.level
+        },
+        {
+          channel: "vfx",
+          cue: "level_up",
+          playerId: input.playerId,
+          level: input.level
         }
       ];
     default:

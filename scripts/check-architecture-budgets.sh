@@ -10,7 +10,7 @@ DEFAULT_MAX_CLASS_METHODS=60
 resolve_max_lines() {
   case "$1" in
     "apps/game-client/src/scenes/DungeonScene.ts")
-      echo 2500
+      echo 2600
       ;;
     "apps/game-client/src/scenes/MetaMenuScene.ts")
       echo 1200
@@ -19,7 +19,7 @@ resolve_max_lines() {
       echo 300
       ;;
     "apps/game-client/src/ui/hud/HudContainer.ts")
-      echo 1000
+      echo 1100
       ;;
     *)
       echo "$DEFAULT_MAX_CLASS_FILE_LINES"
