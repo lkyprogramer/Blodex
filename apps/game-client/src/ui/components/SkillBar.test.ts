@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { UI_POLISH_FLAGS } from "../../config/uiFlags";
 import { renderSkillBar } from "./SkillBar";
 
 describe("renderSkillBar", () => {
@@ -55,31 +54,22 @@ describe("renderSkillBar", () => {
     expect(html).toContain("ready-flash");
   });
 
-  it("can disable cooldown overlay via feature flag", () => {
-    const previous = UI_POLISH_FLAGS.skillCooldownOverlayEnabled;
-    UI_POLISH_FLAGS.skillCooldownOverlayEnabled = false;
-
-    let html = "";
-    try {
-      html = renderSkillBar(
-        {
-          skillSlots: [
-            {
-              id: "frost_nova",
-              hotkey: "2",
-              name: "Frost Nova",
-              cooldownLeftMs: 4000,
-              baseCooldownMs: 8000,
-              outOfMana: false,
-              locked: false
-            }
-          ]
-        },
-        "png"
-      );
-    } finally {
-      UI_POLISH_FLAGS.skillCooldownOverlayEnabled = previous;
-    }
+  it("does not render cooldown overlay when cooldown metadata is missing", () => {
+    const html = renderSkillBar(
+      {
+        skillSlots: [
+          {
+            id: "frost_nova",
+            hotkey: "2",
+            name: "Frost Nova",
+            cooldownLeftMs: 0,
+            outOfMana: false,
+            locked: false
+          }
+        ]
+      },
+      "png"
+    );
 
     expect(html).not.toContain("skill-cooldown-overlay");
   });

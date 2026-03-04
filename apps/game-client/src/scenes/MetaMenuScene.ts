@@ -29,7 +29,6 @@ import {
   type MetaProgression
 } from "@blodex/core";
 import { BLUEPRINT_DEF_MAP, BLUEPRINT_DEFS, MUTATION_DEFS, TALENT_DEFS, UNLOCK_DEFS } from "@blodex/content";
-import { UI_POLISH_FLAGS } from "../config/uiFlags";
 import { getContentLocalizer, getLocale, resolveInitialLocale, setLocale, t } from "../i18n";
 import type { LocaleCode } from "../i18n/types";
 import { SaveManager } from "../systems/SaveManager";
@@ -134,7 +133,7 @@ export class MetaMenuScene extends Phaser.Scene {
     this.hideDomMenu();
     this.hideLanguageGate();
 
-    if (UI_POLISH_FLAGS.metaMenuDomEnabled && this.ensureMenuRoot()) {
+    if (this.ensureMenuRoot()) {
       this.renderDomMenu();
     } else {
       this.renderLegacyPhaserMenu();

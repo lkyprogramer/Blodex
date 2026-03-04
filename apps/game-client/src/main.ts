@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import { detectPreferredImageFormat } from "./assets/imageAsset";
-import { UI_POLISH_FLAGS } from "./config/uiFlags";
 import { initializeI18n } from "./i18n";
 import { DungeonScene } from "./scenes/DungeonScene";
 import { MetaMenuScene } from "./scenes/MetaMenuScene";
@@ -16,9 +15,7 @@ import "./styles/animations.css";
 
 const root = document.querySelector("#game-root") as HTMLDivElement;
 detectPreferredImageFormat();
-if (UI_POLISH_FLAGS.i18nInfrastructureEnabled) {
-  initializeI18n();
-}
+initializeI18n();
 
 function resolveGameViewport(): { width: number; height: number } {
   const mobileLayout = window.innerWidth <= 980;

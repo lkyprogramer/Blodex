@@ -144,7 +144,6 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "ui.summary.kills": "击杀",
   "ui.summary.loot": "掉落",
   "ui.summary.obol": "欧铂",
-  "ui.summary.soul": "灵魂",
   "ui.summary.score": "得分",
   "ui.summary.time": "耗时",
   "ui.summary.level": "等级",
