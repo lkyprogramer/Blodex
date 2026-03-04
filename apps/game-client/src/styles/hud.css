@@ -134,7 +134,7 @@ button,
   font-size: 11px;
   padding: 4px 7px;
   text-align: center;
-  letter-spacing: 0.36px;
+  letter-spacing: 0.4px;
   animation: fadeScaleIn var(--motion-fast) var(--ease-standard) both;
 }
 
