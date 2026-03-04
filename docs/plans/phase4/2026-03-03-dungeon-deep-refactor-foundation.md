@@ -50,7 +50,7 @@
    - 只做流程编排，不做状态规则判断
 
 3. **Domain Runtime Modules 层**
-   - `CombatRuntimeModule`
+   - `CombatSystem + EncounterController`（战斗运行态，不单列 `CombatRuntimeModule`）
    - `BossRuntimeModule`
    - `EventRuntimeModule`
    - `HazardRuntimeModule`
@@ -104,24 +104,25 @@ export interface DungeonRuntimeModule {
 
 1. 抽离 `DebugRuntimeModule`（debug 命令、热键、console API）
 2. 抽离 `RunPersistenceModule`（快照/调度/恢复）
-3. `DungeonScene` 目标降到 < 5000 行
+3. `DungeonScene` 目标降到 <= 5200 行
 
 ### M2（核心领域拆分）
 
 1. 抽离 `EventRuntimeModule`（事件节点、choice 结算、商人流程）
 2. 抽离 `BossRuntimeModule`（phase、attack、summon、telegraph）
-3. `DungeonScene` 目标降到 < 3500 行
+3. `DungeonScene` 目标降到 <= 4200 行
 
 ### M3（循环治理）
 
 1. 抽离 `HazardRuntimeModule` 与 `ProgressionRuntimeModule`
 2. 收敛帧循环为明确 pipeline（输入 -> 规则 -> 反馈 -> UI）
-3. `DungeonScene` 目标降到 < 2500 行
+3. `DungeonScene` 目标降到 <= 3000 行
 
 ### M4（收口）
 
 1. 清空白名单或将白名单仅保留历史兼容窗口
 2. 固化模块模板，作为后续新玩法的准入标准
+3. `DungeonScene` 目标降到 <= 2500 行（与主计划 DoD 对齐）
 
 ---
 

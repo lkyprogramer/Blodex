@@ -5,13 +5,13 @@
 
 **日期**: 2026-03-03
 **文档位置**: `docs/plans/phase4/2026-03-03-phase4-review-and-roadmap.md`
-**参考基线**: Phase 3 全部文档、当前代码库 `main@1968b8b`
+**参考基线**: Phase 3 全部文档、`docs/plans/phase4/metrics/2026-03-03-phase4-0-baseline.md`（4.0 冻结快照）
 
 ---
 
 ## 1. 直接结论
 
-Phase 3 在工程治理（R4）和 i18n 基础设施（R2/R3）上交付质量较高，但 R1 场景解耦的核心目标（DungeonScene < 2500 行）未达成——行数反增至 **6367 行**。游戏内容丰富度已远超 MVP，但多项机制停留在"数据已定义、运行时未完整接入"的半成品状态，玩家感知不到差异。
+Phase 3 在工程治理（R4）和 i18n 基础设施（R2/R3）上交付质量较高，但 R1 场景解耦的核心目标（DungeonScene < 2500 行）未达成——在 4.0 冻结时点 `DungeonScene` 仍为 **6301 行**。游戏内容丰富度已远超 MVP，但多项机制停留在"数据已定义、运行时未完整接入"的半成品状态，玩家感知不到差异。
 
 Phase 4 建议围绕两条主线推进：
 
@@ -26,10 +26,12 @@ Phase 4 建议围绕两条主线推进：
 
 | 文件 | 行数 | Phase 3 目标 | 差距 |
 |---|---:|---|---|
-| `DungeonScene.ts` | 6,367 | < 2,500 | **+3,867 行未达标** |
+| `DungeonScene.ts` | 6,301 | < 2,500 | **+3,801 行未达标** |
 | `Hud.ts` | 963 | — | 8 个职责混合 |
 | `MetaMenuScene.ts` | 1,093 | — | — |
 | `packages/core/src/contracts/types.ts` | 818 | — | — |
+
+> 注：以上为 4.0 冻结历史基线；2026-03-04 的 `origin/main` 实测 `DungeonScene.ts` 已降至 5200 行。阶段执行时应以“当前 main 实测”回填。
 
 ### 2.2 系统类拆分现状
 
@@ -98,7 +100,7 @@ i18nInfrastructureEnabled: true
 
 ### E1. DungeonScene 旧路径清除（工程 · P0）
 
-**问题**：R1 的 DoD 要求 DungeonScene < 2500 行，当前 6367 行。当前主要瓶颈不只是“旧路径残留”，而是 DungeonScene 仍承载了过多编排 + 业务 + UI 逻辑，且保留少量 feature flag 分支。
+**问题**：R1 的 DoD 要求 DungeonScene < 2500 行，4.0 冻结时点仍为 6301 行。当前主要瓶颈不只是“旧路径残留”，而是 DungeonScene 仍承载了过多编排 + 业务 + UI 逻辑，且保留少量 feature flag 分支。
 
 **影响**：
 - 维护成本翻倍（改 bug 需同步两条路径）

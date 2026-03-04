@@ -2,16 +2,36 @@
 
 **日期**: 2026-03-03  
 **文档位置**: `docs/plans/phase4/2026-03-03-phase4-integrated-execution-plan.md`  
-**整合来源**:
+**整合来源（原始草案）**:
 1. `docs/plans/phase4/2026-03-03-phase4-review-and-roadmap.md`
 2. `docs/plans/phase4/2026-03-03-dungeon-deep-refactor-foundation.md`
 
-**当前基线（工作区实测）**:
+**执行子文档索引（按顺序）**:
+1. `docs/plans/phase4/2026-03-03-phase4-0-baseline-freeze-and-governance.md`
+2. `docs/plans/phase4/2026-03-03-phase4-1-scene-decomposition-m1-debug-save.md`
+3. `docs/plans/phase4/2026-03-03-phase4-2-scene-decomposition-m2-event-boss.md`
+4. `docs/plans/phase4/2026-03-03-phase4-3-scene-decomposition-m3-hazard-progression.md`
+5. `docs/plans/phase4/2026-03-03-phase4-4-engineering-convergence-e2-e3-e4.md`
+6. `docs/plans/phase4/2026-03-03-phase4-5-experience-enhancement-i-g1-g2-g3-g5.md`
+7. `docs/plans/phase4/2026-03-03-phase4-6-experience-enhancement-ii-g4-g6-g7.md`
+8. `docs/plans/phase4/2026-03-03-phase4-7-release-closure-and-dod.md`
+9. `docs/plans/phase4/templates/phase4-pr-checklist.md`
+10. `docs/plans/phase4/templates/phase4-smoke-matrix.md`
+11. `docs/plans/phase4/metrics/2026-03-03-phase4-0-baseline.md`
+
+**历史基线（4.0 冻结）**:
 1. `apps/game-client/src/scenes/DungeonScene.ts`: 6301 行
 2. `apps/game-client/src/ui/Hud.ts`: 963 行
 3. `apps/game-client/src/scenes/MetaMenuScene.ts`: 1093 行
 4. `packages/core/src/contracts/types.ts`: 818 行
-5. 架构预算检查已接入：`scripts/check-architecture-budgets.sh` + `pnpm ci:check`
+5. 快照文档：`docs/plans/phase4/metrics/2026-03-03-phase4-0-baseline.md`
+
+**当前基线（main 实测，2026-03-04 / `origin/main@8031f3a`）**:
+1. `apps/game-client/src/scenes/DungeonScene.ts`: 5200 行
+2. `apps/game-client/src/ui/Hud.ts`: 963 行
+3. `apps/game-client/src/scenes/MetaMenuScene.ts`: 1093 行
+4. `packages/core/src/contracts/types.ts`: 818 行
+5. 预算快照：`DungeonScene 5200/7000 (129 methods)`，`MetaMenuScene 1093/1300`，`Hud 963/1100`
 
 ---
 
@@ -43,6 +63,13 @@
 5. `MetaProgression` 如发生 schema 演进，必须提供向后兼容加载与测试。
 6. 中英文文案同步更新，不允许单语变更落地。
 
+### 2.3 决策冻结（本轮核实补充）
+
+1. `CombatRuntimeModule` 不单列落地；战斗职责由 `CombatSystem + EncounterController` 承担，避免重复抽象。
+2. G6（Endless Mutator）状态落点：运行态放在 `RunState`（随单局保存恢复），不放 `MetaProgression`。
+3. G7（延迟收益）持久化采用 `RunSaveDataV2` 可选字段，缺省值为空数组，保证旧档可加载。
+4. 4.2~4.7 每阶段开始前必须刷新“当前 main 实测值”，禁止继续复用 4.0 的 6301 静态值。
+
 ---
 
 ## 3. 现状校准（作为执行起点）
@@ -51,7 +78,7 @@
 
 | 项 | 现状 | 结论 |
 |---|---|---|
-| DungeonScene 体量 | 6301 行，161 methods | God Class 仍在，需继续拆分 |
+| DungeonScene 体量 | 5200 行，129 methods | 4.1 已完成第一轮瘦身，仍需继续拆分 |
 | Feature Flag | `UI_POLISH_FLAGS` 5 项均为 `true`，仍有引用 | 可开始清理死分支 |
 | 架构门禁 | `check:architecture-budget` 已接入 `ci:check` | 可用于防回退 |
 | HUD | 963 行 + 多区域 `innerHTML` | 高耦合，需拆面板与增量更新 |
@@ -83,13 +110,14 @@
 
 ### 4.2 目标模块清单
 
-1. `DebugRuntimeModule`
-2. `RunPersistenceModule`
-3. `EventRuntimeModule`
-4. `BossRuntimeModule`
-5. `HazardRuntimeModule`
-6. `ProgressionRuntimeModule`
-7. `HudCompositionModule`（或等价 UI 分层）
+1. `CombatSystem + EncounterController`（承载 combat runtime，不单列 `CombatRuntimeModule`）
+2. `DebugRuntimeModule`
+3. `RunPersistenceModule`
+4. `EventRuntimeModule`
+5. `BossRuntimeModule`
+6. `HazardRuntimeModule`
+7. `ProgressionRuntimeModule`
+8. `HudCompositionModule`（或等价 UI 分层）
 
 ### 4.3 统一模块接口
 
@@ -122,7 +150,7 @@ export interface DungeonRuntimeModule {
 
 ## 6. 分阶段详细执行计划
 
-## 6.0 Phase 4.0（基线冻结与规范收敛）
+### 6.0 Phase 4.0（基线冻结与规范收敛）
 
 **目标**: 建立统一执行基线，避免后续分叉。
 
@@ -140,7 +168,7 @@ export interface DungeonRuntimeModule {
 1. `pnpm check:architecture-budget` 通过。
 2. 团队按本文件执行，不再新增平行路线图。
 
-## 6.1 Phase 4.1（Scene 深拆 M1：Debug + Save）
+### 6.1 Phase 4.1（Scene 深拆 M1：Debug + Save）
 
 **目标**: 从 Scene 迁出低耦合高收益区域，建立迁移节奏。
 
@@ -161,7 +189,7 @@ export interface DungeonRuntimeModule {
 3. `pnpm ci:check` 通过。
 4. 手动验证：开局 -> 存档 -> 刷新 -> 读档恢复一致。
 
-## 6.2 Phase 4.2（Scene 深拆 M2：Event + Boss）
+### 6.2 Phase 4.2（Scene 深拆 M2：Event + Boss）
 
 **目标**: 迁出最复杂流程块，显著降低 Scene 认知负担。
 
@@ -180,7 +208,7 @@ export interface DungeonRuntimeModule {
 2. 事件与 Boss 代码在模块内具备可测试入口。
 3. 手动验证：至少触发 2 个随机事件 + 1 次商人 + 1 场 Boss。
 
-## 6.3 Phase 4.3（Scene 深拆 M3：Hazard + Progression）
+### 6.3 Phase 4.3（Scene 深拆 M3：Hazard + Progression）
 
 **目标**: 收敛主循环，完成 Scene 架构重心转移。
 
@@ -199,7 +227,7 @@ export interface DungeonRuntimeModule {
 2. 帧循环职责可读且稳定。
 3. Normal 1->5 层 + Boss 冒烟通过。
 
-## 6.4 Phase 4.4（工程收敛：E2 + E3 + E4）
+### 6.4 Phase 4.4（工程收敛：E2 + E3 + E4）
 
 **目标**: 清理技术债并补全重构安全网。
 
@@ -207,13 +235,14 @@ export interface DungeonRuntimeModule {
 1. 清理 `UI_POLISH_FLAGS` 相关死分支与配置。
 2. `Hud.ts` 拆分为面板组件，容器化编排。
 3. 补齐 `AISystem` / `MovementSystem` / `MonsterSpawnSystem` 单测。
-4. 收紧预算阈值（包括白名单项）。
+4. 清理 Scene 迁移期残留壳层（临时适配器、重复日志映射、过时委托）。
+5. 收紧预算阈值（包括白名单项）。
 
 **建议 PR 顺序**:
 1. PR-10: Flag 清理。
 2. PR-11: HUD 面板拆分（结构）。
 3. PR-12: HUD 增量渲染（性能）。
-4. PR-13: 三大系统测试补齐。
+4. PR-13: 三大系统测试补齐 + Scene 壳层收敛。
 
 **出口门禁**:
 1. `DungeonScene.ts` <= 2500 行。
@@ -221,7 +250,10 @@ export interface DungeonRuntimeModule {
 3. `uiFlags.ts` 无业务引用（可删除或仅保留空壳过渡）。
 4. 三个系统分支覆盖率 >= 70%。
 
-## 6.5 Phase 4.5（体验增强 I：G1 + G2 + G3 + G5）
+**行数收敛说明**:
+1. `4.3 -> 4.4` 的 Scene 降行不依赖 HUD 拆分单点；主要来自 flag 死分支清理 + 迁移期壳层删除 + 调用链收敛。
+
+### 6.5 Phase 4.5（体验增强 I：G1 + G2 + G3 + G5）
 
 **目标**: 完成核心战斗反馈闭环。
 
@@ -243,7 +275,7 @@ export interface DungeonRuntimeModule {
 3. 升级触发 VFX/SFX 同步。
 4. Tooltip 对比和 HUD 高亮符合预期。
 
-## 6.6 Phase 4.6（体验增强 II：G4 + G6 + G7）
+### 6.6 Phase 4.6（体验增强 II：G4 + G6 + G7）
 
 **目标**: 强化后期玩法深度与重玩价值。
 
@@ -252,6 +284,8 @@ export interface DungeonRuntimeModule {
 2. G6: Endless 规则级突变（在现有缩放/affix 基础上叠加）。
 3. G7: 事件与商人策略深化（条件化/延迟收益 + 难度维度）。
 4. 如新增 Meta 字段，补齐迁移逻辑与测试。
+5. G6 持久化决策：`mutatorActiveIds/mutatorState` 写入 `RunState`（随 run 保存），不写入 `MetaProgression`。
+6. G7 延迟收益字段：在 `RunSaveDataV2` 增加可选 `deferredOutcomes[]`（含 `outcomeId/source/trigger/reward/status`），默认 `[]`。
 
 **建议 PR 顺序**:
 1. PR-18: Boss telegraph。
@@ -264,8 +298,9 @@ export interface DungeonRuntimeModule {
 2. Endless 第 8/11/14 层有可观察突变叠加。
 3. 事件至少 3 个新增非同质分支。
 4. 老存档加载回归通过。
+5. save->restore 后 `deferredOutcomes[]` 不丢失且不重复结算。
 
-## 6.7 Phase 4.7（收口与发布）
+### 6.7 Phase 4.7（收口与发布）
 
 **目标**: 形成可长期维护的稳定基线。
 
