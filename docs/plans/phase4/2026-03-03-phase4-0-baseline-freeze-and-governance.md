@@ -85,8 +85,10 @@
 1. 唯一主计划文档：`2026-03-03-phase4-integrated-execution-plan.md`。
 2. 旧文档迁移提示：原路线图与地基文档顶部均指向主计划。
 3. 架构预算门禁：`scripts/check-architecture-budgets.sh` 与 `package.json` 的 `check:architecture-budget`/`ci:check` 链路。
-4. 阶段实施文档：本文件（4.0）作为 4.1~4.7 的模板基准。
-5. 4.0 基线快照（行数、预算、flag）写入文档并可复核。
+4. PR 模板：`docs/plans/phase4/templates/phase4-pr-checklist.md`。
+5. 冒烟矩阵模板：`docs/plans/phase4/templates/phase4-smoke-matrix.md`。
+6. 4.0 基线快照：`docs/plans/phase4/metrics/2026-03-03-phase4-0-baseline.md`。
+7. 阶段实施文档：本文件（4.0）作为 4.1~4.7 的模板基准。
 
 ---
 
@@ -139,7 +141,7 @@
 
 **目标**: 把后续 4.1~4.7 的交付标准前置为模板。
 
-**建议新增文件**:
+**落地文件**:
 
 1. `docs/plans/phase4/templates/phase4-pr-checklist.md`
 2. `docs/plans/phase4/templates/phase4-smoke-matrix.md`
@@ -164,7 +166,7 @@
 
 **目标**: 形成 4.1 的可比较起点。
 
-**建议新增文件**:
+**落地文件**:
 
 1. `docs/plans/phase4/metrics/2026-03-03-phase4-0-baseline.md`
 
@@ -216,6 +218,17 @@ wc -l apps/game-client/src/scenes/DungeonScene.ts \
 
 # flag 引用清单
 rg -n "UI_POLISH_FLAGS|sceneRefactorR1Enabled|metaMenuDomEnabled|runSummaryV2Enabled|skillCooldownOverlayEnabled|i18nInfrastructureEnabled" apps/game-client/src -S
+```
+
+## 6.4 Step D：模板与快照文件核验
+
+```bash
+# 模板文件存在性
+ls docs/plans/phase4/templates/phase4-pr-checklist.md
+ls docs/plans/phase4/templates/phase4-smoke-matrix.md
+
+# 基线快照文件存在性
+ls docs/plans/phase4/metrics/2026-03-03-phase4-0-baseline.md
 ```
 
 ---
