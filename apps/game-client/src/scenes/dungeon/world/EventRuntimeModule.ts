@@ -1,5 +1,12 @@
 import Phaser from "phaser";
-import { canPayEventCost, pickRandomEvent, rollEventRisk, type RandomEventDef, type RuntimeEventNodeState } from "@blodex/core";
+import {
+  canPayEventCost,
+  pickRandomEvent,
+  resolveEndlessMutatorModifiers,
+  rollEventRisk,
+  type RandomEventDef,
+  type RuntimeEventNodeState
+} from "@blodex/core";
 import { RANDOM_EVENT_DEFS } from "@blodex/content";
 import { t } from "../../../i18n";
 import { EventResolutionService } from "./EventResolutionService";
@@ -182,7 +189,8 @@ export class EventRuntimeModule {
     }
     host.tryDiscoverBlueprints("random_event", nowMs, eventDef.id);
 
-    if (rollEventRisk(choice, host.eventRng) && choice.risk !== undefined) {
+    const eventRiskBonus = resolveEndlessMutatorModifiers(host.run.mutatorActiveIds ?? []).eventRiskChanceBonus;
+    if (rollEventRisk(choice, host.eventRng, eventRiskBonus) && choice.risk !== undefined) {
       this.options.resolutionService.applyPenalty(
         choice.risk.penalty,
         nowMs,

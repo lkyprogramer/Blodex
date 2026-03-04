@@ -78,10 +78,15 @@ export class FloorProgressionModule {
     host.run = enterNextFloor(host.run);
     if (host.run.inEndless) {
       host.run = advanceEndlessFloor(host.run);
-      host.run = addRunObols(host.run, endlessFloorClearBonus(host.run.currentFloor));
+      host.syncEndlessMutators(nowMs);
+      host.run = addRunObols(
+        host.run,
+        endlessFloorClearBonus(host.run.currentFloor, host.run.mutatorActiveIds ?? [])
+      );
     } else {
       host.run = addRunObols(host.run, 5);
     }
     host.progressionRuntimeModule.setupFloor(host.run.currentFloor, false);
+    host.deferredOutcomeRuntime.settle("floor_reached", nowMs);
   }
 }

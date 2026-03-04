@@ -52,6 +52,7 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "ui.hud.run.mode.abyss_base": "深渊",
   "ui.hud.run.mode.abyss": "深渊 {floor}",
   "ui.hud.run.mapping_hint": "制图卷轴已生效：目标位置已在地图上标记。",
+  "ui.hud.run.mutators": "突变词条：{mutators}",
   "ui.hud.run.critical_hint": "生命值过低：请立即使用药剂或拉开距离。",
   "ui.hud.death.title": "你已阵亡",
   "ui.hud.death.subtitle": "深渊再度吞噬了一名挑战者。",

@@ -132,6 +132,29 @@ export class RunSaveSnapshotBuilder {
       rngCursor: this.collectRngCursor(),
       blueprintFoundIdsInRun: [...host.blueprintFoundIdsInRun],
       selectedMutationIds: [...host.mutationRuntime.activeIds],
+      deferredOutcomes: host.deferredOutcomes.map((outcome: Record<string, any>) => ({
+        outcomeId: outcome.outcomeId,
+        source: outcome.source,
+        trigger:
+          outcome.trigger?.type === "floor_reached"
+            ? {
+                type: "floor_reached",
+                value: Math.max(1, Math.floor(outcome.trigger.value ?? host.run.currentFloor))
+              }
+            : outcome.trigger?.type === "boss_kill"
+              ? {
+                  type: "boss_kill"
+                }
+              : {
+                  type: "run_end"
+                },
+        reward: {
+          ...(outcome.reward?.obol === undefined ? {} : { obol: outcome.reward.obol }),
+          ...(outcome.reward?.shard === undefined ? {} : { shard: outcome.reward.shard }),
+          ...(outcome.reward?.itemDefId === undefined ? {} : { itemDefId: outcome.reward.itemDefId })
+        },
+        status: outcome.status
+      })),
       lease: {
         tabId: host.saveManager.getTabId(),
         renewedAtMs: wallNowMs,

@@ -8,6 +8,11 @@ import {
   resolveEndlessScalingMultiplier,
   toEndlessFloorConfig
 } from "../endless";
+import {
+  describeEndlessMutator,
+  resolveEndlessMutatorModifiers,
+  syncEndlessMutatorState
+} from "../endlessMutator";
 import { createInitialMeta } from "../run";
 
 describe("endless", () => {
@@ -54,5 +59,48 @@ describe("endless", () => {
     expect(endlessConfig.floorNumber).toBe(8);
     expect(endlessConfig.isBossFloor).toBe(false);
     expect(endlessConfig.monsterHpMultiplier).toBeGreaterThan(2);
+  });
+
+  it("activates endless mutators by floor milestone", () => {
+    const run = {
+      startedAtMs: 0,
+      runSeed: "seed",
+      difficulty: "normal" as const,
+      difficultyModifier: {
+        monsterHealthMultiplier: 1,
+        monsterDamageMultiplier: 1,
+        affixPolicy: "default" as const,
+        soulShardMultiplier: 1
+      },
+      currentFloor: 11,
+      currentBiomeId: "bone_throne" as const,
+      floor: 11,
+      floorsCleared: 6,
+      kills: 0,
+      totalKills: 0,
+      lootCollected: 0,
+      challengeSuccessCount: 0,
+      inEndless: true,
+      endlessFloor: 6,
+      endlessKills: 0,
+      mutatorActiveIds: [],
+      mutatorState: {},
+      runMode: "normal" as const,
+      runEconomy: { obols: 0 }
+    };
+    const synced = syncEndlessMutatorState(run);
+    expect(synced.activatedIds).toEqual(["pack_hunt", "entropy_tax"]);
+    expect(synced.run.mutatorActiveIds).toEqual(["pack_hunt", "entropy_tax"]);
+    expect(describeEndlessMutator("pack_hunt")).toContain("Pack Hunt");
+  });
+
+  it("applies mutator modifiers to endless rewards and affix budget", () => {
+    const activeMutators = ["pack_hunt", "soul_siphon"];
+    expect(endlessFloorClearBonus(14, activeMutators)).toBeGreaterThan(endlessFloorClearBonus(14));
+    expect(endlessKillShardReward(14, activeMutators)).toBeGreaterThan(endlessKillShardReward(14));
+    expect(resolveEndlessAffixBonusCount(10, activeMutators)).toBeGreaterThan(resolveEndlessAffixBonusCount(10));
+    const modifiers = resolveEndlessMutatorModifiers(activeMutators);
+    expect(modifiers.extraAffixCount).toBe(1);
+    expect(modifiers.floorObolBonusPercent).toBeGreaterThan(0);
   });
 });

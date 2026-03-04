@@ -177,10 +177,139 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
         rewards: []
       }
     ]
+  },
+  {
+    id: "abyss_contract",
+    name: "Abyss Contract",
+    description: "An ink-black contract promises delayed profit at a steep premium.",
+    floorRange: { min: 6, max: 30 },
+    spawnWeight: 9,
+    choices: [
+      {
+        id: "sign_heavy",
+        name: "Sign Heavy Clause",
+        description: "Pay Obol now for a large run-end payout.",
+        cost: { type: "obol", amount: 14 },
+        rewards: [
+          {
+            type: "deferred_outcome",
+            source: "event",
+            trigger: { type: "run_end" },
+            reward: { obol: 38 }
+          }
+        ]
+      },
+      {
+        id: "sign_safe",
+        name: "Sign Safe Clause",
+        description: "Small immediate gain with smaller delayed payout.",
+        rewards: [
+          { type: "obol", amount: 6 },
+          {
+            type: "deferred_outcome",
+            source: "event",
+            trigger: { type: "run_end" },
+            reward: { obol: 14 }
+          }
+        ]
+      },
+      {
+        id: "refuse",
+        name: "Refuse",
+        description: "Walk away and keep momentum.",
+        rewards: []
+      }
+    ]
+  },
+  {
+    id: "war_trophy_ledger",
+    name: "War Trophy Ledger",
+    description: "A quartermaster ledger offers boss-bounty claims in advance.",
+    floorRange: { min: 7, max: 30 },
+    spawnWeight: 8,
+    choices: [
+      {
+        id: "claim_weapon",
+        name: "Register Weapon Claim",
+        description: "Receive a forged weapon if the next boss falls.",
+        cost: { type: "obol", amount: 10 },
+        rewards: [
+          {
+            type: "deferred_outcome",
+            source: "event",
+            trigger: { type: "boss_kill" },
+            reward: { itemDefId: "item_weapon_03" }
+          }
+        ]
+      },
+      {
+        id: "claim_essence",
+        name: "Register Essence Claim",
+        description: "Bank shard reward for run end instead.",
+        rewards: [
+          {
+            type: "deferred_outcome",
+            source: "event",
+            trigger: { type: "run_end" },
+            reward: { shard: 18 }
+          }
+        ]
+      },
+      {
+        id: "ignore",
+        name: "Ignore",
+        description: "No claim this time.",
+        rewards: []
+      }
+    ]
+  },
+  {
+    id: "echo_loan",
+    name: "Echo Loan",
+    description: "A broker offers floor-indexed credit backed by future loot rights.",
+    floorRange: { min: 8, max: 30 },
+    spawnWeight: 7,
+    choices: [
+      {
+        id: "take_floor_10_note",
+        name: "Take Floor 10 Note",
+        description: "Unlock payout once floor 10 is reached.",
+        rewards: [
+          {
+            type: "deferred_outcome",
+            source: "event",
+            trigger: { type: "floor_reached", value: 10 },
+            reward: { obol: 22 }
+          }
+        ]
+      },
+      {
+        id: "take_floor_14_note",
+        name: "Take Floor 14 Note",
+        description: "Bigger delayed payout, but mana backlash risk.",
+        rewards: [
+          {
+            type: "deferred_outcome",
+            source: "event",
+            trigger: { type: "floor_reached", value: 14 },
+            reward: { obol: 34 }
+          }
+        ],
+        risk: {
+          chance: 0.4,
+          penalty: { type: "mana", amount: 20 }
+        }
+      },
+      {
+        id: "decline",
+        name: "Decline",
+        description: "No debt, no upside.",
+        rewards: []
+      }
+    ]
   }
 ];
 
 export const RANDOM_EVENT_MAP: Record<RandomEventDef["id"], RandomEventDef> = Object.fromEntries(
   RANDOM_EVENT_DEFS.map((eventDef) => [eventDef.id, eventDef])
 ) as Record<RandomEventDef["id"], RandomEventDef>;
-

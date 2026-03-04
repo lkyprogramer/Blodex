@@ -4,6 +4,7 @@ import {
   canPayEventCost,
   createMerchantOffers,
   pickRandomEvent,
+  resolveEventRiskChance,
   rollEventRisk
 } from "../randomEvent";
 import { SeededRng } from "../rng";
@@ -69,7 +70,19 @@ describe("randomEvent", () => {
       rewards: [],
       risk: { chance: 1, penalty: { type: "health", amount: 1 } }
     };
-    expect(rollEventRisk(risky, new SeededRng("risk"))).toBe(true);
+    expect(resolveEventRiskChance(risky)).toBe(0.95);
+    expect(
+      rollEventRisk(
+        risky,
+        {
+          next: () => 0.1,
+          nextInt: () => 0,
+          pick: <T>(items: T[]): T => items[0] as T
+        },
+        0
+      )
+    ).toBe(true);
+    expect(resolveEventRiskChance(risky, -0.2)).toBeCloseTo(0.8);
   });
 
   it("creates unique merchant offers with bounded prices", () => {
@@ -90,5 +103,25 @@ describe("randomEvent", () => {
       expect(offer.priceObol).toBeGreaterThanOrEqual(5);
       expect(offer.priceObol).toBeLessThanOrEqual(15);
     }
+  });
+
+  it("applies merchant pricing policy deterministically", () => {
+    const offers = createMerchantOffers(
+      [
+        { itemDefId: "a", weight: 10, minFloor: 1 },
+        { itemDefId: "b", weight: 10, minFloor: 1 },
+        { itemDefId: "c", weight: 10, minFloor: 1 }
+      ],
+      12,
+      new SeededRng("merchant-policy"),
+      3,
+      {
+        floorPriceStep: 2,
+        scarcitySurcharge: 1,
+        priceMultiplier: 1.2
+      }
+    );
+    expect(offers).toHaveLength(3);
+    expect(offers.every((offer) => offer.priceObol >= 9)).toBe(true);
   });
 });

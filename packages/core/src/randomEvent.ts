@@ -13,6 +13,14 @@ interface WeightedCandidate {
   minFloor: number;
 }
 
+export interface MerchantPricingPolicy {
+  minPrice?: number;
+  maxPrice?: number;
+  floorPriceStep?: number;
+  scarcitySurcharge?: number;
+  priceMultiplier?: number;
+}
+
 function pickWeighted<T>(
   entries: T[],
   rng: RngLike,
@@ -73,18 +81,27 @@ export function canPayEventCost(
   return obols >= cost.amount;
 }
 
-export function rollEventRisk(choice: EventChoice, rng: RngLike): boolean {
+export function resolveEventRiskChance(choice: EventChoice, riskChanceBonus = 0): number {
   if (choice.risk === undefined) {
+    return 0;
+  }
+  return Math.min(0.95, Math.max(0, choice.risk.chance + riskChanceBonus));
+}
+
+export function rollEventRisk(choice: EventChoice, rng: RngLike, riskChanceBonus = 0): boolean {
+  const chance = resolveEventRiskChance(choice, riskChanceBonus);
+  if (chance <= 0) {
     return false;
   }
-  return rng.next() < choice.risk.chance;
+  return rng.next() < chance;
 }
 
 export function createMerchantOffers(
   candidates: WeightedCandidate[],
   floor: number,
   rng: RngLike,
-  count = 3
+  count = 3,
+  pricing: MerchantPricingPolicy = {}
 ): MerchantOffer[] {
   const valid = candidates.filter((candidate) => candidate.minFloor <= floor);
   if (valid.length === 0 || count <= 0) {
@@ -93,6 +110,12 @@ export function createMerchantOffers(
 
   const pool = [...valid];
   const offers: MerchantOffer[] = [];
+
+  const minPrice = Math.max(1, Math.floor(pricing.minPrice ?? 5));
+  const maxPrice = Math.max(minPrice, Math.floor(pricing.maxPrice ?? 15));
+  const floorPriceStep = Math.max(0, Math.floor(pricing.floorPriceStep ?? 0));
+  const scarcitySurcharge = Math.max(0, Math.floor(pricing.scarcitySurcharge ?? 0));
+  const priceMultiplier = Math.max(0.5, pricing.priceMultiplier ?? 1);
 
   while (offers.length < count && pool.length > 0) {
     const picked = pickWeighted(pool, rng, (entry) => entry.weight);
@@ -103,10 +126,15 @@ export function createMerchantOffers(
     if (idx >= 0) {
       pool.splice(idx, 1);
     }
+    const basePrice = rng.nextInt(minPrice, maxPrice);
+    const adjustedPrice = Math.max(
+      minPrice,
+      Math.floor((basePrice + floorPriceStep + scarcitySurcharge) * priceMultiplier)
+    );
     offers.push({
       offerId: `offer-${offers.length}`,
       itemDefId: picked.itemDefId,
-      priceObol: rng.nextInt(5, 15)
+      priceObol: adjustedPrice
     });
   }
 

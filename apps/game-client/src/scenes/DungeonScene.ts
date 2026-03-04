@@ -14,6 +14,7 @@ import {
   collectUnlockedWeaponTypes,
   CONSUMABLE_DEFS,
   buildMutationDefMap,
+  describeEndlessMutator,
   createInitialConsumableState,
   createMerchantOffers,
   createChallengeRoomState,
@@ -96,6 +97,7 @@ import {
   SeededRng,
   selectBossAttack,
   resolveBossAttack,
+  syncEndlessMutatorState,
   useConsumable,
   upsertDailyHistory,
   type CombatEvent,
@@ -104,6 +106,7 @@ import {
   type ChallengeRoomState,
   type ConsumableId,
   type ConsumableState,
+  type DeferredOutcomeState,
   type DungeonLayout,
   type DifficultyMode,
   type EventReward,
@@ -191,6 +194,7 @@ import { DiagnosticsService } from "./dungeon/diagnostics/DiagnosticsService";
 import { BossCombatService } from "./dungeon/encounter/BossCombatService";
 import { BossRuntimeModule } from "./dungeon/encounter/BossRuntimeModule";
 import { BossSpawnService } from "./dungeon/encounter/BossSpawnService";
+import { BossTelegraphPresenter } from "./dungeon/encounter/BossTelegraphPresenter";
 import { EncounterController } from "./dungeon/encounter/EncounterController";
 import { PlayerActionModule } from "./dungeon/encounter/PlayerActionModule";
 import { entityLabel } from "./dungeon/logging/labelResolvers";
@@ -214,6 +218,7 @@ import {
 } from "../ui/hud/compare/StatDeltaHighlighter";
 import { EventResolutionService } from "./dungeon/world/EventResolutionService";
 import { EventRuntimeModule } from "./dungeon/world/EventRuntimeModule";
+import { DeferredOutcomeRuntime } from "./dungeon/world/DeferredOutcomeRuntime";
 import { FloorProgressionModule } from "./dungeon/world/FloorProgressionModule";
 import { HazardRuntimeModule } from "./dungeon/world/HazardRuntimeModule";
 import { MerchantFlowService } from "./dungeon/world/MerchantFlowService";
@@ -340,6 +345,9 @@ export class DungeonScene extends Phaser.Scene {
       // UI sink is bound in create().
     }
   }, getI18nService());
+  private readonly deferredOutcomeRuntime = new DeferredOutcomeRuntime({
+    host: this as unknown as Record<string, unknown>
+  });
   private saveCoordinator!: SaveCoordinator;
   private debugRuntimeModule!: DebugRuntimeModule;
   private runPersistenceModule!: RunPersistenceModule;
@@ -470,6 +478,7 @@ export class DungeonScene extends Phaser.Scene {
   private merchantOffers: MerchantOffer[] = [];
   private eventPanelOpen = false;
   private mapRevealActive = false;
+  private deferredOutcomes: DeferredOutcomeState[] = [];
   private debugCheatsEnabled = false;
   private diagnosticsEnabled = false;
   private cleanupStarted = false;
@@ -729,9 +738,13 @@ export class DungeonScene extends Phaser.Scene {
     const bossSpawnService = new BossSpawnService({
       host: this as unknown as Record<string, any>
     });
+    const bossTelegraphPresenter = new BossTelegraphPresenter({
+      host: this as unknown as Record<string, any>
+    });
     const bossCombatService = new BossCombatService({
       host: this as unknown as Record<string, any>,
-      spawnService: bossSpawnService
+      spawnService: bossSpawnService,
+      telegraphPresenter: bossTelegraphPresenter
     });
     this.bossRuntimeModule = new BossRuntimeModule({
       host: this as unknown as Record<string, any>,
@@ -916,6 +929,7 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     if (this.floorConfig.isBossFloor && this.bossState !== null && this.bossState.health <= 0) {
+      this.deferredOutcomeRuntime.settle("boss_kill", nowMs);
       if (this.run.inEndless) {
         this.runCompletionModule.finishRun(true);
       } else {
@@ -1240,6 +1254,7 @@ export class DungeonScene extends Phaser.Scene {
     this.mapRevealActive = false;
     this.eventPanelOpen = false;
     this.merchantOffers = [];
+    this.deferredOutcomes = [];
     this.eventRuntimeModule.destroyEventNode();
     const run = createRunState(runSeed, this.time.now, this.selectedDifficulty);
     this.run =
@@ -1501,6 +1516,23 @@ export class DungeonScene extends Phaser.Scene {
       obolMultiplier: Math.max(0, 1 + bonus.obol),
       soulShardMultiplier: Math.max(0, 1 + bonus.soul)
     };
+  }
+
+  private syncEndlessMutators(nowMs: number): void {
+    const synced = syncEndlessMutatorState(this.run);
+    this.run = synced.run;
+    if (synced.activatedIds.length === 0) {
+      return;
+    }
+    for (const mutatorId of synced.activatedIds) {
+      this.runLog.append(
+        `Endless mutator activated: ${describeEndlessMutator(mutatorId)}.`,
+        "warn",
+        nowMs
+      );
+    }
+    this.hudDirty = true;
+    this.scheduleRunSave();
   }
 
   private resolveHiddenRoomRevealRadius(): number {
@@ -2186,7 +2218,9 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private spawnMonsters(): void {
-    const endlessAffixBonus = this.run.inEndless ? resolveEndlessAffixBonusCount(this.run.currentFloor) : 0;
+    const endlessAffixBonus = this.run.inEndless
+      ? resolveEndlessAffixBonusCount(this.run.currentFloor, this.run.mutatorActiveIds ?? [])
+      : 0;
     const monsters = this.monsterSpawnSystem.createMonsters({
       dungeon: this.dungeon,
       playerPosition: this.player.position,
@@ -2325,6 +2359,9 @@ export class DungeonScene extends Phaser.Scene {
       runMode: this.run.runMode,
       inEndless: this.run.inEndless,
       endlessFloor: this.run.endlessFloor,
+      endlessMutators: (this.run.mutatorActiveIds ?? []).map((mutatorId) =>
+        describeEndlessMutator(mutatorId)
+      ),
       biome: this.contentLocalizer.biomeName(this.currentBiome.id, this.currentBiome.name),
       kills: this.run.kills,
       lootCollected: this.run.lootCollected,

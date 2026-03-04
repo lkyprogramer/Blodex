@@ -291,11 +291,16 @@ export class DebugCommandRegistry {
     this.host.run = enterNextFloor(this.host.run);
     if (this.host.run.inEndless) {
       this.host.run = advanceEndlessFloor(this.host.run);
-      this.host.run = addRunObols(this.host.run, endlessFloorClearBonus(this.host.run.currentFloor));
+      this.host.syncEndlessMutators(this.host.time.now);
+      this.host.run = addRunObols(
+        this.host.run,
+        endlessFloorClearBonus(this.host.run.currentFloor, this.host.run.mutatorActiveIds ?? [])
+      );
     } else {
       this.host.run = addRunObols(this.host.run, 5);
     }
     this.host.progressionRuntimeModule.setupFloor(this.host.run.currentFloor, false);
+    this.host.deferredOutcomeRuntime.settle("floor_reached", this.host.time.now);
     this.host.flushRunSave();
     this.debugLog(
       `Advanced to floor ${this.host.run.currentFloor}${this.host.run.inEndless ? ` (endless ${this.host.run.endlessFloor})` : ""}.`,

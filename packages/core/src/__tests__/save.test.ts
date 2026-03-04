@@ -37,6 +37,9 @@ function makeRunState(): RunState {
     challengeSuccessCount: 1,
     inEndless: false,
     endlessFloor: 0,
+    mutatorActiveIds: [],
+    mutatorState: {},
+    deferredShardBonus: 0,
     runMode: "normal",
     runEconomy: {
       obols: 9,
@@ -208,6 +211,20 @@ function makeSave(): RunSaveDataV2 {
     rngCursor: makeRngCursor(),
     blueprintFoundIdsInRun: ["bp_1"],
     selectedMutationIds: ["mut_1"],
+    deferredOutcomes: [
+      {
+        outcomeId: "event-1",
+        source: "event",
+        trigger: {
+          type: "floor_reached",
+          value: 4
+        },
+        reward: {
+          obol: 15
+        },
+        status: "pending"
+      }
+    ],
     lease: {
       tabId: "tab-a",
       leaseUntilMs: 1000,
@@ -217,11 +234,23 @@ function makeSave(): RunSaveDataV2 {
 }
 
 function toV1(save: RunSaveDataV2): RunSaveDataV1 {
-  const { challengeSuccessCount, inEndless, endlessFloor, runMode, ...legacyRun } = save.run;
+  const {
+    challengeSuccessCount,
+    inEndless,
+    endlessFloor,
+    runMode,
+    mutatorActiveIds,
+    mutatorState,
+    deferredShardBonus,
+    ...legacyRun
+  } = save.run;
   void challengeSuccessCount;
   void inEndless;
   void endlessFloor;
   void runMode;
+  void mutatorActiveIds;
+  void mutatorState;
+  void deferredShardBonus;
   return {
     ...save,
     schemaVersion: 1,
@@ -268,6 +297,7 @@ describe("save", () => {
     expect(migratedByDeserializer?.schemaVersion).toBe(2);
     expect(migratedByDeserializer?.run.runMode).toBe("normal");
     expect(migratedByDeserializer?.run.inEndless).toBe(false);
+    expect(migratedByDeserializer?.deferredOutcomes).toEqual([]);
     expect(migratedByDeserializer).toEqual(migratedByHelper);
   });
 

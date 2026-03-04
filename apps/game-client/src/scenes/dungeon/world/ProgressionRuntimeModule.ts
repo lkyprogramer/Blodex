@@ -739,7 +739,9 @@ export class ProgressionRuntimeModule {
         ): entry is (typeof MONSTER_ARCHETYPES)[number] => entry !== undefined
       );
     const spawnPool = pooled.length > 0 ? pooled : MONSTER_ARCHETYPES;
-    const endlessAffixBonus = host.run.inEndless ? resolveEndlessAffixBonusCount(host.run.currentFloor) : 0;
+    const endlessAffixBonus = host.run.inEndless
+      ? resolveEndlessAffixBonusCount(host.run.currentFloor, host.run.mutatorActiveIds ?? [])
+      : 0;
     const monsters = host.entityManager.listMonsters();
     for (let idx = 0; idx < spawnCount; idx += 1) {
       const tile = host.spawnRng.pick(walkableTiles);

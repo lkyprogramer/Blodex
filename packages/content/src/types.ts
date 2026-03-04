@@ -41,6 +41,17 @@ export type ItemSpecialAffixKey =
 
 export type ConsumableId = "health_potion" | "mana_potion" | "scroll_of_mapping";
 
+export type DeferredOutcomeSource = "event" | "merchant";
+export type DeferredOutcomeTrigger =
+  | { type: "floor_reached"; value: number }
+  | { type: "boss_kill" }
+  | { type: "run_end" };
+export interface DeferredOutcomeReward {
+  obol?: number;
+  shard?: number;
+  itemDefId?: string;
+}
+
 export interface FloorConfig {
   floorNumber: number;
   monsterHpMultiplier: number;
@@ -164,6 +175,12 @@ export interface RandomEventChoice {
     | { type: "mapping" }
     | { type: "item"; itemDefId?: string; lootTableId?: string }
     | { type: "consumable"; consumableId: ConsumableId; amount: number }
+    | {
+        type: "deferred_outcome";
+        source?: DeferredOutcomeSource;
+        trigger: DeferredOutcomeTrigger;
+        reward: DeferredOutcomeReward;
+      }
   >;
   risk?: {
     chance: number;

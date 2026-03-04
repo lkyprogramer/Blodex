@@ -33,4 +33,5 @@ export * from "./mutation";
 export * from "./weaponType";
 export * from "./synergy";
 export * from "./endless";
+export * from "./endlessMutator";
 export * from "./daily";

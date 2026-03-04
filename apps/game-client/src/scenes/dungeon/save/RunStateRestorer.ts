@@ -37,6 +37,7 @@ export class RunStateRestorer {
         runSeed: save.runSeed,
         endlessKills: Math.max(0, Math.floor(save.run.endlessKills ?? 0))
       };
+      host.syncEndlessMutators(host.time.now);
       host.dailyPracticeMode =
         host.run.runMode === "daily" && host.run.dailyDate !== undefined
           ? !canStartDailyScoredAttempt(host.meta, host.run.dailyDate)
@@ -75,6 +76,25 @@ export class RunStateRestorer {
         cooldowns: { ...save.consumables.cooldowns }
       };
       host.mapRevealActive = save.mapRevealActive;
+      host.deferredOutcomes = (save.deferredOutcomes ?? []).map((outcome) => ({
+        outcomeId: outcome.outcomeId,
+        source: outcome.source,
+        trigger:
+          outcome.trigger.type === "floor_reached"
+            ? {
+                type: "floor_reached",
+                value: outcome.trigger.value
+              }
+            : {
+                type: outcome.trigger.type
+              },
+        reward: {
+          ...(outcome.reward.obol === undefined ? {} : { obol: outcome.reward.obol }),
+          ...(outcome.reward.shard === undefined ? {} : { shard: outcome.reward.shard }),
+          ...(outcome.reward.itemDefId === undefined ? {} : { itemDefId: outcome.reward.itemDefId })
+        },
+        status: outcome.status
+      }));
       host.merchantOffers = [];
 
       host.children.removeAll(true);

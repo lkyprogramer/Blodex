@@ -1,6 +1,7 @@
 import type {
   BossRuntimeState,
   ConsumableState,
+  DeferredOutcomeState,
   DungeonLayout,
   HazardRuntimeState,
   ItemInstance,
@@ -31,8 +32,31 @@ const RUN_RNG_STREAM_NAMES: RunRngStreamName[] = [
   "merchant"
 ];
 
-type RunStateV1 = Omit<RunState, "challengeSuccessCount" | "inEndless" | "endlessFloor" | "endlessKills" | "runMode"> &
-  Partial<Pick<RunState, "challengeSuccessCount" | "inEndless" | "endlessFloor" | "endlessKills" | "runMode" | "dailyDate">>;
+type RunStateV1 = Omit<
+  RunState,
+  | "challengeSuccessCount"
+  | "inEndless"
+  | "endlessFloor"
+  | "endlessKills"
+  | "runMode"
+  | "mutatorActiveIds"
+  | "mutatorState"
+  | "deferredShardBonus"
+> &
+  Partial<
+    Pick<
+      RunState,
+      | "challengeSuccessCount"
+      | "inEndless"
+      | "endlessFloor"
+      | "endlessKills"
+      | "runMode"
+      | "dailyDate"
+      | "mutatorActiveIds"
+      | "mutatorState"
+      | "deferredShardBonus"
+    >
+  >;
 
 export interface RuntimeMonsterState {
   state: MonsterState;
@@ -86,6 +110,7 @@ export interface RunSaveDataV2 extends Omit<RunSaveDataV1, "schemaVersion" | "ru
   schemaVersion: 2;
   run: RunState;
   staircase: StaircaseState;
+  deferredOutcomes?: DeferredOutcomeState[];
 }
 
 export type RunSaveEnvelope = RunSaveDataV2 & Record<string, unknown>;
@@ -226,6 +251,61 @@ function isStaircaseStateV2(value: unknown): value is StaircaseState {
   return true;
 }
 
+function isMutatorState(value: unknown): value is Record<string, { activatedAtFloor: number; stacks?: number }> {
+  if (!isRecord(value)) {
+    return false;
+  }
+  for (const entry of Object.values(value)) {
+    if (!isRecord(entry)) {
+      return false;
+    }
+    if (!isFiniteNumber(entry.activatedAtFloor)) {
+      return false;
+    }
+    if (entry.stacks !== undefined && !isFiniteNumber(entry.stacks)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isDeferredOutcomeTrigger(value: unknown): boolean {
+  if (!isRecord(value) || typeof value.type !== "string") {
+    return false;
+  }
+  if (value.type === "floor_reached") {
+    return isFiniteNumber(value.value);
+  }
+  return value.type === "boss_kill" || value.type === "run_end";
+}
+
+function isDeferredOutcomeReward(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (value.obol !== undefined && !isFiniteNumber(value.obol)) {
+    return false;
+  }
+  if (value.shard !== undefined && !isFiniteNumber(value.shard)) {
+    return false;
+  }
+  if (value.itemDefId !== undefined && typeof value.itemDefId !== "string") {
+    return false;
+  }
+  return true;
+}
+
+function isDeferredOutcomeState(value: unknown): value is DeferredOutcomeState {
+  return (
+    isRecord(value) &&
+    typeof value.outcomeId === "string" &&
+    (value.source === "event" || value.source === "merchant") &&
+    isDeferredOutcomeTrigger(value.trigger) &&
+    isDeferredOutcomeReward(value.reward) &&
+    (value.status === "pending" || value.status === "settled")
+  );
+}
+
 function isRunStateV1(value: unknown): value is RunStateV1 {
   return (
     isRecord(value) &&
@@ -251,6 +331,9 @@ function isRunStateV2(value: unknown): value is RunState {
     typeof value.inEndless === "boolean" &&
     isFiniteNumber(value.endlessFloor) &&
     (value.endlessKills === undefined || isFiniteNumber(value.endlessKills)) &&
+    (value.mutatorActiveIds === undefined || isStringArray(value.mutatorActiveIds)) &&
+    (value.mutatorState === undefined || isMutatorState(value.mutatorState)) &&
+    (value.deferredShardBonus === undefined || isFiniteNumber(value.deferredShardBonus)) &&
     (value.runMode === "normal" || value.runMode === "daily")
   );
 }
@@ -325,6 +408,12 @@ function validateSaveCommon(save: Record<string, unknown>): boolean {
   if (save.lease !== undefined && !isSaveLease(save.lease)) {
     return false;
   }
+  if (
+    save.deferredOutcomes !== undefined &&
+    (!Array.isArray(save.deferredOutcomes) || !save.deferredOutcomes.every((entry) => isDeferredOutcomeState(entry)))
+  ) {
+    return false;
+  }
   return true;
 }
 
@@ -335,6 +424,9 @@ function normalizeRunStateFromV1(input: RunStateV1): RunState {
     inEndless: input.inEndless === true,
     endlessFloor: Math.max(0, Math.floor(input.endlessFloor ?? 0)),
     endlessKills: Math.max(0, Math.floor(input.endlessKills ?? 0)),
+    mutatorActiveIds: isStringArray(input.mutatorActiveIds) ? [...input.mutatorActiveIds] : [],
+    mutatorState: isMutatorState(input.mutatorState) ? { ...input.mutatorState } : {},
+    deferredShardBonus: Math.max(0, Math.floor(input.deferredShardBonus ?? 0)),
     runMode: input.runMode === "daily" ? "daily" : "normal",
     ...(input.dailyDate === undefined ? {} : { dailyDate: input.dailyDate })
   };
@@ -362,7 +454,8 @@ export function migrateRunSaveV1ToV2(save: RunSaveDataV1): RunSaveDataV2 {
     ...save,
     schemaVersion: 2,
     run: normalizeRunStateFromV1(save.run),
-    staircase: normalizeStaircaseFromV1(save)
+    staircase: normalizeStaircaseFromV1(save),
+    deferredOutcomes: []
   };
 }
 

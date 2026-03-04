@@ -111,6 +111,19 @@ export interface GameEventMap {
     attack: BossAttack;
     timestampMs: number;
   };
+  "boss:attack_intent": {
+    bossId: string;
+    attack: BossAttack;
+    executeAtMs: number;
+    target?: { x: number; y: number };
+    timestampMs: number;
+  };
+  "boss:attack_resolve": {
+    bossId: string;
+    attack: BossAttack;
+    target?: { x: number; y: number };
+    timestampMs: number;
+  };
   "skill:use": {
     playerId: string;
     skillId: string;

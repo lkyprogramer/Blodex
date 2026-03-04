@@ -48,6 +48,7 @@ interface HudState {
     runMode?: "normal" | "daily";
     inEndless?: boolean;
     endlessFloor?: number;
+    endlessMutators?: string[];
     biome?: string;
     kills: number;
     lootCollected: number;
@@ -521,6 +522,13 @@ export class HudContainer {
       ${
         lowHealth
           ? `<div class="critical-health-hint">${t("ui.hud.run.critical_hint")}</div>`
+          : ""
+      }
+      ${
+        (state.run.endlessMutators?.length ?? 0) > 0
+          ? `<div class="mapping-hint">${escapeHtml(
+              t("ui.hud.run.mutators", { mutators: state.run.endlessMutators?.join(", ") ?? "" })
+            )}</div>`
           : ""
       }
     `;
