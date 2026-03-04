@@ -154,4 +154,20 @@ describe("boss combat", () => {
     );
     expect(dodged.events).toEqual([]);
   });
+
+  it("keeps melee range anchored to boss position even with telegraph target", () => {
+    const rng = new SeededRng("boss-melee-target-safety");
+    const player = makePlayer();
+    const result = resolveBossAttack(
+      makeMeleeAttack(),
+      makeBoss({ x: 5, y: 5 }),
+      player,
+      rng,
+      1000,
+      { x: 0, y: 0 }
+    );
+
+    expect(result.events).toEqual([]);
+    expect(result.player.health).toBe(player.health);
+  });
 });

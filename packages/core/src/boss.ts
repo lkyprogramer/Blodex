@@ -115,8 +115,8 @@ export function resolveBossAttack(
   }
 
   const distanceToPlayer = Math.hypot(
-    strikeTarget.x - player.position.x,
-    strikeTarget.y - player.position.y
+    (attack.type === "aoe_zone" ? strikeTarget.x : boss.position.x) - player.position.x,
+    (attack.type === "aoe_zone" ? strikeTarget.y : boss.position.y) - player.position.y
   );
   const hitRange = attack.type === "aoe_zone" ? attack.radius ?? 1.15 : attack.range;
   if (distanceToPlayer > hitRange) {
