@@ -175,7 +175,6 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.summary.kills": "Kills",
   "ui.summary.loot": "Loot",
   "ui.summary.obol": "Obol",
-  "ui.summary.soul": "Soul",
   "ui.summary.score": "Score",
   "ui.summary.time": "Time",
   "ui.summary.level": "Level",

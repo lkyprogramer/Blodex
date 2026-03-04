@@ -10,13 +10,16 @@ DEFAULT_MAX_CLASS_METHODS=60
 resolve_max_lines() {
   case "$1" in
     "apps/game-client/src/scenes/DungeonScene.ts")
-      echo 7000
+      echo 2500
       ;;
     "apps/game-client/src/scenes/MetaMenuScene.ts")
-      echo 1300
+      echo 1200
       ;;
     "apps/game-client/src/ui/Hud.ts")
-      echo 1100
+      echo 300
+      ;;
+    "apps/game-client/src/ui/hud/HudContainer.ts")
+      echo 1000
       ;;
     *)
       echo "$DEFAULT_MAX_CLASS_FILE_LINES"
@@ -27,13 +30,16 @@ resolve_max_lines() {
 resolve_max_methods() {
   case "$1" in
     "apps/game-client/src/scenes/DungeonScene.ts")
-      echo 220
-      ;;
-    "apps/game-client/src/scenes/MetaMenuScene.ts")
       echo 90
       ;;
+    "apps/game-client/src/scenes/MetaMenuScene.ts")
+      echo 85
+      ;;
     "apps/game-client/src/ui/Hud.ts")
-      echo 80
+      echo 25
+      ;;
+    "apps/game-client/src/ui/hud/HudContainer.ts")
+      echo 60
       ;;
     *)
       echo "$DEFAULT_MAX_CLASS_METHODS"
@@ -43,9 +49,10 @@ resolve_max_methods() {
 
 is_allowlisted_file() {
   case "$1" in
-    "apps/game-client/src/scenes/DungeonScene.ts" | \
+      "apps/game-client/src/scenes/DungeonScene.ts" | \
       "apps/game-client/src/scenes/MetaMenuScene.ts" | \
-      "apps/game-client/src/ui/Hud.ts")
+      "apps/game-client/src/ui/Hud.ts" | \
+      "apps/game-client/src/ui/hud/HudContainer.ts")
       return 0
       ;;
     *)

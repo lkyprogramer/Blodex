@@ -3,7 +3,6 @@ import {
   resolveGeneratedAssetUrl,
   type PreferredImageFormat
 } from "../../assets/imageAsset";
-import { UI_POLISH_FLAGS } from "../../config/uiFlags";
 import { t } from "../../i18n";
 
 function escapeHtml(raw: string): string {
@@ -109,7 +108,7 @@ export function renderSkillBar(view: SkillBarView, preferredImageFormat: Preferr
               Math.max(0, slot.cooldownLeftMs) / Math.max(1, slot.baseCooldownMs ?? 1)
           )
         : 0;
-      const showCooldownOverlay = hasCooldownData && UI_POLISH_FLAGS.skillCooldownOverlayEnabled;
+      const showCooldownOverlay = hasCooldownData;
       const statusText = slot.locked
         ? t("ui.skillbar.status.locked")
         : slot.cooldownLeftMs > 0
