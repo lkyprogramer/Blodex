@@ -1,4 +1,5 @@
 import type { RandomEventDef } from "@blodex/core";
+import { t } from "../../../i18n";
 import { gridToIso } from "../../../systems/iso";
 import { BossCombatService } from "./BossCombatService";
 import { BossSpawnService } from "./BossSpawnService";
@@ -52,23 +53,23 @@ export class BossRuntimeModule {
     const canEnterAbyss = host.run.runMode !== "daily";
     const eventDef: RandomEventDef = {
       id: ABYSS_VICTORY_EVENT_ID,
-      name: "Bone Throne Cleared",
+      name: t("ui.boss.victory.title"),
       description: canEnterAbyss
-        ? "Claim victory now or descend into the Abyss for endless escalation."
-        : "Daily mode only allows Claim Victory.",
+        ? t("ui.boss.victory.description.normal")
+        : t("ui.boss.victory.description.daily"),
       floorRange: { min: host.run.currentFloor, max: host.run.currentFloor },
       spawnWeight: 1,
       choices: [
         {
           id: "claim_victory",
-          name: "Claim Victory",
-          description: "End run and secure rewards.",
+          name: t("ui.boss.victory.choice.claim.name"),
+          description: t("ui.boss.victory.choice.claim.description"),
           rewards: []
         },
         {
           id: "enter_abyss",
-          name: "Enter Abyss",
-          description: "Continue to endless floors with escalating danger.",
+          name: t("ui.boss.victory.choice.enter_abyss.name"),
+          description: t("ui.boss.victory.choice.enter_abyss.description"),
           rewards: []
         }
       ]
@@ -79,7 +80,7 @@ export class BossRuntimeModule {
         return {
           choice,
           enabled: false as const,
-          disabledReason: "Daily mode does not support Abyss."
+          disabledReason: t("ui.boss.victory.choice.enter_abyss.disabled_daily")
         };
       }
       return {
