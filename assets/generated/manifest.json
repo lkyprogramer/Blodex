@@ -966,6 +966,52 @@
     }
   },
   {
+    "id": "biome_venom_tile_floor_01",
+    "category": "tile",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "036a4bdae2",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_venom_tile_floor_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 320,
+        "height": 320
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_venom_tile_floor_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_venom_tile_floor_01.png"
+    }
+  },
+  {
+    "id": "biome_venom_tile_wall_01",
+    "category": "tile",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "5ef04274d5",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_venom_tile_wall_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 320,
+        "height": 320
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_venom_tile_wall_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_venom_tile_wall_01.png"
+    }
+  },
+  {
     "id": "biome_frozen_tile_floor_01",
     "category": "tile",
     "styleTag": "painterly-dark-fantasy-v1",

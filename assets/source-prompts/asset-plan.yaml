@@ -482,6 +482,32 @@ assets:
     constraints: "tile-friendly silhouette; no text; opaque background allowed; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
     background: opaque
 
+  - id: biome_venom_tile_floor_01
+    category: tile
+    outputName: biome_venom_tile_floor_01.png
+    prompt: "Seamless isometric venom swamp floor tile with mossy stone slabs, damp residue, and restrained toxic staining, painterly dark fantasy"
+    subject: "venom swamp floor tile"
+    style: "painterly dark fantasy texture art with visible brush grain"
+    composition: "single seamless tile"
+    lighting: "low-key top-left readability with restrained rim accents"
+    palette: "damp stone green, charcoal, muted yellow-green accents"
+    materials: "mossed flagstone, wet grime seams, aged masonry"
+    constraints: "seamless edges; no text; opaque background allowed; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    background: opaque
+
+  - id: biome_venom_tile_wall_01
+    category: tile
+    outputName: biome_venom_tile_wall_01.png
+    prompt: "Isometric venom swamp wall segment with root-vein growth and damp masonry, painterly dark fantasy"
+    subject: "venom swamp wall segment"
+    style: "painterly dark fantasy texture art with visible brush grain"
+    composition: "single tile-friendly wall segment"
+    lighting: "low-key directional light with subtle top-left separation"
+    palette: "swamp green, charcoal, desaturated olive highlights"
+    materials: "wet stone, root growth, algae-darkened mortar"
+    constraints: "tile-friendly silhouette; no text; opaque background allowed; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    background: opaque
+
   - id: biome_frozen_tile_floor_01
     category: tile
     outputName: biome_frozen_tile_floor_01.png
