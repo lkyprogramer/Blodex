@@ -200,6 +200,16 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.event.choice.need_cost": "Need {amount} {type}.",
   "ui.event.choice.invalid_cost": "invalid cost",
   "ui.event.choice.need_cost_short": "need {amount} {type}",
+  "ui.boss.victory.title": "Bone Throne Cleared",
+  "ui.boss.victory.description.normal":
+    "Claim victory now or descend into the Abyss for endless escalation.",
+  "ui.boss.victory.description.daily": "Daily mode only allows Claim Victory.",
+  "ui.boss.victory.choice.claim.name": "Claim Victory",
+  "ui.boss.victory.choice.claim.description": "End run and secure rewards.",
+  "ui.boss.victory.choice.enter_abyss.name": "Enter Abyss",
+  "ui.boss.victory.choice.enter_abyss.description":
+    "Continue to endless floors with escalating danger.",
+  "ui.boss.victory.choice.enter_abyss.disabled_daily": "Daily mode does not support Abyss.",
 
   "ui.meta.title": "Blodex Meta Progression",
   "ui.meta.resources.soul_shards": "Soul Shards: {value}",
