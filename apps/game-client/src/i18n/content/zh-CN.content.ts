@@ -182,6 +182,33 @@ const EVENT_ZH: Readonly<
       harvest: { name: "萃取", description: "提取欧铂，但可能反噬。" },
       seal: { name: "封印", description: "稳定裂隙后离开。" }
     }
+  },
+  abyss_contract: {
+    name: "深渊契约",
+    description: "一份墨黑契约承诺延迟收益，但先收取高额费用。",
+    choices: {
+      sign_heavy: { name: "签订重注条款", description: "现在支付欧铂，结算时获得高额返利。" },
+      sign_safe: { name: "签订稳妥条款", description: "先拿少量收益，结算时再领取补偿。" },
+      refuse: { name: "拒绝", description: "保持节奏，不签任何条款。" }
+    }
+  },
+  war_trophy_ledger: {
+    name: "战利账册",
+    description: "军需账册允许你提前登记首领奖励。",
+    choices: {
+      claim_weapon: { name: "登记武器赏金", description: "若击败下一名 Boss，将获得锻造武器。" },
+      claim_essence: { name: "登记精华赏金", description: "把奖励延后到结算时兑换碎片。" },
+      ignore: { name: "忽略", description: "这次不登记任何赏金。" }
+    }
+  },
+  echo_loan: {
+    name: "回响借据",
+    description: "一名掮客提供按楼层兑付的信用票据。",
+    choices: {
+      take_floor_10_note: { name: "领取十层票据", description: "达到第 10 层后发放收益。" },
+      take_floor_14_note: { name: "领取十四层票据", description: "收益更高，但可能遭受法力反噬。" },
+      decline: { name: "谢绝", description: "不承担债务，也不获取延期收益。" }
+    }
   }
 };
 

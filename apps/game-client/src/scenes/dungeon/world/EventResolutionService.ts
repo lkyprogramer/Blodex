@@ -175,6 +175,22 @@ export class EventResolutionService {
       );
       return;
     }
+    if (reward.type === "deferred_outcome") {
+      host.deferredOutcomeRuntime.enqueue(
+        {
+          source: reward.source ?? "event",
+          trigger: reward.trigger,
+          reward: reward.reward
+        },
+        nowMs
+      );
+      host.runLog.append(
+        `Deferred outcome queued from ${source}.`,
+        "info",
+        nowMs
+      );
+      return;
+    }
 
     const lootTableId = reward.lootTableId;
     const table =

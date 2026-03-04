@@ -461,6 +461,7 @@ export interface BossRuntimeState {
   aiState: "idle" | "telegraph" | "attacking" | "summoning" | "dead";
   telegraphTarget?: { x: number; y: number };
   telegraphEndMs?: number;
+  telegraphAttackId?: string;
   enrageAtMs?: number;
 }
 
@@ -492,6 +493,27 @@ export interface EventCost {
   amount: number;
 }
 
+export type DeferredOutcomeSource = "event" | "merchant";
+
+export type DeferredOutcomeTrigger =
+  | { type: "floor_reached"; value: number }
+  | { type: "boss_kill" }
+  | { type: "run_end" };
+
+export interface DeferredOutcomeReward {
+  obol?: number;
+  shard?: number;
+  itemDefId?: string;
+}
+
+export interface DeferredOutcomeState {
+  outcomeId: string;
+  source: DeferredOutcomeSource;
+  trigger: DeferredOutcomeTrigger;
+  reward: DeferredOutcomeReward;
+  status: "pending" | "settled";
+}
+
 export type EventReward =
   | { type: "health"; amount: number }
   | { type: "mana"; amount: number }
@@ -499,7 +521,13 @@ export type EventReward =
   | { type: "xp"; amount: number }
   | { type: "mapping" }
   | { type: "item"; itemDefId?: string; lootTableId?: string }
-  | { type: "consumable"; consumableId: ConsumableId; amount: number };
+  | { type: "consumable"; consumableId: ConsumableId; amount: number }
+  | {
+      type: "deferred_outcome";
+      source?: DeferredOutcomeSource;
+      trigger: DeferredOutcomeTrigger;
+      reward: DeferredOutcomeReward;
+    };
 
 export interface EventChoice {
   id: string;

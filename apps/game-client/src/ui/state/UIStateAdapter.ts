@@ -9,6 +9,7 @@ export interface UIStateView {
     runMode?: "normal" | "daily";
     inEndless?: boolean;
     endlessFloor?: number;
+    endlessMutators?: string[];
     biome?: string;
     kills: number;
     lootCollected: number;

@@ -45,6 +45,9 @@ export interface RunState {
    * Used to avoid counting story-floor kills in endless-specific reward formulas.
    */
   endlessKills?: number;
+  mutatorActiveIds?: string[];
+  mutatorState?: Record<string, { activatedAtFloor: number; stacks?: number }>;
+  deferredShardBonus?: number;
   runMode: RunMode;
   dailyDate?: string;
   runEconomy: RunEconomyState;
@@ -117,6 +120,9 @@ export function createRunState(
     inEndless: false,
     endlessFloor: 0,
     endlessKills: 0,
+    mutatorActiveIds: [],
+    mutatorState: {},
+    deferredShardBonus: 0,
     runMode: "normal",
     runEconomy: {
       obols: 0,

@@ -46,7 +46,11 @@ export class RunCompletionModule {
       ...enterEndless(host.run),
       endlessKills: 0
     };
-    host.run = addRunObols(host.run, endlessFloorClearBonus(host.run.currentFloor));
+    host.syncEndlessMutators(nowMs);
+    host.run = addRunObols(
+      host.run,
+      endlessFloorClearBonus(host.run.currentFloor, host.run.mutatorActiveIds ?? [])
+    );
     host.runLog.appendKey(
       "log.run.entered_abyss_floor",
       {
@@ -56,6 +60,7 @@ export class RunCompletionModule {
       nowMs
     );
     host.progressionRuntimeModule.setupFloor(host.run.currentFloor, false);
+    host.deferredOutcomeRuntime.settle("floor_reached", nowMs);
     host.flushRunSave();
   }
 
@@ -72,6 +77,7 @@ export class RunCompletionModule {
       ...host.run,
       isVictory
     };
+    host.deferredOutcomeRuntime.settle("run_end", host.time.now);
     if (isVictory) {
       host.tryDiscoverBlueprints("boss_kill", host.time.now, host.bossDef.id);
       host.tryDiscoverBlueprints("boss_first_kill", host.time.now, host.bossDef.id);
@@ -83,15 +89,21 @@ export class RunCompletionModule {
       host.run.inEndless && isVictory === false
         ? (() => {
             const kills = Math.max(0, host.run.endlessKills ?? 0);
-            const perKillReward = endlessKillShardReward(host.run.currentFloor);
+            const perKillReward = endlessKillShardReward(
+              host.run.currentFloor,
+              host.run.mutatorActiveIds ?? []
+            );
             let floorBonus = 0;
             for (let floor = 6; floor <= host.run.currentFloor; floor += 1) {
-              floorBonus += endlessFloorClearBonus(floor);
+              floorBonus += endlessFloorClearBonus(floor, host.run.mutatorActiveIds ?? []);
             }
             return kills * perKillReward + floorBonus;
           })()
         : calculateSoulShardReward(host.run, isVictory);
-    let soulShards = Math.max(0, Math.floor(baseSoulShards * soulShardMultiplier));
+    let soulShards = Math.max(
+      0,
+      Math.floor(baseSoulShards * soulShardMultiplier) + Math.max(0, Math.floor(host.run.deferredShardBonus ?? 0))
+    );
     if (host.run.runMode === "daily" && host.dailyPracticeMode) {
       soulShards = 0;
     }

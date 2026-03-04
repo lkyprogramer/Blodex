@@ -1,4 +1,10 @@
-import { collectLoot, createMerchantOffers, rollItemDrop, spendRunObols } from "@blodex/core";
+import {
+  collectLoot,
+  createMerchantOffers,
+  resolveEndlessMutatorModifiers,
+  rollItemDrop,
+  spendRunObols
+} from "@blodex/core";
 import { ITEM_DEF_MAP, LOOT_TABLE_MAP } from "@blodex/content";
 import type { MerchantPurchaseResult, RuntimeEventHost } from "./types";
 
@@ -24,7 +30,21 @@ export class MerchantFlowService {
       const itemDef = ITEM_DEF_MAP[entry.itemDefId];
       return itemDef !== undefined && host.isItemDefUnlocked(itemDef);
     });
-    host.merchantOffers = createMerchantOffers(visibleEntries, host.run.currentFloor, host.merchantRng, 3);
+    const mutatorModifiers = resolveEndlessMutatorModifiers(host.run.mutatorActiveIds ?? []);
+    const scarcitySurcharge = visibleEntries.length <= 4 ? 2 : visibleEntries.length <= 6 ? 1 : 0;
+    const floorPriceStep =
+      host.run.currentFloor >= 6 ? Math.floor((host.run.currentFloor - 5) / 2) : 0;
+    host.merchantOffers = createMerchantOffers(
+      visibleEntries,
+      host.run.currentFloor,
+      host.merchantRng,
+      3,
+      {
+        floorPriceStep,
+        scarcitySurcharge,
+        priceMultiplier: mutatorModifiers.merchantPriceMultiplier
+      }
+    );
     host.eventBus.emit("merchant:offer", {
       floor: host.run.currentFloor,
       offerCount: host.merchantOffers.length,

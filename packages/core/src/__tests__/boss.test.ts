@@ -121,4 +121,37 @@ describe("boss combat", () => {
     expect(result.player.health).toBeLessThan(player.health);
     expect(result.events[0]?.kind).toBe("damage");
   });
+
+  it("supports telegraph target windows for aoe attacks", () => {
+    const rng = new SeededRng("boss-aoe-target");
+    const player = makePlayer();
+    const aoeAttack: BossAttack = {
+      id: "bone_spikes",
+      cooldownMs: 1800,
+      telegraphMs: 1200,
+      type: "aoe_zone",
+      damage: 20,
+      range: 6,
+      radius: 1.3
+    };
+
+    const hit = resolveBossAttack(aoeAttack, makeBoss({ x: 0, y: 0 }), player, rng, 1000, {
+      x: 0,
+      y: 0
+    });
+    expect(hit.events[0]?.kind).toBe("damage");
+
+    const dodged = resolveBossAttack(
+      aoeAttack,
+      makeBoss({ x: 0, y: 0 }),
+      {
+        ...player,
+        position: { x: 2.2, y: 0 }
+      },
+      new SeededRng("boss-aoe-target"),
+      2200,
+      { x: 0, y: 0 }
+    );
+    expect(dodged.events).toEqual([]);
+  });
 });

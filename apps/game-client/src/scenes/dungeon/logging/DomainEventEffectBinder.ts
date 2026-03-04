@@ -484,6 +484,21 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
       );
     });
 
+    host.eventBus.on("boss:attack_intent", ({ attack, executeAtMs, target, timestampMs }) => {
+      const seconds = Math.max(0, (executeAtMs - timestampMs) / 1000).toFixed(1);
+      host.runLog.append(
+        target === undefined
+          ? `Boss telegraphs ${attack.id}, resolving in ${seconds}s.`
+          : `Boss telegraphs ${attack.id} at (${target.x.toFixed(1)}, ${target.y.toFixed(1)}), resolving in ${seconds}s.`,
+        "warn",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("boss:attack_resolve", ({ attack, timestampMs }) => {
+      host.runLog.append(`Boss executes ${attack.id}.`, "info", timestampMs);
+    });
+
     host.eventBus.on("hazard:enter", ({ hazardType, targetId, timestampMs }) => {
       if (targetId !== host.player.id) {
         return;

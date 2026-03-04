@@ -91,7 +91,8 @@ export function resolveBossAttack(
   boss: BossRuntimeState,
   player: PlayerState,
   rng: RngLike,
-  nowMs: number
+  nowMs: number,
+  target?: { x: number; y: number }
 ): BossAttackResolution {
   if (attack.type === "summon") {
     return {
@@ -101,11 +102,24 @@ export function resolveBossAttack(
     };
   }
 
-  const distanceToPlayer = Math.hypot(
-    boss.position.x - player.position.x,
-    boss.position.y - player.position.y
+  const strikeTarget = target ?? boss.position;
+  const castDistance = Math.hypot(
+    boss.position.x - strikeTarget.x,
+    boss.position.y - strikeTarget.y
   );
-  if (distanceToPlayer > attack.range) {
+  if (attack.type === "aoe_zone" && castDistance > attack.range) {
+    return {
+      player,
+      events: []
+    };
+  }
+
+  const distanceToPlayer = Math.hypot(
+    strikeTarget.x - player.position.x,
+    strikeTarget.y - player.position.y
+  );
+  const hitRange = attack.type === "aoe_zone" ? attack.radius ?? 1.15 : attack.range;
+  if (distanceToPlayer > hitRange) {
     return {
       player,
       events: []

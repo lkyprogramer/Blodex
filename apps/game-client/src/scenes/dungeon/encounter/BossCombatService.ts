@@ -1,5 +1,6 @@
 import {
   applyDamageToBoss,
+  type BossAttack,
   markBossAttackUsed,
   resolveBossAttack,
   resolveEquippedWeaponType,
@@ -8,12 +9,14 @@ import {
 } from "@blodex/core";
 import { WEAPON_TYPE_DEF_MAP } from "@blodex/content";
 import { BossSpawnService } from "./BossSpawnService";
+import { BossTelegraphPresenter } from "./BossTelegraphPresenter";
 
 type BossHost = Record<string, any>;
 
 export interface BossCombatServiceOptions {
   host: BossHost;
   spawnService: BossSpawnService;
+  telegraphPresenter: BossTelegraphPresenter;
 }
 
 export class BossCombatService {
@@ -22,6 +25,11 @@ export class BossCombatService {
   updateCombat(nowMs: number): void {
     const host = this.options.host;
     if (!host.floorConfig.isBossFloor || host.bossState === null) {
+      this.options.telegraphPresenter.clear();
+      return;
+    }
+    if (host.bossState.health <= 0) {
+      this.options.telegraphPresenter.clear();
       return;
     }
 
@@ -71,6 +79,50 @@ export class BossCombatService {
       host.hudDirty = true;
     }
 
+    if (host.bossState.aiState === "telegraph") {
+      if (
+        host.bossState.telegraphEndMs === undefined ||
+        host.bossState.telegraphAttackId === undefined
+      ) {
+        host.bossState = {
+          ...host.bossState,
+          aiState: "idle",
+          telegraphEndMs: undefined,
+          telegraphTarget: undefined,
+          telegraphAttackId: undefined
+        };
+        this.options.telegraphPresenter.clear();
+        return;
+      }
+      if (nowMs < host.bossState.telegraphEndMs) {
+        return;
+      }
+      const telegraphedAttack = this.findAttackById(host.bossState.telegraphAttackId);
+      if (telegraphedAttack === null) {
+        host.bossState = {
+          ...host.bossState,
+          aiState: "idle",
+          telegraphEndMs: undefined,
+          telegraphTarget: undefined,
+          telegraphAttackId: undefined
+        };
+        this.options.telegraphPresenter.clear();
+        return;
+      }
+      this.resolveBossAttack(telegraphedAttack, nowMs, host.bossState.telegraphTarget, false);
+      host.bossState = {
+        ...host.bossState,
+        aiState: "attacking",
+        telegraphEndMs: undefined,
+        telegraphTarget: undefined,
+        telegraphAttackId: undefined
+      };
+      this.options.telegraphPresenter.clear();
+      host.nextBossAttackAt = nowMs + Math.max(800, telegraphedAttack.cooldownMs * 0.4);
+      host.hudDirty = true;
+      return;
+    }
+
     if (nowMs < host.nextBossAttackAt) {
       return;
     }
@@ -80,9 +132,97 @@ export class BossCombatService {
       return;
     }
 
-    const attackResult = resolveBossAttack(attack, host.bossState, host.player, host.bossRng, nowMs);
+    if (attack.telegraphMs > 0) {
+      const target = this.resolveTelegraphTarget(attack);
+      const executeAtMs = nowMs + attack.telegraphMs;
+      host.bossState = markBossAttackUsed(
+        {
+          ...host.bossState,
+          aiState: "telegraph",
+          telegraphTarget: target,
+          telegraphEndMs: executeAtMs,
+          telegraphAttackId: attack.id
+        },
+        attack,
+        nowMs
+      );
+      host.nextBossAttackAt = executeAtMs;
+      host.eventBus.emit("boss:attack_intent", {
+        bossId: host.bossDef.id,
+        attack,
+        executeAtMs,
+        ...(target === undefined ? {} : { target }),
+        timestampMs: nowMs
+      });
+      this.options.telegraphPresenter.show(host.bossState, attack);
+      host.hudDirty = true;
+      return;
+    }
+
+    this.resolveBossAttack(attack, nowMs, undefined, true);
+    host.bossState = {
+      ...markBossAttackUsed(host.bossState, attack, nowMs),
+      aiState: "attacking"
+    };
+    host.nextBossAttackAt = nowMs + Math.max(800, attack.cooldownMs * 0.4);
+    host.hudDirty = true;
+  }
+
+  private resolveTelegraphTarget(attack: BossAttack): { x: number; y: number } | undefined {
+    if (attack.type === "summon") {
+      return undefined;
+    }
+    const host = this.options.host;
+    return {
+      x: host.player.position.x,
+      y: host.player.position.y
+    };
+  }
+
+  private findAttackById(attackId: string): BossAttack | null {
+    const host = this.options.host;
+    const currentPhase = host.bossDef.phases[host.bossState.currentPhaseIndex];
+    const fromCurrent = currentPhase?.attackPattern.find((entry: BossAttack) => entry.id === attackId);
+    if (fromCurrent !== undefined) {
+      return fromCurrent;
+    }
+    for (const phase of host.bossDef.phases) {
+      const found = phase.attackPattern.find((entry: BossAttack) => entry.id === attackId);
+      if (found !== undefined) {
+        return found;
+      }
+    }
+    return null;
+  }
+
+  private resolveBossAttack(
+    attack: BossAttack,
+    nowMs: number,
+    telegraphTarget: { x: number; y: number } | undefined,
+    markCooldown: boolean
+  ): void {
+    const host = this.options.host;
+    const attackResult = resolveBossAttack(
+      attack,
+      host.bossState,
+      host.player,
+      host.bossRng,
+      nowMs,
+      telegraphTarget
+    );
     host.player = attackResult.player;
     host.emitCombatEvents(attackResult.events);
+    host.eventBus.emit("boss:attack_resolve", {
+      bossId: host.bossDef.id,
+      attack,
+      ...(telegraphTarget === undefined ? {} : { target: telegraphTarget }),
+      timestampMs: nowMs
+    });
+    host.eventBus.emit("boss:attack", {
+      boss: host.bossState,
+      attack,
+      timestampMs: nowMs
+    });
 
     if (attack.type === "summon") {
       host.eventBus.emit("boss:summon", {
@@ -94,8 +234,8 @@ export class BossCombatService {
       this.options.spawnService.spawnSummonedMonsters(attackResult.summonCount ?? 2);
     }
 
-    host.bossState = markBossAttackUsed(host.bossState, attack, nowMs);
-    host.nextBossAttackAt = nowMs + Math.max(800, attack.cooldownMs * 0.4);
-    host.hudDirty = true;
+    if (markCooldown) {
+      host.bossState = markBossAttackUsed(host.bossState, attack, nowMs);
+    }
   }
 }

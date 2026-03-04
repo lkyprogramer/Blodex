@@ -83,6 +83,7 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.hud.run.mode.abyss_base": "ABYSS",
   "ui.hud.run.mode.abyss": "ABYSS {floor}",
   "ui.hud.run.mapping_hint": "Mapping scroll active: objective location revealed.",
+  "ui.hud.run.mutators": "Mutators: {mutators}",
   "ui.hud.run.critical_hint": "Critical HP: drink potion or disengage.",
   "ui.hud.death.title": "You Died",
   "ui.hud.death.subtitle": "The Abyss claims another run.",
