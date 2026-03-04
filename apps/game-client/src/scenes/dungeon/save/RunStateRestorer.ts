@@ -205,18 +205,20 @@ export class RunStateRestorer {
 
       host.renderStaircases();
 
-      host.destroyEventNode();
+      host.eventRuntimeModule.destroyEventNode();
       const eventNodeSnapshot = save.eventNode;
       if (eventNodeSnapshot !== null) {
         const eventDef = RANDOM_EVENT_DEFS.find((entry) => entry.id === eventNodeSnapshot.eventId);
         if (eventDef !== undefined) {
-          host.createEventNode(eventDef, eventNodeSnapshot.position, host.time.now, { emitSpawnEvent: false });
+          host.eventRuntimeModule.createEventNode(eventDef, eventNodeSnapshot.position, host.time.now, {
+            emitSpawnEvent: false
+          });
           if (host.eventNode !== null) {
             host.eventNode.resolved = eventNodeSnapshot.resolved;
           }
           host.merchantOffers = eventNodeSnapshot.merchantOffers?.map((offer) => ({ ...offer })) ?? [];
           if (eventNodeSnapshot.resolved) {
-            host.consumeCurrentEvent();
+            host.eventRuntimeModule.consumeCurrentEvent();
           }
         }
       }
