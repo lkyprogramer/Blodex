@@ -31,7 +31,7 @@ export class FloorProgressionModule {
         ...host.staircaseState,
         visible: true
       };
-      host.renderStaircases();
+      host.progressionRuntimeModule.renderStaircases();
       host.eventBus.emit("floor:clear", {
         floor: host.run.currentFloor,
         kills: host.run.kills,
@@ -82,6 +82,6 @@ export class FloorProgressionModule {
     } else {
       host.run = addRunObols(host.run, 5);
     }
-    host.setupFloor(host.run.currentFloor, false);
+    host.progressionRuntimeModule.setupFloor(host.run.currentFloor, false);
   }
 }

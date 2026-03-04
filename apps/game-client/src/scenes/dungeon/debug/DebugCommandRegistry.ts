@@ -169,11 +169,11 @@ export class DebugCommandRegistry {
       return false;
     }
 
-    this.host.removeChallengeMonsters();
-    this.host.clearChallengeState();
+    this.host.progressionRuntimeModule.removeChallengeMonsters();
+    this.host.progressionRuntimeModule.clearChallengeState();
     this.host.challengeRoomState = createChallengeRoomState(challengeRoom.id);
-    this.host.challengeWaveTotal = this.host.resolveChallengeWaveTotal(challengeRoom.id);
-    const center = this.host.challengeRoomCenter(challengeRoom.id);
+    this.host.challengeWaveTotal = this.host.progressionRuntimeModule.resolveChallengeWaveTotal(challengeRoom.id);
+    const center = this.host.progressionRuntimeModule.challengeRoomCenter(challengeRoom.id);
     if (center !== null) {
       this.host.challengeMarker = this.host.renderSystem.spawnTelegraphCircle(center, 0.95, this.host.origin);
       this.host.challengeMarker.setAlpha(0.2);
@@ -203,7 +203,7 @@ export class DebugCommandRegistry {
       return false;
     }
     if (!this.host.challengeRoomState.started) {
-      this.host.startChallengeEncounter(this.host.time.now);
+      this.host.progressionRuntimeModule.startChallengeEncounter(this.host.time.now);
       this.debugLog("Challenge encounter started.", "success");
     } else {
       this.debugLog("Challenge encounter already active.", "info");
@@ -219,7 +219,7 @@ export class DebugCommandRegistry {
       this.debugLog("Challenge already settled.", "warn");
       return false;
     }
-    this.host.finishChallengeEncounter(success, this.host.time.now);
+    this.host.progressionRuntimeModule.finishChallengeEncounter(success, this.host.time.now);
     this.debugLog(`Challenge forced to ${success ? "success" : "failure"}.`, success ? "success" : "warn");
     return true;
   }
@@ -295,7 +295,7 @@ export class DebugCommandRegistry {
     } else {
       this.host.run = addRunObols(this.host.run, 5);
     }
-    this.host.setupFloor(this.host.run.currentFloor, false);
+    this.host.progressionRuntimeModule.setupFloor(this.host.run.currentFloor, false);
     this.host.flushRunSave();
     this.debugLog(
       `Advanced to floor ${this.host.run.currentFloor}${this.host.run.inEndless ? ` (endless ${this.host.run.endlessFloor})` : ""}.`,
@@ -402,7 +402,7 @@ export class DebugCommandRegistry {
         if (dead === null) {
           continue;
         }
-        this.host.onMonsterDefeated(dead.state, nowMs);
+        this.host.progressionRuntimeModule.onMonsterDefeated(dead.state, nowMs);
         const xpResult = applyXpGain(this.host.player, dead.state.xpValue, "strength");
         this.host.player = this.host.refreshPlayerStatsFromEquipment(xpResult.player);
         if (xpResult.leveledUp) {
@@ -467,7 +467,7 @@ export class DebugCommandRegistry {
         ...this.host.staircaseState,
         visible: true
       };
-      this.host.renderStaircases();
+      this.host.progressionRuntimeModule.renderStaircases();
       this.host.eventBus.emit("floor:clear", {
         floor: this.host.run.currentFloor,
         kills: this.host.run.kills,
@@ -513,7 +513,7 @@ export class DebugCommandRegistry {
       currentFloor: normalized,
       floor: normalized
     };
-    this.host.setupFloor(normalized, false);
+    this.host.progressionRuntimeModule.setupFloor(normalized, false);
     this.host.hudDirty = true;
     this.debugLog(`Jumped to floor ${normalized}.`, "success");
   }

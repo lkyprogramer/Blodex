@@ -55,7 +55,7 @@ export class RunCompletionModule {
       "warn",
       nowMs
     );
-    host.setupFloor(host.run.currentFloor, false);
+    host.progressionRuntimeModule.setupFloor(host.run.currentFloor, false);
     host.flushRunSave();
   }
 
