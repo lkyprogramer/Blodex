@@ -15,6 +15,7 @@ import {
   RANDOM_EVENT_DEFS,
   getFloorConfig
 } from "@blodex/content";
+import { resolveBiomeTileTint } from "../world/resolveBiomeTileTint";
 
 type RestoreHost = Record<string, any>;
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
@@ -75,8 +76,8 @@ export class RunStateRestorer {
 
       host.children.removeAll(true);
       host.entityManager.clear();
-      host.clearHazards();
-      host.clearChallengeState();
+      host.hazardRuntimeModule.clearHazards();
+      host.progressionRuntimeModule.clearChallengeState();
       host.movementSystem.clearPathCache();
 
       host.floorConfig = getFloorConfig(host.run.currentFloor, host.run.difficultyModifier);
@@ -133,20 +134,14 @@ export class RunStateRestorer {
       host.cameras.main.setBackgroundColor(
         Phaser.Display.Color.IntegerToColor(host.currentBiome.ambientColor).rgba
       );
-      host.renderSystem.drawDungeon(host.dungeon, host.origin, host.resolveBiomeTileTint(host.currentBiome.id));
-      host.renderHiddenRoomMarkers();
+      host.renderSystem.drawDungeon(host.dungeon, host.origin, resolveBiomeTileTint(host.currentBiome.id));
+      host.progressionRuntimeModule.renderHiddenRoomMarkers();
 
       const playerRender = host.renderSystem.spawnPlayer(host.player.position, host.origin);
       host.playerSprite = playerRender.sprite;
       host.playerYOffset = playerRender.yOffset;
 
-      host.hazards = save.hazards.map((hazard) => ({
-        ...hazard,
-        position: { ...hazard.position }
-      }));
-      for (const hazard of host.hazards) {
-        host.addHazardVisual(hazard);
-      }
+      host.hazardRuntimeModule.restoreHazards(save.hazards);
 
       const runtimes = save.monsters
         .map((monster) => {
@@ -203,7 +198,7 @@ export class RunStateRestorer {
         host.entityManager.setBoss(null);
       }
 
-      host.renderStaircases();
+      host.progressionRuntimeModule.renderStaircases();
 
       host.eventRuntimeModule.destroyEventNode();
       const eventNodeSnapshot = save.eventNode;
@@ -222,7 +217,7 @@ export class RunStateRestorer {
           }
         }
       }
-      host.restoreChallengeRoom(host.time.now);
+      host.progressionRuntimeModule.restoreChallengeRoom(host.time.now);
 
       host.renderSystem.configureCamera(host.cameras.main, host.worldBounds, host.playerSprite);
       host.uiManager.configureMinimap({

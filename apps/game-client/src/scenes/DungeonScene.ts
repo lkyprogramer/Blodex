@@ -193,6 +193,7 @@ import { BossCombatService } from "./dungeon/encounter/BossCombatService";
 import { BossRuntimeModule } from "./dungeon/encounter/BossRuntimeModule";
 import { BossSpawnService } from "./dungeon/encounter/BossSpawnService";
 import { EncounterController } from "./dungeon/encounter/EncounterController";
+import { PlayerActionModule } from "./dungeon/encounter/PlayerActionModule";
 import {
   consumableFailureReasonLabel,
   difficultyLabel,
@@ -212,7 +213,9 @@ import { HudPresenter } from "./dungeon/ui/HudPresenter";
 import { EventResolutionService } from "./dungeon/world/EventResolutionService";
 import { EventRuntimeModule } from "./dungeon/world/EventRuntimeModule";
 import { FloorProgressionModule } from "./dungeon/world/FloorProgressionModule";
+import { HazardRuntimeModule } from "./dungeon/world/HazardRuntimeModule";
 import { MerchantFlowService } from "./dungeon/world/MerchantFlowService";
+import { ProgressionRuntimeModule } from "./dungeon/world/ProgressionRuntimeModule";
 import { WorldEventController } from "./dungeon/world/WorldEventController";
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
@@ -337,7 +340,10 @@ export class DungeonScene extends Phaser.Scene {
   private eventRuntimeModule!: EventRuntimeModule;
   private bossRuntimeModule!: BossRuntimeModule;
   private runCompletionModule!: RunCompletionModule;
+  private hazardRuntimeModule!: HazardRuntimeModule;
+  private progressionRuntimeModule!: ProgressionRuntimeModule;
   private floorProgressionModule!: FloorProgressionModule;
+  private playerActionModule!: PlayerActionModule;
   private encounterController!: EncounterController;
   private worldEventController!: WorldEventController;
 
@@ -470,6 +476,9 @@ export class DungeonScene extends Phaser.Scene {
   private readonly previousSkillCooldownLeftById = new Map<string, number>();
   private readonly skillReadyFlashUntilMsById = new Map<string, number>();
   private nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
+  private readonly debugLockedEquipQuery = DEBUG_LOCKED_EQUIP_QUERY;
+  private readonly debugLockedEquipIconId = DEBUG_LOCKED_EQUIP_ICON_ID;
+  private readonly entityDepthOffset = DungeonScene.ENTITY_DEPTH_OFFSET;
 
   constructor() {
     super("dungeon");
@@ -719,7 +728,16 @@ export class DungeonScene extends Phaser.Scene {
     this.runCompletionModule = new RunCompletionModule({
       host: this as unknown as Record<string, any>
     });
+    this.hazardRuntimeModule = new HazardRuntimeModule({
+      host: this as unknown as Record<string, any>
+    });
+    this.progressionRuntimeModule = new ProgressionRuntimeModule({
+      host: this as unknown as Record<string, any>
+    });
     this.floorProgressionModule = new FloorProgressionModule({
+      host: this as unknown as Record<string, any>
+    });
+    this.playerActionModule = new PlayerActionModule({
       host: this as unknown as Record<string, any>
     });
     this.encounterController = new EncounterController({
@@ -727,10 +745,10 @@ export class DungeonScene extends Phaser.Scene {
       updateMonsters: (deltaSeconds, nowMs) => this.updateMonsters(deltaSeconds, nowMs),
       updateMonsterCombat: (nowMs) => this.updateMonsterCombat(nowMs),
       updateBossCombat: (nowMs) => this.bossRuntimeModule.updateCombat(nowMs),
-      updateChallengeRoom: (nowMs) => this.updateChallengeRoom(nowMs)
+      updateChallengeRoom: (nowMs) => this.progressionRuntimeModule.updateChallengeRoom(nowMs)
     });
     this.worldEventController = new WorldEventController({
-      updateHazards: (nowMs) => this.updateHazards(nowMs),
+      updateHazards: (nowMs) => this.hazardRuntimeModule.updateHazards(nowMs),
       collectNearbyLoot: (nowMs) => this.collectNearbyLoot(nowMs),
       updateEventInteraction: (nowMs) => this.eventRuntimeModule.updateInteraction(nowMs),
       updateFloorProgress: (nowMs) => this.floorProgressionModule.update(nowMs),
@@ -874,12 +892,12 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private runActiveFrame(nowMs: number, deltaMs: number): void {
-    const playerHazardMovementMultiplier = this.resolvePlayerHazardMovementMultiplier();
+    const playerHazardMovementMultiplier = this.hazardRuntimeModule.resolvePlayerHazardMovementMultiplier();
     const mutationMoveMultiplier = this.resolveMutationMoveSpeedMultiplier();
 
     this.updateKeyboardMoveIntent(nowMs);
     this.updatePlayerMovement((deltaMs / 1000) * playerHazardMovementMultiplier * mutationMoveMultiplier, nowMs);
-    this.revealNearbyHiddenRoomsByMutation(nowMs);
+    this.progressionRuntimeModule.revealNearbyHiddenRoomsByMutation(nowMs);
     this.encounterController.updateFrame({
       deltaSeconds: deltaMs / 1000,
       nowMs
@@ -1735,7 +1753,7 @@ export class DungeonScene extends Phaser.Scene {
             ...(resolvedDailyDate === undefined ? {} : { dailyDate: resolvedDailyDate })
           }
         : run;
-    this.setupFloor(1, true);
+    this.progressionRuntimeModule.setupFloor(1, true);
 
     this.eventBus.emit("run:start", {
       runSeed: this.runSeed,
@@ -2045,811 +2063,6 @@ export class DungeonScene extends Phaser.Scene {
     this.merchantRng = new SeededRng(deriveFloorSeed(this.runSeed, floor, "merchant"), cursor?.merchant ?? 0);
   }
 
-  private setupFloor(floor: number, initial: boolean): void {
-    this.children.removeAll(true);
-    this.entityManager.clear();
-    this.clearHazards();
-    this.clearHiddenRoomMarkers();
-    this.clearChallengeState();
-    this.movementSystem.clearPathCache();
-
-    this.floorConfig = getFloorConfig(floor, this.run.difficultyModifier);
-    this.configureRngStreams(floor);
-    const rolledBiomeId = resolveBiomeForFloorBySeed(floor, this.runSeed, this.run.branchChoice);
-    const biomeId = this.unlockedBiomeIds.has(rolledBiomeId) ? rolledBiomeId : "forgotten_catacombs";
-    this.currentBiome = BIOME_MAP[biomeId] ?? BIOME_MAP.forgotten_catacombs;
-    this.mapRevealActive = false;
-    this.eventPanelOpen = false;
-    this.merchantOffers = [];
-    this.uiManager.hideEventPanel();
-    this.eventRuntimeModule.destroyEventNode();
-
-    this.dungeon = this.floorConfig.isBossFloor
-      ? this.renderBossFloor(floor)
-      : this.renderNormalFloor(floor);
-
-    this.player = initial ? this.makeInitialPlayer() : this.reusePlayerForNewFloor(this.player);
-    this.player = {
-      ...this.player,
-      position: { ...this.dungeon.playerSpawn }
-    };
-    if (initial && this.run.runMode === "daily") {
-      this.player = this.applyDailyLoadout(this.player, this.time.now);
-    }
-    if (
-      initial &&
-      resolveDebugLockedEquipEnabled({
-        debugCheatsEnabled: this.debugCheatsEnabled,
-        queryKey: DEBUG_LOCKED_EQUIP_QUERY
-      })
-    ) {
-      this.player = injectDebugLockedEquipment({
-        player: this.player,
-        nowMs: this.time.now,
-        runSeed: this.runSeed,
-        iconId: DEBUG_LOCKED_EQUIP_ICON_ID,
-        runLog: this.runLog
-      });
-    }
-    this.entityLabelById.set(this.player.id, t("ui.hud.player.title"));
-
-    this.path = [];
-    this.attackTargetId = null;
-    this.manualMoveTarget = null;
-    this.manualMoveTargetFailures = 0;
-    this.nextManualPathReplanAt = 0;
-    this.nextPlayerAttackAt = 0;
-    this.nextBossAttackAt = 0;
-    this.bossState = null;
-    this.bossSprite = null;
-    this.staircaseState = createStaircaseState(this.dungeon, this.dungeon.playerSpawn, floor);
-
-    const world = this.renderSystem.computeWorldBounds(this.dungeon);
-    this.origin = world.origin;
-    this.worldBounds = world.worldBounds;
-    this.cameras.main.setBackgroundColor(
-      Phaser.Display.Color.IntegerToColor(this.currentBiome.ambientColor).rgba
-    );
-    this.renderSystem.drawDungeon(
-      this.dungeon,
-      this.origin,
-      this.resolveBiomeTileTint(this.currentBiome.id)
-    );
-    this.renderHiddenRoomMarkers();
-
-    const playerRender = this.renderSystem.spawnPlayer(this.player.position, this.origin);
-    this.playerSprite = playerRender.sprite;
-    this.playerYOffset = playerRender.yOffset;
-    this.initializeHazards(this.time.now);
-
-    if (this.floorConfig.isBossFloor) {
-      this.bossRuntimeModule.spawn();
-    } else {
-      this.spawnMonsters();
-      this.eventRuntimeModule.setupFloorEvent(this.time.now);
-      this.initializeChallengeRoom(this.time.now);
-    }
-
-    this.renderSystem.configureCamera(this.cameras.main, this.worldBounds, this.playerSprite);
-
-    this.run = {
-      ...this.run,
-      currentFloor: floor,
-      currentBiomeId: this.currentBiome.id,
-      floor,
-      kills: 0
-    };
-    this.uiManager.configureMinimap({
-      width: this.dungeon.width,
-      height: this.dungeon.height,
-      walkable: this.dungeon.walkable,
-      layoutHash: this.dungeon.layoutHash
-    });
-    this.uiManager.resetMinimap();
-    this.lastMinimapRefreshAt = 0;
-    this.updateMinimap(this.time.now);
-    this.refreshSynergyRuntime();
-
-    this.hudDirty = true;
-    this.runEnded = false;
-
-    if (!initial) {
-      playSceneTransition({
-        title: `Floor ${floor}`,
-        subtitle: this.currentBiome.name,
-        mode: "floor",
-        durationMs: 420
-      });
-    }
-
-    if (!initial) {
-      this.eventBus.emit("floor:enter", {
-        floor,
-        biomeId: this.currentBiome.id,
-        timestampMs: this.time.now
-      });
-    }
-  }
-
-  private renderNormalFloor(floor: number) {
-    return generateDungeon({
-      width: 46,
-      height: 46,
-      minRoomSize: 4,
-      maxRoomSize: 9,
-      floorNumber: floor,
-      seed: deriveFloorSeed(this.runSeed, floor, "procgen")
-    });
-  }
-
-  private renderBossFloor(floor: number) {
-    return generateBossRoom(deriveFloorSeed(this.runSeed, floor, "procgen"), 46, 46);
-  }
-
-  private clearHiddenRoomMarkers(): void {
-    for (const marker of this.hiddenEntranceMarkers.values()) {
-      marker.destroy();
-    }
-    this.hiddenEntranceMarkers.clear();
-  }
-
-  private renderHiddenRoomMarkers(): void {
-    this.clearHiddenRoomMarkers();
-    for (const hiddenRoom of this.dungeon.hiddenRooms ?? []) {
-      if (hiddenRoom.revealed) {
-        continue;
-      }
-      const iso = gridToIso(
-        hiddenRoom.entrance.x,
-        hiddenRoom.entrance.y,
-        this.tileWidth,
-        this.tileHeight,
-        this.origin.x,
-        this.origin.y
-      );
-      const marker = this.add
-        .ellipse(iso.x, iso.y - 4, 18, 10, 0xd1b06e, 0.32)
-        .setStrokeStyle(1, 0x614420, 0.9)
-        .setDepth(iso.y + DungeonScene.ENTITY_DEPTH_OFFSET - 6);
-      this.hiddenEntranceMarkers.set(hiddenRoom.roomId, marker);
-    }
-  }
-
-  private revealHiddenRoom(roomId: string, nowMs: number, source: "click" | "mutation"): boolean {
-    const hiddenRooms = this.dungeon.hiddenRooms ?? [];
-    const target = hiddenRooms.find((entry) => entry.roomId === roomId);
-    if (target === undefined || target.revealed) {
-      return false;
-    }
-
-    target.revealed = true;
-    const row = this.dungeon.walkable[target.entrance.y];
-    if (row !== undefined) {
-      row[target.entrance.x] = true;
-    }
-    this.movementSystem.clearPathCache();
-    this.path = [];
-    this.manualMoveTarget = null;
-    this.manualMoveTargetFailures = 0;
-
-    this.hiddenEntranceMarkers.get(roomId)?.destroy();
-    this.hiddenEntranceMarkers.delete(roomId);
-    this.uiManager.configureMinimap({
-      width: this.dungeon.width,
-      height: this.dungeon.height,
-      walkable: this.dungeon.walkable,
-      layoutHash: this.dungeon.layoutHash
-    });
-
-    this.runLog.appendKey(
-      source === "click" ? "log.hidden_room.revealed_click" : "log.hidden_room.revealed_mutation",
-      undefined,
-      "success",
-      nowMs
-    );
-
-    if (!target.rewardsClaimed) {
-      const rewardTable = this.run.currentFloor >= 3 ? LOOT_TABLE_MAP.cathedral_depths : LOOT_TABLE_MAP.starter_floor;
-      if (rewardTable !== undefined) {
-        const reward = rollItemDrop(
-          rewardTable,
-          ITEM_DEF_MAP,
-          this.run.currentFloor,
-          this.lootRng,
-          `hidden-room-${roomId}-${Math.floor(nowMs)}`,
-          {
-            isItemEligible: (itemDef) => this.isItemDefUnlocked(itemDef)
-          }
-        );
-        if (reward !== null) {
-          this.spawnLootDrop(reward, target.entrance);
-        }
-      }
-      target.rewardsClaimed = true;
-      this.tryDiscoverBlueprints("hidden_room", nowMs, roomId);
-    }
-
-    this.scheduleRunSave();
-    return true;
-  }
-
-  private revealNearbyHiddenRoomsByMutation(nowMs: number): void {
-    const radius = this.resolveHiddenRoomRevealRadius();
-    if (radius <= 0) {
-      return;
-    }
-    for (const hiddenRoom of this.dungeon.hiddenRooms ?? []) {
-      if (hiddenRoom.revealed) {
-        continue;
-      }
-      if (Math.hypot(this.player.position.x - hiddenRoom.entrance.x, this.player.position.y - hiddenRoom.entrance.y) > radius) {
-        continue;
-      }
-      this.revealHiddenRoom(hiddenRoom.roomId, nowMs, "mutation");
-    }
-  }
-
-  private clearChallengeState(): void {
-    this.challengeMarker?.destroy();
-    this.challengeMarker = null;
-    this.challengeRoomState = null;
-    this.challengeWaveTotal = 0;
-    this.challengeMonsterIds.clear();
-  }
-
-  private resolveChallengeWaveTotal(roomId: string): number {
-    const seed = `${this.runSeed}:${this.run.currentFloor}:${roomId}`;
-    let hash = 2166136261;
-    for (let index = 0; index < seed.length; index += 1) {
-      hash ^= seed.charCodeAt(index);
-      hash = Math.imul(hash, 16777619);
-    }
-    return (hash >>> 0) % 2 === 0 ? 2 : 3;
-  }
-
-  private inferChallengeWaveFromMonsterId(monsterId: string): number | null {
-    const match = /^challenge-(\d+)-(\d+)-/.exec(monsterId);
-    if (match === null) {
-      return null;
-    }
-    const floor = Number.parseInt(match[1] ?? "", 10);
-    const wave = Number.parseInt(match[2] ?? "", 10);
-    if (!Number.isFinite(floor) || !Number.isFinite(wave) || floor !== this.run.currentFloor || wave < 1) {
-      return null;
-    }
-    return wave;
-  }
-
-  private removeChallengeMonsters(): void {
-    if (this.challengeMonsterIds.size === 0) {
-      return;
-    }
-    const trackedIds = [...this.challengeMonsterIds];
-    for (const monsterId of trackedIds) {
-      const dead = this.entityManager.removeMonsterById(monsterId);
-      if (dead === null) {
-        continue;
-      }
-      dead.sprite.destroy();
-      dead.healthBarBg.destroy();
-      dead.healthBarFg.destroy();
-      dead.affixMarker?.destroy();
-    }
-  }
-
-  private findChallengeRoomById(roomId: string) {
-    return this.dungeon.rooms.find((room) => room.id === roomId);
-  }
-
-  private challengeRoomCenter(roomId: string): { x: number; y: number } | null {
-    const room = this.findChallengeRoomById(roomId);
-    if (room === undefined) {
-      return null;
-    }
-    return {
-      x: Math.floor(room.x + room.width / 2),
-      y: Math.floor(room.y + room.height / 2)
-    };
-  }
-
-  private initializeChallengeRoom(nowMs: number): void {
-    if (this.floorConfig.isBossFloor || this.run.currentFloor < 2) {
-      return;
-    }
-    const existing = this.dungeon.rooms.find((room) => room.roomType === "challenge");
-    let selected = existing;
-    if (selected === undefined && shouldSpawnChallengeRoom(this.run.currentFloor, this.eventRng)) {
-      const chosen = chooseChallengeRoom(this.dungeon, this.eventRng);
-      if (chosen !== null) {
-        this.dungeon = markRoomAsChallenge(this.dungeon, chosen.id);
-        selected = this.dungeon.rooms.find((room) => room.id === chosen.id);
-      }
-    }
-    if (selected === undefined) {
-      return;
-    }
-    this.challengeRoomState = createChallengeRoomState(selected.id);
-    this.challengeWaveTotal = this.resolveChallengeWaveTotal(selected.id);
-    const center = this.challengeRoomCenter(selected.id);
-    if (center === null) {
-      return;
-    }
-    this.challengeMarker = this.renderSystem.spawnTelegraphCircle(center, 0.95, this.origin);
-    this.challengeMarker.setAlpha(0.2);
-    if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
-      this.challengeMarker.setTint(0x9c6ac4);
-    }
-    this.runLog.appendKey(
-      "log.challenge.discovered",
-      {
-        waves: this.challengeWaveTotal
-      },
-      "info",
-      nowMs
-    );
-  }
-
-  private openChallengeRoomPanel(nowMs: number): void {
-    if (
-      this.challengeRoomState === null ||
-      this.challengeRoomState.started ||
-      this.challengeRoomState.finished ||
-      this.eventPanelOpen
-    ) {
-      return;
-    }
-    const eventDef: RandomEventDef = {
-      id: `challenge_${this.challengeRoomState.roomId}`,
-      name: "Challenge Room",
-      description: "Seal the room and survive timed waves for bonus rewards.",
-      floorRange: { min: this.run.currentFloor, max: this.run.currentFloor },
-      spawnWeight: 1,
-      choices: [
-        {
-          id: "enter",
-          name: "Enter Challenge",
-          description: "Begin timed waves immediately.",
-          rewards: []
-        },
-        {
-          id: "skip",
-          name: "Leave",
-          description: "Keep exploring this floor.",
-          rewards: []
-        }
-      ]
-    };
-    const choices = eventDef.choices.map((choice) => ({
-      choice,
-      enabled: true as const
-    }));
-    this.eventPanelOpen = true;
-    this.uiManager.showEventDialog(
-      eventDef,
-      choices,
-      (choiceId) => {
-        this.eventRuntimeModule.consumeCurrentEvent();
-        if (choiceId === "enter") {
-          this.startChallengeEncounter(this.time.now);
-        }
-      },
-      () => this.eventRuntimeModule.consumeCurrentEvent()
-    );
-    this.runLog.appendKey("log.challenge.ready_confirm", undefined, "warn", nowMs);
-  }
-
-  private spawnChallengeWave(nowMs: number): void {
-    if (this.challengeRoomState === null || !this.challengeRoomState.started || this.challengeRoomState.finished) {
-      return;
-    }
-    const room = this.findChallengeRoomById(this.challengeRoomState.roomId);
-    if (room === undefined) {
-      this.finishChallengeEncounter(false, nowMs);
-      return;
-    }
-    const walkableTiles: Array<{ x: number; y: number }> = [];
-    for (let y = room.y; y < room.y + room.height; y += 1) {
-      for (let x = room.x; x < room.x + room.width; x += 1) {
-        if (!this.dungeon.walkable[y]?.[x]) {
-          continue;
-        }
-        walkableTiles.push({ x, y });
-      }
-    }
-    if (walkableTiles.length === 0) {
-      this.finishChallengeEncounter(false, nowMs);
-      return;
-    }
-
-    const waveNumber = this.challengeRoomState.waveIndex + 1;
-    const spawnCount = Math.max(2, 1 + waveNumber);
-    const archetypeById = new Map(MONSTER_ARCHETYPES.map((entry) => [entry.id, entry]));
-    const pooled = this.currentBiome.monsterPool
-      .map((id) => archetypeById.get(id))
-      .filter((entry): entry is (typeof MONSTER_ARCHETYPES)[number] => entry !== undefined);
-    const spawnPool = pooled.length > 0 ? pooled : MONSTER_ARCHETYPES;
-    const endlessAffixBonus = this.run.inEndless ? resolveEndlessAffixBonusCount(this.run.currentFloor) : 0;
-    const monsters = this.entityManager.listMonsters();
-    for (let idx = 0; idx < spawnCount; idx += 1) {
-      const tile = this.spawnRng.pick(walkableTiles);
-      const archetype = this.spawnRng.pick(spawnPool);
-      const baseAffixes = rollMonsterAffixes({
-        floor: this.run.currentFloor,
-        isBoss: false,
-        ...(this.run.difficultyModifier.affixPolicy === undefined
-          ? {}
-          : { policy: this.run.difficultyModifier.affixPolicy }),
-        availableAffixes: this.unlockedAffixIds,
-        rng: this.spawnRng
-      });
-      const affixes = [...baseAffixes];
-      if (endlessAffixBonus > 0) {
-        const pool = [...this.unlockedAffixIds].filter((affixId) => !affixes.includes(affixId));
-        while (pool.length > 0 && affixes.length < baseAffixes.length + endlessAffixBonus) {
-          const pickedIndex = this.spawnRng.nextInt(0, pool.length - 1);
-          const [pickedAffix] = pool.splice(pickedIndex, 1);
-          if (pickedAffix !== undefined) {
-            affixes.push(pickedAffix);
-          }
-        }
-      }
-      const state = applyAffixesToMonsterState({
-        id: `challenge-${this.run.currentFloor}-${waveNumber}-${idx}-${Math.floor(nowMs)}`,
-        archetypeId: archetype.id,
-        level: this.run.currentFloor,
-        health: Math.floor(GAME_CONFIG.enemyBaseHealth * archetype.healthMultiplier * this.floorConfig.monsterHpMultiplier),
-        maxHealth: Math.floor(
-          GAME_CONFIG.enemyBaseHealth * archetype.healthMultiplier * this.floorConfig.monsterHpMultiplier
-        ),
-        damage: Math.floor(GAME_CONFIG.enemyBaseDamage * archetype.damageMultiplier * this.floorConfig.monsterDmgMultiplier),
-        attackRange: archetype.attackRange,
-        moveSpeed: archetype.moveSpeed,
-        xpValue: archetype.xpValue,
-        dropTableId: archetype.dropTableId,
-        position: { x: tile.x, y: tile.y },
-        aiState: archetype.aiConfig.behavior === "ambush" ? "ambush" : "idle",
-        aiBehavior: archetype.aiConfig.behavior,
-        ...(affixes.length === 0 ? {} : { affixes })
-      });
-      const runtime = this.renderSystem.spawnMonster(state, archetype, this.origin);
-      monsters.push(runtime);
-      this.challengeMonsterIds.add(runtime.state.id);
-      this.entityLabelById.set(runtime.state.id, `${archetype.name} (Challenge)`);
-      for (const affix of runtime.state.affixes ?? []) {
-        this.eventBus.emit("monster:affixApplied", {
-          monsterId: runtime.state.id,
-          affixId: affix,
-          timestampMs: nowMs
-        });
-      }
-    }
-    this.entityManager.rebuildMonsterSpatialIndex();
-    this.runLog.appendKey(
-      "log.challenge.wave_started",
-      {
-        waveNumber,
-        waveTotal: this.challengeWaveTotal
-      },
-      "warn",
-      nowMs
-    );
-  }
-
-  private startChallengeEncounter(nowMs: number): void {
-    if (this.challengeRoomState === null || this.challengeRoomState.started || this.challengeRoomState.finished) {
-      return;
-    }
-    this.challengeRoomState = startChallengeRoom(this.challengeRoomState, nowMs);
-    this.challengeMonsterIds.clear();
-    this.spawnChallengeWave(nowMs);
-    this.scheduleRunSave();
-    this.hudDirty = true;
-  }
-
-  private finishChallengeEncounter(success: boolean, nowMs: number): void {
-    if (this.challengeRoomState === null || this.challengeRoomState.finished) {
-      return;
-    }
-    this.challengeRoomState = success ? { ...this.challengeRoomState, finished: true, success: true } : failChallengeRoom(this.challengeRoomState);
-    this.removeChallengeMonsters();
-    this.challengeMonsterIds.clear();
-    if (success) {
-      this.run = addRunObols(
-        {
-          ...this.run,
-          challengeSuccessCount: this.run.challengeSuccessCount + 1
-        },
-        12
-      );
-      const rewardTable = LOOT_TABLE_MAP.catacomb_elite ?? LOOT_TABLE_MAP.cathedral_depths;
-      const reward =
-        rewardTable === undefined
-          ? null
-          : rollItemDrop(
-              rewardTable,
-              ITEM_DEF_MAP,
-              Math.max(3, this.run.currentFloor),
-              this.lootRng,
-              `challenge-reward-${this.run.currentFloor}-${Math.floor(nowMs)}`,
-              {
-                isItemEligible: (itemDef) => this.isItemDefUnlocked(itemDef)
-              }
-            );
-      const center = this.challengeRoomCenter(this.challengeRoomState.roomId);
-      if (reward !== null && center !== null) {
-        this.spawnLootDrop(reward, center);
-      }
-      this.tryDiscoverBlueprints("challenge_room", nowMs, this.challengeRoomState.roomId);
-      this.runLog.appendKey("log.challenge.cleared_rewards", undefined, "success", nowMs);
-      if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
-        this.challengeMarker.setTint(0x5abf8a);
-      }
-      this.challengeMarker?.setAlpha(0.12);
-    } else {
-      const hpPenalty = Math.max(1, Math.floor(this.player.derivedStats.maxHealth * 0.2));
-      this.player = {
-        ...this.player,
-        health: Math.max(1, this.player.health - hpPenalty),
-        position: { ...this.dungeon.playerSpawn }
-      };
-      this.path = [];
-      this.manualMoveTarget = null;
-      this.manualMoveTargetFailures = 0;
-      this.runLog.appendKey(
-        "log.challenge.failed_lost_hp",
-        {
-          hpPenalty
-        },
-        "danger",
-        nowMs
-      );
-      if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
-        this.challengeMarker.setTint(0xc66767);
-      }
-      this.challengeMarker?.setAlpha(0.16);
-    }
-    this.scheduleRunSave();
-    this.hudDirty = true;
-  }
-
-  private onMonsterDefeated(monsterState: MonsterState, nowMs: number): void {
-    if (
-      this.challengeRoomState === null ||
-      !this.challengeRoomState.started ||
-      this.challengeRoomState.finished ||
-      !this.challengeMonsterIds.delete(monsterState.id)
-    ) {
-      return;
-    }
-    if (this.challengeMonsterIds.size > 0) {
-      return;
-    }
-    const advanced = advanceChallengeRoomWave(this.challengeRoomState, this.challengeWaveTotal);
-    if (advanced.finished && advanced.success) {
-      this.finishChallengeEncounter(true, nowMs);
-      return;
-    }
-    this.challengeRoomState = advanced;
-    this.spawnChallengeWave(nowMs);
-  }
-
-  private restoreChallengeRoom(nowMs: number): void {
-    if (this.floorConfig.isBossFloor || this.run.currentFloor < 2) {
-      return;
-    }
-    const challengeRoom = this.dungeon.rooms.find((room) => room.roomType === "challenge");
-    if (challengeRoom === undefined) {
-      return;
-    }
-    this.challengeRoomState = createChallengeRoomState(challengeRoom.id);
-    this.challengeWaveTotal = this.resolveChallengeWaveTotal(challengeRoom.id);
-    const center = this.challengeRoomCenter(challengeRoom.id);
-    if (center !== null) {
-      this.challengeMarker = this.renderSystem.spawnTelegraphCircle(center, 0.95, this.origin);
-      this.challengeMarker.setAlpha(0.2);
-      if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
-        this.challengeMarker.setTint(0x9c6ac4);
-      }
-    }
-
-    const floorPrefix = `challenge-${this.run.currentFloor}-`;
-    const challengeMonsters = this.entityManager
-      .listMonsters()
-      .filter((monster) => monster.state.id.startsWith(floorPrefix));
-    if (challengeMonsters.length === 0) {
-      return;
-    }
-
-    let maxWave = 1;
-    for (const monster of challengeMonsters) {
-      this.challengeMonsterIds.add(monster.state.id);
-      const inferredWave = this.inferChallengeWaveFromMonsterId(monster.state.id);
-      if (inferredWave !== null) {
-        maxWave = Math.max(maxWave, inferredWave);
-      }
-    }
-
-    const startedAtMs = Math.max(0, nowMs - 1_000);
-    this.challengeRoomState = {
-      ...this.challengeRoomState,
-      started: true,
-      waveIndex: Math.max(0, maxWave - 1),
-      startedAtMs,
-      deadlineAtMs: startedAtMs + 30_000
-    };
-    this.runLog.appendKey("log.challenge.resumed", undefined, "info", nowMs);
-  }
-
-  private updateChallengeRoom(nowMs: number): void {
-    if (this.challengeRoomState === null || this.challengeRoomState.finished) {
-      return;
-    }
-    if (!this.challengeRoomState.started) {
-      const center = this.challengeRoomCenter(this.challengeRoomState.roomId);
-      if (center === null) {
-        return;
-      }
-      const distance = Math.hypot(this.player.position.x - center.x, this.player.position.y - center.y);
-      if (distance <= 1.1) {
-        this.openChallengeRoomPanel(nowMs);
-      }
-      return;
-    }
-    if (shouldFailChallengeRoomByTimeout(this.challengeRoomState, nowMs)) {
-      this.finishChallengeEncounter(false, nowMs);
-    }
-  }
-
-  private resolveBiomeTileTint(biomeId: BiomeDef["id"]): number | undefined {
-    switch (biomeId) {
-      case "molten_caverns":
-        return 0xf4d2bc;
-      case "frozen_halls":
-        return 0xcfe2f0;
-      case "bone_throne":
-        return 0xe4d6d6;
-      case "forgotten_catacombs":
-      default:
-        return undefined;
-    }
-  }
-
-  private clearHazards(): void {
-    for (const visual of this.hazardVisuals) {
-      visual.destroy();
-    }
-    this.hazardVisuals = [];
-    this.hazards = [];
-    this.playerHazardContact.clear();
-  }
-
-  private pickHazardPositions(count: number): Array<{ x: number; y: number }> {
-    const candidates = this.dungeon.spawnPoints.filter(
-      (point) => Math.hypot(point.x - this.player.position.x, point.y - this.player.position.y) >= 4
-    );
-    const picked: Array<{ x: number; y: number }> = [];
-    const mutable = [...candidates];
-
-    while (picked.length < count && mutable.length > 0) {
-      const idx = this.hazardRng.nextInt(0, mutable.length - 1);
-      const candidate = mutable.splice(idx, 1)[0];
-      if (candidate === undefined) {
-        break;
-      }
-      const tooClose = picked.some((entry) => Math.hypot(entry.x - candidate.x, entry.y - candidate.y) < 3);
-      if (!tooClose) {
-        picked.push({ ...candidate });
-      }
-    }
-
-    return picked;
-  }
-
-  private initializeHazards(nowMs: number): void {
-    if (this.floorConfig.isBossFloor) {
-      return;
-    }
-
-    const hazardIds = this.currentBiome.hazardPool;
-    if (hazardIds.length === 0) {
-      return;
-    }
-
-    const count = this.run.currentFloor <= 2 ? 1 : this.run.currentFloor <= 4 ? 2 : 3;
-    const positions = this.pickHazardPositions(count);
-    for (let i = 0; i < positions.length; i += 1) {
-      const position = positions[i]!;
-      const hazardId = this.hazardRng.pick(hazardIds);
-      const def = HAZARD_MAP[hazardId];
-      if (def === undefined) {
-        continue;
-      }
-      const runtime = createHazardRuntimeState(
-        def,
-        `hazard-${this.run.currentFloor}-${i}`,
-        position,
-        nowMs
-      );
-      this.hazards.push(runtime);
-      this.addHazardVisual(runtime);
-    }
-  }
-
-  private addHazardVisual(runtime: HazardRuntimeState): void {
-    const visual = this.renderSystem.spawnTelegraphCircle(runtime.position, runtime.radiusTiles, this.origin);
-    const baseAlpha =
-      runtime.type === "damage_zone"
-        ? 0.22
-        : runtime.type === "movement_modifier"
-          ? 0.16
-          : 0.12;
-    visual.setAlpha(baseAlpha);
-    if (visual instanceof Phaser.GameObjects.Image) {
-      const tint =
-        runtime.type === "damage_zone"
-          ? 0xdb694d
-          : runtime.type === "movement_modifier"
-            ? 0x6aa7cf
-            : 0xbfa4d9;
-      visual.setTint(tint);
-    } else if (visual instanceof Phaser.GameObjects.Ellipse) {
-      const fill =
-        runtime.type === "damage_zone"
-          ? 0xdb694d
-          : runtime.type === "movement_modifier"
-            ? 0x6aa7cf
-            : 0xbfa4d9;
-      visual.setFillStyle(fill, baseAlpha);
-    }
-    this.hazardVisuals.push(visual);
-  }
-
-  private makeInitialPlayer(): PlayerState {
-    const baseStatsSeed = defaultBaseStats();
-    const baseStats = {
-      strength: baseStatsSeed.strength + (this.talentEffects.baseStats.strength ?? 0),
-      dexterity: baseStatsSeed.dexterity + (this.talentEffects.baseStats.dexterity ?? 0),
-      vitality: baseStatsSeed.vitality + (this.talentEffects.baseStats.vitality ?? 0),
-      intelligence: baseStatsSeed.intelligence + (this.talentEffects.baseStats.intelligence ?? 0)
-    };
-    const derivedStats = deriveStats(
-      baseStats,
-      [],
-      undefined,
-      this.meta.permanentUpgrades,
-      this.talentEffects
-    );
-
-    const startingSkillIds = this.pickStartingSkillIds();
-
-    return {
-      id: "player",
-      position: { ...this.dungeon.playerSpawn },
-      level: 1,
-      xp: 0,
-      xpToNextLevel: 98,
-      health: derivedStats.maxHealth,
-      mana: derivedStats.maxMana,
-      baseStats,
-      derivedStats,
-      inventory: [],
-      equipment: {},
-      gold: 0,
-      skills: {
-        skillSlots: Array.from({ length: Math.min(4, Math.max(2, this.meta.permanentUpgrades.skillSlots)) }, (_, idx) => {
-          const id = startingSkillIds[idx];
-          return id === undefined ? null : { defId: id, level: 1 };
-        }),
-        cooldowns: {}
-      },
-      activeBuffs: []
-    };
-  }
-
-  private reusePlayerForNewFloor(player: PlayerState): PlayerState {
-    return this.refreshPlayerStatsFromEquipment(player);
-  }
-
   private refreshPlayerStatsFromEquipment(player: PlayerState): PlayerState {
     const equipped = Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined);
     const derivedStats = deriveStats(
@@ -2866,25 +2079,6 @@ export class DungeonScene extends Phaser.Scene {
       health: Math.min(player.health, derivedStats.maxHealth),
       mana: Math.min(player.mana, derivedStats.maxMana)
     };
-  }
-
-  private pickStartingSkillIds(): string[] {
-    const forgedSkillUnlocks = new Set(
-      this.meta.blueprintForgedIds
-        .map((blueprintId) => BLUEPRINT_DEF_MAP[blueprintId])
-        .filter((blueprint) => blueprint?.category === "skill")
-        .map((blueprint) => blueprint?.unlockTargetId)
-        .filter((skillId): skillId is string => typeof skillId === "string")
-    );
-    const pool = SKILL_DEFS.filter((skill) => {
-      if (skill.unlockCondition === undefined) {
-        return true;
-      }
-      return this.meta.unlocks.includes(skill.unlockCondition) || forgedSkillUnlocks.has(skill.unlockCondition);
-    });
-
-    const sorted = [...pool].sort((a, b) => a.id.localeCompare(b.id));
-    return sorted.slice(0, 2).map((entry) => entry.id);
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
@@ -2913,7 +2107,7 @@ export class DungeonScene extends Phaser.Scene {
       );
     });
     if (hiddenRoom !== undefined) {
-      this.revealHiddenRoom(hiddenRoom.roomId, this.time.now, "click");
+      this.progressionRuntimeModule.revealHiddenRoom(hiddenRoom.roomId, this.time.now, "click");
       return;
     }
 
@@ -3041,176 +2235,6 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  private resolvePlayerHazardMovementMultiplier(): number {
-    const modifiers: number[] = [];
-    for (const hazard of this.hazards) {
-      if (hazard.type !== "movement_modifier" || hazard.movementMultiplier === undefined) {
-        continue;
-      }
-      if (isInsideHazard(this.player.position, hazard)) {
-        modifiers.push(hazard.movementMultiplier);
-      }
-    }
-    return multiplyMovementModifiers(modifiers);
-  }
-
-  private updateHazardContactEvents(nowMs: number): void {
-    for (const hazard of this.hazards) {
-      const inside = isInsideHazard(this.player.position, hazard);
-      const previous = this.playerHazardContact.get(hazard.id) === true;
-      if (inside && !previous) {
-        this.playerHazardContact.set(hazard.id, true);
-        this.eventBus.emit("hazard:enter", {
-          hazardId: hazard.id,
-          hazardType: hazard.type,
-          targetId: this.player.id,
-          timestampMs: nowMs
-        });
-      } else if (!inside && previous) {
-        this.playerHazardContact.delete(hazard.id);
-        this.eventBus.emit("hazard:exit", {
-          hazardId: hazard.id,
-          hazardType: hazard.type,
-          targetId: this.player.id,
-          timestampMs: nowMs
-        });
-      }
-    }
-  }
-
-  private applyHazardDamageToPlayer(
-    hazard: HazardRuntimeState,
-    amount: number,
-    nowMs: number
-  ): void {
-    const nextHealth = applyHazardDamage(this.player.health, amount);
-    this.player = {
-      ...this.player,
-      health: nextHealth
-    };
-    this.eventBus.emit("hazard:damage", {
-      hazardId: hazard.id,
-      hazardType: hazard.type,
-      targetId: this.player.id,
-      amount,
-      remainingHealth: nextHealth,
-      timestampMs: nowMs
-    });
-    if (nextHealth <= 0) {
-      this.lastDeathReason = `Fatal ${hazard.type} damage from ${hazard.defId} (${amount}).`;
-    }
-    this.hudDirty = true;
-  }
-
-  private applyHazardDamageToMonsters(
-    hazard: HazardRuntimeState,
-    amount: number,
-    nowMs: number
-  ): void {
-    const deadIds: string[] = [];
-    for (const monster of this.entityManager.listLivingMonsters()) {
-      if (!isInsideHazard(monster.state.position, hazard)) {
-        continue;
-      }
-      const nextHealth = applyHazardDamage(monster.state.health, amount);
-      monster.state.health = nextHealth;
-      this.eventBus.emit("hazard:damage", {
-        hazardId: hazard.id,
-        hazardType: hazard.type,
-        targetId: monster.state.id,
-        amount,
-        remainingHealth: nextHealth,
-        timestampMs: nowMs
-      });
-      if (nextHealth <= 0) {
-        deadIds.push(monster.state.id);
-      }
-    }
-
-    if (deadIds.length === 0) {
-      return;
-    }
-
-    for (const monsterId of deadIds) {
-      const dead = this.entityManager.removeMonsterById(monsterId);
-      if (dead === null) {
-        continue;
-      }
-      this.onMonsterDefeated(dead.state, nowMs);
-      for (const affixId of dead.state.affixes ?? []) {
-        this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
-      }
-      this.applyOnKillMutationEffects(nowMs);
-      dead.sprite.destroy();
-      dead.healthBarBg.destroy();
-      dead.healthBarFg.destroy();
-      dead.affixMarker?.destroy();
-      const { obolMultiplier } = this.resolveMutationDropBonus();
-      this.run = addRunObols(
-        {
-          ...this.run,
-          kills: this.run.kills + 1,
-          totalKills: this.run.totalKills + 1,
-          endlessKills: (this.run.endlessKills ?? 0) + (this.run.inEndless ? 1 : 0)
-        },
-        Math.max(1, Math.floor(obolMultiplier))
-      );
-    }
-    this.hudDirty = true;
-  }
-
-  private updateHazards(nowMs: number): void {
-    if (this.hazards.length === 0) {
-      return;
-    }
-
-    this.updateHazardContactEvents(nowMs);
-    for (let i = 0; i < this.hazards.length; i += 1) {
-      const hazard = this.hazards[i]!;
-      const visual = this.hazardVisuals[i];
-      const damage = hazard.damagePerTick ?? 0;
-      if (hazard.type === "damage_zone") {
-        if (!shouldRunHazardTick(nowMs, hazard.nextTickAtMs)) {
-          continue;
-        }
-        hazard.nextTickAtMs = nextHazardTickAt(nowMs, hazard.tickIntervalMs);
-        if (isInsideHazard(this.player.position, hazard)) {
-          this.applyHazardDamageToPlayer(hazard, damage, nowMs);
-        }
-        this.applyHazardDamageToMonsters(hazard, damage, nowMs);
-        continue;
-      }
-
-      if (hazard.type === "periodic_trap") {
-        if (visual !== undefined && hazard.nextTriggerAtMs !== undefined && hazard.telegraphMs !== undefined) {
-          const telegraphStartsAt = hazard.nextTriggerAtMs - hazard.telegraphMs;
-          if (nowMs >= telegraphStartsAt) {
-            visual.setAlpha(Math.max(0.26, visual.alpha));
-          }
-        }
-
-        if (!shouldTriggerPeriodicHazard(nowMs, hazard.nextTriggerAtMs)) {
-          continue;
-        }
-        this.eventBus.emit("hazard:trigger", {
-          hazardId: hazard.id,
-          hazardType: hazard.type,
-          position: { ...hazard.position },
-          radiusTiles: hazard.radiusTiles,
-          timestampMs: nowMs
-        });
-        if (isInsideHazard(this.player.position, hazard)) {
-          this.applyHazardDamageToPlayer(hazard, damage, nowMs);
-        }
-        this.applyHazardDamageToMonsters(hazard, damage, nowMs);
-        hazard.nextTriggerAtMs = nextHazardTriggerAt(nowMs, hazard.triggerIntervalMs);
-        if (visual !== undefined) {
-          visual.setAlpha(0.12);
-        }
-      }
-    }
-  }
-
   private updateCombat(nowMs: number): void {
     if (this.floorConfig.isBossFloor) {
       return;
@@ -3266,7 +2290,7 @@ export class DungeonScene extends Phaser.Scene {
       }
       const dead = this.entityManager.removeMonsterById(playerCombat.killedMonsterId);
       if (dead !== null) {
-        this.onMonsterDefeated(dead.state, nowMs);
+        this.progressionRuntimeModule.onMonsterDefeated(dead.state, nowMs);
         for (const affixId of dead.state.affixes ?? []) {
           this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
         }
@@ -3293,76 +2317,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private offerLevelupSkill(): void {
-    if (this.player.skills === undefined) {
-      return;
-    }
-
-    const forgedSkillUnlocks = new Set(
-      this.meta.blueprintForgedIds
-        .map((blueprintId) => BLUEPRINT_DEF_MAP[blueprintId])
-        .filter((blueprint) => blueprint?.category === "skill")
-        .map((blueprint) => blueprint?.unlockTargetId)
-        .filter((skillId): skillId is string => typeof skillId === "string")
-    );
-    const pool = SKILL_DEFS.filter((skill) => {
-      if (skill.unlockCondition === undefined) {
-        return true;
-      }
-      return this.meta.unlocks.includes(skill.unlockCondition) || forgedSkillUnlocks.has(skill.unlockCondition);
-    });
-    const ownedSkillIds = this.player.skills.skillSlots
-      .filter((entry): entry is NonNullable<(typeof this.player.skills.skillSlots)[number]> => entry !== null)
-      .map((entry) => entry.defId);
-    const strongestStat =
-      this.player.baseStats.strength >= this.player.baseStats.dexterity &&
-      this.player.baseStats.strength >= this.player.baseStats.intelligence
-        ? "strength"
-        : this.player.baseStats.dexterity >= this.player.baseStats.intelligence
-          ? "dexterity"
-          : "intelligence";
-    const choices = pickSkillChoicesWeighted(
-      pool,
-      this.skillRng,
-      {
-        strongestStat,
-        ownedSkillIds
-      },
-      3
-    );
-    if (choices.length === 0) {
-      return;
-    }
-
-    const pick = choices[0]!;
-    const slots = [...this.player.skills.skillSlots];
-    const existingIndex = slots.findIndex((entry) => entry?.defId === pick.id);
-    if (existingIndex >= 0) {
-      const existing = slots[existingIndex];
-      if (existing !== null && existing !== undefined) {
-        slots[existingIndex] = {
-          defId: existing.defId,
-          level: Math.min(3, existing.level + 1)
-        };
-      }
-    } else {
-      const firstEmpty = slots.findIndex((entry) => entry === null);
-      if (firstEmpty >= 0) {
-        slots[firstEmpty] = { defId: pick.id, level: 1 };
-      } else {
-        slots[0] = { defId: pick.id, level: 1 };
-      }
-    }
-
-    this.player = {
-      ...this.player,
-      skills: {
-        ...this.player.skills,
-        skillSlots: slots
-      }
-    };
-    this.refreshSynergyRuntime();
-    this.hudDirty = true;
-    this.scheduleRunSave();
+    this.playerActionModule.offerLevelupSkill();
   }
 
   private applySynergyToSkillDef(skillDef: SkillDef): SkillDef {
@@ -3599,7 +2554,7 @@ export class DungeonScene extends Phaser.Scene {
         if (dead === null) {
           continue;
         }
-        this.onMonsterDefeated(dead.state, nowMs);
+        this.progressionRuntimeModule.onMonsterDefeated(dead.state, nowMs);
         dead.sprite.destroy();
         dead.healthBarBg.destroy();
         dead.healthBarFg.destroy();
@@ -3773,173 +2728,12 @@ export class DungeonScene extends Phaser.Scene {
     });
   }
 
-  private renderStaircases(): void {
-    if (!this.staircaseState.visible) {
-      this.entityManager.setStaircases([]);
-      return;
-    }
-    if (this.staircaseState.kind === "branch" && this.staircaseState.options !== undefined) {
-      this.entityManager.setStaircases(
-        this.staircaseState.options.map((option) => this.renderSystem.spawnStaircase(option.position, this.origin))
-      );
-      return;
-    }
-    this.entityManager.setStaircase(this.renderSystem.spawnStaircase(this.staircaseState.position, this.origin));
-  }
-
   private tryUseSkill(slotIndex: number): void {
-    if (this.player.skills === undefined || this.runEnded || this.eventPanelOpen) {
-      return;
-    }
-    const nowMs = this.time.now;
-
-    const slot = this.player.skills.skillSlots[slotIndex];
-    if (slot === null || slot === undefined) {
-      return;
-    }
-
-    const def = SKILL_DEFS.find((entry) => entry.id === slot.defId);
-    if (def === undefined) {
-      return;
-    }
-    const scaledDef = createSkillDefForLevel(def, slot.level);
-    const runtimeSkillDef = this.applySynergyToSkillDef(scaledDef);
-
-    if (!canUseSkill(this.player, this.player.skills, runtimeSkillDef, nowMs)) {
-      return;
-    }
-
-    const monsters = this.entityManager.listMonsters();
-    const resolution = this.combatSystem.useSkill(
-      this.player,
-      monsters,
-      runtimeSkillDef as SkillDef,
-      this.skillRng,
-      nowMs,
-      WEAPON_TYPE_DEF_MAP
-    );
-    this.player = {
-      ...resolution.player,
-      skills: markSkillUsed(this.player.skills, runtimeSkillDef as SkillDef, nowMs)
-    };
-
-    let kills = 0;
-    for (const event of resolution.events) {
-      if (event.kind !== "death") {
-        continue;
-      }
-      const dead = this.entityManager.removeMonsterById(event.targetId);
-      if (dead !== null) {
-        this.onMonsterDefeated(dead.state, nowMs);
-        dead.sprite.destroy();
-        dead.healthBarBg.destroy();
-        dead.healthBarFg.destroy();
-        dead.affixMarker?.destroy();
-        for (const affixId of dead.state.affixes ?? []) {
-          this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
-        }
-        this.applyOnKillMutationEffects(nowMs);
-        if (hasMonsterAffix(dead.state, "splitting")) {
-          this.spawnSplitChildren(dead.state, dead.archetype, nowMs);
-        }
-
-        const xpResult = applyXpGain(this.player, dead.state.xpValue, "strength");
-        this.player = {
-          ...xpResult.player,
-          derivedStats: deriveStats(
-            xpResult.player.baseStats,
-            Object.values(xpResult.player.equipment).filter((item): item is ItemInstance => item !== undefined),
-            undefined,
-            this.meta.permanentUpgrades,
-            this.talentEffects
-          )
-        };
-      }
-      kills += 1;
-    }
-
-    if (kills > 0) {
-      const { obolMultiplier } = this.resolveMutationDropBonus();
-      this.run = addRunObols(
-        {
-          ...this.run,
-          kills: this.run.kills + kills,
-          totalKills: this.run.totalKills + kills,
-          endlessKills: (this.run.endlessKills ?? 0) + (this.run.inEndless ? kills : 0)
-        },
-        Math.max(kills, Math.floor(kills * obolMultiplier))
-      );
-    }
-
-    this.eventBus.emit("skill:use", {
-      playerId: this.player.id,
-      skillId: def.id,
-      timestampMs: nowMs,
-      resolution
-    });
-    this.eventBus.emit("skill:cooldown", {
-      playerId: this.player.id,
-      skillId: def.id,
-      readyAtMs: this.player.skills?.cooldowns[def.id] ?? nowMs
-    });
-    this.refreshSynergyRuntime();
-    this.hudDirty = true;
+    this.playerActionModule.tryUseSkill(slotIndex);
   }
 
   private tryUseConsumable(consumableId: ConsumableId): void {
-    if (this.runEnded || this.eventPanelOpen) {
-      return;
-    }
-    const nowMs = this.time.now;
-    const availability = canUseConsumable(this.player, this.consumables, consumableId, nowMs);
-    if (!availability.ok) {
-      this.eventBus.emit("consumable:failed", {
-        playerId: this.player.id,
-        consumableId,
-        reason: availability.reason,
-        timestampMs: nowMs
-      });
-      return;
-    }
-
-    const result = useConsumable(this.player, this.consumables, consumableId, nowMs);
-    this.player = result.player;
-    this.consumables = result.consumables;
-    if (consumableId === "health_potion") {
-      const potionEffects = this.collectMutationEffects("potion_heal_amp_and_self_damage");
-      if (potionEffects.length > 0) {
-        const healPercent = potionEffects.reduce((sum, effect) => sum + effect.healPercent, 0);
-        const selfDamagePercent = potionEffects.reduce(
-          (sum, effect) => sum + effect.selfDamageCurrentHpPercent,
-          0
-        );
-        const extraHeal = Math.max(0, Math.floor(result.amountApplied * healPercent));
-        const healedHealth = Math.min(this.player.derivedStats.maxHealth, this.player.health + extraHeal);
-        const selfDamage = Math.max(0, Math.floor(healedHealth * selfDamagePercent));
-        this.player = {
-          ...this.player,
-          health: Math.max(1, healedHealth - selfDamage)
-        };
-        this.eventBus.emit("mutation:trigger", {
-          mutationId: "runtime:potion_tradeoff",
-          effectType: "potion_heal_amp_and_self_damage",
-          timestampMs: nowMs,
-          value: extraHeal - selfDamage
-        });
-      }
-    }
-    if (result.mappingRevealed) {
-      this.mapRevealActive = true;
-      this.runLog.appendKey("log.run.objective_mapped", undefined, "info", nowMs);
-    }
-    this.eventBus.emit("consumable:use", {
-      playerId: this.player.id,
-      consumableId,
-      amountApplied: result.amountApplied,
-      remainingCharges: this.consumables.charges[consumableId] ?? 0,
-      timestampMs: nowMs
-    });
-    this.hudDirty = true;
+    this.playerActionModule.tryUseConsumable(consumableId);
   }
 
   private renderHud(): void {
@@ -4141,8 +2935,8 @@ export class DungeonScene extends Phaser.Scene {
     }
     this.removeDebugApi();
     this.eventRuntimeModule.destroyEventNode();
-    this.clearHiddenRoomMarkers();
-    this.clearHazards();
+    this.progressionRuntimeModule.clearHiddenRoomMarkers();
+    this.hazardRuntimeModule.clearHazards();
     this.movementSystem.clearPathCache();
     this.manualMoveTarget = null;
     this.manualMoveTargetFailures = 0;
