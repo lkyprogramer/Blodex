@@ -56,7 +56,6 @@ import {
   rollItemDrop,
   createEventBus,
   createInitialMeta,
-  createRunSeed,
   createRunState,
   createSkillDefForLevel,
   createStaircaseState,
@@ -181,6 +180,14 @@ import {
 } from "../assets/imageAsset";
 import { removeConnectedBackgroundFromTexture } from "../assets/removeBackground";
 import { DebugApiBinder } from "./dungeon/debug/DebugApiBinder";
+import { DebugCommandRegistry } from "./dungeon/debug/DebugCommandRegistry";
+import { DebugRuntimeModule } from "./dungeon/debug/DebugRuntimeModule";
+import {
+  resolveDebugCheatsEnabled,
+  resolveDebugLockedEquipEnabled,
+  resolveDebugQueryFlag
+} from "./dungeon/debug/debugFlags";
+import { injectDebugLockedEquipment } from "./dungeon/debug/injectDebugLockedEquipment";
 import { DiagnosticsService } from "./dungeon/diagnostics/DiagnosticsService";
 import { EncounterController } from "./dungeon/encounter/EncounterController";
 import {
@@ -192,6 +199,10 @@ import {
 } from "./dungeon/logging/labelResolvers";
 import { RunLogService } from "./dungeon/logging/RunLogService";
 import { RunFlowOrchestrator } from "./dungeon/orchestrator/RunFlowOrchestrator";
+import { resolveInitialRunSeed } from "./dungeon/run/resolveInitialRunSeed";
+import { RunPersistenceModule } from "./dungeon/save/RunPersistenceModule";
+import { RunSaveSnapshotBuilder } from "./dungeon/save/RunSaveSnapshotBuilder";
+import { RunStateRestorer } from "./dungeon/save/RunStateRestorer";
 import { SaveCoordinator } from "./dungeon/save/SaveCoordinator";
 import { HudPresenter } from "./dungeon/ui/HudPresenter";
 import { WorldEventController } from "./dungeon/world/WorldEventController";
@@ -238,7 +249,6 @@ const FLOOR_EVENT_SPAWN_CHANCE = 0.62;
 const DEBUG_CHEATS_QUERY = "debugCheats";
 const DISABLE_VFX_QUERY = "disableVfx";
 const DISABLE_SFX_QUERY = "disableSfx";
-const DEBUG_FLAG_VALUES = new Set(["1", "true", "yes", "on"]);
 const DEBUG_LOCKED_EQUIP_QUERY = "debugEquipGate";
 const DEBUG_DIAGNOSTICS_QUERY = "debugDiagnostics";
 const DEBUG_LOCKED_EQUIP_ICON_ID = "item_ring_02";
@@ -261,55 +271,6 @@ const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
 const DAILY_WEAPON_ROTATION: WeaponType[] = ["sword", "axe", "dagger", "staff", "hammer"];
 const DAILY_MUTATION_COUNT = 2;
 const ABYSS_VICTORY_EVENT_ID = "boss_victory_choice";
-const DEBUG_COMMANDS = [
-  { combo: "Alt+H", description: "Show cheat commands" },
-  { combo: "Alt+L", description: "Dump diagnostics snapshot to console/log" },
-  { combo: "Alt+J", description: "Run lifecycle smoke reset loop (12 iterations)" },
-  { combo: "Alt+O", description: "Add 30 Obol" },
-  { combo: "Alt+C", description: "Grant 2 charges for all consumables" },
-  { combo: "Alt+E", description: "Force spawn random event and open panel" },
-  { combo: "Alt+M", description: "Open wandering merchant panel" },
-  { combo: "Alt+K", description: "Clear current floor instantly" },
-  { combo: "Alt+X", description: "Force player death (death feedback check)" },
-  { combo: "API.setHealth(value)", description: "Set player HP directly for HUD/feedback validation" },
-  { combo: "Alt+1..5", description: "Jump to floor 1-5 (biome/hazard/boss checks)" },
-  { combo: "Alt+N", description: "Start a fresh run" },
-  { combo: "API.forceChallenge()", description: "Inject a challenge room on current floor" },
-  { combo: "API.startChallenge()", description: "Start challenge encounter immediately" },
-  { combo: "API.settleChallenge(true|false)", description: "Force challenge success/failure" },
-  { combo: "API.openBossVictory()", description: "Open boss victory choice instantly" },
-  { combo: "API.enterAbyss()", description: "Force enter abyss/endless" },
-  { combo: "API.nextFloor()", description: "Advance to next floor immediately" },
-  { combo: "API.forceSynergy(id)", description: "Inject loadout to activate a synergy quickly" }
-] as const;
-
-interface BlodexDebugApi {
-  addObols: (amount?: number) => void;
-  grantConsumables: (charges?: number) => void;
-  spawnEvent: (eventId?: string) => void;
-  openMerchant: () => void;
-  clearFloor: () => void;
-  jumpFloor: (floor: number) => void;
-  setHealth: (value: number) => number;
-  killPlayer: () => void;
-  newRun: () => void;
-  forceChallenge: () => boolean;
-  startChallenge: () => boolean;
-  settleChallenge: (success?: boolean) => boolean;
-  openBossVictory: () => boolean;
-  enterAbyss: () => boolean;
-  nextFloor: () => boolean;
-  forceSynergy: (synergyId?: string) => string[];
-  diagnostics: () => Record<string, unknown>;
-  stressRuns: (iterations?: number) => Record<string, unknown>;
-  help: () => string[];
-}
-
-declare global {
-  interface Window {
-    __blodexDebug?: BlodexDebugApi;
-  }
-}
 
 interface DungeonSceneInitData {
   difficulty?: DifficultyMode;
@@ -350,6 +311,14 @@ export class DungeonScene extends Phaser.Scene {
   private readonly runFlowOrchestrator = new RunFlowOrchestrator();
   private readonly diagnosticsService = new DiagnosticsService();
   private readonly hudPresenter = new HudPresenter();
+  private readonly debugCommandRegistry = new DebugCommandRegistry(this as unknown as Record<string, unknown>);
+  private readonly runSaveSnapshotBuilder = new RunSaveSnapshotBuilder({
+    host: this as unknown as Record<string, unknown>,
+    appVersion: RUN_SAVE_APP_VERSION
+  });
+  private readonly runStateRestorer = new RunStateRestorer({
+    host: this as unknown as Record<string, unknown>
+  });
   private readonly contentLocalizer = getContentLocalizer();
   private readonly runLog = new RunLogService({
     append: () => {
@@ -357,6 +326,8 @@ export class DungeonScene extends Phaser.Scene {
     }
   }, getI18nService());
   private saveCoordinator!: SaveCoordinator;
+  private debugRuntimeModule!: DebugRuntimeModule;
+  private runPersistenceModule!: RunPersistenceModule;
   private encounterController!: EncounterController;
   private worldEventController!: WorldEventController;
 
@@ -576,10 +547,10 @@ export class DungeonScene extends Phaser.Scene {
     this.cleanupStarted = false;
     this.preserveSceneTransitionOnCleanup = false;
     this.cameras.main.setBackgroundColor("#11161d");
-    this.debugCheatsEnabled = this.isDebugCheatsEnabled();
-    this.diagnosticsEnabled = this.resolveDebugFlag(DEBUG_DIAGNOSTICS_QUERY) || this.debugCheatsEnabled;
-    this.vfxSystem.setEnabled(!this.resolveDebugFlag(DISABLE_VFX_QUERY));
-    this.sfxSystem.setEnabled(!this.resolveDebugFlag(DISABLE_SFX_QUERY));
+    this.debugCheatsEnabled = resolveDebugCheatsEnabled(DEBUG_CHEATS_QUERY);
+    this.diagnosticsEnabled = resolveDebugQueryFlag(DEBUG_DIAGNOSTICS_QUERY) || this.debugCheatsEnabled;
+    this.vfxSystem.setEnabled(!resolveDebugQueryFlag(DISABLE_VFX_QUERY));
+    this.sfxSystem.setEnabled(!resolveDebugQueryFlag(DISABLE_SFX_QUERY));
     this.meta = this.loadMeta();
     this.resolveLocalePreference();
     this.normalizeMetaForPhase4B();
@@ -701,7 +672,16 @@ export class DungeonScene extends Phaser.Scene {
     this.saveCoordinator = new SaveCoordinator({
       saveManager: this.saveManager,
       isRunEnded: () => this.runEnded,
-      buildSnapshot: () => this.buildRunSaveSnapshot(this.time.now)
+      buildSnapshot: () => this.runPersistenceModule.buildSnapshot(this.time.now)
+    });
+    this.runPersistenceModule = new RunPersistenceModule({
+      saveCoordinator: this.saveCoordinator,
+      snapshotBuilder: this.runSaveSnapshotBuilder,
+      stateRestorer: this.runStateRestorer,
+      nowMs: () => this.time.now,
+      onFlush: (nowMs) => {
+        this.lastAutoSaveAt = nowMs;
+      }
     });
     this.encounterController = new EncounterController({
       updateCombat: (nowMs) => this.updateCombat(nowMs),
@@ -717,6 +697,12 @@ export class DungeonScene extends Phaser.Scene {
       updateFloorProgress: (nowMs) => this.updateFloorProgress(nowMs),
       updateMinimap: (nowMs) => this.updateMinimap(nowMs)
     });
+    this.debugRuntimeModule = new DebugRuntimeModule({
+      debugApiBinder: this.debugApiBinder,
+      commandRegistry: this.debugCommandRegistry,
+      isDebugEnabled: () => this.debugCheatsEnabled,
+      onResetRun: () => this.resetRun()
+    });
     this.installDebugApi();
     this.applyRuntimeBackgroundRemoval();
     this.sfxSystem.initialize();
@@ -727,12 +713,12 @@ export class DungeonScene extends Phaser.Scene {
     this.bindDomainEventEffects();
     this.clearKeyboardBindings();
     this.saveCoordinator.bindPageLifecycle();
-    if (this.pendingResumeSave !== null && this.restoreRunFromSave(this.pendingResumeSave)) {
+    if (this.pendingResumeSave !== null && this.runPersistenceModule.restore(this.pendingResumeSave)) {
       this.saveCoordinator.startHeartbeat();
       this.runLog.appendKey("log.run.resumed_saved", undefined, "info", this.time.now);
       this.flushRunSave();
     } else {
-      this.bootstrapRun(this.resolveInitialRunSeed(), this.selectedDifficulty);
+      this.bootstrapRun(resolveInitialRunSeed(this.pendingRunSeed), this.selectedDifficulty);
       this.saveCoordinator.startHeartbeat();
       this.flushRunSave();
     }
@@ -1530,7 +1516,7 @@ export class DungeonScene extends Phaser.Scene {
 
     if (this.debugCheatsEnabled) {
       this.bindKeyboard("keydown", (event) => {
-        this.handleDebugHotkeys(event as KeyboardEvent);
+        this.debugRuntimeModule.handleHotkey(event as KeyboardEvent);
       });
     }
   }
@@ -1563,731 +1549,12 @@ export class DungeonScene extends Phaser.Scene {
     this.keyboardBindings.length = 0;
   }
 
-  private resolveInitialRunSeed(): string {
-    if (this.pendingRunSeed !== undefined && this.pendingRunSeed.trim().length > 0) {
-      return this.pendingRunSeed.trim();
-    }
-    const requested = new URLSearchParams(window.location.search).get("seed");
-    if (requested !== null && requested.trim().length > 0) {
-      return requested.trim();
-    }
-    return createRunSeed();
-  }
-
-  private resolveDebugFlag(queryKey: string): boolean {
-    const raw = new URLSearchParams(window.location.search).get(queryKey);
-    if (raw === null) {
-      return false;
-    }
-    return DEBUG_FLAG_VALUES.has(raw.trim().toLowerCase());
-  }
-
-  private isDebugCheatsEnabled(): boolean {
-    if (!import.meta.env.DEV) {
-      return false;
-    }
-    return this.resolveDebugFlag(DEBUG_CHEATS_QUERY);
-  }
-
-  private isDebugLockedEquipEnabled(): boolean {
-    if (!import.meta.env.DEV) {
-      return false;
-    }
-    return this.debugCheatsEnabled || this.resolveDebugFlag(DEBUG_LOCKED_EQUIP_QUERY);
-  }
-
   private installDebugApi(): void {
-    if (!this.debugCheatsEnabled) {
-      this.removeDebugApi();
-      return;
-    }
-    const api: BlodexDebugApi = {
-      addObols: (amount = 30) => this.debugAddObols(amount),
-      grantConsumables: (charges = 2) => this.debugGrantConsumables(charges),
-      spawnEvent: (eventId) => this.debugSpawnEvent(eventId),
-      openMerchant: () => this.debugOpenMerchant(),
-      clearFloor: () => this.debugForceClearFloor(),
-      jumpFloor: (floor) => this.debugJumpToFloor(floor),
-      setHealth: (value) => this.debugSetHealth(value),
-      killPlayer: () => this.debugForceDeath(),
-      newRun: () => this.resetRun(),
-      forceChallenge: () => this.debugForceChallengeRoom(),
-      startChallenge: () => this.debugStartChallenge(),
-      settleChallenge: (success = true) => this.debugSettleChallenge(success),
-      openBossVictory: () => this.debugOpenBossVictoryChoice(),
-      enterAbyss: () => this.debugEnterAbyss(),
-      nextFloor: () => this.debugAdvanceFloor(),
-      forceSynergy: (synergyId = "syn_staff_chain_lightning_overload") =>
-        this.debugForceSynergy(synergyId),
-      diagnostics: () => this.debugDumpDiagnostics(),
-      stressRuns: (iterations = 12) => this.debugStressRuns(iterations),
-      help: () => DEBUG_COMMANDS.map((entry) => `${entry.combo}: ${entry.description}`)
-    };
-    this.debugApiBinder.install(api);
+    this.debugRuntimeModule.install();
   }
 
   private removeDebugApi(): void {
-    this.debugApiBinder.remove();
-  }
-
-  private debugLog(message: string, level: "info" | "warn" | "success" | "danger" = "info"): void {
-    this.runLog.debug(message, level, this.time.now);
-  }
-
-  private debugDumpDiagnostics(): Record<string, unknown> {
-    const snapshot = this.collectDiagnosticsSnapshot();
-    console.info("[Blodex] diagnostics snapshot", snapshot);
-    const entity = this.entityManager.getDiagnostics();
-    this.debugLog(
-      `Diag listeners=${this.eventBus.listenerCount()} monsters=${entity.monsters}/${entity.livingMonsters} loot=${entity.loot}`,
-      "info"
-    );
-    return snapshot;
-  }
-
-  private debugStressRuns(iterations: number): Record<string, unknown> {
-    const count = Math.max(1, Math.min(50, Math.floor(iterations)));
-    const before = this.collectDiagnosticsSnapshot();
-    for (let i = 0; i < count; i += 1) {
-      this.bootstrapRun(`stress-${this.time.now}-${i}`, this.selectedDifficulty);
-    }
-    this.hudDirty = true;
-    const after = this.collectDiagnosticsSnapshot();
-    const summary = {
-      iterations: count,
-      before,
-      after
-    };
-    console.info("[Blodex] lifecycle stress summary", summary);
-    this.debugLog(`Lifecycle stress finished (${count} resets).`, "success");
-    return summary;
-  }
-
-  private showDebugHelp(): void {
-    for (const command of DEBUG_COMMANDS) {
-      this.debugLog(`${command.combo}: ${command.description}`);
-    }
-  }
-
-  private handleDebugHotkeys(event: KeyboardEvent): void {
-    if (!this.debugCheatsEnabled || !event.altKey) {
-      return;
-    }
-
-    let handled = true;
-    switch (event.code) {
-      case "KeyH":
-        this.showDebugHelp();
-        break;
-      case "KeyL":
-        this.debugDumpDiagnostics();
-        break;
-      case "KeyJ":
-        this.debugStressRuns(12);
-        break;
-      case "KeyO":
-        this.debugAddObols(30);
-        break;
-      case "KeyC":
-        this.debugGrantConsumables(2);
-        break;
-      case "KeyE":
-        this.debugSpawnEvent();
-        break;
-      case "KeyM":
-        this.debugOpenMerchant();
-        break;
-      case "KeyK":
-        this.debugForceClearFloor();
-        break;
-      case "KeyX":
-        this.debugForceDeath();
-        break;
-      case "KeyN":
-        this.resetRun();
-        break;
-      case "Digit1":
-      case "Digit2":
-      case "Digit3":
-      case "Digit4":
-      case "Digit5":
-        this.debugJumpToFloor(Number.parseInt(event.code.slice(-1), 10));
-        break;
-      default:
-        handled = false;
-    }
-
-    if (handled) {
-      event.preventDefault();
-    }
-  }
-
-  private debugAddObols(amount: number): void {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return;
-    }
-    const normalized = Math.max(1, Math.floor(amount));
-    this.run = addRunObols(this.run, normalized);
-    this.hudDirty = true;
-    this.debugLog(`Added ${normalized} Obol. Current: ${this.run.runEconomy.obols}.`, "success");
-  }
-
-  private debugGrantConsumables(charges: number): void {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return;
-    }
-    const normalized = Math.max(1, Math.floor(charges));
-    for (const def of CONSUMABLE_DEFS) {
-      this.consumables = grantConsumable(this.consumables, def.id, normalized);
-    }
-    this.hudDirty = true;
-    this.debugLog(`Granted ${normalized} charges to all consumables.`, "success");
-  }
-
-  private isWalkableGridPoint(point: { x: number; y: number }): boolean {
-    const x = Math.round(point.x);
-    const y = Math.round(point.y);
-    if (x < 0 || y < 0 || x >= this.dungeon.width || y >= this.dungeon.height) {
-      return false;
-    }
-    return this.dungeon.walkable[y]?.[x] === true;
-  }
-
-  private resolveDebugEventPosition(): { x: number; y: number } | null {
-    const offsets = [
-      { x: 1, y: 0 },
-      { x: -1, y: 0 },
-      { x: 0, y: 1 },
-      { x: 0, y: -1 },
-      { x: 1, y: 1 },
-      { x: -1, y: -1 }
-    ];
-    for (const offset of offsets) {
-      const candidate = {
-        x: Math.round(this.player.position.x + offset.x),
-        y: Math.round(this.player.position.y + offset.y)
-      };
-      if (this.isWalkableGridPoint(candidate)) {
-        return candidate;
-      }
-    }
-    return this.pickFloorEventPosition();
-  }
-
-  private pickDebugEvent(eventId?: string): RandomEventDef | null {
-    if (eventId !== undefined) {
-      return RANDOM_EVENT_DEFS.find((entry) => entry.id === eventId) ?? null;
-    }
-    const eligible = RANDOM_EVENT_DEFS.filter((entry) => {
-      const floorOk =
-        this.run.currentFloor >= entry.floorRange.min && this.run.currentFloor <= entry.floorRange.max;
-      const biomeOk = entry.biomeIds === undefined || entry.biomeIds.includes(this.currentBiome.id);
-      return floorOk && biomeOk;
-    });
-    if (eligible.length === 0) {
-      return null;
-    }
-    const sorted = [...eligible].sort((a, b) => a.id.localeCompare(b.id));
-    return sorted[0] ?? null;
-  }
-
-  private debugSpawnEvent(eventId?: string): void {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return;
-    }
-    if (this.floorConfig.isBossFloor) {
-      this.debugLog("Cannot spawn floor event on boss floor.", "warn");
-      return;
-    }
-
-    const eventDef = this.pickDebugEvent(eventId);
-    if (eventDef === null) {
-      this.debugLog("No matching event definition found for this floor/biome.", "warn");
-      return;
-    }
-    const position = this.resolveDebugEventPosition();
-    if (position === null) {
-      this.debugLog("No valid position to place debug event.", "warn");
-      return;
-    }
-
-    this.consumeCurrentEvent();
-    this.createEventNode(eventDef, position, this.time.now);
-    this.openEventPanel(this.time.now);
-    this.hudDirty = true;
-    this.debugLog(`Spawned event ${eventDef.id}.`);
-  }
-
-  private debugOpenMerchant(): void {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return;
-    }
-    if (this.floorConfig.isBossFloor) {
-      this.debugLog("Merchant is unavailable on boss floor.", "warn");
-      return;
-    }
-    const merchantEvent = RANDOM_EVENT_DEFS.find((entry) => entry.id === "wandering_merchant");
-    if (merchantEvent === undefined) {
-      this.debugLog("wandering_merchant event definition not found.", "warn");
-      return;
-    }
-    const position = this.resolveDebugEventPosition();
-    if (position === null) {
-      this.debugLog("No valid position to open merchant.", "warn");
-      return;
-    }
-
-    this.consumeCurrentEvent();
-    this.createEventNode(merchantEvent, position, this.time.now);
-    this.openMerchantPanel(this.time.now);
-    this.hudDirty = true;
-    this.debugLog("Opened wandering merchant panel.");
-  }
-
-  private debugForceChallengeRoom(): boolean {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return false;
-    }
-    if (this.floorConfig.isBossFloor) {
-      this.debugLog("Challenge room is unavailable on boss floor.", "warn");
-      return false;
-    }
-    if (this.eventPanelOpen) {
-      this.consumeCurrentEvent();
-    }
-
-    let challengeRoom = this.dungeon.rooms.find((room) => room.roomType === "challenge");
-    if (challengeRoom === undefined) {
-      const picked = chooseChallengeRoom(this.dungeon, this.eventRng);
-      if (picked === null) {
-        this.debugLog("No room available for challenge injection.", "warn");
-        return false;
-      }
-      this.dungeon = markRoomAsChallenge(this.dungeon, picked.id);
-      challengeRoom = this.dungeon.rooms.find((room) => room.id === picked.id);
-    }
-    if (challengeRoom === undefined) {
-      this.debugLog("Challenge room injection failed.", "warn");
-      return false;
-    }
-
-    this.removeChallengeMonsters();
-    this.clearChallengeState();
-    this.challengeRoomState = createChallengeRoomState(challengeRoom.id);
-    this.challengeWaveTotal = this.resolveChallengeWaveTotal(challengeRoom.id);
-    const center = this.challengeRoomCenter(challengeRoom.id);
-    if (center !== null) {
-      this.challengeMarker = this.renderSystem.spawnTelegraphCircle(center, 0.95, this.origin);
-      this.challengeMarker.setAlpha(0.2);
-      if (this.challengeMarker instanceof Phaser.GameObjects.Image) {
-        this.challengeMarker.setTint(0x9c6ac4);
-      }
-    }
-    this.hudDirty = true;
-    this.scheduleRunSave();
-    this.debugLog(`Challenge room ready (${this.challengeWaveTotal} waves).`, "success");
-    return true;
-  }
-
-  private debugStartChallenge(): boolean {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return false;
-    }
-    if (this.challengeRoomState === null && !this.debugForceChallengeRoom()) {
-      return false;
-    }
-    if (this.challengeRoomState === null) {
-      return false;
-    }
-    if (this.challengeRoomState.finished) {
-      this.debugLog("Challenge already finished on this floor.", "warn");
-      return false;
-    }
-    if (!this.challengeRoomState.started) {
-      this.startChallengeEncounter(this.time.now);
-      this.debugLog("Challenge encounter started.", "success");
-    } else {
-      this.debugLog("Challenge encounter already active.", "info");
-    }
-    return true;
-  }
-
-  private debugSettleChallenge(success: boolean): boolean {
-    if (!this.debugStartChallenge() || this.challengeRoomState === null) {
-      return false;
-    }
-    if (this.challengeRoomState.finished) {
-      this.debugLog("Challenge already settled.", "warn");
-      return false;
-    }
-    this.finishChallengeEncounter(success, this.time.now);
-    this.debugLog(`Challenge forced to ${success ? "success" : "failure"}.`, success ? "success" : "warn");
-    return true;
-  }
-
-  private debugOpenBossVictoryChoice(): boolean {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return false;
-    }
-    if (!this.floorConfig.isBossFloor) {
-      this.debugLog("Boss victory choice is only available on boss floor.", "warn");
-      return false;
-    }
-    if (this.bossState !== null && this.bossState.health > 0) {
-      this.bossState = {
-        ...this.bossState,
-        health: 0
-      };
-    }
-    this.openBossVictoryChoice(this.time.now);
-    this.hudDirty = true;
-    this.debugLog("Boss victory choice opened.", "success");
-    return true;
-  }
-
-  private debugEnterAbyss(): boolean {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return false;
-    }
-    if (this.run.runMode === "daily") {
-      this.debugLog("Daily mode cannot enter abyss.", "warn");
-      return false;
-    }
-    if (this.run.inEndless) {
-      this.debugLog("Already in abyss/endless.", "info");
-      return true;
-    }
-    if (this.run.currentFloor < 5) {
-      this.debugLog("Abyss entry requires reaching floor 5.", "warn");
-      return false;
-    }
-    if (this.floorConfig.isBossFloor && this.bossState !== null && this.bossState.health > 0) {
-      this.bossState = {
-        ...this.bossState,
-        health: 0
-      };
-    }
-    this.enterAbyss(this.time.now);
-    this.debugLog(`Forced abyss entry at floor ${this.run.currentFloor}.`, "success");
-    return true;
-  }
-
-  private debugAdvanceFloor(): boolean {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return false;
-    }
-    if (this.floorConfig.isBossFloor && !this.run.inEndless) {
-      return this.debugOpenBossVictoryChoice();
-    }
-    const fromFloor = this.run.currentFloor;
-    this.run = appendReplayInput(this.run, {
-      type: "floor_transition",
-      atMs: this.getRunRelativeNowMs(),
-      fromFloor,
-      toFloor: fromFloor + 1
-    });
-    this.run = enterNextFloor(this.run);
-    if (this.run.inEndless) {
-      this.run = advanceEndlessFloor(this.run);
-      this.run = addRunObols(this.run, endlessFloorClearBonus(this.run.currentFloor));
-    } else {
-      this.run = addRunObols(this.run, 5);
-    }
-    this.setupFloor(this.run.currentFloor, false);
-    this.flushRunSave();
-    this.debugLog(
-      `Advanced to floor ${this.run.currentFloor}${this.run.inEndless ? ` (endless ${this.run.endlessFloor})` : ""}.`,
-      "success"
-    );
-    return true;
-  }
-
-  private debugForceSynergy(synergyId: string): string[] {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return [];
-    }
-    if (synergyId !== "syn_staff_chain_lightning_overload") {
-      this.debugLog(`Unsupported synergy preset: ${synergyId}.`, "warn");
-      return [...this.synergyRuntime.activeSynergyIds];
-    }
-
-    const nowMs = this.time.now;
-    const existingSkills = this.player.skills;
-    if (existingSkills === undefined) {
-      this.debugLog("Player skills are unavailable; cannot inject synergy preset.", "warn");
-      return [...this.synergyRuntime.activeSynergyIds];
-    }
-    const slots = [...existingSkills.skillSlots];
-    slots[0] = { defId: "chain_lightning", level: 1 };
-    const staffItem: ItemInstance = {
-      id: `debug_synergy_staff_${Math.floor(nowMs)}`,
-      defId: "sovereign_requiem",
-      name: "Debug Sovereign Requiem",
-      kind: "unique",
-      slot: "weapon",
-      weaponType: "staff",
-      rarity: "rare",
-      requiredLevel: 1,
-      iconId: "item_weapon_03",
-      seed: `debug-synergy-${this.runSeed}`,
-      rolledAffixes: {
-        attackPower: 22,
-        critChance: 4,
-        attackSpeed: 4
-      },
-      rolledSpecialAffixes: {
-        lifesteal: 6,
-        critDamage: 22
-      }
-    };
-    this.player = this.refreshPlayerStatsFromEquipment({
-      ...this.player,
-      equipment: {
-        ...this.player.equipment,
-        weapon: staffItem
-      },
-      skills: {
-        ...existingSkills,
-        skillSlots: slots,
-        cooldowns: {
-          ...existingSkills.cooldowns,
-          chain_lightning: 0
-        }
-      }
-    });
-    this.refreshSynergyRuntime();
-    this.hudDirty = true;
-    this.scheduleRunSave();
-    const activeSynergyIds = [...this.synergyRuntime.activeSynergyIds];
-    this.debugLog(`Forced synergy preset ${synergyId}. Active: ${activeSynergyIds.join(", ") || "none"}.`, "success");
-    return activeSynergyIds;
-  }
-
-  private debugForceClearFloor(): void {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return;
-    }
-    const nowMs = this.time.now;
-
-    if (this.floorConfig.isBossFloor) {
-      if (this.bossState === null) {
-        this.debugLog("Boss runtime not ready.", "warn");
-        return;
-      }
-      this.bossState = {
-        ...this.bossState,
-        health: 0
-      };
-      this.hudDirty = true;
-      this.debugLog("Boss health set to 0. Triggering victory summary.", "success");
-      this.finishRun(true);
-      return;
-    }
-
-    let removed = 0;
-    let simulatedDrops = 0;
-    let simulatedLevelUps = 0;
-    while (true) {
-      const living = [...this.entityManager.listLivingMonsters()];
-      if (living.length === 0) {
-        break;
-      }
-      let removedThisPass = 0;
-      for (const monster of living) {
-        const dead = this.entityManager.removeMonsterById(monster.state.id);
-        if (dead === null) {
-          continue;
-        }
-        this.onMonsterDefeated(dead.state, nowMs);
-        const xpResult = applyXpGain(this.player, dead.state.xpValue, "strength");
-        this.player = this.refreshPlayerStatsFromEquipment(xpResult.player);
-        if (xpResult.leveledUp) {
-          simulatedLevelUps += 1;
-          this.eventBus.emit("player:levelup", {
-            playerId: this.player.id,
-            level: this.player.level,
-            timestampMs: nowMs
-          });
-          this.refreshSynergyRuntime(false);
-          this.offerLevelupSkill();
-        }
-        const lootTable = LOOT_TABLE_MAP[dead.state.dropTableId];
-        if (lootTable !== undefined) {
-          const droppedItem = rollItemDrop(
-            lootTable,
-            ITEM_DEF_MAP,
-            this.run.currentFloor,
-            this.lootRng,
-            `debug-clear-${this.run.currentFloor}-${dead.state.id}-${Math.floor(nowMs)}`,
-            {
-              isItemEligible: (itemDef) => this.isItemDefUnlocked(itemDef)
-            }
-          );
-          if (droppedItem !== null) {
-            simulatedDrops += 1;
-            this.spawnLootDrop(droppedItem, dead.state.position);
-            this.eventBus.emit("loot:drop", {
-              sourceId: dead.state.id,
-              item: droppedItem,
-              position: dead.state.position,
-              timestampMs: nowMs
-            });
-          }
-        }
-        dead.sprite.destroy();
-        dead.healthBarBg.destroy();
-        dead.healthBarFg.destroy();
-        dead.affixMarker?.destroy();
-        removed += 1;
-        removedThisPass += 1;
-      }
-      if (removedThisPass === 0) {
-        break;
-      }
-    }
-
-    const revealThreshold = Math.ceil(this.floorConfig.monsterCount * this.floorConfig.clearThreshold);
-    const nextKills = Math.max(this.run.kills + removed, revealThreshold);
-    this.run = addRunObols(
-      {
-        ...this.run,
-        kills: nextKills,
-        totalKills: this.run.totalKills + removed,
-        endlessKills: (this.run.endlessKills ?? 0) + (this.run.inEndless ? removed : 0)
-      },
-      removed
-    );
-
-    if (!this.staircaseState.visible) {
-      this.staircaseState = {
-        ...this.staircaseState,
-        visible: true
-      };
-      this.renderStaircases();
-      this.eventBus.emit("floor:clear", {
-        floor: this.run.currentFloor,
-        kills: this.run.kills,
-        staircase: this.staircaseState,
-        timestampMs: nowMs
-      });
-      this.tryDiscoverBlueprints("floor_clear", nowMs);
-    }
-
-    this.hudDirty = true;
-    this.debugLog(
-      `Cleared floor instantly (${removed} monsters removed, ${simulatedDrops} drops, +${simulatedLevelUps} levels).`,
-      "success"
-    );
-  }
-
-  private debugJumpToFloor(targetFloor: number): void {
-    const maxFloors = GAME_CONFIG.maxFloors ?? 5;
-    const normalized = Math.max(1, Math.min(maxFloors, Math.floor(targetFloor)));
-    if (!Number.isFinite(normalized)) {
-      this.debugLog(`Invalid floor index: ${targetFloor}`, "warn");
-      return;
-    }
-
-    if (this.runEnded) {
-      this.uiManager.clearSummary();
-      this.uiManager.hideDeathOverlay();
-      this.runEnded = false;
-    }
-    if (this.run.currentFloor === normalized) {
-      this.debugLog(`Already on floor ${normalized}.`);
-      return;
-    }
-
-    this.run = appendReplayInput(this.run, {
-      type: "floor_transition",
-      atMs: this.getRunRelativeNowMs(),
-      fromFloor: this.run.currentFloor,
-      toFloor: normalized
-    });
-    this.run = {
-      ...this.run,
-      currentFloor: normalized,
-      floor: normalized
-    };
-    this.setupFloor(normalized, false);
-    this.hudDirty = true;
-    this.debugLog(`Jumped to floor ${normalized}.`, "success");
-  }
-
-  private debugForceDeath(): void {
-    if (this.runEnded) {
-      this.debugLog("Run already ended.", "warn");
-      return;
-    }
-    this.lastDeathReason = "Debug cheat forced death to validate death feedback pipeline.";
-    this.player = {
-      ...this.player,
-      health: 0
-    };
-    this.hudDirty = true;
-    this.debugLog("Forced player death.", "danger");
-    this.finishRun(false);
-  }
-
-  private debugSetHealth(value: number): number {
-    if (this.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
-      return this.player.health;
-    }
-    const normalized = Math.max(0, Math.min(this.player.derivedStats.maxHealth, Math.floor(value)));
-    this.player = {
-      ...this.player,
-      health: normalized
-    };
-    this.hudDirty = true;
-    this.debugLog(`Set HP to ${normalized}/${Math.floor(this.player.derivedStats.maxHealth)}.`, "info");
-    return normalized;
-  }
-
-  private injectDebugLockedEquipment(player: PlayerState, nowMs: number): PlayerState {
-    const existing = player.inventory.find((item) => item.defId === "debug_locked_ring");
-    if (existing !== undefined) {
-      return player;
-    }
-
-    const requiredLevel = Math.max(player.level + 2, 3);
-    const debugItem: ItemInstance = {
-      id: `debug_locked_ring_${Math.floor(nowMs)}`,
-      defId: "debug_locked_ring",
-      name: `Debug Sealed Ring (Lv${requiredLevel})`,
-      slot: "ring",
-      kind: "equipment",
-      rarity: "rare",
-      requiredLevel,
-      iconId: DEBUG_LOCKED_EQUIP_ICON_ID,
-      seed: `debug-${this.runSeed}`,
-      rolledAffixes: {
-        attackPower: 4,
-        armor: 2
-      }
-    };
-
-    this.runLog.append(
-      `[Debug] Added locked item: ${debugItem.name}. Click E to verify level gate feedback.`,
-      "info",
-      nowMs
-    );
-
-    return {
-      ...player,
-      inventory: [...player.inventory, debugItem]
-    };
+    this.debugRuntimeModule.uninstall();
   }
 
   private resolveDailyWeaponType(runSeed: string): WeaponType {
@@ -2439,7 +1706,7 @@ export class DungeonScene extends Phaser.Scene {
       replayVersion: this.run.replay?.version ?? "unknown"
     });
     if (this.debugCheatsEnabled) {
-      this.debugLog("Cheats enabled (?debugCheats=1). Press Alt+H for command list.");
+      this.runLog.debug("Cheats enabled (?debugCheats=1). Press Alt+H for command list.", "info", this.time.now);
     }
     this.pendingRunMode = "normal";
     this.pendingDailyDate = undefined;
@@ -2770,8 +2037,20 @@ export class DungeonScene extends Phaser.Scene {
     if (initial && this.run.runMode === "daily") {
       this.player = this.applyDailyLoadout(this.player, this.time.now);
     }
-    if (initial && this.isDebugLockedEquipEnabled()) {
-      this.player = this.injectDebugLockedEquipment(this.player, this.time.now);
+    if (
+      initial &&
+      resolveDebugLockedEquipEnabled({
+        debugCheatsEnabled: this.debugCheatsEnabled,
+        queryKey: DEBUG_LOCKED_EQUIP_QUERY
+      })
+    ) {
+      this.player = injectDebugLockedEquipment({
+        player: this.player,
+        nowMs: this.time.now,
+        runSeed: this.runSeed,
+        iconId: DEBUG_LOCKED_EQUIP_ICON_ID,
+        runLog: this.runLog
+      });
     }
     this.entityLabelById.set(this.player.id, t("ui.hud.player.title"));
 
@@ -5502,7 +4781,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private resetRun(): void {
     this.uiManager.clearSummary();
-    this.bootstrapRun(this.resolveInitialRunSeed(), this.selectedDifficulty);
+    this.bootstrapRun(resolveInitialRunSeed(this.pendingRunSeed), this.selectedDifficulty);
     this.saveCoordinator.startHeartbeat();
     this.flushRunSave();
     this.hudDirty = true;
@@ -5821,392 +5100,12 @@ export class DungeonScene extends Phaser.Scene {
     this.nextTransientHudRefreshAt = next;
   }
 
-  private collectRngCursor(): Record<RunRngStreamName, number> {
-    return {
-      procgen: 0,
-      spawn: this.spawnRng?.getCursor() ?? 0,
-      combat: this.combatRng?.getCursor() ?? 0,
-      loot: this.lootRng?.getCursor() ?? 0,
-      skill: this.skillRng?.getCursor() ?? 0,
-      boss: this.bossRng?.getCursor() ?? 0,
-      biome: this.biomeRng?.getCursor() ?? 0,
-      hazard: this.hazardRng?.getCursor() ?? 0,
-      event: this.eventRng?.getCursor() ?? 0,
-      merchant: this.merchantRng?.getCursor() ?? 0
-    };
-  }
-
-  private currentEventNodeSnapshot(): RuntimeEventNodeState | null {
-    if (this.eventNode === null) {
-      return null;
-    }
-
-    return {
-      eventId: this.eventNode.eventDef.id,
-      position: { ...this.eventNode.position },
-      resolved: this.eventNode.resolved,
-      ...(this.merchantOffers.length === 0
-        ? {}
-        : { merchantOffers: this.merchantOffers.map((offer) => ({ ...offer })) })
-    };
-  }
-
-  private buildRunSaveSnapshot(nowMs: number): RunSaveDataV2 | null {
-    if (this.runEnded || (this.run as RunState | undefined) === undefined || this.player === undefined) {
-      return null;
-    }
-    const minimapSnapshot = this.uiManager.getMinimapSnapshot() ?? {
-      layoutHash: this.dungeon.layoutHash,
-      exploredKeys: []
-    };
-    const wallNowMs = Date.now();
-    const staircaseSnapshot: StaircaseState = {
-      position: { ...this.staircaseState.position },
-      visible: this.staircaseState.visible
-    };
-    if (this.staircaseState.kind !== undefined) {
-      staircaseSnapshot.kind = this.staircaseState.kind;
-    }
-    if (this.staircaseState.options !== undefined) {
-      staircaseSnapshot.options = [
-        {
-          ...this.staircaseState.options[0],
-          position: { ...this.staircaseState.options[0].position }
-        },
-        {
-          ...this.staircaseState.options[1],
-          position: { ...this.staircaseState.options[1].position }
-        }
-      ];
-    }
-    if (this.staircaseState.selected !== undefined) {
-      staircaseSnapshot.selected = this.staircaseState.selected;
-    }
-
-    return {
-      schemaVersion: 2,
-      savedAtMs: wallNowMs,
-      appVersion: RUN_SAVE_APP_VERSION,
-      runId: `${this.runSeed}:${this.run.startedAtMs}`,
-      runSeed: this.runSeed,
-      run: {
-        ...this.run
-      },
-      player: {
-        ...this.player,
-        position: { ...this.player.position }
-      },
-      consumables: {
-        charges: { ...this.consumables.charges },
-        cooldowns: { ...this.consumables.cooldowns }
-      },
-      dungeon: {
-        ...this.dungeon,
-        walkable: this.dungeon.walkable.map((row) => [...row]),
-        rooms: this.dungeon.rooms.map((room) => ({ ...room })),
-        corridors: this.dungeon.corridors.map((corridor) => ({
-          ...corridor,
-          path: corridor.path.map((point) => ({ ...point }))
-        })),
-        spawnPoints: this.dungeon.spawnPoints.map((point) => ({ ...point })),
-        playerSpawn: { ...this.dungeon.playerSpawn },
-        hiddenRooms: (this.dungeon.hiddenRooms ?? []).map((room) => ({
-          roomId: room.roomId,
-          entrance: { ...room.entrance },
-          revealed: room.revealed,
-          rewardsClaimed: room.rewardsClaimed
-        }))
-      },
-      staircase: staircaseSnapshot,
-      hazards: this.hazards.map((hazard) => ({
-        ...hazard,
-        position: { ...hazard.position }
-      })),
-      boss:
-        this.bossState === null
-          ? null
-          : {
-              ...this.bossState,
-              position: { ...this.bossState.position },
-              attackCooldowns: { ...this.bossState.attackCooldowns }
-            },
-      monsters: this.entityManager.listMonsters().map((monster) => ({
-        state: {
-          ...monster.state,
-          position: { ...monster.state.position },
-          ...(monster.state.affixes === undefined ? {} : { affixes: [...monster.state.affixes] })
-        },
-        nextAttackAt: monster.nextAttackAt,
-        nextSupportAt: monster.nextSupportAt
-      })),
-      lootOnGround: this.entityManager.listLoot().map((drop) => ({
-        item: {
-          ...drop.item,
-          rolledAffixes: { ...drop.item.rolledAffixes },
-          ...(drop.item.rolledSpecialAffixes === undefined
-            ? {}
-            : { rolledSpecialAffixes: { ...drop.item.rolledSpecialAffixes } })
-        },
-        position: { ...drop.position }
-      })),
-      eventNode: this.currentEventNodeSnapshot(),
-      minimap: {
-        layoutHash: minimapSnapshot.layoutHash,
-        exploredKeys: [...minimapSnapshot.exploredKeys]
-      },
-      mapRevealActive: this.mapRevealActive,
-      rngCursor: this.collectRngCursor(),
-      blueprintFoundIdsInRun: [...this.blueprintFoundIdsInRun],
-      selectedMutationIds: [...this.mutationRuntime.activeIds],
-      lease: {
-        tabId: this.saveManager.getTabId(),
-        renewedAtMs: wallNowMs,
-        leaseUntilMs: wallNowMs + SAVE_LEASE_TTL_MS
-      }
-    };
-  }
-
   private flushRunSave(): void {
-    this.saveCoordinator.flush();
-    this.lastAutoSaveAt = this.time.now;
+    this.runPersistenceModule.flush();
   }
 
   private scheduleRunSave(): void {
-    this.saveCoordinator.schedule();
-  }
-
-  private restoreRunFromSave(save: RunSaveDataV2): boolean {
-    try {
-      this.pendingResumeSave = null;
-      this.runSeed = save.runSeed;
-      this.run = {
-        ...save.run,
-        runSeed: save.runSeed,
-        endlessKills: Math.max(0, Math.floor(save.run.endlessKills ?? 0))
-      };
-      this.dailyPracticeMode =
-        this.run.runMode === "daily" && this.run.dailyDate !== undefined
-          ? !canStartDailyScoredAttempt(this.meta, this.run.dailyDate)
-          : false;
-      this.dailyFixedWeaponType = this.run.runMode === "daily" ? this.resolveDailyWeaponType(save.runSeed) : null;
-      this.selectedDifficulty = normalizeDifficultyMode(save.run.difficulty, "normal");
-      this.runEnded = false;
-      this.lastDeathReason = "Unknown cause.";
-      this.manualMoveTarget = null;
-      this.manualMoveTargetFailures = 0;
-      this.nextManualPathReplanAt = 0;
-      this.nextKeyboardMoveInputAt = 0;
-      this.entityLabelById.clear();
-      this.newlyAcquiredItemUntilMs.clear();
-      this.previousSkillCooldownLeftById.clear();
-      this.skillReadyFlashUntilMsById.clear();
-      this.nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
-      this.lastAiNearCount = 0;
-      this.lastAiFarCount = 0;
-      this.path = [];
-      this.blueprintFoundIdsInRun = [...(save.blueprintFoundIdsInRun ?? [])];
-      this.attackTargetId = null;
-      this.nextPlayerAttackAt = 0;
-      this.nextBossAttackAt = 0;
-      this.uiManager.clearLogs();
-      this.uiManager.hideDeathOverlay();
-      this.uiManager.hideEventPanel();
-      this.eventPanelOpen = false;
-
-      this.refreshUnlockSnapshots();
-      this.consumables = {
-        charges: { ...save.consumables.charges },
-        cooldowns: { ...save.consumables.cooldowns }
-      };
-      this.mapRevealActive = save.mapRevealActive;
-      this.merchantOffers = [];
-
-      this.children.removeAll(true);
-      this.entityManager.clear();
-      this.clearHazards();
-      this.clearChallengeState();
-      this.movementSystem.clearPathCache();
-
-      this.floorConfig = getFloorConfig(this.run.currentFloor, this.run.difficultyModifier);
-      this.configureRngStreams(this.run.currentFloor, save.rngCursor);
-      this.currentBiome = BIOME_MAP[this.run.currentBiomeId] ?? BIOME_MAP.forgotten_catacombs;
-      this.dungeon = {
-        ...save.dungeon,
-        walkable: save.dungeon.walkable.map((row) => [...row]),
-        rooms: save.dungeon.rooms.map((room) => ({ ...room })),
-        corridors: save.dungeon.corridors.map((corridor) => ({
-          ...corridor,
-          path: corridor.path.map((point) => ({ ...point }))
-        })),
-        spawnPoints: save.dungeon.spawnPoints.map((point) => ({ ...point })),
-        playerSpawn: { ...save.dungeon.playerSpawn },
-        hiddenRooms: (save.dungeon.hiddenRooms ?? []).map((room) => ({
-          roomId: room.roomId,
-          entrance: { ...room.entrance },
-          revealed: room.revealed,
-          rewardsClaimed: room.rewardsClaimed
-        }))
-      };
-      this.player = this.refreshPlayerStatsFromEquipment({
-        ...save.player,
-        position: { ...save.player.position },
-        inventory: [...save.player.inventory],
-        equipment: { ...save.player.equipment }
-      });
-      this.staircaseState = {
-        position: { ...save.staircase.position },
-        visible: save.staircase.visible,
-        ...(save.staircase.kind === undefined ? {} : { kind: save.staircase.kind }),
-        ...(save.staircase.options === undefined
-          ? {}
-          : {
-              options: [
-                {
-                  ...save.staircase.options[0],
-                  position: { ...save.staircase.options[0].position }
-                },
-                {
-                  ...save.staircase.options[1],
-                  position: { ...save.staircase.options[1].position }
-                }
-              ]
-            }),
-        ...(save.staircase.selected === undefined ? {} : { selected: save.staircase.selected })
-      };
-
-      const world = this.renderSystem.computeWorldBounds(this.dungeon);
-      this.origin = world.origin;
-      this.worldBounds = world.worldBounds;
-      this.cameras.main.setBackgroundColor(
-        Phaser.Display.Color.IntegerToColor(this.currentBiome.ambientColor).rgba
-      );
-      this.renderSystem.drawDungeon(
-        this.dungeon,
-        this.origin,
-        this.resolveBiomeTileTint(this.currentBiome.id)
-      );
-      this.renderHiddenRoomMarkers();
-
-      const playerRender = this.renderSystem.spawnPlayer(this.player.position, this.origin);
-      this.playerSprite = playerRender.sprite;
-      this.playerYOffset = playerRender.yOffset;
-
-      this.hazards = save.hazards.map((hazard) => ({
-        ...hazard,
-        position: { ...hazard.position }
-      }));
-      for (const hazard of this.hazards) {
-        this.addHazardVisual(hazard);
-      }
-
-      const runtimes = save.monsters
-        .map((monster) => {
-          const archetype = MONSTER_ARCHETYPES.find((entry) => entry.id === monster.state.archetypeId);
-          if (archetype === undefined) {
-            return null;
-          }
-          const runtime = this.renderSystem.spawnMonster(
-            {
-              ...monster.state,
-              position: { ...monster.state.position },
-              ...(monster.state.affixes === undefined
-                ? {}
-                : { affixes: [...monster.state.affixes] })
-            },
-            archetype,
-            this.origin
-          );
-          runtime.nextAttackAt = monster.nextAttackAt;
-          runtime.nextSupportAt = monster.nextSupportAt;
-          this.entityLabelById.set(runtime.state.id, archetype.name);
-          return runtime;
-        })
-        .filter((entry): entry is ReturnType<RenderSystem["spawnMonster"]> => entry !== null);
-      this.entityManager.setMonsters(runtimes);
-
-      for (const drop of save.lootOnGround) {
-        this.entityManager.addLoot({
-          item: {
-            ...drop.item,
-            rolledAffixes: { ...drop.item.rolledAffixes },
-            ...(drop.item.rolledSpecialAffixes === undefined
-              ? {}
-              : { rolledSpecialAffixes: { ...drop.item.rolledSpecialAffixes } })
-          },
-          position: { ...drop.position },
-          sprite: this.renderSystem.spawnLootSprite(drop.item, drop.position, this.origin)
-        });
-      }
-
-      if (save.boss !== null) {
-        this.bossState = {
-          ...save.boss,
-          position: { ...save.boss.position },
-          attackCooldowns: { ...save.boss.attackCooldowns }
-        };
-        this.entityLabelById.set(this.bossDef.id, this.bossDef.name);
-        this.bossSprite = this.renderSystem.spawnBoss(this.bossState.position, this.origin, this.bossDef.spriteKey);
-        this.entityManager.setBoss({
-          state: this.bossState,
-          sprite: this.bossSprite
-        });
-      } else {
-        this.bossState = null;
-        this.bossSprite = null;
-        this.entityManager.setBoss(null);
-      }
-
-      this.renderStaircases();
-
-      this.destroyEventNode();
-      const eventNodeSnapshot = save.eventNode;
-      if (eventNodeSnapshot !== null) {
-        const eventDef = RANDOM_EVENT_DEFS.find((entry) => entry.id === eventNodeSnapshot.eventId);
-        if (eventDef !== undefined) {
-          this.createEventNode(eventDef, eventNodeSnapshot.position, this.time.now, { emitSpawnEvent: false });
-          if (this.eventNode !== null) {
-            this.eventNode.resolved = eventNodeSnapshot.resolved;
-          }
-          this.merchantOffers = eventNodeSnapshot.merchantOffers?.map((offer) => ({ ...offer })) ?? [];
-          if (eventNodeSnapshot.resolved) {
-            this.consumeCurrentEvent();
-          }
-        }
-      }
-      this.restoreChallengeRoom(this.time.now);
-
-      this.renderSystem.configureCamera(this.cameras.main, this.worldBounds, this.playerSprite);
-      this.uiManager.configureMinimap({
-        width: this.dungeon.width,
-        height: this.dungeon.height,
-        walkable: this.dungeon.walkable,
-        layoutHash: this.dungeon.layoutHash
-      });
-      this.uiManager.resetMinimap();
-      this.uiManager.restoreMinimap(save.minimap);
-      this.lastMinimapRefreshAt = 0;
-      this.updateMinimap(this.time.now);
-
-      this.hudDirty = true;
-      this.resumedFromSave = true;
-      this.lastAutoSaveAt = this.time.now;
-      const restoredSelectionCandidate = save.selectedMutationIds ?? this.meta.selectedMutationIds;
-      const unlockedMutationIds = collectUnlockedMutationIds(this.meta, MUTATION_DEFS);
-      const selectionValidation = validateMutationSelection(
-        restoredSelectionCandidate,
-        MUTATION_DEF_BY_ID,
-        this.meta.mutationSlots,
-        unlockedMutationIds
-      );
-      this.resetMutationRuntimeState(
-        selectionValidation.ok ? selectionValidation.selected : this.meta.selectedMutationIds
-      );
-      this.refreshSynergyRuntime();
-      return true;
-    } catch (error) {
-      console.warn("[Save] Failed to restore run snapshot.", error);
-      return false;
-    }
+    this.runPersistenceModule.schedule();
   }
 
   private cleanupScene(): void {
