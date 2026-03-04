@@ -207,6 +207,11 @@ import { RunSaveSnapshotBuilder } from "./dungeon/save/RunSaveSnapshotBuilder";
 import { RunStateRestorer } from "./dungeon/save/RunStateRestorer";
 import { SaveCoordinator } from "./dungeon/save/SaveCoordinator";
 import { HudPresenter } from "./dungeon/ui/HudPresenter";
+import {
+  buildHudStatHighlightEntries,
+  collectActiveHudStatHighlights,
+  type HudStatHighlightEntry
+} from "../ui/hud/compare/StatDeltaHighlighter";
 import { EventResolutionService } from "./dungeon/world/EventResolutionService";
 import { EventRuntimeModule } from "./dungeon/world/EventRuntimeModule";
 import { FloorProgressionModule } from "./dungeon/world/FloorProgressionModule";
@@ -225,6 +230,10 @@ const DUNGEON_IMAGE_ASSET_IDS = [
   "monster_ranged_01",
   "monster_elite_01",
   "tile_floor_01",
+  "biome_catacombs_tile_floor_01",
+  "biome_molten_tile_floor_01",
+  "biome_frozen_tile_floor_01",
+  "biome_bone_tile_floor_01",
   "item_weapon_01",
   "item_weapon_02",
   "item_weapon_03",
@@ -267,6 +276,7 @@ const AI_FAR_UPDATE_INTERVAL_FRAMES = 3;
 const MONSTER_COMBAT_RADIUS_TILES = 12;
 const LOOT_PICKUP_RADIUS_TILES = 1.15;
 const SKILL_READY_FLASH_DURATION_MS = 480;
+const STAT_HIGHLIGHT_DURATION_MS = 1_300;
 const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
   health_potion: "item_consumable_health_potion_01",
   mana_potion: "item_consumable_mana_potion_01",
@@ -471,6 +481,9 @@ export class DungeonScene extends Phaser.Scene {
   private readonly newlyAcquiredItemUntilMs = new Map<string, number>();
   private readonly previousSkillCooldownLeftById = new Map<string, number>();
   private readonly skillReadyFlashUntilMsById = new Map<string, number>();
+  private statHighlightEntries: HudStatHighlightEntry[] = [];
+  private levelUpPulseUntilMs = 0;
+  private levelUpPulseLevel: number | null = null;
   private nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
   private readonly debugLockedEquipQuery = DEBUG_LOCKED_EQUIP_QUERY;
   private readonly debugLockedEquipIconId = DEBUG_LOCKED_EQUIP_ICON_ID;
@@ -596,9 +609,11 @@ export class DungeonScene extends Phaser.Scene {
           return;
         }
 
+        const previousStats = this.player.derivedStats;
         this.player = this.refreshPlayerStatsFromEquipment(equipItem(this.player, itemId));
         const equipped = this.player.equipment[item.slot];
         if (equipped?.id === item.id) {
+          this.registerStatDeltaHighlights(previousStats, this.player.derivedStats, this.time.now);
           this.refreshSynergyRuntime();
           this.hudDirty = true;
           this.scheduleRunSave();
@@ -630,8 +645,10 @@ export class DungeonScene extends Phaser.Scene {
             [slot]: undefined
           }
         };
+        const previousStats = this.player.derivedStats;
         this.player = this.refreshPlayerStatsFromEquipment(unequippedPlayer);
         if (equipped !== undefined) {
+          this.registerStatDeltaHighlights(previousStats, this.player.derivedStats, this.time.now);
           this.refreshSynergyRuntime();
           this.hudDirty = true;
           this.scheduleRunSave();
@@ -992,7 +1009,8 @@ export class DungeonScene extends Phaser.Scene {
         this.vfxSystem.playCombatHit(
           this.resolveEntitySprite(action.targetId),
           action.amount,
-          action.critical
+          action.critical,
+          action.weaponType
         );
         return;
       case "combat_dodge":
@@ -1019,6 +1037,9 @@ export class DungeonScene extends Phaser.Scene {
         this.vfxSystem.playHazardTrigger(mapped.x, mapped.y, action.hazardType);
         return;
       }
+      case "level_up":
+        this.vfxSystem.playLevelUp(this.resolveEntitySprite(action.playerId), action.level);
+        return;
       default:
         return;
     }
@@ -1199,6 +1220,9 @@ export class DungeonScene extends Phaser.Scene {
     this.newlyAcquiredItemUntilMs.clear();
     this.previousSkillCooldownLeftById.clear();
     this.skillReadyFlashUntilMsById.clear();
+    this.statHighlightEntries = [];
+    this.levelUpPulseUntilMs = 0;
+    this.levelUpPulseLevel = null;
     this.nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
     this.lastAiNearCount = 0;
     this.lastAiFarCount = 0;
@@ -2212,6 +2236,13 @@ export class DungeonScene extends Phaser.Scene {
   private renderHud(): void {
     const nowMs = this.time.now;
     const newlyAcquiredItemIds = this.collectNewlyAcquiredItemIds(nowMs);
+    const statHighlightSnapshot = collectActiveHudStatHighlights(this.statHighlightEntries, nowMs);
+    this.statHighlightEntries = statHighlightSnapshot.persisted;
+    if (this.levelUpPulseUntilMs <= nowMs) {
+      this.levelUpPulseLevel = null;
+    }
+    const levelUpPulseLevel =
+      this.levelUpPulseUntilMs > nowMs ? (this.levelUpPulseLevel ?? this.player.level) : undefined;
     const consumables = CONSUMABLE_DEFS.map((def) => {
       const cooldownLeftMs = Math.max(0, (this.consumables.cooldowns[def.id] ?? 0) - nowMs);
       const availability = canUseConsumable(this.player, this.consumables, def.id, nowMs);
@@ -2302,6 +2333,10 @@ export class DungeonScene extends Phaser.Scene {
       floorGoalReached: this.staircaseState.visible || this.mapRevealActive,
       mappingRevealed: this.mapRevealActive,
       newlyAcquiredItemIds,
+      ...(levelUpPulseLevel === undefined ? {} : { levelUpPulseLevel }),
+      ...(statHighlightSnapshot.active.length === 0
+        ? {}
+        : { statHighlights: statHighlightSnapshot.active }),
       consumables,
       skillSlots,
       isBossFloor: this.floorConfig.isBossFloor,
@@ -2313,7 +2348,11 @@ export class DungeonScene extends Phaser.Scene {
             bossMaxHealth: this.bossState.maxHealth
           })
     };
-    this.recomputeNextTransientHudRefreshAt(nowMs, hasActiveSkillCooldown);
+    this.recomputeNextTransientHudRefreshAt(
+      nowMs,
+      hasActiveSkillCooldown,
+      statHighlightSnapshot.nextRefreshAt
+    );
 
     const viewState = {
       player: this.player,
@@ -2333,6 +2372,31 @@ export class DungeonScene extends Phaser.Scene {
     this.uiManager.renderSnapshot(snapshot);
   }
 
+  private registerStatDeltaHighlights(
+    beforeStats: PlayerState["derivedStats"],
+    afterStats: PlayerState["derivedStats"],
+    nowMs: number
+  ): void {
+    const nextEntries = buildHudStatHighlightEntries(
+      beforeStats,
+      afterStats,
+      nowMs,
+      STAT_HIGHLIGHT_DURATION_MS
+    );
+    if (nextEntries.length === 0) {
+      return;
+    }
+    const activeEntries = this.statHighlightEntries.filter((entry) => entry.expiresAtMs > nowMs);
+    const mergedByKey = new Map(activeEntries.map((entry) => [entry.key, entry] as const));
+    for (const entry of nextEntries) {
+      mergedByKey.set(entry.key, entry);
+      if (entry.expiresAtMs < this.nextTransientHudRefreshAt) {
+        this.nextTransientHudRefreshAt = entry.expiresAtMs;
+      }
+    }
+    this.statHighlightEntries = [...mergedByKey.values()];
+  }
+
   private collectNewlyAcquiredItemIds(nowMs: number): string[] {
     if (this.newlyAcquiredItemUntilMs.size === 0) {
       return [];
@@ -2349,7 +2413,11 @@ export class DungeonScene extends Phaser.Scene {
     return visibleIds;
   }
 
-  private recomputeNextTransientHudRefreshAt(nowMs: number, hasActiveSkillCooldown: boolean): void {
+  private recomputeNextTransientHudRefreshAt(
+    nowMs: number,
+    hasActiveSkillCooldown: boolean,
+    nextStatHighlightAt = Number.POSITIVE_INFINITY
+  ): void {
     let next = Number.POSITIVE_INFINITY;
     for (const expiresAtMs of this.newlyAcquiredItemUntilMs.values()) {
       if (expiresAtMs > nowMs && expiresAtMs < next) {
@@ -2363,6 +2431,12 @@ export class DungeonScene extends Phaser.Scene {
     }
     if (hasActiveSkillCooldown) {
       next = Math.min(next, nowMs + 120);
+    }
+    if (this.levelUpPulseUntilMs > nowMs) {
+      next = Math.min(next, this.levelUpPulseUntilMs);
+    }
+    if (nextStatHighlightAt > nowMs) {
+      next = Math.min(next, nextStatHighlightAt);
     }
     this.nextTransientHudRefreshAt = next;
   }
@@ -2418,6 +2492,9 @@ export class DungeonScene extends Phaser.Scene {
     this.newlyAcquiredItemUntilMs.clear();
     this.previousSkillCooldownLeftById.clear();
     this.skillReadyFlashUntilMsById.clear();
+    this.statHighlightEntries = [];
+    this.levelUpPulseUntilMs = 0;
+    this.levelUpPulseLevel = null;
     this.nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
     this.cursorKeys = null;
     this.entityManager.clear();

@@ -23,21 +23,46 @@ describe("feedbackEventRouter", () => {
   it("maps combat:hit to both sfx and vfx channels", () => {
     const actions = deriveFeedbackActions({
       type: "combat:hit",
-      combat: makeCombatEvent({ kind: "crit" })
+      combat: makeCombatEvent({ kind: "crit" }),
+      weaponType: "dagger"
     });
 
     expect(actions).toEqual([
       {
         channel: "sfx",
         cue: "combat_hit",
-        critical: true
+        critical: true,
+        weaponType: "dagger"
       },
       {
         channel: "vfx",
         cue: "combat_hit",
         targetId: "monster-a",
         amount: 12,
-        critical: true
+        critical: true,
+        weaponType: "dagger"
+      }
+    ]);
+  });
+
+  it("maps player:levelup to sfx and vfx channels", () => {
+    const actions = deriveFeedbackActions({
+      type: "player:levelup",
+      playerId: "player",
+      level: 8
+    });
+
+    expect(actions).toEqual([
+      {
+        channel: "sfx",
+        cue: "level_up",
+        level: 8
+      },
+      {
+        channel: "vfx",
+        cue: "level_up",
+        playerId: "player",
+        level: 8
       }
     ]);
   });
@@ -85,4 +110,3 @@ describe("feedbackEventRouter", () => {
     expect(onDispatchError).toHaveBeenCalledTimes(1);
   });
 });
-

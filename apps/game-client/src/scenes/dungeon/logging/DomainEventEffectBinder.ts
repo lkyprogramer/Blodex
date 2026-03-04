@@ -1,6 +1,11 @@
 import { BIOME_MAP } from "@blodex/content";
-import type { GameEventMap, TypedEventBus } from "@blodex/core";
+import {
+  resolveEquippedWeaponType,
+  type GameEventMap,
+  type TypedEventBus
+} from "@blodex/core";
 import { t } from "../../../i18n";
+import { LEVEL_UP_FEEDBACK_PROFILE } from "../../../systems/feedback/LevelUpFeedbackProfile";
 import {
   consumableFailureReasonLabel,
   difficultyLabel,
@@ -16,9 +21,12 @@ export type DomainEventEffectHost = {
 
 export function bindDomainEventEffects(host: DomainEventEffectHost): void {
     host.eventBus.on("combat:hit", ({ combat }) => {
+      const weaponType =
+        combat.sourceId === host.player.id ? resolveEquippedWeaponType(host.player) : undefined;
       host.routeFeedback({
         type: "combat:hit",
-        combat
+        combat,
+        ...(weaponType === undefined ? {} : { weaponType })
       });
       host.hudDirty = true;
       const source = host.resolveEntityLabel(combat.sourceId);
@@ -131,7 +139,21 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
       );
     });
 
-    host.eventBus.on("player:levelup", ({ level, timestampMs }) => {
+    host.eventBus.on("player:levelup", ({ playerId, level, timestampMs }) => {
+      host.routeFeedback({
+        type: "player:levelup",
+        playerId,
+        level
+      });
+      host.levelUpPulseUntilMs = Math.max(
+        host.levelUpPulseUntilMs ?? 0,
+        timestampMs + LEVEL_UP_FEEDBACK_PROFILE.hudPulseDurationMs
+      );
+      host.levelUpPulseLevel = level;
+      host.nextTransientHudRefreshAt = Math.min(
+        host.nextTransientHudRefreshAt,
+        host.levelUpPulseUntilMs
+      );
       host.hudDirty = true;
       host.runLog.appendKey(
         "log.player.level_up",

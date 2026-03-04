@@ -1,6 +1,8 @@
 import Phaser from "phaser";
-import type { BiomeId, ConsumableId, HazardType } from "@blodex/core";
+import type { BiomeId, ConsumableId, HazardType, WeaponType } from "@blodex/core";
 import type { FeedbackAction } from "./feedbackEventRouter";
+import { LEVEL_UP_FEEDBACK_PROFILE } from "./feedback/LevelUpFeedbackProfile";
+import { resolveWeaponFeedbackProfile } from "./feedback/WeaponFeedbackProfile";
 
 const AUDIO_KEYS = [
   "sfx_combat_hit_01",
@@ -163,7 +165,7 @@ export class SFXSystem {
     }
     switch (action.cue) {
       case "combat_hit":
-        this.playCombatHit(action.critical);
+        this.playCombatHit(action.critical, action.weaponType);
         return;
       case "combat_dodge":
         // Dodge SFX placeholder for future asset expansion.
@@ -204,13 +206,20 @@ export class SFXSystem {
       case "hazard_trigger":
         this.playHazardTrigger(action.hazardType);
         return;
+      case "level_up":
+        this.playLevelUp(action.level);
+        return;
       default:
         return;
     }
   }
 
-  playCombatHit(isCrit: boolean): void {
-    this.play(isCrit ? "sfx_combat_crit_01" : "sfx_combat_hit_01", VOLUME.combat);
+  playCombatHit(isCrit: boolean, weaponType?: WeaponType): void {
+    const profile = resolveWeaponFeedbackProfile(weaponType);
+    this.play(isCrit ? "sfx_combat_crit_01" : "sfx_combat_hit_01", VOLUME.combat * profile.sfxVolumeMultiplier, {
+      rate: isCrit ? profile.sfxRate * 1.02 : profile.sfxRate,
+      detune: isCrit ? profile.sfxDetune + 80 : profile.sfxDetune
+    });
   }
 
   playCombatDeath(): void {
@@ -263,6 +272,15 @@ export class SFXSystem {
     this.play("ui_biome_enter_01", VOLUME.ui);
   }
 
+  playLevelUp(level: number): void {
+    const profile = LEVEL_UP_FEEDBACK_PROFILE;
+    const detune = Math.min(260, Math.max(-260, profile.sfxDetune + level * 4));
+    this.play("ui_biome_enter_01", VOLUME.ui * profile.sfxVolumeMultiplier, {
+      rate: profile.sfxRate,
+      detune
+    });
+  }
+
   playAmbientForBiome(biomeId: BiomeId): void {
     const key = BIOME_AMBIENT_MAP[biomeId];
     if (this.ambientKey === key && this.ambientSound?.isPlaying) {
@@ -307,7 +325,14 @@ export class SFXSystem {
     };
   }
 
-  private play(key: AudioKey, volume: number): void {
+  private play(
+    key: AudioKey,
+    volume: number,
+    options?: {
+      rate?: number;
+      detune?: number;
+    }
+  ): void {
     if (!this.enabled || !this.canPlay(key)) {
       return;
     }
@@ -320,7 +345,11 @@ export class SFXSystem {
     }
 
     this.lastPlayedAt.set(key, now);
-    this.scene.sound.play(key, { volume });
+    this.scene.sound.play(key, {
+      volume,
+      ...(options?.rate === undefined ? {} : { rate: options.rate }),
+      ...(options?.detune === undefined ? {} : { detune: options.detune })
+    });
   }
 
   private canPlay(key: AudioKey): boolean {

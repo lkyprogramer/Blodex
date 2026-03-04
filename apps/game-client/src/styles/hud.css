@@ -81,6 +81,18 @@ button,
     0 0 14px rgba(244, 208, 118, 0.3);
 }
 
+.inventory-cell-actions button.downgrade {
+  border-color: rgba(210, 116, 116, 0.7);
+  color: #f4c3c3;
+}
+
+.equip-downgrade-hint {
+  margin-top: 3px;
+  font-size: 10px;
+  color: #e7b0b0;
+  letter-spacing: 0.2px;
+}
+
 .equip-slot-name,
 .hotkey-badge,
 .slot-status,
@@ -106,6 +118,24 @@ button,
 
 .player-bar-row.low-health .player-bar-fill.hp {
   background: linear-gradient(90deg, #9c2f2f, #ce4d4d);
+}
+
+.player-bar-row.level-up-pulse .player-bar-track {
+  animation: pulseGlow 820ms ease-in-out 2;
+  border-color: rgba(229, 194, 115, 0.72);
+}
+
+.level-up-banner {
+  margin: 6px 0 8px;
+  border: 1px solid rgba(229, 194, 115, 0.56);
+  border-radius: var(--radius-md);
+  background: rgba(92, 71, 27, 0.4);
+  color: #f6df9f;
+  font-size: 11px;
+  padding: 4px 7px;
+  text-align: center;
+  letter-spacing: 0.4px;
+  animation: fadeScaleIn var(--motion-fast) var(--ease-standard) both;
 }
 
 .player-bar-head {
@@ -139,6 +169,26 @@ button,
 
 .player-bar-fill.xp {
   background: linear-gradient(90deg, #baa34a, #e6cf75);
+}
+
+.hud-stat-cell.delta-up,
+.hud-stat-cell.delta-down,
+.hud-stat-cell.delta-equal {
+  border-radius: var(--radius-sm);
+  padding: 0 4px;
+  animation: fadeScaleIn var(--motion-fast) var(--ease-standard) both;
+}
+
+.hud-stat-cell.delta-up {
+  background: rgba(56, 110, 70, 0.34);
+}
+
+.hud-stat-cell.delta-down {
+  background: rgba(122, 58, 58, 0.34);
+}
+
+.hud-stat-cell.delta-equal {
+  background: rgba(118, 104, 78, 0.28);
 }
 
 .skill-slot {

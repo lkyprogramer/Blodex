@@ -90,8 +90,23 @@ export class RenderSystem {
     camera.roundPixels = true;
   }
 
-  drawDungeon(dungeon: DungeonLayout, origin: { x: number; y: number }, tintColor?: number): void {
-    if (this.scene.textures.exists("tile_floor_01")) {
+  drawDungeon(
+    dungeon: DungeonLayout,
+    origin: { x: number; y: number },
+    tintOrOptions?: number | { tileKey?: string; tintColor?: number }
+  ): void {
+    const options =
+      typeof tintOrOptions === "number"
+        ? { tintColor: tintOrOptions }
+        : (tintOrOptions ?? {});
+    const preferredTileKey = options.tileKey ?? "tile_floor_01";
+    const tileTextureKey = this.scene.textures.exists(preferredTileKey)
+      ? preferredTileKey
+      : this.scene.textures.exists("tile_floor_01")
+        ? "tile_floor_01"
+        : null;
+
+    if (tileTextureKey !== null) {
       for (let y = 0; y < dungeon.height; y += 1) {
         for (let x = 0; x < dungeon.width; x += 1) {
           if (!dungeon.walkable[y]?.[x]) {
@@ -99,11 +114,11 @@ export class RenderSystem {
           }
           const iso = gridToIso(x, y, this.tileWidth, this.tileHeight, origin.x, origin.y);
           const tile = this.scene.add
-            .image(iso.x, iso.y, "tile_floor_01")
+            .image(iso.x, iso.y, tileTextureKey)
             .setDisplaySize(this.tileWidth, this.tileHeight)
             .setDepth(iso.y);
-          if (tintColor !== undefined) {
-            tile.setTint(tintColor);
+          if (options.tintColor !== undefined) {
+            tile.setTint(options.tintColor);
           }
         }
       }

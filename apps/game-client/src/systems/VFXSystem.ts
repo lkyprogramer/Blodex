@@ -1,6 +1,8 @@
 import Phaser from "phaser";
-import type { HazardType } from "@blodex/core";
+import type { HazardType, WeaponType } from "@blodex/core";
 import { ParticlePool } from "./pools/ParticlePool";
+import { LEVEL_UP_FEEDBACK_PROFILE } from "./feedback/LevelUpFeedbackProfile";
+import { resolveWeaponFeedbackProfile } from "./feedback/WeaponFeedbackProfile";
 
 type EntitySprite = Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
 type VfxPriority = "high" | "low";
@@ -31,26 +33,35 @@ export class VFXSystem {
     }
   }
 
-  playCombatHit(target: EntitySprite | null, amount: number, critical: boolean): void {
+  playCombatHit(
+    target: EntitySprite | null,
+    amount: number,
+    critical: boolean,
+    weaponType?: WeaponType
+  ): void {
     if (!this.enabled || target === null || !target.active) {
       return;
     }
 
-    this.flashTarget(target, critical ? 0xfff2a8 : 0xffffff, 60);
+    const weaponProfile = resolveWeaponFeedbackProfile(weaponType);
+    const flashColor = critical ? 0xfff2a8 : weaponProfile.flashColor;
+    this.flashTarget(target, flashColor, critical ? 72 : 60);
     this.spawnFloatingText(
       target.x,
       target.y - 40,
       `${critical ? "CRIT " : ""}${Math.max(1, Math.floor(amount))}`,
       {
-        color: critical ? "#ffe777" : "#f0e7da",
-        size: critical ? 15 : 12,
+        color: critical ? "#ffe777" : weaponProfile.floatingTextColor,
+        size: critical ? Math.max(14, weaponProfile.floatingTextSize + 2) : weaponProfile.floatingTextSize,
         durationMs: critical ? 620 : 520,
-        rise: critical ? 34 : 24
+        rise: critical ? weaponProfile.floatingTextRise + 8 : weaponProfile.floatingTextRise
       },
       critical ? "high" : "low"
     );
 
-    const offset = critical ? 5 : 3;
+    const offset = critical
+      ? Math.max(4, weaponProfile.hitOffset + 1)
+      : Math.max(2, weaponProfile.hitOffset);
     this.scene.tweens.add({
       targets: target,
       x: target.x + offset,
@@ -59,7 +70,7 @@ export class VFXSystem {
       ease: "Quad.Out"
     });
 
-    if (critical) {
+    if (critical || weaponType === "hammer") {
       this.scene.cameras.main.shake(90, 0.0025);
     }
   }
@@ -151,6 +162,59 @@ export class VFXSystem {
         this.particlePool.releaseEllipse(ring);
       }
     });
+  }
+
+  playLevelUp(target: EntitySprite | null, level: number): void {
+    if (!this.enabled) {
+      return;
+    }
+
+    const profile = LEVEL_UP_FEEDBACK_PROFILE;
+    const centerX = target?.x ?? this.scene.cameras.main.midPoint.x;
+    const centerY = (target?.y ?? this.scene.cameras.main.midPoint.y) - 10;
+    this.spawnFloatingText(
+      centerX,
+      centerY - 28,
+      `LEVEL ${Math.max(1, Math.floor(level))}`,
+      {
+        color: profile.floatingTextColor,
+        size: 16,
+        durationMs: profile.floatingTextDurationMs,
+        rise: profile.floatingTextRise
+      },
+      "high"
+    );
+
+    if (target !== null && target.active) {
+      this.flashTarget(target, profile.flashColor, profile.flashDurationMs);
+    }
+
+    if (this.tryReserveTransient("high")) {
+      const ring = this.particlePool
+        .acquireEllipse()
+        .setPosition(centerX, centerY)
+        .setSize(18, 12)
+        .setFillStyle(profile.ringColor, 0.25)
+        .setStrokeStyle(2, profile.ringColor, 0.8)
+        .setDepth(90_000);
+      this.transientObjects.add(ring);
+
+      this.scene.tweens.add({
+        targets: ring,
+        scaleX: 4,
+        scaleY: 3.2,
+        alpha: 0,
+        duration: profile.floatingTextDurationMs,
+        ease: "Cubic.Out",
+        onComplete: () => {
+          this.transientObjects.delete(ring);
+          this.particlePool.releaseEllipse(ring);
+        }
+      });
+    }
+
+    this.scene.cameras.main.flash(profile.flashDurationMs, 242, 214, 139, false);
+    this.scene.cameras.main.shake(110, 0.0028);
   }
 
   playBossPhaseChange(boss: EntitySprite | null): void {

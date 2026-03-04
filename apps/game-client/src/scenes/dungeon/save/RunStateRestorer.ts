@@ -15,7 +15,7 @@ import {
   RANDOM_EVENT_DEFS,
   getFloorConfig
 } from "@blodex/content";
-import { resolveBiomeTileTint } from "../world/resolveBiomeTileTint";
+import { resolveBiomeVisualTheme } from "../presentation/BiomeVisualThemeRegistry";
 
 type RestoreHost = Record<string, any>;
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
@@ -53,6 +53,9 @@ export class RunStateRestorer {
       host.newlyAcquiredItemUntilMs.clear();
       host.previousSkillCooldownLeftById.clear();
       host.skillReadyFlashUntilMsById.clear();
+      host.statHighlightEntries = [];
+      host.levelUpPulseUntilMs = 0;
+      host.levelUpPulseLevel = null;
       host.nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
       host.lastAiNearCount = 0;
       host.lastAiFarCount = 0;
@@ -134,7 +137,11 @@ export class RunStateRestorer {
       host.cameras.main.setBackgroundColor(
         Phaser.Display.Color.IntegerToColor(host.currentBiome.ambientColor).rgba
       );
-      host.renderSystem.drawDungeon(host.dungeon, host.origin, resolveBiomeTileTint(host.currentBiome.id));
+      const biomeVisualTheme = resolveBiomeVisualTheme(host.currentBiome);
+      host.renderSystem.drawDungeon(host.dungeon, host.origin, {
+        tileKey: biomeVisualTheme.floorTileKey,
+        tintColor: biomeVisualTheme.tileTint
+      });
       host.progressionRuntimeModule.renderHiddenRoomMarkers();
 
       const playerRender = host.renderSystem.spawnPlayer(host.player.position, host.origin);

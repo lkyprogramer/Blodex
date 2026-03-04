@@ -86,6 +86,11 @@ function runScenario(feedbackEnabled: boolean): { state: OutcomeState; actions: 
       playerId: "player"
     },
     {
+      type: "player:levelup",
+      playerId: "player",
+      level: 2
+    },
+    {
       type: "combat:hit",
       combat: makeCombat({
         sourceId: "monster",
