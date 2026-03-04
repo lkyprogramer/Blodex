@@ -189,6 +189,9 @@ import {
 } from "./dungeon/debug/debugFlags";
 import { injectDebugLockedEquipment } from "./dungeon/debug/injectDebugLockedEquipment";
 import { DiagnosticsService } from "./dungeon/diagnostics/DiagnosticsService";
+import { BossCombatService } from "./dungeon/encounter/BossCombatService";
+import { BossRuntimeModule } from "./dungeon/encounter/BossRuntimeModule";
+import { BossSpawnService } from "./dungeon/encounter/BossSpawnService";
 import { EncounterController } from "./dungeon/encounter/EncounterController";
 import {
   consumableFailureReasonLabel,
@@ -199,12 +202,17 @@ import {
 } from "./dungeon/logging/labelResolvers";
 import { RunLogService } from "./dungeon/logging/RunLogService";
 import { RunFlowOrchestrator } from "./dungeon/orchestrator/RunFlowOrchestrator";
+import { RunCompletionModule } from "./dungeon/run/RunCompletionModule";
 import { resolveInitialRunSeed } from "./dungeon/run/resolveInitialRunSeed";
 import { RunPersistenceModule } from "./dungeon/save/RunPersistenceModule";
 import { RunSaveSnapshotBuilder } from "./dungeon/save/RunSaveSnapshotBuilder";
 import { RunStateRestorer } from "./dungeon/save/RunStateRestorer";
 import { SaveCoordinator } from "./dungeon/save/SaveCoordinator";
 import { HudPresenter } from "./dungeon/ui/HudPresenter";
+import { EventResolutionService } from "./dungeon/world/EventResolutionService";
+import { EventRuntimeModule } from "./dungeon/world/EventRuntimeModule";
+import { FloorProgressionModule } from "./dungeon/world/FloorProgressionModule";
+import { MerchantFlowService } from "./dungeon/world/MerchantFlowService";
 import { WorldEventController } from "./dungeon/world/WorldEventController";
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
@@ -245,7 +253,6 @@ const ENTITY_ASSET_KEYS_FOR_BACKGROUND_REMOVAL = [
   "monster_elite_01",
   "boss_bone_sovereign"
 ] as const;
-const FLOOR_EVENT_SPAWN_CHANCE = 0.62;
 const DEBUG_CHEATS_QUERY = "debugCheats";
 const DISABLE_VFX_QUERY = "disableVfx";
 const DISABLE_SFX_QUERY = "disableSfx";
@@ -270,7 +277,6 @@ const SKILL_DEF_BY_ID = new Map(SKILL_DEFS.map((entry) => [entry.id, entry]));
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
 const DAILY_WEAPON_ROTATION: WeaponType[] = ["sword", "axe", "dagger", "staff", "hammer"];
 const DAILY_MUTATION_COUNT = 2;
-const ABYSS_VICTORY_EVENT_ID = "boss_victory_choice";
 
 interface DungeonSceneInitData {
   difficulty?: DifficultyMode;
@@ -328,6 +334,10 @@ export class DungeonScene extends Phaser.Scene {
   private saveCoordinator!: SaveCoordinator;
   private debugRuntimeModule!: DebugRuntimeModule;
   private runPersistenceModule!: RunPersistenceModule;
+  private eventRuntimeModule!: EventRuntimeModule;
+  private bossRuntimeModule!: BossRuntimeModule;
+  private runCompletionModule!: RunCompletionModule;
+  private floorProgressionModule!: FloorProgressionModule;
   private encounterController!: EncounterController;
   private worldEventController!: WorldEventController;
 
@@ -683,25 +693,54 @@ export class DungeonScene extends Phaser.Scene {
         this.lastAutoSaveAt = nowMs;
       }
     });
+    const eventResolutionService = new EventResolutionService({
+      host: this as unknown as Record<string, any>
+    });
+    const merchantFlowService = new MerchantFlowService({
+      host: this as unknown as Record<string, any>
+    });
+    this.eventRuntimeModule = new EventRuntimeModule({
+      host: this as unknown as Record<string, any>,
+      resolutionService: eventResolutionService,
+      merchantFlowService
+    });
+    const bossSpawnService = new BossSpawnService({
+      host: this as unknown as Record<string, any>
+    });
+    const bossCombatService = new BossCombatService({
+      host: this as unknown as Record<string, any>,
+      spawnService: bossSpawnService
+    });
+    this.bossRuntimeModule = new BossRuntimeModule({
+      host: this as unknown as Record<string, any>,
+      combatService: bossCombatService,
+      spawnService: bossSpawnService
+    });
+    this.runCompletionModule = new RunCompletionModule({
+      host: this as unknown as Record<string, any>
+    });
+    this.floorProgressionModule = new FloorProgressionModule({
+      host: this as unknown as Record<string, any>
+    });
     this.encounterController = new EncounterController({
       updateCombat: (nowMs) => this.updateCombat(nowMs),
       updateMonsters: (deltaSeconds, nowMs) => this.updateMonsters(deltaSeconds, nowMs),
       updateMonsterCombat: (nowMs) => this.updateMonsterCombat(nowMs),
-      updateBossCombat: (nowMs) => this.updateBossCombat(nowMs),
+      updateBossCombat: (nowMs) => this.bossRuntimeModule.updateCombat(nowMs),
       updateChallengeRoom: (nowMs) => this.updateChallengeRoom(nowMs)
     });
     this.worldEventController = new WorldEventController({
       updateHazards: (nowMs) => this.updateHazards(nowMs),
       collectNearbyLoot: (nowMs) => this.collectNearbyLoot(nowMs),
-      updateEventInteraction: (nowMs) => this.updateEventInteraction(nowMs),
-      updateFloorProgress: (nowMs) => this.updateFloorProgress(nowMs),
+      updateEventInteraction: (nowMs) => this.eventRuntimeModule.updateInteraction(nowMs),
+      updateFloorProgress: (nowMs) => this.floorProgressionModule.update(nowMs),
       updateMinimap: (nowMs) => this.updateMinimap(nowMs)
     });
     this.debugRuntimeModule = new DebugRuntimeModule({
       debugApiBinder: this.debugApiBinder,
       commandRegistry: this.debugCommandRegistry,
       isDebugEnabled: () => this.debugCheatsEnabled,
-      onResetRun: () => this.resetRun()
+      onResetRun: () => this.runCompletionModule.resetRun()
     });
     this.installDebugApi();
     this.applyRuntimeBackgroundRemoval();
@@ -850,18 +889,18 @@ export class DungeonScene extends Phaser.Scene {
 
     this.renderSystem.syncPlayerSprite(this.playerSprite, this.player.position, this.playerYOffset, this.origin);
     this.renderSystem.syncMonsterSprites(this.entityManager.listMonsters(), this.origin);
-    this.syncBossSprite();
+    this.bossRuntimeModule.syncSprite();
 
     if (this.player.health <= 0) {
-      this.finishRun(false);
+      this.runCompletionModule.finishRun(false);
       return;
     }
 
     if (this.floorConfig.isBossFloor && this.bossState !== null && this.bossState.health <= 0) {
       if (this.run.inEndless) {
-        this.finishRun(true);
+        this.runCompletionModule.finishRun(true);
       } else {
-        this.openBossVictoryChoice(nowMs);
+        this.bossRuntimeModule.openVictoryChoice(nowMs);
       }
       return;
     }
@@ -1686,7 +1725,7 @@ export class DungeonScene extends Phaser.Scene {
     this.mapRevealActive = false;
     this.eventPanelOpen = false;
     this.merchantOffers = [];
-    this.destroyEventNode();
+    this.eventRuntimeModule.destroyEventNode();
     const run = createRunState(runSeed, this.time.now, this.selectedDifficulty);
     this.run =
       selectedRunMode === "daily"
@@ -2023,7 +2062,7 @@ export class DungeonScene extends Phaser.Scene {
     this.eventPanelOpen = false;
     this.merchantOffers = [];
     this.uiManager.hideEventPanel();
-    this.destroyEventNode();
+    this.eventRuntimeModule.destroyEventNode();
 
     this.dungeon = this.floorConfig.isBossFloor
       ? this.renderBossFloor(floor)
@@ -2084,10 +2123,10 @@ export class DungeonScene extends Phaser.Scene {
     this.initializeHazards(this.time.now);
 
     if (this.floorConfig.isBossFloor) {
-      this.spawnBoss();
+      this.bossRuntimeModule.spawn();
     } else {
       this.spawnMonsters();
-      this.setupFloorEvent(this.time.now);
+      this.eventRuntimeModule.setupFloorEvent(this.time.now);
       this.initializeChallengeRoom(this.time.now);
     }
 
@@ -2389,12 +2428,12 @@ export class DungeonScene extends Phaser.Scene {
       eventDef,
       choices,
       (choiceId) => {
-        this.consumeCurrentEvent();
+        this.eventRuntimeModule.consumeCurrentEvent();
         if (choiceId === "enter") {
           this.startChallengeEncounter(this.time.now);
         }
       },
-      () => this.consumeCurrentEvent()
+      () => this.eventRuntimeModule.consumeCurrentEvent()
     );
     this.runLog.appendKey("log.challenge.ready_confirm", undefined, "warn", nowMs);
   }
@@ -2763,625 +2802,6 @@ export class DungeonScene extends Phaser.Scene {
       visual.setFillStyle(fill, baseAlpha);
     }
     this.hazardVisuals.push(visual);
-  }
-
-  private destroyEventNode(): void {
-    if (this.eventNode !== null) {
-      this.eventNode.marker.destroy();
-    }
-    this.eventNode = null;
-    this.merchantOffers = [];
-    this.eventPanelOpen = false;
-  }
-
-  private pickFloorEventPosition(): { x: number; y: number } | null {
-    const candidates = this.dungeon.spawnPoints.filter((point) => {
-      if (Math.hypot(point.x - this.player.position.x, point.y - this.player.position.y) < 6) {
-        return false;
-      }
-      if (Math.hypot(point.x - this.staircaseState.position.x, point.y - this.staircaseState.position.y) < 2) {
-        return false;
-      }
-      for (const hazard of this.hazards) {
-        if (Math.hypot(point.x - hazard.position.x, point.y - hazard.position.y) < hazard.radiusTiles + 1) {
-          return false;
-        }
-      }
-      return true;
-    });
-
-    if (candidates.length === 0) {
-      return null;
-    }
-    const picked = this.eventRng.pick(candidates);
-    return { x: picked.x, y: picked.y };
-  }
-
-  private setupFloorEvent(nowMs: number): void {
-    this.destroyEventNode();
-    if (this.floorConfig.isBossFloor) {
-      return;
-    }
-    if (this.eventRng.next() > FLOOR_EVENT_SPAWN_CHANCE) {
-      return;
-    }
-
-    const eventDef = pickRandomEvent(
-      RANDOM_EVENT_DEFS,
-      this.run.currentFloor,
-      this.currentBiome.id,
-      this.unlockedEventIds,
-      this.eventRng
-    );
-    if (eventDef === null) {
-      return;
-    }
-    const position = this.pickFloorEventPosition();
-    if (position === null) {
-      return;
-    }
-
-    this.createEventNode(eventDef, position, nowMs);
-  }
-
-  private createEventNode(
-    eventDef: RandomEventDef,
-    position: { x: number; y: number },
-    nowMs: number,
-    options?: { emitSpawnEvent?: boolean }
-  ): void {
-    const marker = this.renderSystem.spawnTelegraphCircle(position, 0.8, this.origin);
-    marker.setAlpha(0.18);
-    if (marker instanceof Phaser.GameObjects.Image) {
-      marker.setTint(0xd0a86f);
-    }
-
-    this.eventNode = {
-      eventDef,
-      position,
-      marker,
-      resolved: false
-    };
-    if (options?.emitSpawnEvent !== false) {
-      const localizedEventName = this.contentLocalizer.eventName(eventDef.id, eventDef.name);
-      this.eventBus.emit("event:spawn", {
-        eventId: eventDef.id,
-        eventName: localizedEventName,
-        floor: this.run.currentFloor,
-        timestampMs: nowMs
-      });
-    }
-  }
-
-  private updateEventInteraction(nowMs: number): void {
-    if (this.eventNode === null || this.eventNode.resolved || this.eventPanelOpen) {
-      return;
-    }
-    const distance = Math.hypot(
-      this.player.position.x - this.eventNode.position.x,
-      this.player.position.y - this.eventNode.position.y
-    );
-    if (distance > 0.9) {
-      return;
-    }
-    this.openEventPanel(nowMs);
-  }
-
-  private openEventPanel(nowMs: number): void {
-    if (this.eventNode === null || this.eventNode.resolved) {
-      return;
-    }
-    this.eventPanelOpen = true;
-    const eventDef = this.eventNode.eventDef;
-    const choices = eventDef.choices.map((choice) => {
-      if (canPayEventCost(choice.cost, this.player.health, this.player.mana, this.run.runEconomy.obols)) {
-        return { choice, enabled: true as const };
-      }
-      const reason =
-        choice.cost === undefined
-          ? t("ui.event.choice.unavailable")
-          : t("ui.event.choice.need_cost", {
-              amount: choice.cost.amount,
-              type: choice.cost.type
-            });
-      return { choice, enabled: false as const, disabledReason: reason };
-    });
-
-    this.uiManager.showEventDialog(
-      eventDef,
-      choices,
-      (choiceId) => this.resolveEventChoice(choiceId, this.time.now),
-      () => this.dismissCurrentEvent(this.time.now)
-    );
-    this.runLog.appendKey(
-      "log.event.encountered",
-      {
-        eventName: this.contentLocalizer.eventName(eventDef.id, eventDef.name)
-      },
-      "info",
-      nowMs
-    );
-  }
-
-  private dismissCurrentEvent(nowMs: number): void {
-    if (this.eventNode === null) {
-      return;
-    }
-    this.runLog.appendKey(
-      "log.event.left_without_interaction",
-      {
-        eventName: this.contentLocalizer.eventName(this.eventNode.eventDef.id, this.eventNode.eventDef.name)
-      },
-      "info",
-      nowMs
-    );
-    this.consumeCurrentEvent();
-  }
-
-  private applyEventCost(nowMs: number, eventId: string, choiceId: string): boolean {
-    if (this.eventNode === null) {
-      return false;
-    }
-    const choice = this.eventNode.eventDef.choices.find((entry) => entry.id === choiceId);
-    if (choice === undefined) {
-      return false;
-    }
-    const cost = choice.cost;
-    if (!canPayEventCost(cost, this.player.health, this.player.mana, this.run.runEconomy.obols)) {
-      const reason =
-        cost === undefined
-          ? t("ui.event.choice.invalid_cost")
-          : t("ui.event.choice.need_cost_short", {
-              amount: cost.amount,
-              type: cost.type
-            });
-      this.runLog.appendKey(
-        "log.event.choice_cannot_choose",
-        {
-          choiceName: this.contentLocalizer.eventChoiceName(eventId, choice.id, choice.name),
-          reason
-        },
-        "warn",
-        nowMs
-      );
-      this.openEventPanel(nowMs);
-      return false;
-    }
-
-    if (cost !== undefined) {
-      if (cost.type === "health") {
-        this.player = {
-          ...this.player,
-          health: Math.max(1, this.player.health - cost.amount)
-        };
-      } else if (cost.type === "mana") {
-        this.player = {
-          ...this.player,
-          mana: Math.max(0, this.player.mana - cost.amount)
-        };
-      } else {
-        this.run = spendRunObols(this.run, cost.amount);
-      }
-      this.runLog.appendKey(
-        "log.event.cost_paid",
-        {
-          eventId,
-          choiceId,
-          amount: cost.amount,
-          costType: cost.type
-        },
-        "warn",
-        nowMs
-      );
-    }
-
-    return true;
-  }
-
-  private applyEventReward(reward: EventReward, nowMs: number, source: string): void {
-    if (reward.type === "health") {
-      this.player = {
-        ...this.player,
-        health: Math.min(this.player.derivedStats.maxHealth, this.player.health + reward.amount)
-      };
-      this.runLog.appendKey(
-        "log.event.reward.health",
-        {
-          source,
-          amount: reward.amount
-        },
-        "success",
-        nowMs
-      );
-      return;
-    }
-    if (reward.type === "mana") {
-      this.player = {
-        ...this.player,
-        mana: Math.min(this.player.derivedStats.maxMana, this.player.mana + reward.amount)
-      };
-      this.runLog.appendKey(
-        "log.event.reward.mana",
-        {
-          source,
-          amount: reward.amount
-        },
-        "success",
-        nowMs
-      );
-      return;
-    }
-    if (reward.type === "obol") {
-      this.run = addRunObols(this.run, reward.amount);
-      this.runLog.appendKey(
-        "log.event.reward.obol",
-        {
-          source,
-          amount: reward.amount
-        },
-        "success",
-        nowMs
-      );
-      return;
-    }
-    if (reward.type === "xp") {
-      const xpResult = applyXpGain(this.player, reward.amount, "intelligence");
-      this.player = this.refreshPlayerStatsFromEquipment(xpResult.player);
-      this.runLog.appendKey(
-        "log.event.reward.xp",
-        {
-          source,
-          amount: reward.amount
-        },
-        "success",
-        nowMs
-      );
-      if (xpResult.leveledUp) {
-        this.eventBus.emit("player:levelup", {
-          playerId: this.player.id,
-          level: this.player.level,
-          timestampMs: nowMs
-        });
-        this.offerLevelupSkill();
-      }
-      return;
-    }
-    if (reward.type === "mapping") {
-      this.mapRevealActive = true;
-      this.runLog.appendKey(
-        "log.event.reward.mapping",
-        {
-          source
-        },
-        "info",
-        nowMs
-      );
-      return;
-    }
-    if (reward.type === "consumable") {
-      this.consumables = grantConsumable(this.consumables, reward.consumableId, reward.amount);
-      this.runLog.appendKey(
-        "log.event.reward.consumable",
-        {
-          source,
-          amount: reward.amount,
-          consumableId: reward.consumableId
-        },
-        "success",
-        nowMs
-      );
-      return;
-    }
-    const lootTableId = reward.lootTableId;
-    const table =
-      reward.itemDefId === undefined
-        ? lootTableId === undefined
-          ? undefined
-          : LOOT_TABLE_MAP[lootTableId]
-        : {
-            id: `event-${reward.itemDefId}`,
-            entries: [{ itemDefId: reward.itemDefId, weight: 1, minFloor: 1 }]
-          };
-    if (table === undefined) {
-      this.runLog.appendKey(
-        "log.event.reward.item_table_missing",
-        {
-          source
-        },
-        "warn",
-        nowMs
-      );
-      return;
-    }
-    const item = rollItemDrop(
-      table,
-      ITEM_DEF_MAP,
-      this.run.currentFloor,
-      this.lootRng,
-      `event-${Math.floor(nowMs)}-${this.run.currentFloor}`,
-      {
-        isItemEligible: (itemDef) => this.isItemDefUnlocked(itemDef)
-      }
-    );
-    if (item === null) {
-      this.runLog.appendKey(
-        "log.event.reward.item_roll_failed",
-        {
-          source
-        },
-        "warn",
-        nowMs
-      );
-      return;
-    }
-    this.player = collectLoot(this.player, item);
-    this.run = {
-      ...this.run,
-      lootCollected: this.run.lootCollected + 1
-    };
-    this.runLog.appendKey(
-      "log.event.reward.item_acquired",
-      {
-        source,
-        itemName: this.contentLocalizer.itemName(item.defId, item.name)
-      },
-      "success",
-      nowMs
-    );
-  }
-
-  private applyEventPenalty(reward: EventReward, nowMs: number, source: string): void {
-    if (reward.type === "health") {
-      this.player = {
-        ...this.player,
-        health: Math.max(0, this.player.health - reward.amount)
-      };
-      this.runLog.appendKey(
-        "log.event.penalty.health",
-        {
-          source,
-          amount: reward.amount
-        },
-        "danger",
-        nowMs
-      );
-      if (this.player.health <= 0) {
-        this.lastDeathReason = t("log.event.penalty.death_reason", { amount: reward.amount });
-      }
-      return;
-    }
-    if (reward.type === "mana") {
-      this.player = {
-        ...this.player,
-        mana: Math.max(0, this.player.mana - reward.amount)
-      };
-      this.runLog.appendKey(
-        "log.event.penalty.mana",
-        {
-          source,
-          amount: reward.amount
-        },
-        "warn",
-        nowMs
-      );
-      return;
-    }
-    if (reward.type === "obol") {
-      const spent = Math.min(this.run.runEconomy.obols, reward.amount);
-      this.run = spendRunObols(this.run, spent);
-      this.runLog.appendKey(
-        "log.event.penalty.obol",
-        {
-          source,
-          amount: spent
-        },
-        "warn",
-        nowMs
-      );
-      return;
-    }
-    this.runLog.appendKey(
-      "log.event.penalty.ignored",
-      {
-        source,
-        rewardType: reward.type
-      },
-      "warn",
-      nowMs
-    );
-  }
-
-  private resolveEventChoice(choiceId: string, nowMs: number): void {
-    if (this.eventNode === null || this.eventNode.resolved) {
-      return;
-    }
-    const { eventDef } = this.eventNode;
-    const choice = eventDef.choices.find((entry) => entry.id === choiceId);
-    if (choice === undefined) {
-      this.runLog.appendKey(
-        "log.event.choice_not_found",
-        {
-          choiceId
-        },
-        "warn",
-        nowMs
-      );
-      return;
-    }
-    if (!this.applyEventCost(nowMs, eventDef.id, choice.id)) {
-      this.hudDirty = true;
-      return;
-    }
-
-    this.eventBus.emit("event:choice", {
-      eventId: eventDef.id,
-      choiceId: choice.id,
-      timestampMs: nowMs
-    });
-
-    const localizedEventName = this.contentLocalizer.eventName(eventDef.id, eventDef.name);
-    const eventSource = t("log.event.source", { eventName: localizedEventName });
-    for (const reward of choice.rewards) {
-      this.applyEventReward(reward, nowMs, eventSource);
-    }
-    this.tryDiscoverBlueprints("random_event", nowMs, eventDef.id);
-
-    if (rollEventRisk(choice, this.eventRng) && choice.risk !== undefined) {
-      this.applyEventPenalty(
-        choice.risk.penalty,
-        nowMs,
-        t("log.event.backlash_source", { eventName: localizedEventName })
-      );
-    }
-
-    if (eventDef.id === "wandering_merchant" && choice.id === "browse") {
-      this.openMerchantPanel(nowMs);
-      this.hudDirty = true;
-      return;
-    }
-
-    this.consumeCurrentEvent();
-    this.hudDirty = true;
-    this.flushRunSave();
-    if (this.player.health <= 0) {
-      this.finishRun(false);
-    }
-  }
-
-  private openMerchantPanel(nowMs: number): void {
-    const merchantPool = LOOT_TABLE_MAP.merchant_pool;
-    if (merchantPool === undefined) {
-      this.runLog.appendKey("log.merchant.pool_missing", undefined, "warn", nowMs);
-      this.consumeCurrentEvent();
-      return;
-    }
-    if (this.merchantOffers.length === 0) {
-      const visibleEntries = merchantPool.entries.filter((entry) => {
-        const itemDef = ITEM_DEF_MAP[entry.itemDefId];
-        return itemDef !== undefined && this.isItemDefUnlocked(itemDef);
-      });
-      this.merchantOffers = createMerchantOffers(
-        visibleEntries,
-        this.run.currentFloor,
-        this.merchantRng,
-        3
-      );
-      this.eventBus.emit("merchant:offer", {
-        floor: this.run.currentFloor,
-        offerCount: this.merchantOffers.length,
-        timestampMs: nowMs
-      });
-    }
-
-    const view = this.merchantOffers.map((offer) => {
-      const itemDef = ITEM_DEF_MAP[offer.itemDefId];
-      return {
-        ...offer,
-        itemName:
-          itemDef === undefined
-            ? offer.itemDefId
-            : this.contentLocalizer.itemName(itemDef.id, itemDef.name),
-        rarity: itemDef?.rarity ?? "common"
-      };
-    });
-    this.eventPanelOpen = true;
-    this.uiManager.showMerchantDialog(
-      view,
-      (offerId) => this.tryBuyMerchantOffer(offerId, this.time.now),
-      () => this.consumeCurrentEvent()
-    );
-  }
-
-  private tryBuyMerchantOffer(offerId: string, nowMs: number): void {
-    const offer = this.merchantOffers.find((entry) => entry.offerId === offerId);
-    if (offer === undefined) {
-      this.runLog.appendKey(
-        "log.merchant.offer_unavailable",
-        {
-          offerId
-        },
-        "warn",
-        nowMs
-      );
-      this.routeFeedback({
-        type: "merchant:fail"
-      });
-      return;
-    }
-    if (this.run.runEconomy.obols < offer.priceObol) {
-      this.runLog.appendKey(
-        "log.merchant.not_enough_obol",
-        {
-          itemDefId: offer.itemDefId
-        },
-        "warn",
-        nowMs
-      );
-      this.routeFeedback({
-        type: "merchant:fail"
-      });
-      return;
-    }
-
-    const item = rollItemDrop(
-      {
-        id: `merchant-${offer.itemDefId}`,
-        entries: [{ itemDefId: offer.itemDefId, weight: 1, minFloor: 1 }]
-      },
-      ITEM_DEF_MAP,
-      this.run.currentFloor,
-      this.lootRng,
-      `merchant-${offer.offerId}-${Math.floor(nowMs)}`,
-      {
-        isItemEligible: (itemDef) => this.isItemDefUnlocked(itemDef)
-      }
-    );
-    if (item === null) {
-      this.runLog.appendKey(
-        "log.merchant.delivery_failed",
-        {
-          itemDefId: offer.itemDefId
-        },
-        "warn",
-        nowMs
-      );
-      this.routeFeedback({
-        type: "merchant:fail"
-      });
-      return;
-    }
-
-    this.run = spendRunObols(this.run, offer.priceObol);
-    this.player = collectLoot(this.player, item);
-    this.run = {
-      ...this.run,
-      lootCollected: this.run.lootCollected + 1
-    };
-    this.eventBus.emit("merchant:purchase", {
-      offerId: offer.offerId,
-      itemId: item.id,
-      itemName: this.contentLocalizer.itemName(item.defId, item.name),
-      priceObol: offer.priceObol,
-      timestampMs: nowMs
-    });
-    this.merchantOffers = this.merchantOffers.filter((entry) => entry.offerId !== offer.offerId);
-    if (this.merchantOffers.length === 0) {
-      this.runLog.appendKey("log.merchant.sold_out", undefined, "info", nowMs);
-      this.consumeCurrentEvent();
-    } else {
-      this.openMerchantPanel(nowMs);
-    }
-    this.hudDirty = true;
-  }
-
-  private consumeCurrentEvent(): void {
-    if (this.eventNode !== null) {
-      this.eventNode.resolved = true;
-    }
-    this.destroyEventNode();
-    this.uiManager.hideEventPanel();
-    this.eventPanelOpen = false;
-    this.hudDirty = true;
   }
 
   private makeInitialPlayer(): PlayerState {
@@ -4229,141 +3649,6 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  private updateBossCombat(nowMs: number): void {
-    if (!this.floorConfig.isBossFloor || this.bossState === null) {
-      return;
-    }
-
-    const distanceToBoss = Math.hypot(
-      this.player.position.x - this.bossState.position.x,
-      this.player.position.y - this.bossState.position.y
-    );
-    const weaponType = resolveEquippedWeaponType(this.player);
-    const weaponDef = resolveWeaponTypeDef(weaponType, WEAPON_TYPE_DEF_MAP);
-    const bonusAttackSpeed = this.resolveMutationAttackSpeedMultiplier(nowMs);
-    const critChanceBonus = weaponDef.mechanic.type === "crit_bonus" ? weaponDef.mechanic.critChanceBonus : 0;
-    const critDamageMultiplier = weaponDef.mechanic.type === "crit_bonus"
-      ? (weaponDef.mechanic.critDamageMultiplier ?? 1.7)
-      : 1.7;
-
-    if (distanceToBoss <= Math.max(1.1, weaponDef.attackRange + 0.3) && nowMs >= this.nextPlayerAttackAt) {
-      const crit = this.combatRng.next() < Math.min(0.95, this.player.derivedStats.critChance + critChanceBonus);
-      const damage = Math.max(
-        1,
-        Math.floor(this.player.derivedStats.attackPower * weaponDef.damageMultiplier * (crit ? critDamageMultiplier : 1))
-      );
-      const previousPhase = this.bossState.currentPhaseIndex;
-      this.bossState = applyDamageToBoss(this.bossState, damage);
-      this.bossState = {
-        ...this.bossState,
-        ...(
-          this.bossState.health <= this.bossState.maxHealth * 0.5 && this.bossState.currentPhaseIndex === 0
-            ? { currentPhaseIndex: 1 }
-            : {}
-        )
-      };
-      this.nextPlayerAttackAt =
-        nowMs +
-        1000 /
-          Math.max(
-            0.6,
-            this.player.derivedStats.attackSpeed *
-              Math.max(0.2, weaponDef.attackSpeedMultiplier) *
-              bonusAttackSpeed
-          );
-
-      if (this.bossState.currentPhaseIndex !== previousPhase) {
-        this.eventBus.emit("boss:phaseChange", {
-          bossId: this.bossDef.id,
-          fromPhase: previousPhase,
-          toPhase: this.bossState.currentPhaseIndex,
-          hpRatio: this.bossState.health / this.bossState.maxHealth,
-          timestampMs: nowMs
-        });
-      }
-
-      this.hudDirty = true;
-    }
-
-    if (nowMs < this.nextBossAttackAt) {
-      return;
-    }
-
-    const attack = selectBossAttack(this.bossState, this.bossDef, nowMs, this.bossRng);
-    if (attack === null) {
-      return;
-    }
-
-    const attackResult = resolveBossAttack(attack, this.bossState, this.player, this.bossRng, nowMs);
-    this.player = attackResult.player;
-    this.emitCombatEvents(attackResult.events);
-
-    if (attack.type === "summon") {
-      this.eventBus.emit("boss:summon", {
-        bossId: this.bossDef.id,
-        attack,
-        count: attackResult.summonCount ?? 2,
-        timestampMs: nowMs
-      });
-      this.spawnSummonedMonsters(attackResult.summonCount ?? 2);
-    }
-
-    this.bossState = markBossAttackUsed(this.bossState, attack, nowMs);
-    this.nextBossAttackAt = nowMs + Math.max(800, attack.cooldownMs * 0.4);
-    this.hudDirty = true;
-  }
-
-  private spawnSummonedMonsters(count: number): void {
-    const archetype = MONSTER_ARCHETYPES[0];
-    if (archetype === undefined || this.bossState === null) {
-      return;
-    }
-
-    const existing = this.entityManager.listMonsters().length;
-    for (let i = 0; i < count; i += 1) {
-      const idx = existing + i;
-      const angle = (Math.PI * 2 * i) / Math.max(1, count);
-      const position = {
-        x: this.bossState.position.x + Math.cos(angle) * 2,
-        y: this.bossState.position.y + Math.sin(angle) * 2
-      };
-      const rolledAffixes = rollMonsterAffixes({
-        floor: this.run.currentFloor,
-        isBoss: false,
-        policy: this.run.difficultyModifier.affixPolicy,
-        availableAffixes: this.unlockedAffixIds,
-        rng: this.spawnRng
-      });
-      const state = applyAffixesToMonsterState({
-        id: `summon-${idx}-${Math.floor(this.time.now)}`,
-        archetypeId: archetype.id,
-        level: this.run.currentFloor,
-        health: Math.floor(65 * this.floorConfig.monsterHpMultiplier),
-        maxHealth: Math.floor(65 * this.floorConfig.monsterHpMultiplier),
-        damage: Math.floor(8 * this.floorConfig.monsterDmgMultiplier),
-        attackRange: archetype.attackRange,
-        moveSpeed: archetype.moveSpeed,
-        xpValue: archetype.xpValue,
-        dropTableId: archetype.dropTableId,
-        position,
-        aiState: "chase",
-        aiBehavior: "chase",
-        affixes: rolledAffixes
-      } satisfies MonsterState);
-      const runtime = this.renderSystem.spawnMonster(state, archetype, this.origin);
-      this.entityLabelById.set(runtime.state.id, runtime.archetype.name);
-      for (const affix of runtime.state.affixes ?? []) {
-        this.eventBus.emit("monster:affixApplied", {
-          monsterId: runtime.state.id,
-          affixId: affix,
-          timestampMs: this.time.now
-        });
-      }
-      this.entityManager.listMonsters().push(runtime);
-    }
-    this.entityManager.rebuildMonsterSpatialIndex();
-  }
-
   private spawnSplitChildren(
     sourceState: MonsterState,
     archetype: (typeof MONSTER_ARCHETYPES)[number],
@@ -4480,17 +3765,6 @@ export class DungeonScene extends Phaser.Scene {
     this.entityManager.setMonsters(runtimes);
   }
 
-  private spawnBoss(): void {
-    const roomCenter = findStaircasePosition(this.dungeon, this.dungeon.playerSpawn);
-    this.bossState = initBossState(this.bossDef, roomCenter);
-    this.entityLabelById.set(this.bossDef.id, this.bossDef.name);
-    this.bossSprite = this.renderSystem.spawnBoss(roomCenter, this.origin, this.bossDef.spriteKey);
-    this.entityManager.setBoss({
-      state: this.bossState,
-      sprite: this.bossSprite
-    });
-  }
-
   private spawnLootDrop(item: ItemInstance, position: { x: number; y: number }): void {
     this.entityManager.addLoot({
       item,
@@ -4511,280 +3785,6 @@ export class DungeonScene extends Phaser.Scene {
       return;
     }
     this.entityManager.setStaircase(this.renderSystem.spawnStaircase(this.staircaseState.position, this.origin));
-  }
-
-  private syncBossSprite(): void {
-    if (this.bossState === null || this.bossSprite === null) {
-      return;
-    }
-
-    const mapped = gridToIso(
-      this.bossState.position.x,
-      this.bossState.position.y,
-      this.tileWidth,
-      this.tileHeight,
-      this.origin.x,
-      this.origin.y
-    );
-
-    this.bossSprite.setPosition(mapped.x, mapped.y);
-    this.bossSprite.setVisible(this.bossState.health > 0);
-  }
-
-  private updateFloorProgress(nowMs: number): void {
-    if (this.floorConfig.isBossFloor) {
-      return;
-    }
-
-    const revealThreshold = Math.ceil(this.floorConfig.monsterCount * this.floorConfig.clearThreshold);
-    if (!this.staircaseState.visible && this.run.kills >= revealThreshold) {
-      this.staircaseState = {
-        ...this.staircaseState,
-        visible: true
-      };
-      this.renderStaircases();
-      this.eventBus.emit("floor:clear", {
-        floor: this.run.currentFloor,
-        kills: this.run.kills,
-        staircase: this.staircaseState,
-        timestampMs: nowMs
-      });
-      this.tryDiscoverBlueprints("floor_clear", nowMs);
-    }
-
-    if (!this.staircaseState.visible) {
-      return;
-    }
-    if (!isPlayerOnStaircase(this.player.position, this.staircaseState, 0.85)) {
-      return;
-    }
-
-    if (this.staircaseState.kind === "branch") {
-      const side = resolveBranchSideAtPosition(this.staircaseState, this.player.position, 0.85);
-      if (side === undefined) {
-        return;
-      }
-      this.staircaseState = {
-        ...this.staircaseState,
-        selected: side
-      };
-      this.run = {
-        ...this.run,
-        branchChoice: resolveBranchChoiceFromSide(side)
-      };
-    }
-
-    const storyMaxFloor = GAME_CONFIG.maxFloors ?? 5;
-    if (!this.run.inEndless && this.run.currentFloor >= storyMaxFloor) {
-      return;
-    }
-
-    const fromFloor = this.run.currentFloor;
-    this.run = appendReplayInput(this.run, {
-      type: "floor_transition",
-      atMs: this.getRunRelativeNowMs(),
-      fromFloor,
-      toFloor: fromFloor + 1
-    });
-    this.run = enterNextFloor(this.run);
-    if (this.run.inEndless) {
-      this.run = advanceEndlessFloor(this.run);
-      this.run = addRunObols(this.run, endlessFloorClearBonus(this.run.currentFloor));
-    } else {
-      this.run = addRunObols(this.run, 5);
-    }
-    this.setupFloor(this.run.currentFloor, false);
-  }
-
-  private openBossVictoryChoice(nowMs: number): void {
-    if (this.eventPanelOpen || this.runEnded) {
-      return;
-    }
-    const canEnterAbyss = this.run.runMode !== "daily";
-    const eventDef: RandomEventDef = {
-      id: ABYSS_VICTORY_EVENT_ID,
-      name: "Bone Throne Cleared",
-      description: canEnterAbyss
-        ? "Claim victory now or descend into the Abyss for endless escalation."
-        : "Daily mode only allows Claim Victory.",
-      floorRange: { min: this.run.currentFloor, max: this.run.currentFloor },
-      spawnWeight: 1,
-      choices: [
-        {
-          id: "claim_victory",
-          name: "Claim Victory",
-          description: "End run and secure rewards.",
-          rewards: []
-        },
-        {
-          id: "enter_abyss",
-          name: "Enter Abyss",
-          description: "Continue to endless floors with escalating danger.",
-          rewards: []
-        }
-      ]
-    };
-    const choices = eventDef.choices.map((choice) => {
-      if (choice.id === "enter_abyss" && !canEnterAbyss) {
-        return {
-          choice,
-          enabled: false as const,
-          disabledReason: "Daily mode does not support Abyss."
-        };
-      }
-      return {
-        choice,
-        enabled: true as const
-      };
-    });
-    this.eventPanelOpen = true;
-    this.uiManager.showEventDialog(
-      eventDef,
-      choices,
-      (choiceId) => {
-        this.consumeCurrentEvent();
-        if (choiceId === "enter_abyss" && canEnterAbyss) {
-          this.enterAbyss(this.time.now);
-          return;
-        }
-        this.finishRun(true);
-      },
-      () => {
-        this.consumeCurrentEvent();
-        this.finishRun(true);
-      }
-    );
-    this.runLog.appendKey("log.boss.bone_sovereign_defeated", undefined, "success", nowMs);
-  }
-
-  private enterAbyss(nowMs: number): void {
-    if (this.run.inEndless) {
-      return;
-    }
-    const fromFloor = this.run.currentFloor;
-    this.run = appendReplayInput(this.run, {
-      type: "floor_transition",
-      atMs: this.getRunRelativeNowMs(),
-      fromFloor,
-      toFloor: fromFloor + 1
-    });
-    this.run = enterNextFloor(this.run);
-    this.run = {
-      ...enterEndless(this.run),
-      endlessKills: 0
-    };
-    this.run = addRunObols(this.run, endlessFloorClearBonus(this.run.currentFloor));
-    this.runLog.appendKey(
-      "log.run.entered_abyss_floor",
-      {
-        floor: this.run.currentFloor
-      },
-      "warn",
-      nowMs
-    );
-    this.setupFloor(this.run.currentFloor, false);
-    this.flushRunSave();
-  }
-
-  private finishRun(isVictory: boolean): void {
-    if (this.runEnded) {
-      return;
-    }
-    this.sfxSystem.stopAmbient();
-    this.consumeCurrentEvent();
-    this.runEnded = true;
-    this.run = {
-      ...this.run,
-      isVictory
-    };
-    if (isVictory) {
-      this.tryDiscoverBlueprints("boss_kill", this.time.now, this.bossDef.id);
-      this.tryDiscoverBlueprints("boss_first_kill", this.time.now, this.bossDef.id);
-    }
-
-    const { summary: baseSummary, meta: nextMeta, replay } = endRun(this.run, this.player, this.time.now, this.meta);
-    const { soulShardMultiplier } = this.resolveMutationDropBonus();
-    const baseSoulShards =
-      this.run.inEndless && isVictory === false
-        ? (() => {
-            const kills = Math.max(0, this.run.endlessKills ?? 0);
-            const perKillReward = endlessKillShardReward(this.run.currentFloor);
-            let floorBonus = 0;
-            for (let floor = 6; floor <= this.run.currentFloor; floor += 1) {
-              floorBonus += endlessFloorClearBonus(floor);
-            }
-            return kills * perKillReward + floorBonus;
-          })()
-        : calculateSoulShardReward(this.run, isVictory);
-    let soulShards = Math.max(0, Math.floor(baseSoulShards * soulShardMultiplier));
-    if (this.run.runMode === "daily" && this.dailyPracticeMode) {
-      soulShards = 0;
-    }
-    let summary = {
-      ...baseSummary,
-      isVictory,
-      soulShardsEarned: soulShards,
-      obolsEarned: this.run.runEconomy.obols
-    };
-    let mergedMeta = mergeFoundBlueprints(nextMeta, this.blueprintFoundIdsInRun);
-    if (this.run.inEndless) {
-      mergedMeta = recordEndlessBestFloor(mergedMeta, this.run.currentFloor);
-    }
-    if (this.run.runMode === "daily" && this.run.dailyDate !== undefined) {
-      summary = {
-        ...summary,
-        dailyDate: this.run.dailyDate
-      };
-      if (!this.dailyPracticeMode) {
-        const rewarded = !hasClaimedDailyReward(mergedMeta, this.run.dailyDate);
-        const dailyEntry = buildDailyHistoryEntry(this.run.dailyDate, this.runSeed, summary, rewarded);
-        summary = {
-          ...summary,
-          score: dailyEntry.score
-        };
-        mergedMeta = upsertDailyHistory(mergedMeta, dailyEntry);
-        if (rewarded) {
-          mergedMeta = markDailyRewardClaimed(mergedMeta, this.run.dailyDate);
-        }
-      }
-    }
-    const runId = `${this.runSeed}:${this.run.startedAtMs}`;
-    if (!this.saveManager.isRunSettled(runId)) {
-      this.meta = applyRunSummaryToMeta(mergedMeta, summary);
-      const committed = this.saveMeta(this.meta);
-      if (committed) {
-        this.saveManager.markRunSettled(runId);
-        this.saveManager.deleteSave();
-      }
-    } else {
-      this.saveManager.deleteSave();
-    }
-    this.saveCoordinator.stopHeartbeat();
-    this.bossState = null;
-    this.renderHud();
-    this.hudDirty = false;
-    if (isVictory) {
-      this.uiManager.hideDeathOverlay();
-    } else {
-      this.uiManager.showDeathOverlay(this.lastDeathReason);
-    }
-    this.uiManager.showSummary(summary);
-
-    const runEndPayload: GameEventMap["run:end"] = {
-      summary,
-      inputs: replay?.inputs ?? [],
-      finishedAtMs: this.time.now,
-      ...(summary.replayChecksum === undefined ? {} : { checksum: summary.replayChecksum })
-    };
-    this.eventBus.emit("run:end", runEndPayload);
-  }
-
-  private resetRun(): void {
-    this.uiManager.clearSummary();
-    this.bootstrapRun(resolveInitialRunSeed(this.pendingRunSeed), this.selectedDifficulty);
-    this.saveCoordinator.startHeartbeat();
-    this.flushRunSave();
-    this.hudDirty = true;
   }
 
   private tryUseSkill(slotIndex: number): void {
@@ -5140,7 +4140,7 @@ export class DungeonScene extends Phaser.Scene {
       hideSceneTransition();
     }
     this.removeDebugApi();
-    this.destroyEventNode();
+    this.eventRuntimeModule.destroyEventNode();
     this.clearHiddenRoomMarkers();
     this.clearHazards();
     this.movementSystem.clearPathCache();

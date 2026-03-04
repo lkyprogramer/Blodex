@@ -107,9 +107,9 @@ export class DebugCommandRegistry {
       return;
     }
 
-    this.host.consumeCurrentEvent();
-    this.host.createEventNode(eventDef, position, this.host.time.now);
-    this.host.openEventPanel(this.host.time.now);
+    this.host.eventRuntimeModule.consumeCurrentEvent();
+    this.host.eventRuntimeModule.createEventNode(eventDef, position, this.host.time.now);
+    this.host.eventRuntimeModule.openEventPanel(this.host.time.now);
     this.host.hudDirty = true;
     this.debugLog(`Spawned event ${eventDef.id}.`);
   }
@@ -134,9 +134,9 @@ export class DebugCommandRegistry {
       return;
     }
 
-    this.host.consumeCurrentEvent();
-    this.host.createEventNode(merchantEvent, position, this.host.time.now);
-    this.host.openMerchantPanel(this.host.time.now);
+    this.host.eventRuntimeModule.consumeCurrentEvent();
+    this.host.eventRuntimeModule.createEventNode(merchantEvent, position, this.host.time.now);
+    this.host.eventRuntimeModule.openMerchantPanel(this.host.time.now);
     this.host.hudDirty = true;
     this.debugLog("Opened wandering merchant panel.");
   }
@@ -151,7 +151,7 @@ export class DebugCommandRegistry {
       return false;
     }
     if (this.host.eventPanelOpen) {
-      this.host.consumeCurrentEvent();
+      this.host.eventRuntimeModule.consumeCurrentEvent();
     }
 
     let challengeRoom = this.host.dungeon.rooms.find((room: { roomType: string }) => room.roomType === "challenge");
@@ -239,7 +239,7 @@ export class DebugCommandRegistry {
         health: 0
       };
     }
-    this.host.openBossVictoryChoice(this.host.time.now);
+    this.host.bossRuntimeModule.openVictoryChoice(this.host.time.now);
     this.host.hudDirty = true;
     this.debugLog("Boss victory choice opened.", "success");
     return true;
@@ -268,7 +268,7 @@ export class DebugCommandRegistry {
         health: 0
       };
     }
-    this.host.enterAbyss(this.host.time.now);
+    this.host.runCompletionModule.enterAbyss(this.host.time.now);
     this.debugLog(`Forced abyss entry at floor ${this.host.run.currentFloor}.`, "success");
     return true;
   }
@@ -384,7 +384,7 @@ export class DebugCommandRegistry {
       };
       this.host.hudDirty = true;
       this.debugLog("Boss health set to 0. Triggering victory summary.", "success");
-      this.host.finishRun(true);
+      this.host.runCompletionModule.finishRun(true);
       return;
     }
 
@@ -530,7 +530,7 @@ export class DebugCommandRegistry {
     };
     this.host.hudDirty = true;
     this.debugLog("Forced player death.", "danger");
-    this.host.finishRun(false);
+    this.host.runCompletionModule.finishRun(false);
   }
 
   setHealth(value: number): number {
