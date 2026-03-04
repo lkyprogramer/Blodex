@@ -15,9 +15,14 @@
 6. `docs/plans/phase4/2026-03-03-phase4-5-experience-enhancement-i-g1-g2-g3-g5.md`
 7. `docs/plans/phase4/2026-03-03-phase4-6-experience-enhancement-ii-g4-g6-g7.md`
 8. `docs/plans/phase4/2026-03-03-phase4-7-release-closure-and-dod.md`
-9. `docs/plans/phase4/templates/phase4-pr-checklist.md`
-10. `docs/plans/phase4/templates/phase4-smoke-matrix.md`
-11. `docs/plans/phase4/metrics/2026-03-03-phase4-0-baseline.md`
+9. `docs/plans/phase4/release/2026-03-03-phase4-release-readiness.md`
+10. `docs/plans/phase4/release/2026-03-03-phase4-regression-matrix.md`
+11. `docs/plans/phase4/release/2026-03-03-phase4-performance-compare.md`
+12. `docs/plans/phase4/release/2026-03-03-phase4-rollback-playbook.md`
+13. `docs/plans/phase4/release/2026-03-03-phase4-release-notes.md`
+14. `docs/plans/phase4/templates/phase4-pr-checklist.md`
+15. `docs/plans/phase4/templates/phase4-smoke-matrix.md`
+16. `docs/plans/phase4/metrics/2026-03-03-phase4-0-baseline.md`
 
 **历史基线（4.0 冻结）**:
 1. `apps/game-client/src/scenes/DungeonScene.ts`: 6301 行
@@ -26,12 +31,13 @@
 4. `packages/core/src/contracts/types.ts`: 818 行
 5. 快照文档：`docs/plans/phase4/metrics/2026-03-03-phase4-0-baseline.md`
 
-**当前基线（main 实测，2026-03-04 / `origin/main@8031f3a`）**:
-1. `apps/game-client/src/scenes/DungeonScene.ts`: 5200 行
-2. `apps/game-client/src/ui/Hud.ts`: 963 行
-3. `apps/game-client/src/scenes/MetaMenuScene.ts`: 1093 行
-4. `packages/core/src/contracts/types.ts`: 818 行
-5. 预算快照：`DungeonScene 5200/7000 (129 methods)`，`MetaMenuScene 1093/1300`，`Hud 963/1100`
+**当前基线（main 实测，2026-03-04 / `origin/main@fd4ea52`）**:
+1. `apps/game-client/src/scenes/DungeonScene.ts`: 2581 行
+2. `apps/game-client/src/ui/Hud.ts`: 5 行
+3. `apps/game-client/src/ui/hud/HudContainer.ts`: 1079 行
+4. `apps/game-client/src/scenes/MetaMenuScene.ts`: 1092 行
+5. `packages/core/src/contracts/types.ts`: 846 行
+6. 预算快照：`DungeonScene 2581/2600 (73 methods)`，`MetaMenuScene 1092/1200 (40 methods)`，`Hud 5/300`，`HudContainer 1079/1100`
 
 ---
 
@@ -78,11 +84,11 @@
 
 | 项 | 现状 | 结论 |
 |---|---|---|
-| DungeonScene 体量 | 5200 行，129 methods | 4.1 已完成第一轮瘦身，仍需继续拆分 |
-| Feature Flag | `UI_POLISH_FLAGS` 5 项均为 `true`，仍有引用 | 可开始清理死分支 |
-| 架构门禁 | `check:architecture-budget` 已接入 `ci:check` | 可用于防回退 |
-| HUD | 963 行 + 多区域 `innerHTML` | 高耦合，需拆面板与增量更新 |
-| 系统测试 | AISystem/MovementSystem/MonsterSpawnSystem 缺测试 | 重构风险高，需补单测 |
+| DungeonScene 体量 | 2581 行，73 methods | 已大幅收敛，仍高于 DoD `<2500`，4.7 需收口 |
+| Feature Flag | `UI_POLISH_FLAGS` 无检索命中 | 业务分支已清理，可删除残留定义 |
+| 架构门禁 | `check:architecture-budget` 已接入 `ci:check` | 门禁生效，但需把 `DungeonScene` 阈值从 2600 收紧到 2500 |
+| HUD | `Hud.ts` 5 行，`HudContainer.ts` 1079 行 | 容器化已完成，后续按需继续细分容器职责 |
+| 系统测试 | AISystem/MovementSystem/MonsterSpawnSystem 均有测试文件 | 需在 4.7 通过覆盖率报告确认 `>70%` |
 
 ### 3.2 体验机制
 
