@@ -3,6 +3,8 @@ import { SeededRng } from "../rng";
 import {
   affixRollChanceForFloor,
   applyAffixesToMonsterState,
+  resolveMonsterAffixOnDealDamage,
+  resolveMonsterAffixOnKilled,
   rollMonsterAffixes
 } from "../monsterAffix";
 import type { MonsterState } from "../contracts/types";
@@ -83,5 +85,42 @@ describe("monster affix", () => {
     expect(frenzied.damage).toBeGreaterThan(20);
     expect(armored.maxHealth).toBeGreaterThan(100);
     expect(armored.damage).toBeLessThan(20);
+  });
+
+  it("applies vampiric leech from dealt damage with max health clamp", () => {
+    const result = resolveMonsterAffixOnDealDamage(
+      {
+        ...baseMonster(),
+        health: 90,
+        maxHealth: 100,
+        affixes: ["vampiric"]
+      },
+      "player",
+      50,
+      1234
+    );
+    expect(result.monster.health).toBe(100);
+    expect(result.leechEvent).toEqual({
+      monsterId: "m1",
+      targetId: "player",
+      amount: 10,
+      timestampMs: 1234
+    });
+  });
+
+  it("creates split children via unified onKilled hook", () => {
+    const result = resolveMonsterAffixOnKilled(
+      {
+        ...baseMonster(),
+        affixes: ["splitting", "vampiric"]
+      },
+      999
+    );
+    expect(result.children).toHaveLength(2);
+    expect(result.children[0]?.affixes).toEqual(["vampiric"]);
+    expect(result.children[0]?.dropTableId).toBe("");
+    expect(result.children[0]?.health).toBe(Math.floor(baseMonster().maxHealth * 0.42));
+    expect(result.splitEvent?.sourceMonsterId).toBe("m1");
+    expect(result.splitEvent?.spawnedIds).toHaveLength(2);
   });
 });

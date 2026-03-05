@@ -32,7 +32,6 @@ import {
   collectLoot,
   grantConsumable,
   hasClaimedDailyReward,
-  hasMonsterAffix,
   isItemDefUnlockedByWeaponType,
   isInsideHazard,
   mergeFoundBlueprints,
@@ -93,6 +92,8 @@ import {
   shouldTriggerPeriodicHazard,
   calculateSoulShardReward,
   isDifficultyUnlocked,
+  resolveMonsterAffixOnDealDamage,
+  resolveMonsterAffixOnKilled,
   resolveMonsterAttack,
   SeededRng,
   selectBossAttack,
@@ -1831,9 +1832,7 @@ export class DungeonScene extends Phaser.Scene {
         dead.healthBarBg.destroy();
         dead.healthBarFg.destroy();
         dead.affixMarker?.destroy();
-        if (hasMonsterAffix(dead.state, "splitting")) {
-          this.spawnSplitChildren(dead.state, dead.archetype, nowMs);
-        }
+        this.spawnSplitChildren(dead.state, dead.archetype, nowMs);
       }
     }
 
@@ -1927,6 +1926,15 @@ export class DungeonScene extends Phaser.Scene {
     });
   }
 
+  private isMonsterWalkable(position: { x: number; y: number }): boolean {
+    const tileX = Math.round(position.x);
+    const tileY = Math.round(position.y);
+    if (tileX < 0 || tileY < 0 || tileX >= this.dungeon.width || tileY >= this.dungeon.height) {
+      return false;
+    }
+    return this.dungeon.walkable[tileY]?.[tileX] === true;
+  }
+
   private updateMonsters(dt: number, nowMs: number): void {
     const livingMonsters = this.entityManager.listLivingMonsters();
     if (livingMonsters.length === 0) {
@@ -1942,7 +1950,9 @@ export class DungeonScene extends Phaser.Scene {
     const nearIds = new Set(nearMonsters.map((monster) => monster.state.id));
     const farMonsters = livingMonsters.filter((monster) => !nearIds.has(monster.state.id));
     this.lastAiFarCount = farMonsters.length;
-    const nearResult = this.aiSystem.updateMonsters(nearMonsters, this.player, dt, nowMs);
+    const nearResult = this.aiSystem.updateMonsters(nearMonsters, this.player, dt, nowMs, {
+      canMoveTo: (position) => this.isMonsterWalkable(position)
+    });
     this.aiFrameCounter = (this.aiFrameCounter + 1) % AI_FAR_UPDATE_INTERVAL_FRAMES;
     const farResult =
       farMonsters.length > 0 && this.aiFrameCounter === 0
@@ -1950,7 +1960,10 @@ export class DungeonScene extends Phaser.Scene {
             farMonsters,
             this.player,
             dt * AI_FAR_UPDATE_INTERVAL_FRAMES,
-            nowMs
+            nowMs,
+            {
+              canMoveTo: (position) => this.isMonsterWalkable(position)
+            }
           )
         : { transitions: [], supportActions: [] };
     const aiResult = this.mergeAiResults(nearResult, farResult);
@@ -2091,6 +2104,7 @@ export class DungeonScene extends Phaser.Scene {
         dead.healthBarBg.destroy();
         dead.healthBarFg.destroy();
         dead.affixMarker?.destroy();
+        this.spawnSplitChildren(dead.state, dead.archetype, nowMs);
         for (const affixId of dead.state.affixes ?? []) {
           this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
         }
@@ -2114,22 +2128,20 @@ export class DungeonScene extends Phaser.Scene {
         continue;
       }
       const source = this.entityManager.findMonsterById(event.sourceId);
-      if (source === undefined || !hasMonsterAffix(source.state, "vampiric")) {
+      if (source === undefined) {
         continue;
       }
-      const heal = Math.max(1, Math.floor(event.amount * 0.35));
-      const before = source.state.health;
-      source.state.health = Math.min(source.state.maxHealth, source.state.health + heal);
-      const actual = source.state.health - before;
-      if (actual <= 0) {
+      const affixResult = resolveMonsterAffixOnDealDamage(
+        source.state,
+        event.targetId,
+        event.amount,
+        nowMs
+      );
+      source.state = affixResult.monster;
+      if (affixResult.leechEvent === undefined) {
         continue;
       }
-      this.eventBus.emit("monster:leech", {
-        monsterId: source.state.id,
-        targetId: event.targetId,
-        amount: actual,
-        timestampMs: nowMs
-      });
+      this.eventBus.emit("monster:leech", affixResult.leechEvent);
     }
     if (monsterCombat.combatEvents.length > 0) {
       this.hudDirty = true;
@@ -2141,32 +2153,16 @@ export class DungeonScene extends Phaser.Scene {
     archetype: (typeof MONSTER_ARCHETYPES)[number],
     nowMs: number
   ): void {
-    const spawnedIds: string[] = [];
-    const sourceAffixes = sourceState.affixes ?? [];
-    const childAffixes = sourceAffixes.filter((affix) => affix !== "splitting");
+    const splitResult = resolveMonsterAffixOnKilled(sourceState, nowMs);
+    if (splitResult.children.length === 0) {
+      return;
+    }
 
-    for (let i = 0; i < 2; i += 1) {
-      const angle = (Math.PI * 2 * i) / 2;
-      const childState: MonsterState = {
-        ...sourceState,
-        id: `split-${sourceState.id}-${i}-${Math.floor(nowMs)}`,
-        health: Math.max(1, Math.floor(sourceState.maxHealth * 0.42)),
-        maxHealth: Math.max(1, Math.floor(sourceState.maxHealth * 0.42)),
-        damage: Math.max(1, Math.floor(sourceState.damage * 0.68)),
-        xpValue: Math.max(1, Math.floor(sourceState.xpValue * 0.45)),
-        dropTableId: "",
-        position: {
-          x: sourceState.position.x + Math.cos(angle) * 0.7,
-          y: sourceState.position.y + Math.sin(angle) * 0.7
-        },
-        aiState: "idle",
-        affixes: childAffixes
-      };
+    for (const childState of splitResult.children) {
       const runtime = this.renderSystem.spawnMonster(childState, archetype, this.origin);
       this.entityManager.listMonsters().push(runtime);
       this.entityLabelById.set(childState.id, `${archetype.name} Fragment`);
-      spawnedIds.push(childState.id);
-      for (const affix of childAffixes) {
+      for (const affix of childState.affixes ?? []) {
         this.eventBus.emit("monster:affixApplied", {
           monsterId: childState.id,
           affixId: affix,
@@ -2175,13 +2171,9 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
 
-    if (spawnedIds.length > 0) {
-      this.entityManager.rebuildMonsterSpatialIndex();
-      this.eventBus.emit("monster:split", {
-        sourceMonsterId: sourceState.id,
-        spawnedIds,
-        timestampMs: nowMs
-      });
+    this.entityManager.rebuildMonsterSpatialIndex();
+    if (splitResult.splitEvent !== undefined) {
+      this.eventBus.emit("monster:split", splitResult.splitEvent);
     }
   }
 

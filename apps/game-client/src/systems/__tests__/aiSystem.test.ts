@@ -190,4 +190,42 @@ describe("AISystem", () => {
     expect(monster.state.aiState).toBe("shield");
     expect(monster.state.position.x).toBeGreaterThan(1.5);
   });
+
+  it("does not cross blocked tiles when navigation walkability is provided", () => {
+    const ai = new AISystem();
+    const player = makePlayer({ x: 8, y: 0 });
+    const monster = makeMonsterRuntime({
+      id: "wall-test",
+      behavior: "chase",
+      position: { x: 1.4, y: 0 },
+      aiState: "idle",
+      chaseRange: 12
+    });
+
+    ai.updateMonsters([monster], player, 1, 4_000, {
+      canMoveTo: (position) => position.x <= 1.5
+    });
+
+    expect(monster.state.aiState).toBe("chase");
+    expect(monster.state.position.x).toBeLessThanOrEqual(1.5);
+  });
+
+  it("falls back to axis movement in corridor-like constraints", () => {
+    const ai = new AISystem();
+    const player = makePlayer({ x: 4, y: 1 });
+    const monster = makeMonsterRuntime({
+      id: "corridor-test",
+      behavior: "chase",
+      position: { x: 0, y: 0 },
+      aiState: "idle",
+      chaseRange: 10
+    });
+
+    ai.updateMonsters([monster], player, 1, 5_000, {
+      canMoveTo: (position) => position.y <= 0.1
+    });
+
+    expect(monster.state.position.x).toBeGreaterThan(0);
+    expect(monster.state.position.y).toBeLessThanOrEqual(0.1);
+  });
 });

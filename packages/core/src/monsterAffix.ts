@@ -15,6 +15,29 @@ export const MONSTER_AFFIX_IDS: MonsterAffixId[] = [
   "splitting"
 ];
 
+export interface MonsterAffixLeechTrigger {
+  monsterId: string;
+  targetId: string;
+  amount: number;
+  timestampMs: number;
+}
+
+export interface MonsterAffixSplitTrigger {
+  sourceMonsterId: string;
+  spawnedIds: string[];
+  timestampMs: number;
+}
+
+export interface MonsterAffixOnDealDamageResult {
+  monster: MonsterState;
+  leechEvent?: MonsterAffixLeechTrigger;
+}
+
+export interface MonsterAffixOnKilledResult {
+  children: MonsterState[];
+  splitEvent?: MonsterAffixSplitTrigger;
+}
+
 export function affixRollChanceForFloor(floor: number): number {
   if (floor <= 2) {
     return 0;
@@ -86,4 +109,76 @@ export function hasMonsterAffix(
   affix: MonsterAffixId
 ): boolean {
   return (monster.affixes ?? []).includes(affix);
+}
+
+export function resolveMonsterAffixOnDealDamage(
+  monster: MonsterState,
+  targetId: string,
+  dealtDamage: number,
+  timestampMs: number
+): MonsterAffixOnDealDamageResult {
+  if (!hasMonsterAffix(monster, "vampiric") || dealtDamage <= 0) {
+    return { monster };
+  }
+
+  const leech = Math.max(1, Math.floor(dealtDamage * 0.35));
+  const nextHealth = Math.min(monster.maxHealth, monster.health + leech);
+  const actualLeech = nextHealth - monster.health;
+  if (actualLeech <= 0) {
+    return { monster };
+  }
+
+  return {
+    monster: {
+      ...monster,
+      health: nextHealth
+    },
+    leechEvent: {
+      monsterId: monster.id,
+      targetId,
+      amount: actualLeech,
+      timestampMs
+    }
+  };
+}
+
+export function resolveMonsterAffixOnKilled(
+  monster: MonsterState,
+  timestampMs: number
+): MonsterAffixOnKilledResult {
+  if (!hasMonsterAffix(monster, "splitting")) {
+    return { children: [] };
+  }
+
+  const sourceAffixes = monster.affixes ?? [];
+  const childAffixes = sourceAffixes.filter((affix) => affix !== "splitting");
+  const children: MonsterState[] = [];
+
+  for (let i = 0; i < 2; i += 1) {
+    const angle = (Math.PI * 2 * i) / 2;
+    children.push({
+      ...monster,
+      id: `split-${monster.id}-${i}-${Math.floor(timestampMs)}`,
+      health: Math.max(1, Math.floor(monster.maxHealth * 0.42)),
+      maxHealth: Math.max(1, Math.floor(monster.maxHealth * 0.42)),
+      damage: Math.max(1, Math.floor(monster.damage * 0.68)),
+      xpValue: Math.max(1, Math.floor(monster.xpValue * 0.45)),
+      dropTableId: "",
+      position: {
+        x: monster.position.x + Math.cos(angle) * 0.7,
+        y: monster.position.y + Math.sin(angle) * 0.7
+      },
+      aiState: "idle",
+      affixes: childAffixes
+    });
+  }
+
+  return {
+    children,
+    splitEvent: {
+      sourceMonsterId: monster.id,
+      spawnedIds: children.map((child) => child.id),
+      timestampMs
+    }
+  };
 }
