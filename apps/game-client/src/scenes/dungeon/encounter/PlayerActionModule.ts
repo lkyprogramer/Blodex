@@ -7,8 +7,11 @@ import {
   hasMonsterAffix,
   markSkillUsed,
   pickSkillChoicesWeighted,
+  resolveHealthRegenTick,
+  resolveSpecialAffixTotals,
   useConsumable,
   type ConsumableId,
+  type ItemInstance,
   type SkillDef
 } from "@blodex/core";
 import { BLUEPRINT_DEF_MAP, SKILL_DEFS, WEAPON_TYPE_DEF_MAP } from "@blodex/content";
@@ -20,7 +23,41 @@ export interface PlayerActionModuleOptions {
 }
 
 export class PlayerActionModule {
+  private healthRegenCarry = 0;
+
   constructor(private readonly options: PlayerActionModuleOptions) {}
+
+  resetRuntimeState(): void {
+    this.healthRegenCarry = 0;
+  }
+
+  applySpecialAffixHealthRegen(deltaMs: number): void {
+    const host = this.options.host;
+    const totals = resolveSpecialAffixTotals(
+      Object.values(host.player.equipment).filter((item): item is ItemInstance => item !== undefined)
+    );
+    if (totals.healthRegen <= 0) {
+      this.healthRegenCarry = 0;
+      return;
+    }
+
+    const tick = resolveHealthRegenTick(
+      host.player.health,
+      host.player.derivedStats.maxHealth,
+      totals.healthRegen,
+      deltaMs,
+      this.healthRegenCarry
+    );
+    this.healthRegenCarry = tick.carry;
+    if (tick.healed <= 0) {
+      return;
+    }
+    host.player = {
+      ...host.player,
+      health: tick.health
+    };
+    host.hudDirty = true;
+  }
 
   tryUseSkill(slotIndex: number): void {
     const host = this.options.host;
@@ -40,6 +77,9 @@ export class PlayerActionModule {
     }
     const scaledDef = createSkillDefForLevel(def, slot.level);
     const runtimeSkillDef = host.applySynergyToSkillDef(scaledDef);
+    const specialAffixTotals = resolveSpecialAffixTotals(
+      Object.values(host.player.equipment).filter((item): item is ItemInstance => item !== undefined)
+    );
 
     if (!canUseSkill(host.player, host.player.skills, runtimeSkillDef, nowMs)) {
       return;
@@ -56,7 +96,9 @@ export class PlayerActionModule {
     );
     host.player = {
       ...resolution.player,
-      skills: markSkillUsed(host.player.skills, runtimeSkillDef as SkillDef, nowMs)
+      skills: markSkillUsed(host.player.skills, runtimeSkillDef as SkillDef, nowMs, {
+        cooldownReduction: specialAffixTotals.cooldownReduction
+      })
     };
 
     let kills = 0;
@@ -79,7 +121,9 @@ export class PlayerActionModule {
           host.spawnSplitChildren(dead.state, dead.archetype, nowMs);
         }
 
-        const xpResult = applyXpGain(host.player, dead.state.xpValue, "strength");
+        const xpResult = applyXpGain(host.player, dead.state.xpValue, "strength", {
+          xpBonus: specialAffixTotals.xpBonus
+        });
         host.player = host.refreshPlayerStatsFromEquipment(xpResult.player);
       }
       kills += 1;

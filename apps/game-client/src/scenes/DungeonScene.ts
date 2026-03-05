@@ -912,6 +912,7 @@ export class DungeonScene extends Phaser.Scene {
 
     this.updateKeyboardMoveIntent(nowMs);
     this.updatePlayerMovement((deltaMs / 1000) * playerHazardMovementMultiplier * mutationMoveMultiplier, nowMs);
+    this.playerActionModule.applySpecialAffixHealthRegen(deltaMs);
     this.progressionRuntimeModule.revealNearbyHiddenRoomsByMutation(nowMs);
     this.encounterController.updateFrame({
       deltaSeconds: deltaMs / 1000,
@@ -1157,7 +1158,7 @@ export class DungeonScene extends Phaser.Scene {
   private createDailyWeaponInstance(weaponType: WeaponType): ItemInstance {
     const baseAttackPower =
       weaponType === "hammer" ? 9 : weaponType === "staff" ? 7 : weaponType === "axe" ? 8 : 7;
-    const baseCritChance = weaponType === "dagger" ? 4 : weaponType === "staff" ? 1 : 2;
+    const baseCritChance = weaponType === "dagger" ? 0.04 : weaponType === "staff" ? 0.01 : 0.02;
     return {
       id: `daily_weapon_${weaponType}_${this.runSeed.slice(0, 8)}`,
       defId: `daily_weapon_${weaponType}`,
@@ -1239,6 +1240,7 @@ export class DungeonScene extends Phaser.Scene {
     this.levelUpPulseUntilMs = 0;
     this.levelUpPulseLevel = null;
     this.nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
+    this.playerActionModule.resetRuntimeState();
     this.lastAiNearCount = 0;
     this.lastAiFarCount = 0;
     this.uiManager.clearLogs();
@@ -2534,6 +2536,7 @@ export class DungeonScene extends Phaser.Scene {
     this.levelUpPulseUntilMs = 0;
     this.levelUpPulseLevel = null;
     this.nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
+    this.playerActionModule.resetRuntimeState();
     this.cursorKeys = null;
     this.entityManager.clear();
     this.diagnosticsService.reset();

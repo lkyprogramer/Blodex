@@ -25,6 +25,7 @@ export * from "./balance";
 export * from "./balanceReport";
 export * from "./stats";
 export * from "./xp";
+export * from "./specialAffix";
 export * from "./talent";
 export * from "./save";
 export * from "./challengeRoom";

@@ -1,4 +1,12 @@
-import type { ItemDef, ItemInstance, LootEntry, LootTableDef, RngLike } from "./contracts/types";
+import type {
+  ItemDef,
+  ItemInstance,
+  ItemSpecialAffixKey,
+  LootEntry,
+  LootTableDef,
+  RngLike
+} from "./contracts/types";
+import { normalizeSpecialAffixValue } from "./specialAffix";
 
 export interface RollItemDropOptions {
   isItemEligible?: (itemDef: ItemDef) => boolean;
@@ -8,13 +16,46 @@ function clamp(num: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, num));
 }
 
+function normalizeDerivedAffixValue(key: keyof ItemInstance["rolledAffixes"], value: number): number {
+  if (key === "critChance") {
+    // Legacy data stores percent points (e.g. 2 => 2%) while runtime uses ratio (0.02).
+    return value >= 1 ? value / 100 : value;
+  }
+  return value;
+}
+
+function applyDerivedAffixValue(
+  target: ItemInstance["rolledAffixes"],
+  key: keyof ItemInstance["rolledAffixes"],
+  rawValue: number
+): void {
+  const value = normalizeDerivedAffixValue(key, rawValue);
+  target[key] = (target[key] ?? 0) + value;
+}
+
+function applySpecialAffixValue(
+  target: NonNullable<ItemInstance["rolledSpecialAffixes"]>,
+  key: ItemSpecialAffixKey,
+  rawValue: number
+): void {
+  const value = normalizeSpecialAffixValue(key, rawValue);
+  target[key] = (target[key] ?? 0) + value;
+}
+
 function rollAffixes(itemDef: ItemDef, rng: RngLike): ItemInstance["rolledAffixes"] {
   const fixed = itemDef.fixedAffixes ?? {};
   if ((itemDef.kind ?? "equipment") === "unique") {
-    return { ...fixed };
+    const uniqueAffixes: ItemInstance["rolledAffixes"] = {};
+    for (const [key, value] of Object.entries(fixed) as Array<[keyof ItemInstance["rolledAffixes"], number]>) {
+      applyDerivedAffixValue(uniqueAffixes, key, value);
+    }
+    return uniqueAffixes;
   }
 
-  const rolled: ItemInstance["rolledAffixes"] = { ...fixed };
+  const rolled: ItemInstance["rolledAffixes"] = {};
+  for (const [key, value] of Object.entries(fixed) as Array<[keyof ItemInstance["rolledAffixes"], number]>) {
+    applyDerivedAffixValue(rolled, key, value);
+  }
   if (itemDef.affixPool.length === 0) {
     return rolled;
   }
@@ -31,7 +72,7 @@ function rollAffixes(itemDef: ItemDef, rng: RngLike): ItemInstance["rolledAffixe
       continue;
     }
     const value = rng.nextInt(picked.min, picked.max);
-    rolled[picked.key] = (rolled[picked.key] ?? 0) + value;
+    applyDerivedAffixValue(rolled, picked.key, value);
   }
 
   return rolled;
@@ -43,7 +84,14 @@ function rollSpecialAffixes(
 ): ItemInstance["rolledSpecialAffixes"] {
   const fixed = itemDef.fixedSpecialAffixes ?? {};
   if ((itemDef.kind ?? "equipment") === "unique") {
-    return Object.keys(fixed).length === 0 ? undefined : { ...fixed };
+    if (Object.keys(fixed).length === 0) {
+      return undefined;
+    }
+    const uniqueSpecialAffixes: NonNullable<ItemInstance["rolledSpecialAffixes"]> = {};
+    for (const [key, value] of Object.entries(fixed) as Array<[ItemSpecialAffixKey, number]>) {
+      applySpecialAffixValue(uniqueSpecialAffixes, key, value);
+    }
+    return uniqueSpecialAffixes;
   }
 
   const pool = [...(itemDef.specialAffixPool ?? [])];
@@ -54,7 +102,10 @@ function rollSpecialAffixes(
   const min = Math.max(0, itemDef.minSpecialAffixes ?? 0);
   const max = Math.max(min, itemDef.maxSpecialAffixes ?? min);
   const count = clamp(rng.nextInt(min, max), 0, pool.length);
-  const rolled: NonNullable<ItemInstance["rolledSpecialAffixes"]> = { ...fixed };
+  const rolled: NonNullable<ItemInstance["rolledSpecialAffixes"]> = {};
+  for (const [key, value] of Object.entries(fixed) as Array<[ItemSpecialAffixKey, number]>) {
+    applySpecialAffixValue(rolled, key, value);
+  }
 
   for (let i = 0; i < count; i += 1) {
     const idx = rng.nextInt(0, pool.length - 1);
@@ -63,7 +114,7 @@ function rollSpecialAffixes(
       continue;
     }
     const value = rng.nextInt(picked.min, picked.max);
-    rolled[picked.key] = (rolled[picked.key] ?? 0) + value;
+    applySpecialAffixValue(rolled, picked.key, value);
   }
 
   return Object.keys(rolled).length === 0 ? undefined : rolled;

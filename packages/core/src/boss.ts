@@ -6,6 +6,11 @@ import type {
   PlayerState,
   RngLike
 } from "./contracts/types";
+import {
+  clampSpecialAffixTotals,
+  createEmptySpecialAffixTotals,
+  type SpecialAffixTotals
+} from "./specialAffix";
 
 export interface BossAttackResolution {
   player: PlayerState;
@@ -92,7 +97,8 @@ export function resolveBossAttack(
   player: PlayerState,
   rng: RngLike,
   nowMs: number,
-  target?: { x: number; y: number }
+  target?: { x: number; y: number },
+  specialAffixTotals?: Partial<SpecialAffixTotals>
 ): BossAttackResolution {
   if (attack.type === "summon") {
     return {
@@ -126,7 +132,10 @@ export function resolveBossAttack(
     };
   }
 
-  const dodgeChance = Math.min(0.35, player.derivedStats.critChance * 0.65);
+  const totals = clampSpecialAffixTotals(
+    specialAffixTotals ?? createEmptySpecialAffixTotals()
+  );
+  const dodgeChance = Math.min(0.75, Math.max(0, totals.dodgeChance));
   if (rng.next() < dodgeChance) {
     return {
       player,

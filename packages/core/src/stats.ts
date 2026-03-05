@@ -19,6 +19,14 @@ function cloneDerived(stats: DerivedStats): DerivedStats {
   };
 }
 
+function normalizeEquipmentAffixValue(key: keyof DerivedStats, value: number): number {
+  if (key === "critChance") {
+    // Backward compatibility: legacy saves may still store percent points (e.g. 2 => 2%).
+    return value >= 1 ? value / 100 : value;
+  }
+  return value;
+}
+
 export function deriveStats(
   base: BaseStats,
   equippedItems: ItemInstance[],
@@ -44,7 +52,7 @@ export function deriveStats(
       if (value === undefined) {
         continue;
       }
-      next[key] += value;
+      next[key] += normalizeEquipmentAffixValue(key, value);
     }
   }
 

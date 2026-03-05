@@ -340,12 +340,12 @@ export class DebugCommandRegistry {
       seed: `debug-synergy-${this.host.runSeed}`,
       rolledAffixes: {
         attackPower: 22,
-        critChance: 4,
+        critChance: 0.04,
         attackSpeed: 4
       },
       rolledSpecialAffixes: {
-        lifesteal: 6,
-        critDamage: 22
+        lifesteal: 0.06,
+        critDamage: 0.22
       }
     };
     this.host.player = this.host.refreshPlayerStatsFromEquipment({

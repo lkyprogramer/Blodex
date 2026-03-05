@@ -5,6 +5,7 @@ import {
   resolveEquippedWeaponType,
   resolveMonsterAttack,
   resolvePlayerAttack,
+  resolveSpecialAffixTotals,
   resolveWeaponTypeDef,
   rollItemDrop,
   type SkillDef,
@@ -211,10 +212,15 @@ export class CombatSystem {
       0.2,
       (context.attackSpeedMultiplier ?? 1) * Math.max(0.2, weaponDef.attackSpeedMultiplier)
     );
+    const equippedItems = Object.values(context.player.equipment).filter(
+      (item): item is ItemInstance => item !== undefined
+    );
+    const specialAffixTotals = resolveSpecialAffixTotals(equippedItems);
     const nextPlayerAttackAt =
       context.nowMs + 1000 / Math.max(0.6, context.player.derivedStats.attackSpeed * effectiveAttackSpeedMultiplier);
     const result = resolvePlayerAttack(context.player, target.state, context.combatRng, context.nowMs, {
       damageMultiplier: weaponDef.damageMultiplier,
+      specialAffixTotals,
       ...(weaponDef.mechanic.type === "crit_bonus"
         ? {
             critChanceBonus: weaponDef.mechanic.critChanceBonus,
@@ -231,7 +237,7 @@ export class CombatSystem {
         target.state.id,
         target.state.position,
         primaryDamage,
-        weaponDef.mechanic.radius,
+        weaponDef.mechanic.radius * (1 + specialAffixTotals.aoeRadius),
         weaponDef.mechanic.secondaryDamagePercent,
         context.player.id,
         context.nowMs
@@ -259,10 +265,12 @@ export class CombatSystem {
     this.staggerUntilByMonsterId.delete(target.state.id);
 
     const nextKills = context.run.kills + 1;
-    const xpResult = applyXpGain(context.player, target.state.xpValue, "strength");
+    const xpResult = applyXpGain(context.player, target.state.xpValue, "strength", {
+      xpBonus: specialAffixTotals.xpBonus
+    });
     const nextDerived = deriveStats(
       xpResult.player.baseStats,
-      Object.values(context.player.equipment).filter((item): item is ItemInstance => item !== undefined)
+      equippedItems
     );
 
     const nextPlayer = {
@@ -326,9 +334,13 @@ export class CombatSystem {
     const weaponDef = this.resolveWeaponDef(player, weaponTypeDefs);
     const skillDamageMultiplier =
       weaponDef.mechanic.type === "skill_amp" ? 1 + weaponDef.mechanic.skillDamagePercent : 1;
+    const specialAffixTotals = resolveSpecialAffixTotals(
+      Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined)
+    );
     const snapshot = monsters.map((monster) => monster.state);
     const resolution = resolveSkill(player, snapshot, skillDef, rng, nowMs, {
-      damageMultiplier: skillDamageMultiplier
+      damageMultiplier: skillDamageMultiplier,
+      specialAffixTotals
     });
     const byId = new Map(resolution.affectedMonsters.map((monster) => [monster.id, monster]));
     for (const monster of monsters) {
@@ -348,6 +360,9 @@ export class CombatSystem {
   ): MonsterCombatResult {
     const events: CombatEvent[] = [];
     let nextPlayer = player;
+    const specialAffixTotals = resolveSpecialAffixTotals(
+      Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined)
+    );
 
     for (const monster of monsters) {
       if (monster.state.health <= 0 || monster.state.aiState !== "attack") {
@@ -369,7 +384,7 @@ export class CombatSystem {
       }
 
       monster.nextAttackAt = nowMs + monster.archetype.aiConfig.attackCooldownMs;
-      const result = resolveMonsterAttack(monster.state, nextPlayer, combatRng, nowMs);
+      const result = resolveMonsterAttack(monster.state, nextPlayer, combatRng, nowMs, specialAffixTotals);
       nextPlayer = result.player;
       monster.state = result.monster;
       events.push(...result.events);
