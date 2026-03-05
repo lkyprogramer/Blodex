@@ -37,7 +37,7 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     id: "trapped_chest",
     name: "Trapped Chest",
     description: "An ornate chest hums with pressure runes.",
-    floorRange: { min: 1, max: 5 },
+    floorRange: { min: 2, max: 5 },
     spawnWeight: 16,
     choices: [
       {
@@ -91,7 +91,7 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     id: "cursed_altar",
     name: "Cursed Altar",
     description: "Blood sigils promise strength for pain.",
-    floorRange: { min: 2, max: 5 },
+    floorRange: { min: 3, max: 5 },
     spawnWeight: 12,
     choices: [
       {

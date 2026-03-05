@@ -2,7 +2,8 @@ import {
   addRunObols,
   collectLoot,
   rollItemDrop,
-  type DeferredOutcomeState
+  type DeferredOutcomeState,
+  type ItemDef
 } from "@blodex/core";
 import { ITEM_DEF_MAP } from "@blodex/content";
 
@@ -103,9 +104,9 @@ export class DeferredOutcomeRuntime {
       host.run.currentFloor,
       host.lootRng,
       `deferred-${outcome.outcomeId}`,
-      {
-        isItemEligible: (itemDef) => host.isItemDefUnlocked(itemDef)
-      }
+      host.resolveLootRollOptions({
+        isItemEligible: (itemDef: ItemDef) => host.isItemDefUnlocked(itemDef)
+      })
     );
     if (item === null) {
       return;

@@ -275,6 +275,7 @@ export interface PlayerState {
   level: number;
   xp: number;
   xpToNextLevel: number;
+  pendingLevelUpChoices?: number;
   health: number;
   mana: number;
   baseStats: BaseStats;

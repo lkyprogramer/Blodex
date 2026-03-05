@@ -49,6 +49,8 @@ export class RunSaveSnapshotBuilder {
     if (host.staircaseState.selected !== undefined) {
       staircaseSnapshot.selected = host.staircaseState.selected;
     }
+    const floorChoiceBudget =
+      typeof host.captureFloorChoiceBudgetSnapshot === "function" ? host.captureFloorChoiceBudgetSnapshot() : undefined;
 
     return {
       schemaVersion: 2,
@@ -129,6 +131,7 @@ export class RunSaveSnapshotBuilder {
         exploredKeys: [...minimapSnapshot.exploredKeys]
       },
       mapRevealActive: host.mapRevealActive,
+      ...(floorChoiceBudget === undefined ? {} : { floorChoiceBudget }),
       rngCursor: this.collectRngCursor(),
       blueprintFoundIdsInRun: [...host.blueprintFoundIdsInRun],
       selectedMutationIds: [...host.mutationRuntime.activeIds],

@@ -11,34 +11,34 @@ export const LOOT_TABLES: LootTableDef[] = [
       { itemDefId: "patchwork_hauberk", weight: 12, minFloor: 1 },
       { itemDefId: "wanderer_boots", weight: 12, minFloor: 1 },
       { itemDefId: "iron_vow_loop", weight: 10, minFloor: 1 },
-      { itemDefId: "oath_ring", weight: 10, minFloor: 1 }
+      { itemDefId: "oath_ring", weight: 10, minFloor: 2 }
     ]
   },
   {
     id: "cathedral_depths",
     entries: [
-      { itemDefId: "dusk_halberd", weight: 14, minFloor: 1 },
-      { itemDefId: "penitent_blade", weight: 12, minFloor: 1 },
-      { itemDefId: "warden_greathelm", weight: 12, minFloor: 1 },
-      { itemDefId: "cathedral_plate", weight: 12, minFloor: 1 },
-      { itemDefId: "pilgrim_treads", weight: 12, minFloor: 1 },
-      { itemDefId: "oath_ring", weight: 12, minFloor: 1 },
-      { itemDefId: "revenant_mask", weight: 8, minFloor: 1 },
-      { itemDefId: "oathbound_cuirass", weight: 8, minFloor: 1 },
-      { itemDefId: "bloodsigil_band", weight: 10, minFloor: 1 }
+      { itemDefId: "dusk_halberd", weight: 14, minFloor: 2 },
+      { itemDefId: "penitent_blade", weight: 12, minFloor: 2 },
+      { itemDefId: "warden_greathelm", weight: 12, minFloor: 2 },
+      { itemDefId: "cathedral_plate", weight: 12, minFloor: 2 },
+      { itemDefId: "pilgrim_treads", weight: 12, minFloor: 2 },
+      { itemDefId: "oath_ring", weight: 12, minFloor: 2 },
+      { itemDefId: "revenant_mask", weight: 8, minFloor: 4 },
+      { itemDefId: "oathbound_cuirass", weight: 8, minFloor: 4 },
+      { itemDefId: "bloodsigil_band", weight: 10, minFloor: 4 }
     ]
   },
   {
     id: "catacomb_elite",
     entries: [
-      { itemDefId: "sanctified_greatsword", weight: 12, minFloor: 1 },
-      { itemDefId: "revenant_mask", weight: 14, minFloor: 1 },
-      { itemDefId: "oathbound_cuirass", weight: 14, minFloor: 1 },
-      { itemDefId: "catacomb_greaves", weight: 14, minFloor: 1 },
-      { itemDefId: "bloodsigil_band", weight: 16, minFloor: 1 },
-      { itemDefId: "cathedral_plate", weight: 10, minFloor: 1 },
-      { itemDefId: "dusk_halberd", weight: 10, minFloor: 1 },
-      { itemDefId: "oath_ring", weight: 10, minFloor: 1 }
+      { itemDefId: "sanctified_greatsword", weight: 12, minFloor: 4 },
+      { itemDefId: "revenant_mask", weight: 14, minFloor: 3 },
+      { itemDefId: "oathbound_cuirass", weight: 14, minFloor: 3 },
+      { itemDefId: "catacomb_greaves", weight: 14, minFloor: 3 },
+      { itemDefId: "bloodsigil_band", weight: 16, minFloor: 3 },
+      { itemDefId: "cathedral_plate", weight: 10, minFloor: 2 },
+      { itemDefId: "dusk_halberd", weight: 10, minFloor: 2 },
+      { itemDefId: "oath_ring", weight: 10, minFloor: 2 }
     ]
   },
   {
@@ -64,6 +64,11 @@ export const LOOT_TABLES: LootTableDef[] = [
   {
     id: "merchant_pool",
     entries: [
+      { itemDefId: "rusted_sabre", weight: 8, minFloor: 1 },
+      { itemDefId: "grim_helm", weight: 8, minFloor: 1 },
+      { itemDefId: "patchwork_hauberk", weight: 8, minFloor: 1 },
+      { itemDefId: "wanderer_boots", weight: 8, minFloor: 1 },
+      { itemDefId: "iron_vow_loop", weight: 8, minFloor: 1 },
       { itemDefId: "dusk_halberd", weight: 12, minFloor: 2 },
       { itemDefId: "penitent_blade", weight: 10, minFloor: 2 },
       { itemDefId: "warden_greathelm", weight: 10, minFloor: 2 },

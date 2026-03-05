@@ -38,11 +38,11 @@ export function deriveStats(
   const baseDerived: DerivedStats = {
     maxHealth: 100 + base.vitality * 18 + (upgrade?.startingHealth ?? 0),
     maxMana: 40 + base.intelligence * 10,
-    armor: base.dexterity * 1.5 + (upgrade?.startingArmor ?? 0),
+    armor: base.vitality * 0.9 + base.dexterity * 0.7 + (upgrade?.startingArmor ?? 0),
     attackPower: 8 + base.strength * 2.2,
-    critChance: 0.03 + base.dexterity * 0.0015 + (upgrade?.luckBonus ?? 0),
-    attackSpeed: 1 + base.dexterity * 0.002,
-    moveSpeed: 140 + base.dexterity * 0.3
+    critChance: 0.03 + base.dexterity * 0.0011 + base.intelligence * 0.0002 + (upgrade?.luckBonus ?? 0),
+    attackSpeed: 1 + base.dexterity * 0.0013 + base.strength * 0.0004,
+    moveSpeed: 140 + base.dexterity * 0.22 + base.vitality * 0.08
   };
 
   const next = cloneDerived(baseDerived);

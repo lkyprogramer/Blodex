@@ -273,6 +273,11 @@ export class RunStateRestorer {
         selectionValidation.ok ? selectionValidation.selected : host.meta.selectedMutationIds
       );
       host.refreshSynergyRuntime();
+      if (typeof host.restoreFloorChoiceBudgetSnapshot === "function") {
+        host.restoreFloorChoiceBudgetSnapshot(save.floorChoiceBudget, host.time.now);
+      } else {
+        host.resetFloorChoiceBudget(host.run.currentFloor, host.time.now);
+      }
       return true;
     } catch (error) {
       console.warn("[Save] Failed to restore run snapshot.", error);

@@ -26,7 +26,6 @@ import {
   collectActiveMutationEffects,
   applyRunSummaryToMeta,
   collectTalentEffectTotals,
-  applyXpGain,
   canEquip,
   canUseSkill,
   collectLoot,
@@ -111,11 +110,13 @@ import {
   type DungeonLayout,
   type DifficultyMode,
   type EventReward,
+  type FloorChoiceBudgetState,
   type GameEventMap,
   type GridNode,
   type HazardRuntimeState,
   type ItemDef,
   type ItemInstance,
+  type LootTableDef,
   type MerchantOffer,
   type MetaProgression,
   type MutationEffect,
@@ -126,6 +127,7 @@ import {
   type RunMode,
   type RunRngStreamName,
   type RunSaveDataV2,
+  type RollItemDropOptions,
   type RuntimeEventNodeState,
   type RunState,
   type StaircaseState,
@@ -205,6 +207,7 @@ import {
 } from "./dungeon/logging/DomainEventEffectBinder";
 import { RunLogService } from "./dungeon/logging/RunLogService";
 import { RunFlowOrchestrator } from "./dungeon/orchestrator/RunFlowOrchestrator";
+import { ProgressionChoiceRuntime } from "./dungeon/progression/ProgressionChoiceRuntime";
 import { RunCompletionModule } from "./dungeon/run/RunCompletionModule";
 import { resolveInitialRunSeed } from "./dungeon/run/resolveInitialRunSeed";
 import { RunPersistenceModule } from "./dungeon/save/RunPersistenceModule";
@@ -495,6 +498,9 @@ export class DungeonScene extends Phaser.Scene {
   private statHighlightEntries: HudStatHighlightEntry[] = [];
   private levelUpPulseUntilMs = 0;
   private levelUpPulseLevel: number | null = null;
+  private readonly progressionChoiceRuntime = new ProgressionChoiceRuntime({
+    host: this as unknown as Record<string, unknown>
+  });
   private nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
   private readonly debugLockedEquipQuery = DEBUG_LOCKED_EQUIP_QUERY;
   private readonly debugLockedEquipIconId = DEBUG_LOCKED_EQUIP_ICON_ID;
@@ -908,6 +914,12 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private runActiveFrame(nowMs: number, deltaMs: number): void {
+    this.progressionChoiceRuntime.maybePromptLevelUpChoice(nowMs, "runtime_tick");
+    if (this.eventPanelOpen) {
+      this.runEventPanelFrame(nowMs);
+      return;
+    }
+
     const playerHazardMovementMultiplier = this.hazardRuntimeModule.resolvePlayerHazardMovementMultiplier();
     const mutationMoveMultiplier = this.resolveMutationMoveSpeedMultiplier();
 
@@ -1269,6 +1281,7 @@ export class DungeonScene extends Phaser.Scene {
             ...(resolvedDailyDate === undefined ? {} : { dailyDate: resolvedDailyDate })
           }
         : run;
+    this.progressionChoiceRuntime.resetRuntime(this.time.now, this.run.currentFloor);
     this.progressionRuntimeModule.setupFloor(1, true);
 
     this.eventBus.emit("run:start", {
@@ -1786,7 +1799,8 @@ export class DungeonScene extends Phaser.Scene {
       lootTables: LOOT_TABLE_MAP,
       attackSpeedMultiplier: this.resolveMutationAttackSpeedMultiplier(nowMs),
       weaponTypeDefs: WEAPON_TYPE_DEF_MAP,
-      canDropItemDef: (itemDef) => this.isItemDefUnlocked(itemDef)
+      canDropItemDef: (itemDef) => this.isItemDefUnlocked(itemDef),
+      slotWeightMultiplier: this.currentBiome.lootBias
     });
 
     this.player = playerCombat.player;
@@ -1806,13 +1820,7 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     if (playerCombat.leveledUp) {
-      this.eventBus.emit("player:levelup", {
-        playerId: this.player.id,
-        level: this.player.level,
-        timestampMs: nowMs
-      });
-      this.refreshSynergyRuntime(false);
-      this.offerLevelupSkill();
+      this.handleLevelUpGain(playerCombat.levelsGained, nowMs, "combat_kill");
     }
 
     if (playerCombat.killedMonsterId !== undefined) {
@@ -1847,9 +1855,16 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  private offerLevelupSkill(): void {
-    this.playerActionModule.offerLevelupSkill();
+  handleLevelUpGain(levelsGained: number, nowMs: number, source: string): void { this.progressionChoiceRuntime.handleLevelUpGain(levelsGained, nowMs, source); }
+  resetFloorChoiceBudget(floor: number, nowMs: number): void { this.progressionChoiceRuntime.resetFloorChoiceBudget(floor, nowMs); }
+  captureFloorChoiceBudgetSnapshot(): FloorChoiceBudgetState { return this.progressionChoiceRuntime.captureFloorChoiceBudgetSnapshot(); }
+  restoreFloorChoiceBudgetSnapshot(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void {
+    this.progressionChoiceRuntime.restoreFloorChoiceBudgetSnapshot(snapshot, this.run.currentFloor, nowMs);
   }
+  markHighValueChoice(source: string, nowMs: number): void { this.progressionChoiceRuntime.markHighValueChoice(source, nowMs); }
+  ensureFloorChoiceBudget(nowMs: number): void { this.progressionChoiceRuntime.ensureFloorChoiceBudget(nowMs); }
+  resolveProgressionLootTable(floor: number): LootTableDef | undefined { return this.progressionChoiceRuntime.resolveProgressionLootTable(floor); }
+  resolveLootRollOptions(options: RollItemDropOptions = {}): RollItemDropOptions { return this.progressionChoiceRuntime.resolveLootRollOptions(options); }
 
   private applySynergyToSkillDef(skillDef: SkillDef): SkillDef {
     const damagePercent = this.synergyRuntime.skillDamagePercent[skillDef.id] ?? 0;
@@ -2252,6 +2267,9 @@ export class DungeonScene extends Phaser.Scene {
       sprite: this.renderSystem.spawnLootSprite(item, position, this.origin),
       position: { ...position }
     });
+    if (item.rarity === "rare" || item.kind === "unique") {
+      this.markHighValueChoice("key_drop", this.time.now);
+    }
   }
 
   private tryUseSkill(slotIndex: number): void {

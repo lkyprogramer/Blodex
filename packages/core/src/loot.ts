@@ -1,4 +1,5 @@
 import type {
+  EquipmentSlot,
   ItemDef,
   ItemInstance,
   ItemSpecialAffixKey,
@@ -10,10 +11,25 @@ import { normalizeSpecialAffixValue } from "./specialAffix";
 
 export interface RollItemDropOptions {
   isItemEligible?: (itemDef: ItemDef) => boolean;
+  slotWeightMultiplier?: Partial<Record<EquipmentSlot, number>>;
 }
 
 function clamp(num: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, num));
+}
+
+function resolveSlotWeightMultiplier(
+  slot: EquipmentSlot,
+  slotWeightMultiplier: RollItemDropOptions["slotWeightMultiplier"]
+): number {
+  if (slotWeightMultiplier === undefined) {
+    return 1;
+  }
+  const raw = slotWeightMultiplier[slot];
+  if (raw === undefined || !Number.isFinite(raw)) {
+    return 1;
+  }
+  return Math.max(0, raw);
 }
 
 function normalizeDerivedAffixValue(key: keyof ItemInstance["rolledAffixes"], value: number): number {
@@ -120,19 +136,27 @@ function rollSpecialAffixes(
   return Object.keys(rolled).length === 0 ? undefined : rolled;
 }
 
-function pickWeightedEntry(entries: LootEntry[], rng: RngLike): LootEntry | null {
+interface WeightedLootEntry {
+  entry: LootEntry;
+  effectiveWeight: number;
+}
+
+function pickWeightedEntry(entries: WeightedLootEntry[], rng: RngLike): LootEntry | null {
   if (entries.length === 0) {
     return null;
   }
 
-  const totalWeight = entries.reduce((sum, entry) => sum + entry.weight, 0);
+  const totalWeight = entries.reduce((sum, entry) => sum + entry.effectiveWeight, 0);
+  if (totalWeight <= 0) {
+    return null;
+  }
   let needle = rng.next() * totalWeight;
-  let selected = entries[0]!;
+  let selected = entries[0]!.entry;
 
   for (const entry of entries) {
-    needle -= entry.weight;
+    needle -= entry.effectiveWeight;
     if (needle <= 0) {
-      selected = entry;
+      selected = entry.entry;
       break;
     }
   }
@@ -167,24 +191,29 @@ export function rollItemDrop(
   seedFragment: string,
   options: RollItemDropOptions = {}
 ): ItemInstance | null {
-  const validEntries = lootTable.entries.filter((entry) => {
+  const weightedEntries: WeightedLootEntry[] = lootTable.entries.flatMap((entry) => {
     if (entry.minFloor > floor) {
-      return false;
+      return [];
     }
     const def = itemDefs[entry.itemDefId];
     if (def === undefined) {
-      return false;
+      return [];
     }
     if (options.isItemEligible !== undefined && !options.isItemEligible(def)) {
-      return false;
+      return [];
     }
-    return true;
+    const multiplier = resolveSlotWeightMultiplier(def.slot, options.slotWeightMultiplier);
+    const effectiveWeight = entry.weight * multiplier;
+    if (effectiveWeight <= 0) {
+      return [];
+    }
+    return [{ entry, effectiveWeight }];
   });
-  if (validEntries.length === 0) {
+  if (weightedEntries.length === 0) {
     return null;
   }
 
-  const selected = pickWeightedEntry(validEntries, rng);
+  const selected = pickWeightedEntry(weightedEntries, rng);
   if (selected === null) {
     return null;
   }

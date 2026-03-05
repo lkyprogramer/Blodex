@@ -8,6 +8,7 @@ import {
   rollItemDrop,
   spendRunObols,
   type EventReward,
+  type ItemDef,
   type ItemInstance
 } from "@blodex/core";
 import { ITEM_DEF_MAP, LOOT_TABLE_MAP } from "@blodex/content";
@@ -133,7 +134,7 @@ export class EventResolutionService {
       const specialAffixTotals = resolveSpecialAffixTotals(
         Object.values(host.player.equipment).filter((item): item is ItemInstance => item !== undefined)
       );
-      const xpResult = applyXpGain(host.player, reward.amount, "intelligence", {
+      const xpResult = applyXpGain(host.player, reward.amount, "manual", {
         xpBonus: specialAffixTotals.xpBonus
       });
       host.player = host.refreshPlayerStatsFromEquipment(xpResult.player);
@@ -147,13 +148,9 @@ export class EventResolutionService {
         nowMs
       );
       if (xpResult.leveledUp) {
-        host.eventBus.emit("player:levelup", {
-          playerId: host.player.id,
-          level: host.player.level,
-          timestampMs: nowMs
-        });
-        host.offerLevelupSkill();
+        host.handleLevelUpGain(xpResult.levelsGained, nowMs, "event_xp");
       }
+      host.markHighValueChoice("event", nowMs);
       return;
     }
     if (reward.type === "mapping") {
@@ -196,6 +193,7 @@ export class EventResolutionService {
         "info",
         nowMs
       );
+      host.markHighValueChoice("event", nowMs);
       return;
     }
 
@@ -221,9 +219,16 @@ export class EventResolutionService {
       return;
     }
 
-    const item = rollItemDrop(table, ITEM_DEF_MAP, host.run.currentFloor, host.lootRng, `event-${Math.floor(nowMs)}-${host.run.currentFloor}`, {
-      isItemEligible: (itemDef) => host.isItemDefUnlocked(itemDef)
-    });
+    const item = rollItemDrop(
+      table,
+      ITEM_DEF_MAP,
+      host.run.currentFloor,
+      host.lootRng,
+      `event-${Math.floor(nowMs)}-${host.run.currentFloor}`,
+      host.resolveLootRollOptions({
+        isItemEligible: (itemDef: ItemDef) => host.isItemDefUnlocked(itemDef)
+      })
+    );
     if (item === null) {
       host.runLog.appendKey(
         "log.event.reward.item_roll_failed",
@@ -250,6 +255,7 @@ export class EventResolutionService {
       "success",
       nowMs
     );
+    host.markHighValueChoice("event", nowMs);
   }
 
   applyPenalty(reward: EventReward, nowMs: number, source: string): void {

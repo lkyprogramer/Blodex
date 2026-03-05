@@ -331,6 +331,33 @@ describe("save", () => {
     expect(validateSave(broken)).toBe(false);
   });
 
+  it("round-trips optional floor choice budget snapshot", () => {
+    const save = makeSave();
+    save.floorChoiceBudget = {
+      floor: 3,
+      satisfied: true,
+      source: "event"
+    };
+    const loaded = deserializeRunState(serializeRunState(save));
+
+    expect(loaded).not.toBeNull();
+    expect(loaded?.floorChoiceBudget).toEqual({
+      floor: 3,
+      satisfied: true,
+      source: "event"
+    });
+  });
+
+  it("rejects invalid floor choice budget snapshot shape", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    broken.floorChoiceBudget = {
+      floor: "3",
+      satisfied: true
+    };
+
+    expect(validateSave(broken)).toBe(false);
+  });
+
   it("keeps unknown fields for forward compatibility", () => {
     const save = makeSave() as unknown as Record<string, unknown>;
     save.futureFeature = {

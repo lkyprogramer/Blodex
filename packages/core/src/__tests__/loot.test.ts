@@ -57,4 +57,35 @@ describe("rollItemDrop", () => {
 
     expect(common).toBeGreaterThan(rare * 2);
   });
+
+  it("applies slot weight multiplier from biome bias", () => {
+    const rng = new SeededRng("loot-bias");
+    const balancedTable: LootTableDef = {
+      id: "balanced",
+      entries: [
+        { itemDefId: "axe_common", weight: 50, minFloor: 1 },
+        { itemDefId: "ring_rare", weight: 50, minFloor: 1 }
+      ]
+    };
+    let weapon = 0;
+    let ring = 0;
+
+    for (let i = 0; i < 1200; i += 1) {
+      const item = rollItemDrop(balancedTable, itemDefs, 1, rng, `bias-${i}`, {
+        slotWeightMultiplier: {
+          weapon: 1.8,
+          ring: 0.6
+        }
+      });
+      if (item?.slot === "weapon") {
+        weapon += 1;
+      }
+      if (item?.slot === "ring") {
+        ring += 1;
+      }
+    }
+
+    expect(weapon).toBeGreaterThan(ring);
+    expect(weapon - ring).toBeGreaterThan(220);
+  });
 });
