@@ -267,14 +267,12 @@ export class AISystem {
   ): MonsterAiUpdateResult {
     const transitions: MonsterStateTransition[] = [];
     const supportActions: MonsterSupportAction[] = [];
-    const activeMonsterIds = new Set<string>();
 
     for (const monster of monsters) {
       if (monster.state.health <= 0) {
         this.stuckFramesByMonsterId.delete(monster.state.id);
         continue;
       }
-      activeMonsterIds.add(monster.state.id);
 
       const dist = distance(player.position, monster.state.position);
       const previous = monster.state.aiState;
@@ -394,12 +392,6 @@ export class AISystem {
           to: monster.state.aiState,
           timestampMs: nowMs
         });
-      }
-    }
-
-    for (const monsterId of this.stuckFramesByMonsterId.keys()) {
-      if (!activeMonsterIds.has(monsterId)) {
-        this.stuckFramesByMonsterId.delete(monsterId);
       }
     }
 
