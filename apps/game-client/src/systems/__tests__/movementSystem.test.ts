@@ -22,6 +22,34 @@ describe("MovementSystem", () => {
     expect(Math.hypot(target.x - 3, target.y - 3)).toBeLessThanOrEqual(1.5);
   });
 
+  it("searches wider rings when local 2-tile neighborhood is fully blocked", () => {
+    const movement = new MovementSystem();
+    const walkable = makeWalkable(10, 10, false);
+    walkable[9]![9] = true;
+    const target = movement.clampToWalkable(
+      walkable,
+      { width: 10, height: 10 },
+      { x: 0, y: 0 },
+      { x: 4, y: 4 }
+    );
+
+    expect(target).toEqual({ x: 9, y: 9 });
+  });
+
+  it("falls back to nearest player-side walkable tile when target zone has none", () => {
+    const movement = new MovementSystem();
+    const walkable = makeWalkable(12, 12, false);
+    walkable[1]![1] = true;
+    const target = movement.clampToWalkable(
+      walkable,
+      { width: 12, height: 12 },
+      { x: 1.2, y: 1.1 },
+      { x: 11, y: 11 }
+    );
+
+    expect(target).toEqual({ x: 1, y: 1 });
+  });
+
   it("uses cached path within ttl and recomputes after ttl expiry", () => {
     const movement = new MovementSystem();
     const walkable = makeWalkable(3, 3, true);

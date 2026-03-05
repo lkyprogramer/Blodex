@@ -19,9 +19,52 @@ export class MovementSystem {
   private readonly pathCacheTtlMs = 700;
   private readonly maxPathCacheEntries = 120;
   private readonly maxExpandedNodesPerSearch = 2400;
+  private readonly targetClampSearchRadius = 6;
+  private readonly playerFallbackSearchRadius = 3;
 
   clearPathCache(): void {
     this.pathCache.clear();
+  }
+
+  private findNearestWalkableInRings(
+    walkable: boolean[][],
+    dimensions: { width: number; height: number },
+    center: { x: number; y: number },
+    maxRadius: number
+  ): GridNode | null {
+    const anchor = {
+      x: Math.max(0, Math.min(dimensions.width - 1, Math.round(center.x))),
+      y: Math.max(0, Math.min(dimensions.height - 1, Math.round(center.y)))
+    };
+    for (let radius = 0; radius <= maxRadius; radius += 1) {
+      let nearest: GridNode | null = null;
+      let nearestDist = Number.POSITIVE_INFINITY;
+      const minX = Math.max(0, anchor.x - radius);
+      const maxX = Math.min(dimensions.width - 1, anchor.x + radius);
+      const minY = Math.max(0, anchor.y - radius);
+      const maxY = Math.min(dimensions.height - 1, anchor.y + radius);
+
+      for (let y = minY; y <= maxY; y += 1) {
+        for (let x = minX; x <= maxX; x += 1) {
+          const ringDistance = Math.max(Math.abs(x - anchor.x), Math.abs(y - anchor.y));
+          if (ringDistance !== radius) {
+            continue;
+          }
+          if (!walkable[y]?.[x]) {
+            continue;
+          }
+          const dist = Math.hypot(x - anchor.x, y - anchor.y);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearest = { x, y };
+          }
+        }
+      }
+      if (nearest !== null) {
+        return nearest;
+      }
+    }
+    return null;
   }
 
   clampToWalkable(
@@ -39,26 +82,29 @@ export class MovementSystem {
       return clamped;
     }
 
-    let nearest = playerPosition;
-    let nearestDist = Number.POSITIVE_INFINITY;
+    const nearestToTarget = this.findNearestWalkableInRings(
+      walkable,
+      dimensions,
+      clamped,
+      this.targetClampSearchRadius
+    );
+    if (nearestToTarget !== null) {
+      return nearestToTarget;
+    }
 
-    for (let y = Math.max(0, clamped.y - 2); y <= Math.min(dimensions.height - 1, clamped.y + 2); y += 1) {
-      for (let x = Math.max(0, clamped.x - 2); x <= Math.min(dimensions.width - 1, clamped.x + 2); x += 1) {
-        if (!walkable[y]?.[x]) {
-          continue;
-        }
-
-        const dist = Math.hypot(x - clamped.x, y - clamped.y);
-        if (dist < nearestDist) {
-          nearestDist = dist;
-          nearest = { x, y };
-        }
-      }
+    const nearestToPlayer = this.findNearestWalkableInRings(
+      walkable,
+      dimensions,
+      playerPosition,
+      this.playerFallbackSearchRadius
+    );
+    if (nearestToPlayer !== null) {
+      return nearestToPlayer;
     }
 
     return {
-      x: nearest.x,
-      y: nearest.y
+      x: Math.max(0, Math.min(dimensions.width - 1, Math.round(playerPosition.x))),
+      y: Math.max(0, Math.min(dimensions.height - 1, Math.round(playerPosition.y)))
     };
   }
 
