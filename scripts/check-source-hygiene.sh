@@ -19,4 +19,14 @@ if [[ -n "$violations" ]]; then
   exit 1
 fi
 
+dungeonAnyHostViolations="$(
+  rg -n "Record<string, any>" apps/game-client/src/scenes/dungeon --glob '*.ts' || true
+)"
+
+if [[ -n "$dungeonAnyHostViolations" ]]; then
+  echo "[hygiene] Forbidden host typing detected in scenes/dungeon (Record<string, any>):"
+  echo "$dungeonAnyHostViolations"
+  exit 1
+fi
+
 echo "[hygiene] source tree is clean."

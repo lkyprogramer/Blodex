@@ -4,12 +4,14 @@ import { gridToIso } from "../../../systems/iso";
 import { BossCombatService } from "./BossCombatService";
 import { BossSpawnService } from "./BossSpawnService";
 
-type BossHost = Record<string, any>;
+export interface BossRuntimeHost {
+  [key: string]: any;
+}
 
 const ABYSS_VICTORY_EVENT_ID = "boss_victory_choice";
 
 export interface BossRuntimeModuleOptions {
-  host: BossHost;
+  host: BossRuntimeHost;
   combatService: BossCombatService;
   spawnService: BossSpawnService;
 }

@@ -17,11 +17,13 @@ import {
 } from "@blodex/content";
 import { resolveBiomeVisualTheme } from "../presentation/BiomeVisualThemeRegistry";
 
-type RestoreHost = Record<string, any>;
+export interface RunStateRestoreHost {
+  [key: string]: any;
+}
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
 
 export interface RunStateRestorerOptions {
-  host: RestoreHost;
+  host: RunStateRestoreHost;
 }
 
 export class RunStateRestorer {

@@ -19,10 +19,12 @@ import {
 import { GAME_CONFIG, ITEM_DEF_MAP, LOOT_TABLE_MAP, RANDOM_EVENT_DEFS } from "@blodex/content";
 import { DEBUG_COMMANDS, type DebugLogLevel } from "./types";
 
-type DebugHost = Record<string, any>;
+export interface DebugCommandHost {
+  [key: string]: any;
+}
 
 export class DebugCommandRegistry {
-  constructor(private readonly host: DebugHost) {}
+  constructor(private readonly host: DebugCommandHost) {}
 
   help(): string[] {
     return DEBUG_COMMANDS.map((entry) => `${entry.combo}: ${entry.description}`);

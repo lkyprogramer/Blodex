@@ -7,10 +7,12 @@ import {
 } from "@blodex/core";
 import { MONSTER_ARCHETYPES } from "@blodex/content";
 
-type BossHost = Record<string, any>;
+export interface BossSpawnHost {
+  [key: string]: any;
+}
 
 export interface BossSpawnServiceOptions {
-  host: BossHost;
+  host: BossSpawnHost;
 }
 
 export class BossSpawnService {

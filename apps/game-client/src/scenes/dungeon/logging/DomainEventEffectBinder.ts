@@ -17,7 +17,9 @@ const ITEM_NEWLY_ACQUIRED_TTL_MS = 2_000;
 
 export type DomainEventEffectHost = {
   eventBus: TypedEventBus<GameEventMap>;
-} & Record<string, any>;
+} & {
+  [key: string]: any;
+};
 
 export function bindDomainEventEffects(host: DomainEventEffectHost): void {
     host.eventBus.on("combat:hit", ({ combat }) => {

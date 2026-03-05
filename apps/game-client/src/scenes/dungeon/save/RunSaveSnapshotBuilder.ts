@@ -7,10 +7,12 @@ import type {
   StaircaseState
 } from "@blodex/core";
 
-type SnapshotHost = Record<string, any>;
+export interface RunSaveSnapshotHost {
+  [key: string]: any;
+}
 
 export interface RunSaveSnapshotBuilderOptions {
-  host: SnapshotHost;
+  host: RunSaveSnapshotHost;
   appVersion: string;
 }
 
@@ -106,7 +108,7 @@ export class RunSaveSnapshotBuilder {
               position: { ...host.bossState.position },
               attackCooldowns: { ...host.bossState.attackCooldowns }
             },
-      monsters: host.entityManager.listMonsters().map((monster: Record<string, any>) => ({
+      monsters: host.entityManager.listMonsters().map((monster: RunSaveDataV2["monsters"][number]) => ({
         state: {
           ...monster.state,
           position: { ...monster.state.position },
@@ -115,7 +117,7 @@ export class RunSaveSnapshotBuilder {
         nextAttackAt: monster.nextAttackAt,
         nextSupportAt: monster.nextSupportAt
       })),
-      lootOnGround: host.entityManager.listLoot().map((drop: Record<string, any>) => ({
+      lootOnGround: host.entityManager.listLoot().map((drop: RunSaveDataV2["lootOnGround"][number]) => ({
         item: {
           ...drop.item,
           rolledAffixes: { ...drop.item.rolledAffixes },
@@ -135,7 +137,7 @@ export class RunSaveSnapshotBuilder {
       rngCursor: this.collectRngCursor(),
       blueprintFoundIdsInRun: [...host.blueprintFoundIdsInRun],
       selectedMutationIds: [...host.mutationRuntime.activeIds],
-      deferredOutcomes: host.deferredOutcomes.map((outcome: Record<string, any>) => ({
+      deferredOutcomes: host.deferredOutcomes.map((outcome: NonNullable<RunSaveDataV2["deferredOutcomes"]>[number]) => ({
         outcomeId: outcome.outcomeId,
         source: outcome.source,
         trigger:

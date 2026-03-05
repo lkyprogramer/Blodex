@@ -7,7 +7,9 @@ import {
 } from "@blodex/core";
 import { ITEM_DEF_MAP } from "@blodex/content";
 
-type DeferredOutcomeHost = Record<string, any>;
+export interface DeferredOutcomeHost {
+  [key: string]: any;
+}
 
 export interface DeferredOutcomeRuntimeOptions {
   host: DeferredOutcomeHost;

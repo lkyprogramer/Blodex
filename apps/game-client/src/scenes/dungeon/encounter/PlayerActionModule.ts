@@ -15,7 +15,9 @@ import {
 } from "@blodex/core";
 import { BLUEPRINT_DEF_MAP, SKILL_DEFS, WEAPON_TYPE_DEF_MAP } from "@blodex/content";
 
-type PlayerActionHost = Record<string, any>;
+export interface PlayerActionHost {
+  [key: string]: any;
+}
 
 export interface PlayerActionModuleOptions {
   host: PlayerActionHost;
