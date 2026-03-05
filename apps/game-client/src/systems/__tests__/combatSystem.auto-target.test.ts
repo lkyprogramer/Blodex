@@ -3,6 +3,7 @@ import {
   createRunState,
   type BaseStats,
   type DerivedStats,
+  type ItemInstance,
   type MonsterState,
   type PlayerState
 } from "@blodex/core";
@@ -76,6 +77,23 @@ function makeMonsterRuntime(id: string, position: { x: number; y: number }): Mon
     yOffset: 0,
     nextAttackAt: 0,
     nextSupportAt: 0
+  };
+}
+
+function makeLifestealWeapon(lifesteal = 0.1): ItemInstance {
+  return {
+    id: "weapon-lifesteal",
+    defId: "weapon-lifesteal",
+    name: "Lifesteal Weapon",
+    slot: "weapon",
+    rarity: "rare",
+    requiredLevel: 1,
+    iconId: "weapon",
+    seed: "seed",
+    rolledAffixes: {},
+    rolledSpecialAffixes: {
+      lifesteal
+    }
   };
 }
 
@@ -156,5 +174,65 @@ describe("CombatSystem auto target preference", () => {
     expect(result.attackTargetId).toBeNull();
     expect(result.requestPathTarget).toBeUndefined();
     expect(result.combatEvents).toEqual([]);
+  });
+
+  it("preserves lifesteal health on non-kill player attacks", () => {
+    const combat = new CombatSystem();
+    const player = {
+      ...makePlayer({ x: 0, y: 0 }),
+      health: 40,
+      equipment: {
+        weapon: makeLifestealWeapon(0.1)
+      }
+    };
+    const target = makeMonsterRuntime("target", { x: 1, y: 0 });
+    const run = createRunState("seed", 0, "normal");
+
+    const result = combat.updatePlayerAttack({
+      player,
+      run,
+      monsters: [target],
+      attackTargetId: "target",
+      nextPlayerAttackAt: 0,
+      nowMs: 0,
+      combatRng: new SeededRng("combat-seed"),
+      lootRng: new SeededRng("loot-seed"),
+      itemDefs: {},
+      lootTables: {}
+    });
+
+    expect(result.player.health).toBeGreaterThan(player.health);
+    expect(result.killedMonsterId).toBeUndefined();
+  });
+
+  it("keeps lifesteal contribution when kill recovery is applied", () => {
+    const combat = new CombatSystem();
+    const player = {
+      ...makePlayer({ x: 0, y: 0 }),
+      health: 40,
+      equipment: {
+        weapon: makeLifestealWeapon(0.1)
+      }
+    };
+    const target = makeMonsterRuntime("target", { x: 1, y: 0 });
+    target.state.health = 10;
+    target.state.maxHealth = 10;
+    const run = createRunState("seed", 0, "normal");
+
+    const result = combat.updatePlayerAttack({
+      player,
+      run,
+      monsters: [target],
+      attackTargetId: "target",
+      nextPlayerAttackAt: 0,
+      nowMs: 0,
+      combatRng: new SeededRng("combat-seed"),
+      lootRng: new SeededRng("loot-seed"),
+      itemDefs: {},
+      lootTables: {}
+    });
+
+    expect(result.killedMonsterId).toBe("target");
+    expect(result.player.health).toBeGreaterThan(player.health + 12);
   });
 });

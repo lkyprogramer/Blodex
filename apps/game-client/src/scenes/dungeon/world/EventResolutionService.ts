@@ -4,9 +4,11 @@ import {
   canPayEventCost,
   collectLoot,
   grantConsumable,
+  resolveSpecialAffixTotals,
   rollItemDrop,
   spendRunObols,
-  type EventReward
+  type EventReward,
+  type ItemInstance
 } from "@blodex/core";
 import { ITEM_DEF_MAP, LOOT_TABLE_MAP } from "@blodex/content";
 import { t } from "../../../i18n";
@@ -128,7 +130,12 @@ export class EventResolutionService {
       return;
     }
     if (reward.type === "xp") {
-      const xpResult = applyXpGain(host.player, reward.amount, "intelligence");
+      const specialAffixTotals = resolveSpecialAffixTotals(
+        Object.values(host.player.equipment).filter((item): item is ItemInstance => item !== undefined)
+      );
+      const xpResult = applyXpGain(host.player, reward.amount, "intelligence", {
+        xpBonus: specialAffixTotals.xpBonus
+      });
       host.player = host.refreshPlayerStatsFromEquipment(xpResult.player);
       host.runLog.appendKey(
         "log.event.reward.xp",

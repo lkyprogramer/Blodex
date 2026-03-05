@@ -204,15 +204,18 @@ function localizeWeaponType(weaponType: string): string {
 
 function formatAffixValue(key: string, value: number): string {
   const normalized = Number.isInteger(value) ? value.toString() : value.toFixed(1);
+  const percentValue = `${(value * 100).toFixed(1)}%`;
   if (
+    key === "critChance" ||
     key === "lifesteal" ||
     key === "critDamage" ||
+    key === "aoeRadius" ||
     key === "dodgeChance" ||
     key === "xpBonus" ||
     key === "soulShardBonus" ||
     key === "cooldownReduction"
   ) {
-    return `+${normalized}%`;
+    return `+${percentValue}`;
   }
   if (key === "healthRegen") {
     return `+${normalized}/s`;

@@ -12,6 +12,11 @@ import type {
   PlayerSkillState,
   SkillResolution
 } from "./contracts/types";
+import {
+  clampSpecialAffixTotals,
+  createEmptySpecialAffixTotals,
+  type SpecialAffixTotals
+} from "./specialAffix";
 
 function resolveScalingValue(effect: SkillEffect, player: PlayerState): number {
   if (typeof effect.value === "number") {
@@ -21,14 +26,21 @@ function resolveScalingValue(effect: SkillEffect, player: PlayerState): number {
   return effect.value.base + stat * effect.value.ratio;
 }
 
-function selectTargets(player: PlayerState, monsters: MonsterState[], def: SkillDef): MonsterState[] {
+function selectTargets(
+  player: PlayerState,
+  monsters: MonsterState[],
+  def: SkillDef,
+  rangeMultiplier = 1
+): MonsterState[] {
   if (def.targeting === "self") {
     return [];
   }
 
   const living = monsters.filter((monster) => monster.health > 0);
+  const effectiveRange = Math.max(0, def.range * Math.max(0, rangeMultiplier));
   const inRange = living.filter(
-    (monster) => Math.hypot(monster.position.x - player.position.x, monster.position.y - player.position.y) <= def.range
+    (monster) =>
+      Math.hypot(monster.position.x - player.position.x, monster.position.y - player.position.y) <= effectiveRange
   );
 
   if (def.targeting === "aoe_around") {
@@ -46,6 +58,7 @@ function selectTargets(player: PlayerState, monsters: MonsterState[], def: Skill
 
 export interface ResolveSkillOptions {
   damageMultiplier?: number;
+  specialAffixTotals?: Partial<SpecialAffixTotals>;
 }
 
 function clampSkillLevel(level: number): 1 | 2 | 3 {
@@ -111,7 +124,10 @@ export function resolveSkill(
   nowMs: number,
   options: ResolveSkillOptions = {}
 ): SkillResolution {
-  const selectedTargets = selectTargets(player, targets, skillDef);
+  const specialAffixTotals = clampSpecialAffixTotals(
+    options.specialAffixTotals ?? createEmptySpecialAffixTotals()
+  );
+  const selectedTargets = selectTargets(player, targets, skillDef, 1 + specialAffixTotals.aoeRadius);
   const updatedMonsters = targets.map((monster) => ({ ...monster }));
   const events: CombatEvent[] = [];
   const buffsApplied: BuffInstance[] = [];
@@ -122,6 +138,7 @@ export function resolveSkill(
   };
 
   const skillDamageMultiplier = Math.max(0.05, options.damageMultiplier ?? 1);
+  let totalDamageDealt = 0;
   for (const effect of skillDef.effects) {
     const resolved = resolveScalingValue(effect, player);
 
@@ -132,8 +149,13 @@ export function resolveSkill(
           continue;
         }
         const crit = rng.next() < nextPlayer.derivedStats.critChance;
-        const amount = Math.max(1, Math.floor(resolved * skillDamageMultiplier * (crit ? 1.5 : 1)));
+        const critMultiplier = crit ? 1.5 * (1 + specialAffixTotals.critDamage) : 1;
+        const amount = Math.max(
+          1,
+          Math.floor(resolved * skillDamageMultiplier * critMultiplier + specialAffixTotals.damageOverTime)
+        );
         const nextHealth = Math.max(0, updatedMonsters[idx]!.health - amount);
+        totalDamageDealt += amount;
         updatedMonsters[idx] = {
           ...updatedMonsters[idx]!,
           health: nextHealth,
@@ -185,6 +207,16 @@ export function resolveSkill(
     }
   }
 
+  if (specialAffixTotals.lifesteal > 0 && totalDamageDealt > 0) {
+    const healAmount = Math.floor(totalDamageDealt * specialAffixTotals.lifesteal);
+    if (healAmount > 0) {
+      nextPlayer = {
+        ...nextPlayer,
+        health: Math.min(nextPlayer.derivedStats.maxHealth, nextPlayer.health + healAmount)
+      };
+    }
+  }
+
   return {
     player: nextPlayer,
     affectedMonsters: updatedMonsters,
@@ -209,13 +241,18 @@ export function updateCooldowns(skillState: PlayerSkillState, nowMs: number): Pl
 export function markSkillUsed(
   skillState: PlayerSkillState,
   skillDef: SkillDef,
-  nowMs: number
+  nowMs: number,
+  options?: {
+    cooldownReduction?: number;
+  }
 ): PlayerSkillState {
+  const cooldownReduction = Math.min(0.75, Math.max(0, options?.cooldownReduction ?? 0));
+  const cooldownMs = Math.max(300, Math.floor(skillDef.cooldownMs * (1 - cooldownReduction)));
   return {
     ...skillState,
     cooldowns: {
       ...skillState.cooldowns,
-      [skillDef.id]: nowMs + skillDef.cooldownMs
+      [skillDef.id]: nowMs + cooldownMs
     }
   };
 }

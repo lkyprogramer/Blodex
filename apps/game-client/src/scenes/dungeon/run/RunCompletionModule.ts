@@ -1,6 +1,7 @@
 import {
   addRunObols,
   advanceEndlessFloor,
+  applySoulShardBonus,
   appendReplayInput,
   applyRunSummaryToMeta,
   buildDailyHistoryEntry,
@@ -13,9 +14,11 @@ import {
   hasClaimedDailyReward,
   markDailyRewardClaimed,
   mergeFoundBlueprints,
+  resolveSpecialAffixTotals,
   recordEndlessBestFloor,
   upsertDailyHistory,
-  type GameEventMap
+  type GameEventMap,
+  type ItemInstance
 } from "@blodex/core";
 import { resolveInitialRunSeed } from "./resolveInitialRunSeed";
 
@@ -104,6 +107,10 @@ export class RunCompletionModule {
       0,
       Math.floor(baseSoulShards * soulShardMultiplier) + Math.max(0, Math.floor(host.run.deferredShardBonus ?? 0))
     );
+    const specialAffixTotals = resolveSpecialAffixTotals(
+      Object.values(host.player.equipment).filter((item): item is ItemInstance => item !== undefined)
+    );
+    soulShards = applySoulShardBonus(soulShards, specialAffixTotals.soulShardBonus);
     if (host.run.runMode === "daily" && host.dailyPracticeMode) {
       soulShards = 0;
     }

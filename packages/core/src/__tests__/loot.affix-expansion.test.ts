@@ -68,7 +68,6 @@ describe("loot affix expansion", () => {
     const item = rollItemDrop(uniqueOnly, itemDefs, 5, rng, "x");
     expect(item?.kind).toBe("unique");
     expect(item?.rolledAffixes.attackPower).toBe(20);
-    expect(item?.rolledSpecialAffixes?.critDamage).toBe(20);
+    expect(item?.rolledSpecialAffixes?.critDamage).toBe(0.2);
   });
 });
-
