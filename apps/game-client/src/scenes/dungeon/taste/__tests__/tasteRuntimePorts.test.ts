@@ -40,4 +40,20 @@ describe("TasteRuntimePortHub", () => {
     expect(recommendations.some((entry) => entry.id === "defense-gap")).toBe(true);
     expect(recommendations.some((entry) => entry.id === "offense-gap")).toBe(true);
   });
+
+  it("clears run-scoped state when resetRunState is called", () => {
+    const hub = new TasteRuntimePortHub();
+    hub.recordDrop(makeRareItem("item_weapon_rare", { attackPower: 12 }), 1, "combat", 100);
+    hub.recordBranch("merchant", 1, 200);
+    expect(hub.snapshotBuildIdentity().tags.length).toBeGreaterThan(0);
+    expect(hub.listHeartbeatEvents().length).toBeGreaterThan(0);
+
+    hub.resetRunState();
+
+    const snapshot = hub.snapshotBuildIdentity();
+    expect(snapshot.tags).toHaveLength(0);
+    expect(snapshot.keyItemDefIds).toHaveLength(0);
+    expect(snapshot.pivots).toHaveLength(0);
+    expect(hub.listHeartbeatEvents()).toHaveLength(0);
+  });
 });

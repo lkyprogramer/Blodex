@@ -65,6 +65,13 @@ export class TasteRuntimePortHub implements BuildIdentityPort, HeartbeatEventPor
   private readonly pivots: BuildPivotPoint[] = [];
   private readonly heartbeatEvents: HeartbeatEvent[] = [];
 
+  resetRunState(): void {
+    this.tags.clear();
+    this.keyItemDefIds.length = 0;
+    this.pivots.length = 0;
+    this.heartbeatEvents.length = 0;
+  }
+
   recordDrop(item: ItemInstance, floor: number, source: string, timestampMs: number): void {
     if (item.rarity !== "rare" && item.kind !== "unique") {
       return;

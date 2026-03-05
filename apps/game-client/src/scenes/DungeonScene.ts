@@ -807,7 +807,7 @@ export class DungeonScene extends Phaser.Scene {
     this.bindDomainEventEffects();
     this.clearKeyboardBindings();
     this.saveCoordinator.bindPageLifecycle();
-    if (this.pendingResumeSave !== null && this.runPersistenceModule.restore(this.pendingResumeSave)) {
+    if (this.pendingResumeSave !== null && (this.tasteRuntime.resetRunState(), this.runPersistenceModule.restore(this.pendingResumeSave))) {
       this.saveCoordinator.startHeartbeat();
       this.runLog.appendKey("log.run.resumed_saved", undefined, "info", this.time.now);
       this.flushRunSave();
@@ -1222,7 +1222,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private bootstrapRun(runSeed: string, difficulty: DifficultyMode): void {
-    this.runSeed = runSeed;
+    this.tasteRuntime.resetRunState(); this.runSeed = runSeed;
     const requestedMode: RunMode = this.pendingRunMode === "daily" ? "daily" : "normal";
     const selectedRunMode: RunMode = requestedMode;
     const resolvedDailyDate = selectedRunMode === "daily" ? this.pendingDailyDate ?? resolveDailyDate() : undefined;
