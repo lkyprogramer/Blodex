@@ -4,7 +4,6 @@ import {
   canUseConsumable,
   canUseSkill,
   createSkillDefForLevel,
-  hasMonsterAffix,
   markSkillUsed,
   pickSkillChoicesWeighted,
   resolveHealthRegenTick,
@@ -117,9 +116,7 @@ export class PlayerActionModule {
           host.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
         }
         host.applyOnKillMutationEffects(nowMs);
-        if (hasMonsterAffix(dead.state, "splitting")) {
-          host.spawnSplitChildren(dead.state, dead.archetype, nowMs);
-        }
+        host.spawnSplitChildren(dead.state, dead.archetype, nowMs);
 
         const xpResult = applyXpGain(host.player, dead.state.xpValue, "strength", {
           xpBonus: specialAffixTotals.xpBonus

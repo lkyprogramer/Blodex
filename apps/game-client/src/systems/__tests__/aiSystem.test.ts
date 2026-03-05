@@ -190,4 +190,88 @@ describe("AISystem", () => {
     expect(monster.state.aiState).toBe("shield");
     expect(monster.state.position.x).toBeGreaterThan(1.5);
   });
+
+  it("does not cross blocked tiles when navigation walkability is provided", () => {
+    const ai = new AISystem();
+    const player = makePlayer({ x: 8, y: 0 });
+    const monster = makeMonsterRuntime({
+      id: "wall-test",
+      behavior: "chase",
+      position: { x: 1.4, y: 0 },
+      aiState: "idle",
+      chaseRange: 12
+    });
+
+    ai.updateMonsters([monster], player, 1, 4_000, {
+      canMoveTo: (position) => position.x <= 1.5
+    });
+
+    expect(monster.state.aiState).toBe("chase");
+    expect(monster.state.position.x).toBeLessThanOrEqual(1.5);
+  });
+
+  it("falls back to axis movement in corridor-like constraints", () => {
+    const ai = new AISystem();
+    const player = makePlayer({ x: 4, y: 1 });
+    const monster = makeMonsterRuntime({
+      id: "corridor-test",
+      behavior: "chase",
+      position: { x: 0, y: 0 },
+      aiState: "idle",
+      chaseRange: 10
+    });
+
+    ai.updateMonsters([monster], player, 1, 5_000, {
+      canMoveTo: (position) => position.y <= 0.1
+    });
+
+    expect(monster.state.position.x).toBeGreaterThan(0);
+    expect(monster.state.position.y).toBeLessThanOrEqual(0.1);
+  });
+
+  it("keeps stuck counters across batched near/far updates", () => {
+    const ai = new AISystem();
+    const player = makePlayer({ x: 6, y: 0 });
+    const far = makeMonsterRuntime({
+      id: "far-batch",
+      behavior: "chase",
+      position: { x: 0, y: 0 },
+      aiState: "idle",
+      chaseRange: 10
+    });
+    const near = makeMonsterRuntime({
+      id: "near-batch",
+      behavior: "chase",
+      position: { x: 2, y: 0 },
+      aiState: "idle",
+      chaseRange: 10
+    });
+
+    const blockedFarCanMoveTo = (position: { x: number; y: number }, monster: MonsterRuntime): boolean => {
+      if (monster.state.id !== "far-batch") {
+        return true;
+      }
+      // Keep forward path blocked while allowing recovery arcs above the blocker.
+      return position.x <= 0 && (position.y >= 0.5 || Math.abs(position.y) <= 0.01);
+    };
+
+    ai.updateMonsters([far], player, 1, 1_000, {
+      canMoveTo: blockedFarCanMoveTo,
+      stuckFramesBeforeRecovery: 2
+    });
+    expect(far.state.position.x).toBe(0);
+    expect(far.state.position.y).toBe(0);
+
+    // Simulate DungeonScene near/far split updates: this pass must not clear far stuck counters.
+    ai.updateMonsters([near], player, 1, 1_033, {
+      canMoveTo: blockedFarCanMoveTo,
+      stuckFramesBeforeRecovery: 2
+    });
+
+    ai.updateMonsters([far], player, 1, 1_066, {
+      canMoveTo: blockedFarCanMoveTo,
+      stuckFramesBeforeRecovery: 2
+    });
+    expect(far.state.position.y).toBeGreaterThan(0.5);
+  });
 });
