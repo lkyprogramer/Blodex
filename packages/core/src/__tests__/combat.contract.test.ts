@@ -87,7 +87,17 @@ describe("combat contract", () => {
     expect(reflected.player.health).toBeLessThan(100);
     const thornsEvent = reflected.events.find((event) => event.sourceId === "player" && event.targetId === "monster");
     expect(thornsEvent?.kind).toBe("damage");
+    expect(thornsEvent?.amount).toBe(50 - reflected.monster.health);
     expect(reflected.monster.health).toBeLessThan(50);
+
+    const lowHpReflected = resolveMonsterAttack(makeMonster(5), makePlayer(), fixedRng(0.9), 2500, {
+      thorns: 0.5
+    });
+    const lowHpThornsEvent = lowHpReflected.events.find(
+      (event) => event.sourceId === "player" && event.targetId === "monster"
+    );
+    expect(lowHpReflected.monster.health).toBe(1);
+    expect(lowHpThornsEvent?.amount).toBe(4);
   });
 
   it("consumes aoeRadius, damageOverTime and lifesteal on skill resolution", () => {

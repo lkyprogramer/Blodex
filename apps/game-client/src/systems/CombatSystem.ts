@@ -228,6 +228,7 @@ export class CombatSystem {
           }
         : {})
     });
+    const resolvedPlayer = result.player;
     target.state = result.monster;
     let weaponEvents: CombatEvent[] = [];
     const primaryDamage = result.events.find((event) => event.kind === "damage" || event.kind === "crit")?.amount ?? 0;
@@ -253,7 +254,7 @@ export class CombatSystem {
 
     if (target.state.health > 0) {
       return {
-        player: context.player,
+        player: resolvedPlayer,
         run: context.run,
         attackTargetId: activeTargetId,
         nextPlayerAttackAt,
@@ -265,7 +266,7 @@ export class CombatSystem {
     this.staggerUntilByMonsterId.delete(target.state.id);
 
     const nextKills = context.run.kills + 1;
-    const xpResult = applyXpGain(context.player, target.state.xpValue, "strength", {
+    const xpResult = applyXpGain(resolvedPlayer, target.state.xpValue, "strength", {
       xpBonus: specialAffixTotals.xpBonus
     });
     const nextDerived = deriveStats(
@@ -276,8 +277,8 @@ export class CombatSystem {
     const nextPlayer = {
       ...xpResult.player,
       derivedStats: nextDerived,
-      health: Math.min(context.player.health + 12, nextDerived.maxHealth),
-      mana: Math.min(context.player.mana + 4, nextDerived.maxMana)
+      health: Math.min(xpResult.player.health + 12, nextDerived.maxHealth),
+      mana: Math.min(xpResult.player.mana + 4, nextDerived.maxMana)
     };
 
     const lootTable = context.lootTables[target.state.dropTableId];

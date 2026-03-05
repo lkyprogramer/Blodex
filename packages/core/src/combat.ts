@@ -126,6 +126,7 @@ export function resolveMonsterAttack(
     totals.thorns > 0 && mitigatedDamage > 0 ? Math.max(1, Math.floor(mitigatedDamage * totals.thorns)) : 0;
   const nextMonsterHealth =
     reflectedDamage > 0 ? Math.max(1, monster.health - reflectedDamage) : monster.health;
+  const appliedReflectedDamage = reflectedDamage > 0 ? monster.health - nextMonsterHealth : 0;
 
   const events: CombatEvent[] = [
     {
@@ -137,12 +138,12 @@ export function resolveMonsterAttack(
       timestampMs
     }
   ];
-  if (reflectedDamage > 0) {
+  if (appliedReflectedDamage > 0) {
     events.push({
       kind: "damage",
       sourceId: player.id,
       targetId: monster.id,
-      amount: reflectedDamage,
+      amount: appliedReflectedDamage,
       damageType: "physical",
       timestampMs
     });
