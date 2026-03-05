@@ -82,6 +82,12 @@ export interface SaveLease {
   renewedAtMs: number;
 }
 
+export interface FloorChoiceBudgetState {
+  floor: number;
+  satisfied: boolean;
+  source?: string;
+}
+
 export interface RunSaveDataV1 {
   schemaVersion: 1;
   savedAtMs: number;
@@ -111,6 +117,7 @@ export interface RunSaveDataV2 extends Omit<RunSaveDataV1, "schemaVersion" | "ru
   run: RunState;
   staircase: StaircaseState;
   deferredOutcomes?: DeferredOutcomeState[];
+  floorChoiceBudget?: FloorChoiceBudgetState;
 }
 
 export type RunSaveEnvelope = RunSaveDataV2 & Record<string, unknown>;
@@ -155,6 +162,15 @@ function isSaveLease(value: unknown): value is SaveLease {
     typeof value.tabId === "string" &&
     isFiniteNumber(value.leaseUntilMs) &&
     isFiniteNumber(value.renewedAtMs)
+  );
+}
+
+function isFloorChoiceBudgetState(value: unknown): value is FloorChoiceBudgetState {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.floor) &&
+    typeof value.satisfied === "boolean" &&
+    (value.source === undefined || typeof value.source === "string")
   );
 }
 
@@ -406,6 +422,9 @@ function validateSaveCommon(save: Record<string, unknown>): boolean {
     return false;
   }
   if (save.lease !== undefined && !isSaveLease(save.lease)) {
+    return false;
+  }
+  if (save.floorChoiceBudget !== undefined && !isFloorChoiceBudgetState(save.floorChoiceBudget)) {
     return false;
   }
   if (

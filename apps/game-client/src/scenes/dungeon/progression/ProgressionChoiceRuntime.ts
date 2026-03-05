@@ -1,6 +1,7 @@
 import {
   applyLevelUpChoice,
   type BaseStats,
+  type FloorChoiceBudgetState,
   type LootTableDef,
   type RandomEventDef,
   type RollItemDropOptions
@@ -50,6 +51,28 @@ export class ProgressionChoiceRuntime {
     this.floorChoiceBudgetFloor = floor;
     this.floorChoiceBudgetSatisfied = false;
     this.floorChoiceBudgetSource = null;
+    this.nextLevelUpPromptAt = Math.min(this.nextLevelUpPromptAt, nowMs);
+  }
+
+  captureFloorChoiceBudgetSnapshot(): FloorChoiceBudgetState {
+    return {
+      floor: this.floorChoiceBudgetFloor,
+      satisfied: this.floorChoiceBudgetSatisfied,
+      ...(this.floorChoiceBudgetSource === null ? {} : { source: this.floorChoiceBudgetSource })
+    };
+  }
+
+  restoreFloorChoiceBudgetSnapshot(snapshot: FloorChoiceBudgetState | null | undefined, fallbackFloor: number, nowMs: number): void {
+    if (snapshot === null || snapshot === undefined) {
+      this.resetFloorChoiceBudget(fallbackFloor, nowMs);
+      return;
+    }
+    this.floorChoiceBudgetFloor = Math.max(1, Math.floor(snapshot.floor));
+    this.floorChoiceBudgetSatisfied = snapshot.satisfied === true;
+    this.floorChoiceBudgetSource =
+      this.floorChoiceBudgetSatisfied && typeof snapshot.source === "string" && snapshot.source.length > 0
+        ? snapshot.source
+        : null;
     this.nextLevelUpPromptAt = Math.min(this.nextLevelUpPromptAt, nowMs);
   }
 
@@ -118,7 +141,7 @@ export class ProgressionChoiceRuntime {
 
   maybePromptLevelUpChoice(nowMs: number, source: string): void {
     const host = this.options.host;
-    if (host.runEnded || host.eventPanelOpen) {
+    if (host.runEnded || host.eventPanelOpen || host.player.health <= 0) {
       return;
     }
     if ((host.player.pendingLevelUpChoices ?? 0) <= 0) {

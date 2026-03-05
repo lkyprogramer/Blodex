@@ -110,6 +110,7 @@ import {
   type DungeonLayout,
   type DifficultyMode,
   type EventReward,
+  type FloorChoiceBudgetState,
   type GameEventMap,
   type GridNode,
   type HazardRuntimeState,
@@ -1856,6 +1857,10 @@ export class DungeonScene extends Phaser.Scene {
 
   handleLevelUpGain(levelsGained: number, nowMs: number, source: string): void { this.progressionChoiceRuntime.handleLevelUpGain(levelsGained, nowMs, source); }
   resetFloorChoiceBudget(floor: number, nowMs: number): void { this.progressionChoiceRuntime.resetFloorChoiceBudget(floor, nowMs); }
+  captureFloorChoiceBudgetSnapshot(): FloorChoiceBudgetState { return this.progressionChoiceRuntime.captureFloorChoiceBudgetSnapshot(); }
+  restoreFloorChoiceBudgetSnapshot(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void {
+    this.progressionChoiceRuntime.restoreFloorChoiceBudgetSnapshot(snapshot, this.run.currentFloor, nowMs);
+  }
   markHighValueChoice(source: string, nowMs: number): void { this.progressionChoiceRuntime.markHighValueChoice(source, nowMs); }
   ensureFloorChoiceBudget(nowMs: number): void { this.progressionChoiceRuntime.ensureFloorChoiceBudget(nowMs); }
   resolveProgressionLootTable(floor: number): LootTableDef | undefined { return this.progressionChoiceRuntime.resolveProgressionLootTable(floor); }
