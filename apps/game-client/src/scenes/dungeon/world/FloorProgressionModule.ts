@@ -10,7 +10,9 @@ import {
 } from "@blodex/core";
 import { GAME_CONFIG } from "@blodex/content";
 
-type FloorProgressionHost = Record<string, any>;
+export interface FloorProgressionHost {
+  [key: string]: any;
+}
 
 export interface FloorProgressionModuleOptions {
   host: FloorProgressionHost;

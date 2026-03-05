@@ -8,7 +8,9 @@ import {
 } from "@blodex/core";
 import { LOOT_TABLE_MAP } from "@blodex/content";
 
-type ProgressionChoiceHost = Record<string, any>;
+export interface ProgressionChoiceHost {
+  [key: string]: any;
+}
 
 export interface ProgressionChoiceRuntimeOptions {
   host: ProgressionChoiceHost;
@@ -268,6 +270,9 @@ export class ProgressionChoiceRuntime {
     host.registerStatDeltaHighlights(before, host.player.derivedStats, nowMs);
     host.refreshSynergyRuntime();
     this.markHighValueChoice("levelup", nowMs);
+    if (typeof host.recordBuildLevelUpChoice === "function") {
+      host.recordBuildLevelUpChoice(stat, source, nowMs);
+    }
     host.runLog.append(
       `Level-up choice: +1 ${stat.toUpperCase()} (${Math.max(0, host.player.pendingLevelUpChoices ?? 0)} pending).`,
       "success",

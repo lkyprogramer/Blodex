@@ -13,10 +13,12 @@ import { WEAPON_TYPE_DEF_MAP } from "@blodex/content";
 import { BossSpawnService } from "./BossSpawnService";
 import { BossTelegraphPresenter } from "./BossTelegraphPresenter";
 
-type BossHost = Record<string, any>;
+export interface BossCombatHost {
+  [key: string]: any;
+}
 
 export interface BossCombatServiceOptions {
-  host: BossHost;
+  host: BossCombatHost;
   spawnService: BossSpawnService;
   telegraphPresenter: BossTelegraphPresenter;
 }

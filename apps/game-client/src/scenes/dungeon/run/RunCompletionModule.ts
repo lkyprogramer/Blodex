@@ -22,10 +22,12 @@ import {
 } from "@blodex/core";
 import { resolveInitialRunSeed } from "./resolveInitialRunSeed";
 
-type RunHost = Record<string, any>;
+export interface RunCompletionHost {
+  [key: string]: any;
+}
 
 export interface RunCompletionModuleOptions {
-  host: RunHost;
+  host: RunCompletionHost;
 }
 
 export class RunCompletionModule {
@@ -164,6 +166,16 @@ export class RunCompletionModule {
       host.uiManager.hideDeathOverlay();
     } else {
       host.uiManager.showDeathOverlay(host.lastDeathReason);
+    }
+    if (typeof host.resolveRunRecommendations === "function") {
+      const recommendations = host.resolveRunRecommendations();
+      for (const recommendation of recommendations.slice(0, 3)) {
+        host.runLog.append(
+          `Next run suggestion: ${recommendation.title} - ${recommendation.action}`,
+          "info",
+          host.time.now
+        );
+      }
     }
     host.uiManager.showSummary(summary);
 

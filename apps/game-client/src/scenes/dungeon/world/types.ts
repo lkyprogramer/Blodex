@@ -1,4 +1,6 @@
-export type RuntimeEventHost = Record<string, any>;
+export interface RuntimeEventHost {
+  [key: string]: any;
+}
 
 export type MerchantPurchaseResult =
   | { kind: "missing_offer" }

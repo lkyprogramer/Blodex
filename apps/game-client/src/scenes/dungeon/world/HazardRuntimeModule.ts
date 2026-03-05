@@ -13,10 +13,12 @@ import {
 } from "@blodex/core";
 import { HAZARD_MAP } from "@blodex/content";
 
-type HazardHost = Record<string, any>;
+export interface HazardRuntimeHost {
+  [key: string]: any;
+}
 
 export interface HazardRuntimeModuleOptions {
-  host: HazardHost;
+  host: HazardRuntimeHost;
 }
 
 export class HazardRuntimeModule {

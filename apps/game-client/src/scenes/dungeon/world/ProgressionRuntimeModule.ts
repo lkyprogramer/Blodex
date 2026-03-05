@@ -41,10 +41,12 @@ import { resolveDebugLockedEquipEnabled } from "../debug/debugFlags";
 import { injectDebugLockedEquipment } from "../debug/injectDebugLockedEquipment";
 import { resolveBiomeVisualTheme } from "../presentation/BiomeVisualThemeRegistry";
 
-type ProgressionHost = Record<string, any>;
+export interface ProgressionRuntimeHost {
+  [key: string]: any;
+}
 
 export interface ProgressionRuntimeModuleOptions {
-  host: ProgressionHost;
+  host: ProgressionRuntimeHost;
 }
 
 export class ProgressionRuntimeModule {

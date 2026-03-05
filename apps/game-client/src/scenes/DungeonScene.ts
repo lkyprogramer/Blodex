@@ -185,7 +185,7 @@ import {
 } from "../assets/imageAsset";
 import { removeConnectedBackgroundFromTexture } from "../assets/removeBackground";
 import { DebugApiBinder } from "./dungeon/debug/DebugApiBinder";
-import { DebugCommandRegistry } from "./dungeon/debug/DebugCommandRegistry";
+import { DebugCommandRegistry, type DebugCommandHost } from "./dungeon/debug/DebugCommandRegistry";
 import { DebugRuntimeModule } from "./dungeon/debug/DebugRuntimeModule";
 import {
   resolveDebugCheatsEnabled,
@@ -194,12 +194,12 @@ import {
 } from "./dungeon/debug/debugFlags";
 import { injectDebugLockedEquipment } from "./dungeon/debug/injectDebugLockedEquipment";
 import { DiagnosticsService } from "./dungeon/diagnostics/DiagnosticsService";
-import { BossCombatService } from "./dungeon/encounter/BossCombatService";
-import { BossRuntimeModule } from "./dungeon/encounter/BossRuntimeModule";
-import { BossSpawnService } from "./dungeon/encounter/BossSpawnService";
-import { BossTelegraphPresenter } from "./dungeon/encounter/BossTelegraphPresenter";
+import { BossCombatService, type BossCombatHost } from "./dungeon/encounter/BossCombatService";
+import { BossRuntimeModule, type BossRuntimeHost } from "./dungeon/encounter/BossRuntimeModule";
+import { BossSpawnService, type BossSpawnHost } from "./dungeon/encounter/BossSpawnService";
+import { BossTelegraphPresenter, type BossTelegraphHost } from "./dungeon/encounter/BossTelegraphPresenter";
 import { EncounterController } from "./dungeon/encounter/EncounterController";
-import { PlayerActionModule } from "./dungeon/encounter/PlayerActionModule";
+import { PlayerActionModule, type PlayerActionHost } from "./dungeon/encounter/PlayerActionModule";
 import { entityLabel } from "./dungeon/logging/labelResolvers";
 import {
   bindDomainEventEffects,
@@ -207,13 +207,14 @@ import {
 } from "./dungeon/logging/DomainEventEffectBinder";
 import { RunLogService } from "./dungeon/logging/RunLogService";
 import { RunFlowOrchestrator } from "./dungeon/orchestrator/RunFlowOrchestrator";
-import { ProgressionChoiceRuntime } from "./dungeon/progression/ProgressionChoiceRuntime";
-import { RunCompletionModule } from "./dungeon/run/RunCompletionModule";
+import { ProgressionChoiceRuntime, type ProgressionChoiceHost } from "./dungeon/progression/ProgressionChoiceRuntime";
+import { RunCompletionModule, type RunCompletionHost } from "./dungeon/run/RunCompletionModule";
 import { resolveInitialRunSeed } from "./dungeon/run/resolveInitialRunSeed";
 import { RunPersistenceModule } from "./dungeon/save/RunPersistenceModule";
-import { RunSaveSnapshotBuilder } from "./dungeon/save/RunSaveSnapshotBuilder";
-import { RunStateRestorer } from "./dungeon/save/RunStateRestorer";
+import { RunSaveSnapshotBuilder, type RunSaveSnapshotHost } from "./dungeon/save/RunSaveSnapshotBuilder";
+import { RunStateRestorer, type RunStateRestoreHost } from "./dungeon/save/RunStateRestorer";
 import { SaveCoordinator } from "./dungeon/save/SaveCoordinator";
+import { TasteRuntimePortHub } from "./dungeon/taste/TasteRuntimePorts";
 import { HudPresenter } from "./dungeon/ui/HudPresenter";
 import {
   buildHudStatHighlightEntries,
@@ -222,11 +223,12 @@ import {
 } from "../ui/hud/compare/StatDeltaHighlighter";
 import { EventResolutionService } from "./dungeon/world/EventResolutionService";
 import { EventRuntimeModule } from "./dungeon/world/EventRuntimeModule";
-import { DeferredOutcomeRuntime } from "./dungeon/world/DeferredOutcomeRuntime";
-import { FloorProgressionModule } from "./dungeon/world/FloorProgressionModule";
-import { HazardRuntimeModule } from "./dungeon/world/HazardRuntimeModule";
+import { DeferredOutcomeRuntime, type DeferredOutcomeHost } from "./dungeon/world/DeferredOutcomeRuntime";
+import { FloorProgressionModule, type FloorProgressionHost } from "./dungeon/world/FloorProgressionModule";
+import { HazardRuntimeModule, type HazardRuntimeHost } from "./dungeon/world/HazardRuntimeModule";
 import { MerchantFlowService } from "./dungeon/world/MerchantFlowService";
-import { ProgressionRuntimeModule } from "./dungeon/world/ProgressionRuntimeModule";
+import { ProgressionRuntimeModule, type ProgressionRuntimeHost } from "./dungeon/world/ProgressionRuntimeModule";
+import type { RuntimeEventHost } from "./dungeon/world/types";
 import { WorldEventController } from "./dungeon/world/WorldEventController";
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
@@ -336,13 +338,13 @@ export class DungeonScene extends Phaser.Scene {
   private readonly runFlowOrchestrator = new RunFlowOrchestrator();
   private readonly diagnosticsService = new DiagnosticsService();
   private readonly hudPresenter = new HudPresenter();
-  private readonly debugCommandRegistry = new DebugCommandRegistry(this as unknown as Record<string, unknown>);
+  private readonly debugCommandRegistry = new DebugCommandRegistry(this as unknown as DebugCommandHost);
   private readonly runSaveSnapshotBuilder = new RunSaveSnapshotBuilder({
-    host: this as unknown as Record<string, unknown>,
+    host: this as unknown as RunSaveSnapshotHost,
     appVersion: RUN_SAVE_APP_VERSION
   });
   private readonly runStateRestorer = new RunStateRestorer({
-    host: this as unknown as Record<string, unknown>
+    host: this as unknown as RunStateRestoreHost
   });
   private readonly contentLocalizer = getContentLocalizer();
   private readonly runLog = new RunLogService({
@@ -351,7 +353,7 @@ export class DungeonScene extends Phaser.Scene {
     }
   }, getI18nService());
   private readonly deferredOutcomeRuntime = new DeferredOutcomeRuntime({
-    host: this as unknown as Record<string, unknown>
+    host: this as unknown as DeferredOutcomeHost
   });
   private saveCoordinator!: SaveCoordinator;
   private debugRuntimeModule!: DebugRuntimeModule;
@@ -499,8 +501,9 @@ export class DungeonScene extends Phaser.Scene {
   private levelUpPulseUntilMs = 0;
   private levelUpPulseLevel: number | null = null;
   private readonly progressionChoiceRuntime = new ProgressionChoiceRuntime({
-    host: this as unknown as Record<string, unknown>
+    host: this as unknown as ProgressionChoiceHost
   });
+  private readonly tasteRuntime = new TasteRuntimePortHub();
   private nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
   private readonly debugLockedEquipQuery = DEBUG_LOCKED_EQUIP_QUERY;
   private readonly debugLockedEquipIconId = DEBUG_LOCKED_EQUIP_ICON_ID;
@@ -733,46 +736,46 @@ export class DungeonScene extends Phaser.Scene {
       }
     });
     const eventResolutionService = new EventResolutionService({
-      host: this as unknown as Record<string, any>
+      host: this as unknown as RuntimeEventHost
     });
     const merchantFlowService = new MerchantFlowService({
-      host: this as unknown as Record<string, any>
+      host: this as unknown as RuntimeEventHost
     });
     this.eventRuntimeModule = new EventRuntimeModule({
-      host: this as unknown as Record<string, any>,
+      host: this as unknown as RuntimeEventHost,
       resolutionService: eventResolutionService,
       merchantFlowService
     });
     const bossSpawnService = new BossSpawnService({
-      host: this as unknown as Record<string, any>
+      host: this as unknown as BossSpawnHost
     });
     const bossTelegraphPresenter = new BossTelegraphPresenter({
-      host: this as unknown as Record<string, any>
+      host: this as unknown as BossTelegraphHost
     });
     const bossCombatService = new BossCombatService({
-      host: this as unknown as Record<string, any>,
+      host: this as unknown as BossCombatHost,
       spawnService: bossSpawnService,
       telegraphPresenter: bossTelegraphPresenter
     });
     this.bossRuntimeModule = new BossRuntimeModule({
-      host: this as unknown as Record<string, any>,
+      host: this as unknown as BossRuntimeHost,
       combatService: bossCombatService,
       spawnService: bossSpawnService
     });
     this.runCompletionModule = new RunCompletionModule({
-      host: this as unknown as Record<string, any>
+      host: this as unknown as RunCompletionHost
     });
     this.hazardRuntimeModule = new HazardRuntimeModule({
-      host: this as unknown as Record<string, any>
+      host: this as unknown as HazardRuntimeHost
     });
     this.progressionRuntimeModule = new ProgressionRuntimeModule({
-      host: this as unknown as Record<string, any>
+      host: this as unknown as ProgressionRuntimeHost
     });
     this.floorProgressionModule = new FloorProgressionModule({
-      host: this as unknown as Record<string, any>
+      host: this as unknown as FloorProgressionHost
     });
     this.playerActionModule = new PlayerActionModule({
-      host: this as unknown as Record<string, any>
+      host: this as unknown as PlayerActionHost
     });
     this.encounterController = new EncounterController({
       updateCombat: (nowMs) => this.updateCombat(nowMs),
@@ -885,7 +888,8 @@ export class DungeonScene extends Phaser.Scene {
       entity: this.entityManager.getDiagnostics(),
       render: this.renderSystem.getLastSyncStats(),
       vfx: this.vfxSystem.getDiagnostics(),
-      sfx: this.sfxSystem.getDiagnostics()
+      sfx: this.sfxSystem.getDiagnostics(),
+      taste: { buildIdentity: this.tasteRuntime.snapshotBuildIdentity(), recentHeartbeats: this.tasteRuntime.listHeartbeatEvents(10), recommendations: this.tasteRuntime.buildRecommendations() }
     };
   }
 
@@ -944,6 +948,7 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     if (this.floorConfig.isBossFloor && this.bossState !== null && this.bossState.health <= 0) {
+      this.tasteRuntime.recordKeyKill("boss", this.run.currentFloor, "boss_kill", nowMs);
       this.deferredOutcomeRuntime.settle("boss_kill", nowMs);
       if (this.run.inEndless) {
         this.runCompletionModule.finishRun(true);
@@ -1858,14 +1863,13 @@ export class DungeonScene extends Phaser.Scene {
   handleLevelUpGain(levelsGained: number, nowMs: number, source: string): void { this.progressionChoiceRuntime.handleLevelUpGain(levelsGained, nowMs, source); }
   resetFloorChoiceBudget(floor: number, nowMs: number): void { this.progressionChoiceRuntime.resetFloorChoiceBudget(floor, nowMs); }
   captureFloorChoiceBudgetSnapshot(): FloorChoiceBudgetState { return this.progressionChoiceRuntime.captureFloorChoiceBudgetSnapshot(); }
-  restoreFloorChoiceBudgetSnapshot(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void {
-    this.progressionChoiceRuntime.restoreFloorChoiceBudgetSnapshot(snapshot, this.run.currentFloor, nowMs);
-  }
-  markHighValueChoice(source: string, nowMs: number): void { this.progressionChoiceRuntime.markHighValueChoice(source, nowMs); }
+  restoreFloorChoiceBudgetSnapshot(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void { this.progressionChoiceRuntime.restoreFloorChoiceBudgetSnapshot(snapshot, this.run.currentFloor, nowMs); }
+  recordBuildLevelUpChoice(stat: keyof PlayerState["baseStats"], source: string, nowMs: number): void { this.tasteRuntime.recordLevelUpChoice(stat, this.run.currentFloor, source, nowMs); }
+  resolveRunRecommendations() { return this.tasteRuntime.buildRecommendations(); }
+  markHighValueChoice(source: string, nowMs: number): void { this.progressionChoiceRuntime.markHighValueChoice(source, nowMs); this.tasteRuntime.recordBranch(source, this.run.currentFloor, nowMs); }
   ensureFloorChoiceBudget(nowMs: number): void { this.progressionChoiceRuntime.ensureFloorChoiceBudget(nowMs); }
   resolveProgressionLootTable(floor: number): LootTableDef | undefined { return this.progressionChoiceRuntime.resolveProgressionLootTable(floor); }
   resolveLootRollOptions(options: RollItemDropOptions = {}): RollItemDropOptions { return this.progressionChoiceRuntime.resolveLootRollOptions(options); }
-
   private applySynergyToSkillDef(skillDef: SkillDef): SkillDef {
     const damagePercent = this.synergyRuntime.skillDamagePercent[skillDef.id] ?? 0;
     const modifiers = this.synergyRuntime.skillModifiers[skillDef.id] ?? {};
@@ -2204,6 +2208,7 @@ export class DungeonScene extends Phaser.Scene {
         ...this.run,
         lootCollected: this.run.lootCollected + 1
       };
+      this.tasteRuntime.recordPickup(drop.item, this.run.currentFloor, "auto_pickup", nowMs);
       drop.sprite.destroy();
       this.eventBus.emit("loot:pickup", {
         playerId: this.player.id,
@@ -2213,7 +2218,6 @@ export class DungeonScene extends Phaser.Scene {
       });
     }
   }
-
   private computePathTo(target: { x: number; y: number }): GridNode[] {
     return this.movementSystem.computePathTo(
       this.dungeon.walkable,
@@ -2267,6 +2271,7 @@ export class DungeonScene extends Phaser.Scene {
       sprite: this.renderSystem.spawnLootSprite(item, position, this.origin),
       position: { ...position }
     });
+    this.tasteRuntime.recordDrop(item, this.run.currentFloor, "drop_spawn", this.time.now);
     if (item.rarity === "rare" || item.kind === "unique") {
       this.markHighValueChoice("key_drop", this.time.now);
     }
