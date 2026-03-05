@@ -80,6 +80,47 @@ describe("combat", () => {
     expect(result.events[0]?.amount).toBe(1);
   });
 
+  it("keeps armor mitigation with diminishing per-point returns", () => {
+    const rng = new SeededRng("diminishing-armor");
+    const baselineDamage = 40;
+    const heavyMonster = {
+      ...makeMonster(),
+      damage: baselineDamage
+    };
+
+    const lowArmor = {
+      ...makePlayer(),
+      derivedStats: {
+        ...makePlayer().derivedStats,
+        armor: 0
+      }
+    };
+    const midArmor = {
+      ...makePlayer(),
+      derivedStats: {
+        ...makePlayer().derivedStats,
+        armor: 40
+      }
+    };
+    const highArmor = {
+      ...makePlayer(),
+      derivedStats: {
+        ...makePlayer().derivedStats,
+        armor: 200
+      }
+    };
+
+    const lowDamage = resolveMonsterAttack(heavyMonster, lowArmor, rng, 3100).events[0]?.amount ?? 0;
+    const midDamage = resolveMonsterAttack(heavyMonster, midArmor, rng, 3200).events[0]?.amount ?? 0;
+    const highDamage = resolveMonsterAttack(heavyMonster, highArmor, rng, 3300).events[0]?.amount ?? 0;
+
+    expect(lowDamage).toBeGreaterThan(midDamage);
+    expect(midDamage).toBeGreaterThan(highDamage);
+    const lowTierPerArmor = (lowDamage - midDamage) / 40;
+    const highTierPerArmor = (midDamage - highDamage) / 160;
+    expect(lowTierPerArmor).toBeGreaterThan(highTierPerArmor);
+  });
+
   it("marks player death branch when monster damage is lethal", () => {
     const rng = new SeededRng("lethal");
     const fragile = {

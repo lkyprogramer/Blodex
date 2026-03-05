@@ -20,6 +20,7 @@ import {
   shouldFailChallengeRoomByTimeout,
   shouldSpawnChallengeRoom,
   startChallengeRoom,
+  type ItemDef,
   type MonsterState,
   type PlayerState,
   type RandomEventDef
@@ -30,7 +31,6 @@ import {
   GAME_CONFIG,
   getFloorConfig,
   ITEM_DEF_MAP,
-  LOOT_TABLE_MAP,
   MONSTER_ARCHETYPES,
   SKILL_DEFS
 } from "@blodex/content";
@@ -141,6 +141,7 @@ export class ProgressionRuntimeModule {
       floor,
       kills: 0
     };
+    host.resetFloorChoiceBudget(floor, host.time.now);
     host.uiManager.configureMinimap({
       width: host.dungeon.width,
       height: host.dungeon.height,
@@ -196,6 +197,7 @@ export class ProgressionRuntimeModule {
       level: 1,
       xp: 0,
       xpToNextLevel: 98,
+      pendingLevelUpChoices: 0,
       health: derivedStats.maxHealth,
       mana: derivedStats.maxMana,
       baseStats,
@@ -287,7 +289,7 @@ export class ProgressionRuntimeModule {
     );
 
     if (!target.rewardsClaimed) {
-      const rewardTable = host.run.currentFloor >= 3 ? LOOT_TABLE_MAP.cathedral_depths : LOOT_TABLE_MAP.starter_floor;
+      const rewardTable = host.resolveProgressionLootTable(host.run.currentFloor);
       if (rewardTable !== undefined) {
         const reward = rollItemDrop(
           rewardTable,
@@ -295,9 +297,9 @@ export class ProgressionRuntimeModule {
           host.run.currentFloor,
           host.lootRng,
           `hidden-room-${roomId}-${Math.floor(nowMs)}`,
-          {
-            isItemEligible: (itemDef) => host.isItemDefUnlocked(itemDef)
-          }
+          host.resolveLootRollOptions({
+            isItemEligible: (itemDef: ItemDef) => host.isItemDefUnlocked(itemDef)
+          })
         );
         if (reward !== null) {
           host.spawnLootDrop(reward, target.entrance);
@@ -509,7 +511,7 @@ export class ProgressionRuntimeModule {
         },
         12
       );
-      const rewardTable = LOOT_TABLE_MAP.catacomb_elite ?? LOOT_TABLE_MAP.cathedral_depths;
+      const rewardTable = host.resolveProgressionLootTable(host.run.currentFloor + 1);
       const reward =
         rewardTable === undefined
           ? null
@@ -519,9 +521,9 @@ export class ProgressionRuntimeModule {
               Math.max(3, host.run.currentFloor),
               host.lootRng,
               `challenge-reward-${host.run.currentFloor}-${Math.floor(nowMs)}`,
-              {
-                isItemEligible: (itemDef) => host.isItemDefUnlocked(itemDef)
-              }
+              host.resolveLootRollOptions({
+                isItemEligible: (itemDef: ItemDef) => host.isItemDefUnlocked(itemDef)
+              })
             );
       const center = this.challengeRoomCenter(host.challengeRoomState.roomId);
       if (reward !== null && center !== null) {

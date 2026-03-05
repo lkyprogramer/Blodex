@@ -27,6 +27,7 @@ export class FloorProgressionModule {
 
     const revealThreshold = Math.ceil(host.floorConfig.monsterCount * host.floorConfig.clearThreshold);
     if (!host.staircaseState.visible && host.run.kills >= revealThreshold) {
+      host.ensureFloorChoiceBudget(nowMs);
       host.staircaseState = {
         ...host.staircaseState,
         visible: true
@@ -39,6 +40,9 @@ export class FloorProgressionModule {
         timestampMs: nowMs
       });
       host.tryDiscoverBlueprints("floor_clear", nowMs);
+      if (host.eventPanelOpen) {
+        return;
+      }
     }
 
     if (!host.staircaseState.visible) {

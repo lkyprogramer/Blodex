@@ -118,10 +118,13 @@ export class PlayerActionModule {
         host.applyOnKillMutationEffects(nowMs);
         host.spawnSplitChildren(dead.state, dead.archetype, nowMs);
 
-        const xpResult = applyXpGain(host.player, dead.state.xpValue, "strength", {
+        const xpResult = applyXpGain(host.player, dead.state.xpValue, "manual", {
           xpBonus: specialAffixTotals.xpBonus
         });
         host.player = host.refreshPlayerStatsFromEquipment(xpResult.player);
+        if (xpResult.leveledUp) {
+          host.handleLevelUpGain(xpResult.levelsGained, nowMs, "skill_kill");
+        }
       }
       kills += 1;
     }

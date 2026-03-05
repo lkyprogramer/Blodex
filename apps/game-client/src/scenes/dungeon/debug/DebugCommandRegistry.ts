@@ -12,6 +12,7 @@ import {
   grantConsumable,
   markRoomAsChallenge,
   rollItemDrop,
+  type ItemDef,
   type ItemInstance,
   type RandomEventDef
 } from "@blodex/core";
@@ -408,17 +409,11 @@ export class DebugCommandRegistry {
           continue;
         }
         this.host.progressionRuntimeModule.onMonsterDefeated(dead.state, nowMs);
-        const xpResult = applyXpGain(this.host.player, dead.state.xpValue, "strength");
+        const xpResult = applyXpGain(this.host.player, dead.state.xpValue, "manual");
         this.host.player = this.host.refreshPlayerStatsFromEquipment(xpResult.player);
         if (xpResult.leveledUp) {
-          simulatedLevelUps += 1;
-          this.host.eventBus.emit("player:levelup", {
-            playerId: this.host.player.id,
-            level: this.host.player.level,
-            timestampMs: nowMs
-          });
-          this.host.refreshSynergyRuntime(false);
-          this.host.offerLevelupSkill();
+          simulatedLevelUps += xpResult.levelsGained;
+          this.host.handleLevelUpGain(xpResult.levelsGained, nowMs, "debug_clear");
         }
         const lootTable = LOOT_TABLE_MAP[dead.state.dropTableId];
         if (lootTable !== undefined) {
@@ -428,9 +423,9 @@ export class DebugCommandRegistry {
             this.host.run.currentFloor,
             this.host.lootRng,
             `debug-clear-${this.host.run.currentFloor}-${dead.state.id}-${Math.floor(nowMs)}`,
-            {
-              isItemEligible: (itemDef) => this.host.isItemDefUnlocked(itemDef)
-            }
+            this.host.resolveLootRollOptions({
+              isItemEligible: (itemDef: ItemDef) => this.host.isItemDefUnlocked(itemDef)
+            })
           );
           if (droppedItem !== null) {
             simulatedDrops += 1;

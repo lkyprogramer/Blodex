@@ -12,6 +12,7 @@ import {
   type SkillResolution,
   resolveSkill,
   type CombatEvent,
+  type EquipmentSlot,
   type ItemDef,
   type ItemInstance,
   type LootTableDef,
@@ -37,6 +38,7 @@ interface PlayerCombatContext {
   attackSpeedMultiplier?: number;
   weaponTypeDefs?: Partial<Record<WeaponType, WeaponTypeDef>>;
   canDropItemDef?: (itemDef: ItemDef) => boolean;
+  slotWeightMultiplier?: Partial<Record<EquipmentSlot, number>>;
 }
 
 export interface PlayerCombatResult {
@@ -53,6 +55,7 @@ export interface PlayerCombatResult {
   };
   combatEvents: CombatEvent[];
   leveledUp: boolean;
+  levelsGained: number;
 }
 
 export interface MonsterCombatResult {
@@ -165,7 +168,8 @@ export class CombatSystem {
         attackTargetId: null,
         nextPlayerAttackAt: context.nextPlayerAttackAt,
         combatEvents: [],
-        leveledUp: false
+        leveledUp: false,
+        levelsGained: 0
       };
     }
 
@@ -180,7 +184,8 @@ export class CombatSystem {
           attackTargetId: null,
           nextPlayerAttackAt: context.nextPlayerAttackAt,
           combatEvents: [],
-          leveledUp: false
+          leveledUp: false,
+          levelsGained: 0
         };
       }
       return {
@@ -193,7 +198,8 @@ export class CombatSystem {
           y: Math.round(target.state.position.y)
         },
         combatEvents: [],
-        leveledUp: false
+        leveledUp: false,
+        levelsGained: 0
       };
     }
 
@@ -204,7 +210,8 @@ export class CombatSystem {
         attackTargetId: activeTargetId,
         nextPlayerAttackAt: context.nextPlayerAttackAt,
         combatEvents: [],
-        leveledUp: false
+        leveledUp: false,
+        levelsGained: 0
       };
     }
 
@@ -259,14 +266,15 @@ export class CombatSystem {
         attackTargetId: activeTargetId,
         nextPlayerAttackAt,
         combatEvents: mergedEvents,
-        leveledUp: false
+        leveledUp: false,
+        levelsGained: 0
       };
     }
 
     this.staggerUntilByMonsterId.delete(target.state.id);
 
     const nextKills = context.run.kills + 1;
-    const xpResult = applyXpGain(resolvedPlayer, target.state.xpValue, "strength", {
+    const xpResult = applyXpGain(resolvedPlayer, target.state.xpValue, "manual", {
       xpBonus: specialAffixTotals.xpBonus
     });
     const nextDerived = deriveStats(
@@ -294,7 +302,10 @@ export class CombatSystem {
             context.canDropItemDef === undefined
               ? undefined
               : {
-                  isItemEligible: context.canDropItemDef
+                  isItemEligible: context.canDropItemDef,
+                  ...(context.slotWeightMultiplier === undefined
+                    ? {}
+                    : { slotWeightMultiplier: context.slotWeightMultiplier })
                 }
           );
 
@@ -320,6 +331,7 @@ export class CombatSystem {
       killedMonsterId: target.state.id,
       combatEvents: mergedEvents,
       leveledUp: xpResult.leveledUp,
+      levelsGained: xpResult.levelsGained,
       ...(droppedItemPayload === undefined ? {} : { droppedItem: droppedItemPayload })
     };
   }

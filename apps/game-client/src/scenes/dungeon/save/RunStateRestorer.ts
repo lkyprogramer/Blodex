@@ -273,6 +273,7 @@ export class RunStateRestorer {
         selectionValidation.ok ? selectionValidation.selected : host.meta.selectedMutationIds
       );
       host.refreshSynergyRuntime();
+      host.resetFloorChoiceBudget(host.run.currentFloor, host.time.now);
       return true;
     } catch (error) {
       console.warn("[Save] Failed to restore run snapshot.", error);

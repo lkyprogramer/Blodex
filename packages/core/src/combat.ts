@@ -23,6 +23,21 @@ function clamp(num: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, num));
 }
 
+const DEFAULT_ARMOR_MITIGATION_K = 110;
+const MIN_INCOMING_DAMAGE = 1;
+
+export function resolveArmorMitigationRatio(armor: number, k = DEFAULT_ARMOR_MITIGATION_K): number {
+  const normalizedArmor = Math.max(0, armor);
+  const denominator = Math.max(1, normalizedArmor + Math.max(1, k));
+  return clamp(normalizedArmor / denominator, 0, 0.95);
+}
+
+export function resolveMitigatedMonsterDamage(rawDamage: number, armor: number, k = DEFAULT_ARMOR_MITIGATION_K): number {
+  const normalizedRawDamage = Math.max(0, rawDamage);
+  const mitigationRatio = resolveArmorMitigationRatio(armor, k);
+  return Math.max(MIN_INCOMING_DAMAGE, Math.floor(normalizedRawDamage * (1 - mitigationRatio)));
+}
+
 export function resolvePlayerAttack(
   player: PlayerState,
   monster: MonsterState,
@@ -120,7 +135,7 @@ export function resolveMonsterAttack(
     };
   }
 
-  const mitigatedDamage = Math.max(1, Math.floor(monster.damage - player.derivedStats.armor * 0.1));
+  const mitigatedDamage = resolveMitigatedMonsterDamage(monster.damage, player.derivedStats.armor);
   const nextHealth = Math.max(0, player.health - mitigatedDamage);
   const reflectedDamage =
     totals.thorns > 0 && mitigatedDamage > 0 ? Math.max(1, Math.floor(mitigatedDamage * totals.thorns)) : 0;

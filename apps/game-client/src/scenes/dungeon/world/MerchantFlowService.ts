@@ -3,7 +3,8 @@ import {
   createMerchantOffers,
   resolveEndlessMutatorModifiers,
   rollItemDrop,
-  spendRunObols
+  spendRunObols,
+  type ItemDef
 } from "@blodex/core";
 import { ITEM_DEF_MAP, LOOT_TABLE_MAP } from "@blodex/content";
 import type { MerchantPurchaseResult, RuntimeEventHost } from "./types";
@@ -50,6 +51,9 @@ export class MerchantFlowService {
       offerCount: host.merchantOffers.length,
       timestampMs: nowMs
     });
+    if (host.merchantOffers.length > 0) {
+      host.markHighValueChoice("merchant", nowMs);
+    }
     return true;
   }
 
@@ -103,9 +107,9 @@ export class MerchantFlowService {
       host.run.currentFloor,
       host.lootRng,
       `merchant-${offer.offerId}-${Math.floor(nowMs)}`,
-      {
-        isItemEligible: (itemDef) => host.isItemDefUnlocked(itemDef)
-      }
+      host.resolveLootRollOptions({
+        isItemEligible: (itemDef: ItemDef) => host.isItemDefUnlocked(itemDef)
+      })
     );
     if (item === null) {
       host.runLog.appendKey(
