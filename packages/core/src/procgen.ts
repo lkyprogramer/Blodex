@@ -6,6 +6,20 @@ import type {
 } from "./contracts/types";
 import { SeededRng } from "./rng";
 
+type CorridorAxisFirst = "horizontal" | "vertical";
+
+interface CarveCorridorOptions {
+  halfWidth?: number;
+  axisFirst?: CorridorAxisFirst;
+}
+
+interface RoomEdge {
+  fromIndex: number;
+  toIndex: number;
+  distance: number;
+  key: string;
+}
+
 function createGrid(width: number, height: number): boolean[][] {
   return Array.from({ length: height }, () => Array.from({ length: width }, () => false));
 }
@@ -25,31 +39,63 @@ function center(room: DungeonRoom): { x: number; y: number } {
   };
 }
 
+function carveBrush(grid: boolean[][], x: number, y: number, halfWidth: number): void {
+  const maxY = grid.length - 1;
+  const maxX = grid[0]?.length !== undefined ? grid[0].length - 1 : -1;
+  if (maxX < 0 || maxY < 0) {
+    return;
+  }
+
+  const minX = Math.max(0, x - halfWidth);
+  const minY = Math.max(0, y - halfWidth);
+  const cappedMaxX = Math.min(maxX, x + halfWidth);
+  const cappedMaxY = Math.min(maxY, y + halfWidth);
+  for (let yy = minY; yy <= cappedMaxY; yy += 1) {
+    for (let xx = minX; xx <= cappedMaxX; xx += 1) {
+      grid[yy]![xx] = true;
+    }
+  }
+}
+
 function carveCorridor(
   grid: boolean[][],
   from: { x: number; y: number },
-  to: { x: number; y: number }
+  to: { x: number; y: number },
+  options: CarveCorridorOptions = {}
 ): Array<{ x: number; y: number }> {
   const points: Array<{ x: number; y: number }> = [];
+  const halfWidth = Math.max(0, Math.floor(options.halfWidth ?? 0));
+  const axisFirst = options.axisFirst ?? "horizontal";
   let x = from.x;
   let y = from.y;
-  const dx = Math.sign(to.x - from.x);
-  const dy = Math.sign(to.y - from.y);
-
-  while (x !== to.x) {
-    grid[y]![x] = true;
+  const mark = () => {
+    carveBrush(grid, x, y, halfWidth);
     points.push({ x, y });
-    x += dx;
+  };
+  const stepHorizontal = () => {
+    const dx = Math.sign(to.x - x);
+    while (x !== to.x) {
+      mark();
+      x += dx;
+    }
+  };
+  const stepVertical = () => {
+    const dy = Math.sign(to.y - y);
+    while (y !== to.y) {
+      mark();
+      y += dy;
+    }
+  };
+
+  if (axisFirst === "vertical") {
+    stepVertical();
+    stepHorizontal();
+  } else {
+    stepHorizontal();
+    stepVertical();
   }
 
-  while (y !== to.y) {
-    grid[y]![x] = true;
-    points.push({ x, y });
-    y += dy;
-  }
-
-  grid[y]![x] = true;
-  points.push({ x, y });
+  mark();
   return points;
 }
 
@@ -72,6 +118,140 @@ function isInsideRoom(room: DungeonRoom, x: number, y: number): boolean {
 
 function isRoomInBounds(room: DungeonRoom, width: number, height: number): boolean {
   return room.x >= 1 && room.y >= 1 && room.x + room.width <= width - 1 && room.y + room.height <= height - 1;
+}
+
+function normalizeRatio(value: number | undefined, fallback: number): number {
+  if (value === undefined || Number.isNaN(value)) {
+    return fallback;
+  }
+  return clamp(value, 0, 1);
+}
+
+function resolveMainCorridorHalfWidth(floorNumber: number, override: number | undefined): number {
+  if (override !== undefined && !Number.isNaN(override)) {
+    return Math.max(0, Math.floor(override));
+  }
+  return floorNumber >= 2 ? 1 : 0;
+}
+
+function resolveLoopChance(floorNumber: number, override: number | undefined): number {
+  if (override !== undefined) {
+    return normalizeRatio(override, 0.2);
+  }
+  if (floorNumber >= 4) {
+    return 0.38;
+  }
+  if (floorNumber >= 2) {
+    return 0.28;
+  }
+  return 0.16;
+}
+
+function resolveMaxExtraCorridors(roomsCount: number, override: number | undefined): number {
+  const maxPossible = Math.max(0, (roomsCount * (roomsCount - 1)) / 2 - (roomsCount - 1));
+  if (override !== undefined && !Number.isNaN(override)) {
+    return clamp(Math.floor(override), 0, maxPossible);
+  }
+  return clamp(Math.floor(roomsCount / 3), 1, maxPossible);
+}
+
+function buildRoomEdges(rooms: DungeonRoom[]): RoomEdge[] {
+  const centers = rooms.map((room) => center(room));
+  const edges: RoomEdge[] = [];
+  for (let i = 0; i < rooms.length; i += 1) {
+    for (let j = i + 1; j < rooms.length; j += 1) {
+      const from = centers[i]!;
+      const to = centers[j]!;
+      const roomA = rooms[i]!;
+      const roomB = rooms[j]!;
+      const left = roomA.id < roomB.id ? roomA.id : roomB.id;
+      const right = roomA.id < roomB.id ? roomB.id : roomA.id;
+      edges.push({
+        fromIndex: i,
+        toIndex: j,
+        distance: Math.abs(from.x - to.x) + Math.abs(from.y - to.y),
+        key: `${left}->${right}`
+      });
+    }
+  }
+  edges.sort((a, b) => {
+    if (a.distance !== b.distance) {
+      return a.distance - b.distance;
+    }
+    return a.key.localeCompare(b.key);
+  });
+  return edges;
+}
+
+function selectCorridorEdges(
+  rooms: DungeonRoom[],
+  rng: SeededRng,
+  loopChance: number,
+  maxExtraCorridors: number
+): RoomEdge[] {
+  const edges = buildRoomEdges(rooms);
+  const parent = Array.from({ length: rooms.length }, (_, index) => index);
+  const rank = Array.from({ length: rooms.length }, () => 0);
+  const selected: RoomEdge[] = [];
+  const selectedKeySet = new Set<string>();
+
+  const find = (node: number): number => {
+    if (parent[node] !== node) {
+      parent[node] = find(parent[node]!);
+    }
+    return parent[node]!;
+  };
+
+  const unite = (a: number, b: number): boolean => {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA === rootB) {
+      return false;
+    }
+    const rankA = rank[rootA]!;
+    const rankB = rank[rootB]!;
+    if (rankA < rankB) {
+      parent[rootA] = rootB;
+    } else if (rankA > rankB) {
+      parent[rootB] = rootA;
+    } else {
+      parent[rootB] = rootA;
+      rank[rootA] = rankA + 1;
+    }
+    return true;
+  };
+
+  for (const edge of edges) {
+    if (!unite(edge.fromIndex, edge.toIndex)) {
+      continue;
+    }
+    selected.push(edge);
+    selectedKeySet.add(edge.key);
+    if (selected.length === rooms.length - 1) {
+      break;
+    }
+  }
+
+  if (maxExtraCorridors <= 0 || loopChance <= 0) {
+    return selected;
+  }
+
+  let extraAdded = 0;
+  for (const edge of edges) {
+    if (extraAdded >= maxExtraCorridors) {
+      break;
+    }
+    if (selectedKeySet.has(edge.key)) {
+      continue;
+    }
+    if (rng.next() > loopChance) {
+      continue;
+    }
+    selected.push(edge);
+    selectedKeySet.add(edge.key);
+    extraAdded += 1;
+  }
+  return selected;
 }
 
 function tryGenerateHiddenRoom(
@@ -169,6 +349,9 @@ export interface ProcgenOptions {
   maxRoomSize: number;
   seed: string;
   floorNumber?: number;
+  corridorHalfWidth?: number;
+  corridorLoopChance?: number;
+  maxExtraCorridors?: number;
 }
 
 function defaultRoomCountByFloor(floorNumber: number | undefined): number {
@@ -205,7 +388,10 @@ export function generateBossRoom(seed: string, width = 46, height = 46): Dungeon
     y: Math.max(1, roomY - 8)
   };
   const roomCenter = center(bossRoom);
-  const corridorPath = carveCorridor(grid, entrance, roomCenter);
+  const corridorPath = carveCorridor(grid, entrance, roomCenter, {
+    halfWidth: 1,
+    axisFirst: "vertical"
+  });
 
   return {
     width,
@@ -267,11 +453,18 @@ export function generateDungeon(options: ProcgenOptions): DungeonLayout {
     throw new Error("Procgen failed to place enough rooms.");
   }
 
+  const mainCorridorHalfWidth = resolveMainCorridorHalfWidth(floorNumber, options.corridorHalfWidth);
+  const loopChance = resolveLoopChance(floorNumber, options.corridorLoopChance);
+  const maxExtraCorridors = resolveMaxExtraCorridors(rooms.length, options.maxExtraCorridors);
+  const selectedEdges = selectCorridorEdges(rooms, rng, loopChance, maxExtraCorridors);
   const corridors: DungeonCorridor[] = [];
-  for (let i = 1; i < rooms.length; i += 1) {
-    const fromRoom = rooms[i - 1]!;
-    const toRoom = rooms[i]!;
-    const path = carveCorridor(grid, center(fromRoom), center(toRoom));
+  for (const edge of selectedEdges) {
+    const fromRoom = rooms[edge.fromIndex]!;
+    const toRoom = rooms[edge.toIndex]!;
+    const path = carveCorridor(grid, center(fromRoom), center(toRoom), {
+      halfWidth: mainCorridorHalfWidth,
+      axisFirst: rng.next() < 0.5 ? "horizontal" : "vertical"
+    });
     corridors.push({
       fromRoomId: fromRoom.id,
       toRoomId: toRoom.id,
