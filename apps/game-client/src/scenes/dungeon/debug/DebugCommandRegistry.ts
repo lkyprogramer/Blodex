@@ -18,7 +18,8 @@ import {
 } from "@blodex/core";
 import { GAME_CONFIG, ITEM_DEF_MAP, LOOT_TABLE_MAP, RANDOM_EVENT_DEFS } from "@blodex/content";
 import { t } from "../../../i18n";
-import { DEBUG_COMMANDS, type DebugLogLevel } from "./types";
+import type { MessageParams } from "../../../i18n/types";
+import { describeDebugCommands, type DebugLogLevel } from "./types";
 
 export interface DebugCommandHost {
   [key: string]: any;
@@ -28,7 +29,7 @@ export class DebugCommandRegistry {
   constructor(private readonly host: DebugCommandHost) {}
 
   help(): string[] {
-    return DEBUG_COMMANDS.map((entry) => `${entry.combo}: ${entry.description}`);
+    return describeDebugCommands();
   }
 
   showHelp(): void {
@@ -39,10 +40,16 @@ export class DebugCommandRegistry {
 
   diagnostics(): Record<string, unknown> {
     const snapshot = this.host.collectDiagnosticsSnapshot();
-    console.info("[Blodex] diagnostics snapshot", snapshot);
+    console.info(t("log.debug.console_diagnostics_snapshot"), snapshot);
     const entity = this.host.entityManager.getDiagnostics();
-    this.debugLog(
-      `Diag listeners=${this.host.eventBus.listenerCount()} monsters=${entity.monsters}/${entity.livingMonsters} loot=${entity.loot}`,
+    this.debugLogKey(
+      "log.debug.diagnostics_summary",
+      {
+        listeners: this.host.eventBus.listenerCount(),
+        monsters: entity.monsters,
+        livingMonsters: entity.livingMonsters,
+        loot: entity.loot
+      },
       "info"
     );
     return snapshot;
@@ -61,25 +68,30 @@ export class DebugCommandRegistry {
       before,
       after
     };
-    console.info("[Blodex] lifecycle stress summary", summary);
-    this.debugLog(`Lifecycle stress finished (${count} resets).`, "success");
+    console.info(t("log.debug.console_lifecycle_summary"), summary);
+    this.debugLogKey("log.debug.lifecycle_stress_finished", { count }, "success");
     return summary;
   }
 
   addObols(amount: number): void {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return;
     }
     const normalized = Math.max(1, Math.floor(amount));
     this.host.run = addRunObols(this.host.run, normalized);
     this.host.hudDirty = true;
-    this.debugLog(`Added ${normalized} Obol. Current: ${this.host.run.runEconomy.obols}.`, "success");
+    this.debugLogKey(
+      "log.debug.obols_added",
+      {
+        added: normalized,
+        current: this.host.run.runEconomy.obols
+      },
+      "success"
+    );
   }
 
   grantConsumables(charges: number): void {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return;
     }
     const normalized = Math.max(1, Math.floor(charges));
@@ -87,27 +99,26 @@ export class DebugCommandRegistry {
       this.host.consumables = grantConsumable(this.host.consumables, def.id, normalized);
     }
     this.host.hudDirty = true;
-    this.debugLog(`Granted ${normalized} charges to all consumables.`, "success");
+    this.debugLogKey("log.debug.consumables_granted", { charges: normalized }, "success");
   }
 
   spawnEvent(eventId?: string): void {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return;
     }
     if (this.host.floorConfig.isBossFloor) {
-      this.debugLog("Cannot spawn floor event on boss floor.", "warn");
+      this.debugLogKey("log.debug.event_boss_floor_blocked", undefined, "warn");
       return;
     }
 
     const eventDef = this.pickDebugEvent(eventId);
     if (eventDef === null) {
-      this.debugLog("No matching event definition found for this floor/biome.", "warn");
+      this.debugLogKey("log.debug.event_definition_missing", undefined, "warn");
       return;
     }
     const position = this.resolveDebugEventPosition();
     if (position === null) {
-      this.debugLog("No valid position to place debug event.", "warn");
+      this.debugLogKey("log.debug.event_position_missing", undefined, "warn");
       return;
     }
 
@@ -115,26 +126,25 @@ export class DebugCommandRegistry {
     this.host.eventRuntimeModule.createEventNode(eventDef, position, this.host.time.now);
     this.host.eventRuntimeModule.openEventPanel(this.host.time.now);
     this.host.hudDirty = true;
-    this.debugLog(`Spawned event ${eventDef.id}.`);
+    this.debugLogKey("log.debug.event_spawned", { eventId: eventDef.id });
   }
 
   openMerchant(): void {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return;
     }
     if (this.host.floorConfig.isBossFloor) {
-      this.debugLog("Merchant is unavailable on boss floor.", "warn");
+      this.debugLogKey("log.debug.merchant_boss_floor_blocked", undefined, "warn");
       return;
     }
     const merchantEvent = RANDOM_EVENT_DEFS.find((entry) => entry.id === "wandering_merchant");
     if (merchantEvent === undefined) {
-      this.debugLog("wandering_merchant event definition not found.", "warn");
+      this.debugLogKey("log.debug.merchant_definition_missing", { eventId: "wandering_merchant" }, "warn");
       return;
     }
     const position = this.resolveDebugEventPosition();
     if (position === null) {
-      this.debugLog("No valid position to open merchant.", "warn");
+      this.debugLogKey("log.debug.merchant_position_missing", undefined, "warn");
       return;
     }
 
@@ -142,16 +152,15 @@ export class DebugCommandRegistry {
     this.host.eventRuntimeModule.createEventNode(merchantEvent, position, this.host.time.now);
     this.host.eventRuntimeModule.openMerchantPanel(this.host.time.now);
     this.host.hudDirty = true;
-    this.debugLog("Opened wandering merchant panel.");
+    this.debugLogKey("log.debug.merchant_opened_panel");
   }
 
   forceChallenge(): boolean {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return false;
     }
     if (this.host.floorConfig.isBossFloor) {
-      this.debugLog("Challenge room is unavailable on boss floor.", "warn");
+      this.debugLogKey("log.debug.challenge_boss_floor_blocked", undefined, "warn");
       return false;
     }
     if (this.host.eventPanelOpen) {
@@ -162,14 +171,14 @@ export class DebugCommandRegistry {
     if (challengeRoom === undefined) {
       const picked = chooseChallengeRoom(this.host.dungeon, this.host.eventRng);
       if (picked === null) {
-        this.debugLog("No room available for challenge injection.", "warn");
+        this.debugLogKey("log.debug.challenge_room_unavailable", undefined, "warn");
         return false;
       }
       this.host.dungeon = markRoomAsChallenge(this.host.dungeon, picked.id);
       challengeRoom = this.host.dungeon.rooms.find((room: { id: string }) => room.id === picked.id);
     }
     if (challengeRoom === undefined) {
-      this.debugLog("Challenge room injection failed.", "warn");
+      this.debugLogKey("log.debug.challenge_injection_failed", undefined, "warn");
       return false;
     }
 
@@ -187,13 +196,12 @@ export class DebugCommandRegistry {
     }
     this.host.hudDirty = true;
     this.host.scheduleRunSave();
-    this.debugLog(`Challenge room ready (${this.host.challengeWaveTotal} waves).`, "success");
+    this.debugLogKey("log.debug.challenge_ready", { waves: this.host.challengeWaveTotal }, "success");
     return true;
   }
 
   startChallenge(): boolean {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return false;
     }
     if (this.host.challengeRoomState === null && !this.forceChallenge()) {
@@ -203,14 +211,14 @@ export class DebugCommandRegistry {
       return false;
     }
     if (this.host.challengeRoomState.finished) {
-      this.debugLog("Challenge already finished on this floor.", "warn");
+      this.debugLogKey("log.debug.challenge_finished", undefined, "warn");
       return false;
     }
     if (!this.host.challengeRoomState.started) {
       this.host.progressionRuntimeModule.startChallengeEncounter(this.host.time.now);
-      this.debugLog("Challenge encounter started.", "success");
+      this.debugLogKey("log.debug.challenge_started", undefined, "success");
     } else {
-      this.debugLog("Challenge encounter already active.", "info");
+      this.debugLogKey("log.debug.challenge_active");
     }
     return true;
   }
@@ -220,21 +228,26 @@ export class DebugCommandRegistry {
       return false;
     }
     if (this.host.challengeRoomState.finished) {
-      this.debugLog("Challenge already settled.", "warn");
+      this.debugLogKey("log.debug.challenge_settled", undefined, "warn");
       return false;
     }
     this.host.progressionRuntimeModule.finishChallengeEncounter(success, this.host.time.now);
-    this.debugLog(`Challenge forced to ${success ? "success" : "failure"}.`, success ? "success" : "warn");
+    this.debugLogKey(
+      "log.debug.challenge_forced",
+      {
+        result: t(success ? "log.debug.challenge_result.success" : "log.debug.challenge_result.failure")
+      },
+      success ? "success" : "warn"
+    );
     return true;
   }
 
   openBossVictory(): boolean {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return false;
     }
     if (!this.host.floorConfig.isBossFloor) {
-      this.debugLog("Boss victory choice is only available on boss floor.", "warn");
+      this.debugLogKey("log.debug.boss_victory_requires_boss_floor", undefined, "warn");
       return false;
     }
     if (this.host.bossState !== null && this.host.bossState.health > 0) {
@@ -245,25 +258,24 @@ export class DebugCommandRegistry {
     }
     this.host.bossRuntimeModule.openVictoryChoice(this.host.time.now);
     this.host.hudDirty = true;
-    this.debugLog("Boss victory choice opened.", "success");
+    this.debugLogKey("log.debug.boss_victory_opened", undefined, "success");
     return true;
   }
 
   enterAbyss(): boolean {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return false;
     }
     if (this.host.run.runMode === "daily") {
-      this.debugLog("Daily mode cannot enter abyss.", "warn");
+      this.debugLogKey("log.debug.daily_cannot_enter_abyss", undefined, "warn");
       return false;
     }
     if (this.host.run.inEndless) {
-      this.debugLog("Already in abyss/endless.", "info");
+      this.debugLogKey("log.debug.already_in_abyss");
       return true;
     }
     if (this.host.run.currentFloor < 5) {
-      this.debugLog("Abyss entry requires reaching floor 5.", "warn");
+      this.debugLogKey("log.debug.abyss_requires_floor_five", undefined, "warn");
       return false;
     }
     if (this.host.floorConfig.isBossFloor && this.host.bossState !== null && this.host.bossState.health > 0) {
@@ -273,13 +285,12 @@ export class DebugCommandRegistry {
       };
     }
     this.host.runCompletionModule.enterAbyss(this.host.time.now);
-    this.debugLog(`Forced abyss entry at floor ${this.host.run.currentFloor}.`, "success");
+    this.debugLogKey("log.debug.abyss_entered", { floor: this.host.run.currentFloor }, "success");
     return true;
   }
 
   nextFloor(): boolean {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return false;
     }
     if (this.host.floorConfig.isBossFloor && !this.host.run.inEndless) {
@@ -306,27 +317,30 @@ export class DebugCommandRegistry {
     this.host.progressionRuntimeModule.setupFloor(this.host.run.currentFloor, false);
     this.host.deferredOutcomeRuntime.settle("floor_reached", this.host.time.now);
     this.host.flushRunSave();
-    this.debugLog(
-      `Advanced to floor ${this.host.run.currentFloor}${this.host.run.inEndless ? ` (endless ${this.host.run.endlessFloor})` : ""}.`,
+    this.debugLogKey(
+      this.host.run.inEndless ? "log.debug.floor_advanced_endless" : "log.debug.floor_advanced",
+      {
+        floor: this.host.run.currentFloor,
+        endlessFloor: this.host.run.endlessFloor ?? 0
+      },
       "success"
     );
     return true;
   }
 
   forceSynergy(synergyId: string): string[] {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return [];
     }
     if (synergyId !== "syn_staff_chain_lightning_overload") {
-      this.debugLog(`Unsupported synergy preset: ${synergyId}.`, "warn");
+      this.debugLogKey("log.debug.unsupported_synergy_preset", { synergyId }, "warn");
       return [...this.host.synergyRuntime.activeSynergyIds];
     }
 
     const nowMs = this.host.time.now;
     const existingSkills = this.host.player.skills;
     if (existingSkills === undefined) {
-      this.debugLog("Player skills are unavailable; cannot inject synergy preset.", "warn");
+      this.debugLogKey("log.debug.synergy_skills_unavailable", undefined, "warn");
       return [...this.host.synergyRuntime.activeSynergyIds];
     }
     const slots = [...existingSkills.skillSlots];
@@ -334,7 +348,7 @@ export class DebugCommandRegistry {
     const staffItem: ItemInstance = {
       id: `debug_synergy_staff_${Math.floor(nowMs)}`,
       defId: "sovereign_requiem",
-      name: "Debug Sovereign Requiem",
+      name: t("ui.debug.item.sovereign_requiem"),
       kind: "unique",
       slot: "weapon",
       weaponType: "staff",
@@ -371,20 +385,26 @@ export class DebugCommandRegistry {
     this.host.hudDirty = true;
     this.host.scheduleRunSave();
     const activeSynergyIds = [...this.host.synergyRuntime.activeSynergyIds];
-    this.debugLog(`Forced synergy preset ${synergyId}. Active: ${activeSynergyIds.join(", ") || "none"}.`, "success");
+    this.debugLogKey(
+      "log.debug.synergy_forced",
+      {
+        synergyId,
+        activeList: this.activeListLabel(activeSynergyIds)
+      },
+      "success"
+    );
     return activeSynergyIds;
   }
 
   clearFloor(): void {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return;
     }
     const nowMs = this.host.time.now;
 
     if (this.host.floorConfig.isBossFloor) {
       if (this.host.bossState === null) {
-        this.debugLog("Boss runtime not ready.", "warn");
+        this.debugLogKey("log.debug.boss_runtime_not_ready", undefined, "warn");
         return;
       }
       this.host.bossState = {
@@ -392,7 +412,7 @@ export class DebugCommandRegistry {
         health: 0
       };
       this.host.hudDirty = true;
-      this.debugLog("Boss health set to 0. Triggering victory summary.", "success");
+      this.debugLogKey("log.debug.boss_health_zero_victory", undefined, "success");
       this.host.runCompletionModule.finishRun(true);
       return;
     }
@@ -481,8 +501,13 @@ export class DebugCommandRegistry {
     }
 
     this.host.hudDirty = true;
-    this.debugLog(
-      `Cleared floor instantly (${removed} monsters removed, ${simulatedDrops} drops, +${simulatedLevelUps} levels).`,
+    this.debugLogKey(
+      "log.debug.floor_cleared_instantly",
+      {
+        monstersRemoved: removed,
+        drops: simulatedDrops,
+        levelsGained: simulatedLevelUps
+      },
       "success"
     );
   }
@@ -491,7 +516,7 @@ export class DebugCommandRegistry {
     const maxFloors = GAME_CONFIG.maxFloors ?? 5;
     const normalized = Math.max(1, Math.min(maxFloors, Math.floor(targetFloor)));
     if (!Number.isFinite(normalized)) {
-      this.debugLog(`Invalid floor index: ${targetFloor}`, "warn");
+      this.debugLogKey("log.debug.floor_invalid_index", { floor: targetFloor }, "warn");
       return;
     }
 
@@ -501,7 +526,7 @@ export class DebugCommandRegistry {
       this.host.runEnded = false;
     }
     if (this.host.run.currentFloor === normalized) {
-      this.debugLog(`Already on floor ${normalized}.`);
+      this.debugLogKey("log.debug.floor_already_current", { floor: normalized });
       return;
     }
 
@@ -518,12 +543,12 @@ export class DebugCommandRegistry {
     };
     this.host.progressionRuntimeModule.setupFloor(normalized, false);
     this.host.hudDirty = true;
-    this.debugLog(`Jumped to floor ${normalized}.`, "success");
+    this.debugLogKey("log.debug.floor_jumped", { floor: normalized }, "success");
   }
 
   killPlayer(): void {
     if (this.host.runEnded) {
-      this.debugLog("Run already ended.", "warn");
+      this.debugLogKey("log.debug.run_ended", undefined, "warn");
       return;
     }
     this.host.lastDeathReason = t("log.debug.kill_player.death_reason");
@@ -537,8 +562,7 @@ export class DebugCommandRegistry {
   }
 
   setHealth(value: number): number {
-    if (this.host.runEnded) {
-      this.debugLog("Run already ended; start a new run first.", "warn");
+    if (!this.ensureRunActive()) {
       return this.host.player.health;
     }
     const normalized = Math.max(0, Math.min(this.host.player.derivedStats.maxHealth, Math.floor(value)));
@@ -547,12 +571,35 @@ export class DebugCommandRegistry {
       health: normalized
     };
     this.host.hudDirty = true;
-    this.debugLog(`Set HP to ${normalized}/${Math.floor(this.host.player.derivedStats.maxHealth)}.`, "info");
+    this.debugLogKey(
+      "log.debug.health_set",
+      {
+        current: normalized,
+        max: Math.floor(this.host.player.derivedStats.maxHealth)
+      },
+      "info"
+    );
     return normalized;
   }
 
   private debugLog(message: string, level: DebugLogLevel = "info"): void {
     this.host.runLog.debug(message, level, this.host.time.now);
+  }
+
+  private debugLogKey(key: string, params?: MessageParams, level: DebugLogLevel = "info"): void {
+    this.debugLog(t(key, params), level);
+  }
+
+  private ensureRunActive(): boolean {
+    if (!this.host.runEnded) {
+      return true;
+    }
+    this.debugLogKey("log.debug.run_ended_start_new", undefined, "warn");
+    return false;
+  }
+
+  private activeListLabel(values: readonly string[]): string {
+    return values.length > 0 ? values.join(", ") : t("log.debug.none");
   }
 
   private isWalkableGridPoint(point: { x: number; y: number }): boolean {

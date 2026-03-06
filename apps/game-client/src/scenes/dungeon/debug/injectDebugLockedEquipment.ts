@@ -21,7 +21,9 @@ export function injectDebugLockedEquipment(options: InjectDebugLockedEquipmentOp
   const debugItem: ItemInstance = {
     id: `debug_locked_ring_${Math.floor(nowMs)}`,
     defId: "debug_locked_ring",
-    name: `Debug Sealed Ring (Lv${requiredLevel})`,
+    name: t("ui.debug.item.locked_ring", {
+      requiredLevel
+    }),
     slot: "ring",
     kind: "equipment",
     rarity: "rare",
