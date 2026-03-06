@@ -3,7 +3,7 @@ import { RunSaveSnapshotBuilder } from "../RunSaveSnapshotBuilder";
 import type { RunSaveSnapshotHost } from "../savePorts";
 
 describe("RunSaveSnapshotBuilder", () => {
-  it("passes run-relative elapsed time into phase6 telemetry capture", () => {
+  it("captures run-relative telemetry and persisted progression prompt state", () => {
     const capturePhase6TelemetryState = vi.fn(() => ({
       startedAtMs: 100,
       buildFormedState: false,
@@ -36,6 +36,10 @@ describe("RunSaveSnapshotBuilder", () => {
         synergyActivationCountById: {},
         synergyFirstActivatedFloorById: {}
       }
+    }));
+    const captureProgressionPromptState = vi.fn(() => ({
+      nextPromptDelayMs: 2_100,
+      pendingLevelUpSkillOfferIds: ["chain_lightning"]
     }));
     const host = {
       runEnded: false,
@@ -71,11 +75,23 @@ describe("RunSaveSnapshotBuilder", () => {
       hazards: [],
       bossState: null,
       entityManager: {
-        listMonsters: () => [],
+        listMonsters: () => [
+          {
+            state: {
+              id: "monster-1",
+              position: { x: 2, y: 3 },
+              moveSpeed: 64
+            },
+            baseMoveSpeed: 128,
+            nextAttackAt: 10,
+            nextSupportAt: 20
+          }
+        ],
         listLoot: () => []
       },
       eventNode: null,
       merchantOffers: [],
+      captureProgressionPromptState,
       capturePhase6TelemetryState,
       deferredOutcomes: [],
       saveManager: {
@@ -95,6 +111,13 @@ describe("RunSaveSnapshotBuilder", () => {
     const snapshot = builder.build(260);
 
     expect(capturePhase6TelemetryState).toHaveBeenCalledWith(160);
+    expect(captureProgressionPromptState).toHaveBeenCalledWith(260);
+    expect(snapshot?.runtimeNowMs).toBe(260);
     expect(snapshot?.phase6TelemetryState).toBeDefined();
+    expect(snapshot?.progressionPromptState).toEqual({
+      nextPromptDelayMs: 2_100,
+      pendingLevelUpSkillOfferIds: ["chain_lightning"]
+    });
+    expect(snapshot?.monsters[0]?.baseMoveSpeed).toBe(128);
   });
 });

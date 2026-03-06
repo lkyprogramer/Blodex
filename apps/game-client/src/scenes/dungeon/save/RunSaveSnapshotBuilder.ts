@@ -52,6 +52,8 @@ export class RunSaveSnapshotBuilder {
     }
     const floorChoiceBudget =
       typeof host.captureFloorChoiceBudgetSnapshot === "function" ? host.captureFloorChoiceBudgetSnapshot() : undefined;
+    const progressionPromptState =
+      typeof host.captureProgressionPromptState === "function" ? host.captureProgressionPromptState(nowMs) : undefined;
     const phase6TelemetryState =
       typeof host.capturePhase6TelemetryState === "function"
         ? host.capturePhase6TelemetryState(elapsedMs)
@@ -59,6 +61,7 @@ export class RunSaveSnapshotBuilder {
 
     return {
       schemaVersion: 2,
+      runtimeNowMs: nowMs,
       savedAtMs: wallNowMs,
       appVersion: this.options.appVersion,
       runId: `${host.runSeed}:${run.startedAtMs}`,
@@ -110,6 +113,7 @@ export class RunSaveSnapshotBuilder {
           position: { ...monster.state.position },
           ...(monster.state.affixes === undefined ? {} : { affixes: [...monster.state.affixes] })
         },
+        ...(monster.baseMoveSpeed === undefined ? {} : { baseMoveSpeed: monster.baseMoveSpeed }),
         nextAttackAt: monster.nextAttackAt,
         nextSupportAt: monster.nextSupportAt
       })),
@@ -130,6 +134,7 @@ export class RunSaveSnapshotBuilder {
       },
       mapRevealActive: host.mapRevealActive,
       ...(floorChoiceBudget === undefined ? {} : { floorChoiceBudget }),
+      ...(progressionPromptState === undefined ? {} : { progressionPromptState }),
       ...(phase6TelemetryState === undefined ? {} : { phase6TelemetryState }),
       rngCursor: this.collectRngCursor(),
       blueprintFoundIdsInRun: [...host.blueprintFoundIdsInRun],

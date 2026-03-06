@@ -8,7 +8,11 @@ const SKILL_BLUEPRINTS: BlueprintDef[] = [
     unlockTargetId: "frost_nova",
     forgeCost: 18,
     rarity: "common",
-    dropSources: [{ type: "floor_clear", chance: 0.08, floorMin: 1 }]
+    dropSources: [{ type: "floor_clear", chance: 0.08, floorMin: 1 }],
+    skillAugment: {
+      rangeMultiplier: 1.2,
+      durationMultiplier: 1.35
+    }
   },
   {
     id: "bp_skill_war_cry",
@@ -17,7 +21,11 @@ const SKILL_BLUEPRINTS: BlueprintDef[] = [
     unlockTargetId: "war_cry",
     forgeCost: 22,
     rarity: "common",
-    dropSources: [{ type: "random_event", sourceId: "mysterious_shrine", chance: 0.2, floorMin: 1 }]
+    dropSources: [{ type: "random_event", sourceId: "mysterious_shrine", chance: 0.2, floorMin: 1 }],
+    skillAugment: {
+      cooldownMultiplier: 0.88,
+      durationMultiplier: 1.5
+    }
   },
   {
     id: "bp_skill_chain_lightning",
@@ -26,7 +34,12 @@ const SKILL_BLUEPRINTS: BlueprintDef[] = [
     unlockTargetId: "chain_lightning",
     forgeCost: 28,
     rarity: "rare",
-    dropSources: [{ type: "boss_kill", chance: 0.24, floorMin: 3 }]
+    dropSources: [{ type: "boss_kill", chance: 0.24, floorMin: 3 }],
+    skillAugment: {
+      cooldownMultiplier: 0.82,
+      manaCostFlat: -4,
+      rangeMultiplier: 1.2
+    }
   },
   {
     id: "bp_skill_spirit_burst",
@@ -35,7 +48,11 @@ const SKILL_BLUEPRINTS: BlueprintDef[] = [
     unlockTargetId: "spirit_burst",
     forgeCost: 32,
     rarity: "rare",
-    dropSources: [{ type: "challenge_room", chance: 0.35, floorMin: 2 }]
+    dropSources: [{ type: "challenge_room", chance: 0.35, floorMin: 2 }],
+    skillAugment: {
+      damageMultiplier: 1.18,
+      rangeMultiplier: 1.35
+    }
   },
   {
     id: "bp_skill_rift_step",
@@ -44,7 +61,12 @@ const SKILL_BLUEPRINTS: BlueprintDef[] = [
     unlockTargetId: "rift_step",
     forgeCost: 45,
     rarity: "legendary",
-    dropSources: [{ type: "boss_first_kill", sourceId: "bone_sovereign", chance: 1, floorMin: 5, onlyIfNotFound: true }]
+    dropSources: [{ type: "boss_first_kill", sourceId: "bone_sovereign", chance: 1, floorMin: 5, onlyIfNotFound: true }],
+    skillAugment: {
+      cooldownMultiplier: 0.8,
+      damageMultiplier: 1.15,
+      appendedEffects: [{ type: "buff", value: 1, duration: 2500, buffId: "guaranteed_crit" }]
+    }
   }
 ];
 

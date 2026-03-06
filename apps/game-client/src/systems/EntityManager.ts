@@ -6,6 +6,7 @@ import { SpatialHash } from "./spatialHash";
 export interface MonsterRuntime {
   state: MonsterState;
   archetype: MonsterArchetypeDef;
+  baseMoveSpeed?: number;
   sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
   healthBarBg: Phaser.GameObjects.Rectangle;
   healthBarFg: Phaser.GameObjects.Rectangle;

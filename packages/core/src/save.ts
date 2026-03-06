@@ -61,6 +61,7 @@ type RunStateV1 = Omit<
 
 export interface RuntimeMonsterState {
   state: MonsterState;
+  baseMoveSpeed?: number;
   nextAttackAt: number;
   nextSupportAt: number;
 }
@@ -89,6 +90,11 @@ export interface FloorChoiceBudgetState {
   source?: string;
 }
 
+export interface ProgressionPromptState {
+  nextPromptDelayMs: number;
+  pendingLevelUpSkillOfferIds: string[];
+}
+
 export interface RunSaveDataV1 {
   schemaVersion: 1;
   savedAtMs: number;
@@ -115,10 +121,12 @@ export interface RunSaveDataV1 {
 
 export interface RunSaveDataV2 extends Omit<RunSaveDataV1, "schemaVersion" | "run"> {
   schemaVersion: 2;
+  runtimeNowMs?: number;
   run: RunState;
   staircase: StaircaseState;
   deferredOutcomes?: DeferredOutcomeState[];
   floorChoiceBudget?: FloorChoiceBudgetState;
+  progressionPromptState?: ProgressionPromptState;
   phase6TelemetryState?: Phase6TelemetryRuntimeState;
 }
 
@@ -176,6 +184,14 @@ function isFloorChoiceBudgetState(value: unknown): value is FloorChoiceBudgetSta
   );
 }
 
+function isProgressionPromptState(value: unknown): value is ProgressionPromptState {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.nextPromptDelayMs) &&
+    isStringArray(value.pendingLevelUpSkillOfferIds)
+  );
+}
+
 function isStringNumberRecord(value: unknown): value is Record<string, number> {
   return isRecord(value) && Object.values(value).every((entry) => isFiniteNumber(entry));
 }
@@ -220,7 +236,13 @@ function isPhase6TelemetryRuntimeState(value: unknown): value is Phase6Telemetry
 }
 
 function isRuntimeMonsterState(value: unknown): value is RuntimeMonsterState {
-  return isRecord(value) && isRecord(value.state) && isFiniteNumber(value.nextAttackAt) && isFiniteNumber(value.nextSupportAt);
+  return (
+    isRecord(value) &&
+    isRecord(value.state) &&
+    isFiniteNumber(value.nextAttackAt) &&
+    isFiniteNumber(value.nextSupportAt) &&
+    (value.baseMoveSpeed === undefined || isFiniteNumber(value.baseMoveSpeed))
+  );
 }
 
 function isRuntimeEventNodeState(value: unknown): value is RuntimeEventNodeState {
@@ -430,6 +452,9 @@ function validateSaveCommon(save: Record<string, unknown>): boolean {
   if (typeof save.runSeed !== "string" || save.runSeed.length === 0) {
     return false;
   }
+  if (save.runtimeNowMs !== undefined && !isFiniteNumber(save.runtimeNowMs)) {
+    return false;
+  }
   if (!isRecord(save.player) || !isRecord(save.consumables)) {
     return false;
   }
@@ -470,6 +495,9 @@ function validateSaveCommon(save: Record<string, unknown>): boolean {
     return false;
   }
   if (save.floorChoiceBudget !== undefined && !isFloorChoiceBudgetState(save.floorChoiceBudget)) {
+    return false;
+  }
+  if (save.progressionPromptState !== undefined && !isProgressionPromptState(save.progressionPromptState)) {
     return false;
   }
   if (

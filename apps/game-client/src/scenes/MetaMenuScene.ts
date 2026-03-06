@@ -28,7 +28,14 @@ import {
   type DifficultyMode,
   type MetaProgression
 } from "@blodex/core";
-import { BLUEPRINT_DEF_MAP, BLUEPRINT_DEFS, MUTATION_DEFS, TALENT_DEFS, UNLOCK_DEFS } from "@blodex/content";
+import {
+  BLUEPRINT_DEF_MAP,
+  BLUEPRINT_DEFS,
+  MUTATION_DEFS,
+  SKILL_DEF_MAP,
+  TALENT_DEFS,
+  UNLOCK_DEFS
+} from "@blodex/content";
 import { getContentLocalizer, getLocale, resolveInitialLocale, setLocale, t } from "../i18n";
 import { difficultyLabel } from "../i18n/labelResolvers";
 import type { LocaleCode } from "../i18n/types";
@@ -479,7 +486,7 @@ export class MetaMenuScene extends Phaser.Scene {
         category: blueprint.category,
         rarity: blueprint.rarity,
         forgeCost: blueprint.forgeCost,
-        unlockTargetId: blueprint.unlockTargetId,
+        detailText: this.describeBlueprintDetail(blueprint),
         statusText,
         forged: isForged,
         canForge
@@ -608,6 +615,67 @@ export class MetaMenuScene extends Phaser.Scene {
       default:
         return category;
     }
+  }
+
+  private describeBlueprintDetail(blueprint: (typeof BLUEPRINT_DEFS)[number]): string {
+    if (blueprint.category !== "skill") {
+      return blueprint.unlockTargetId;
+    }
+    const skillDef = SKILL_DEF_MAP[blueprint.unlockTargetId];
+    const skillName =
+      skillDef === undefined
+        ? blueprint.unlockTargetId
+        : this.contentLocalizer.skillName(skillDef.id, skillDef.name);
+    if (blueprint.skillAugment === undefined) {
+      return t("ui.meta.effect.skill_unlock", { skillId: skillName });
+    }
+    const detailParts: string[] = [];
+    if (blueprint.skillAugment.cooldownMultiplier !== undefined && blueprint.skillAugment.cooldownMultiplier < 1) {
+      detailParts.push(
+        t("ui.meta.blueprint.effect.part.cooldown_reduction", {
+          value: Math.round((1 - blueprint.skillAugment.cooldownMultiplier) * 100)
+        })
+      );
+    }
+    if (blueprint.skillAugment.manaCostFlat !== undefined && blueprint.skillAugment.manaCostFlat < 0) {
+      detailParts.push(
+        t("ui.meta.blueprint.effect.part.mana_reduction", {
+          value: Math.abs(blueprint.skillAugment.manaCostFlat)
+        })
+      );
+    }
+    if (blueprint.skillAugment.rangeMultiplier !== undefined && blueprint.skillAugment.rangeMultiplier > 1) {
+      detailParts.push(
+        t("ui.meta.blueprint.effect.part.range_increase", {
+          value: Math.round((blueprint.skillAugment.rangeMultiplier - 1) * 100)
+        })
+      );
+    }
+    if (blueprint.skillAugment.durationMultiplier !== undefined && blueprint.skillAugment.durationMultiplier > 1) {
+      detailParts.push(
+        t("ui.meta.blueprint.effect.part.duration_increase", {
+          value: Math.round((blueprint.skillAugment.durationMultiplier - 1) * 100)
+        })
+      );
+    }
+    if (blueprint.skillAugment.damageMultiplier !== undefined && blueprint.skillAugment.damageMultiplier > 1) {
+      detailParts.push(
+        t("ui.meta.blueprint.effect.part.damage_increase", {
+          value: Math.round((blueprint.skillAugment.damageMultiplier - 1) * 100)
+        })
+      );
+    }
+    if (
+      blueprint.skillAugment.appendedEffects?.some(
+        (effect) => effect.type === "buff" && effect.buffId === "guaranteed_crit"
+      ) === true
+    ) {
+      detailParts.push(t("ui.meta.blueprint.effect.part.guaranteed_crit"));
+    }
+    return t("ui.meta.blueprint.effect.skill_augment", {
+      skillName,
+      effectList: detailParts.join(" · ")
+    });
   }
 
   private mutationCategoryLabel(category: MutationDef["category"]): string {

@@ -104,6 +104,27 @@ export function applyAffixesToMonsterState(monster: MonsterState): MonsterState 
   return next;
 }
 
+export function resolveMonsterBaseMoveSpeedWithAffixes(
+  moveSpeed: number,
+  affixes: MonsterAffixId[] = []
+): number {
+  return applyAffixesToMonsterState({
+    id: "affix-move-speed-probe",
+    archetypeId: "affix-move-speed-probe",
+    level: 1,
+    health: 1,
+    maxHealth: 1,
+    damage: 1,
+    attackRange: 1,
+    moveSpeed,
+    xpValue: 0,
+    dropTableId: "",
+    position: { x: 0, y: 0 },
+    aiState: "idle",
+    affixes
+  }).moveSpeed;
+}
+
 export function hasMonsterAffix(
   monster: Pick<MonsterState, "affixes">,
   affix: MonsterAffixId

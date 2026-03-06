@@ -119,7 +119,7 @@ describe("renderMetaMenuPanel", () => {
               category: "weapon",
               rarity: "legendary",
               forgeCost: 16,
-              unlockTargetId: "weapon_type_axe",
+              detailText: "weapon_type_axe",
               statusText: "Ready to Forge",
               forged: false,
               canForge: true
@@ -225,7 +225,7 @@ describe("renderMetaMenuPanel", () => {
               category: "weapon",
               rarity: "common",
               forgeCost: 5,
-              unlockTargetId: "weapon_type_sword",
+              detailText: "weapon_type_sword",
               statusText: "已锻造",
               forged: true,
               canForge: false
@@ -236,7 +236,7 @@ describe("renderMetaMenuPanel", () => {
               category: "weapon",
               rarity: "common",
               forgeCost: 5,
-              unlockTargetId: "weapon_type_spear",
+              detailText: "weapon_type_spear",
               statusText: "未发现",
               forged: false,
               canForge: false

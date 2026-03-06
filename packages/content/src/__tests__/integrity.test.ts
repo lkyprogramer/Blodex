@@ -1,5 +1,6 @@
 import {
   BIOME_DEFS,
+  BUFF_DEF_MAP,
   BLUEPRINT_DEFS,
   BOSS_DEFS,
   HAZARD_DEFS,
@@ -155,6 +156,15 @@ describe("content integrity", () => {
         expect(skillIds.has(blueprint.unlockTargetId), `${blueprint.id} -> missing skill target ${blueprint.unlockTargetId}`).toBe(
           true
         );
+        expect(blueprint.skillAugment, `${blueprint.id} skill blueprint should define a runtime augment`).toBeDefined();
+      }
+      if (blueprint.skillAugment !== undefined) {
+        expect(blueprint.category, `${blueprint.id} skillAugment can only be used on skill blueprints`).toBe("skill");
+        for (const effect of blueprint.skillAugment.appendedEffects ?? []) {
+          if ((effect.type === "buff" || effect.type === "debuff") && effect.buffId !== undefined) {
+            expect(BUFF_DEF_MAP[effect.buffId], `${blueprint.id} -> missing buff target ${effect.buffId}`).toBeDefined();
+          }
+        }
       }
 
       if (blueprint.category === "weapon") {

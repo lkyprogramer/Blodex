@@ -9,6 +9,7 @@ import type {
   HazardRuntimeState,
   MerchantOffer,
   MetaProgression,
+  ProgressionPromptState,
   Phase6TelemetryRuntimeState,
   PlayerState,
   RunRngStreamName,
@@ -66,6 +67,7 @@ export interface RunSaveSnapshotServicePort {
 
 export interface RunSaveSnapshotHookPort {
   captureFloorChoiceBudgetSnapshot?(): FloorChoiceBudgetState | undefined;
+  captureProgressionPromptState?(nowMs: number): ProgressionPromptState | undefined;
   capturePhase6TelemetryState?(elapsedMs?: number): Phase6TelemetryRuntimeState | undefined;
 }
 
@@ -202,6 +204,7 @@ export interface RunStateRestoreBehaviorPort {
     }
   ): void;
   restoreFloorChoiceBudgetSnapshot?(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void;
+  restoreProgressionPromptState?(snapshot: ProgressionPromptState | null | undefined, nowMs: number): void;
   resetFloorChoiceBudget(floor: number, nowMs: number): void;
 }
 

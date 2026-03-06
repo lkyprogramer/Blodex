@@ -17,6 +17,7 @@ import {
   createEmptySpecialAffixTotals,
   type SpecialAffixTotals
 } from "./specialAffix";
+import { resolveMonsterTakenDamage } from "./combat";
 
 function resolveScalingValue(effect: SkillEffect, player: PlayerState): number {
   if (typeof effect.value === "number") {
@@ -150,10 +151,11 @@ export function resolveSkill(
         }
         const crit = rng.next() < nextPlayer.derivedStats.critChance;
         const critMultiplier = crit ? 1.5 * (1 + specialAffixTotals.critDamage) : 1;
-        const amount = Math.max(
+        const rawAmount = Math.max(
           1,
           Math.floor(resolved * skillDamageMultiplier * critMultiplier + specialAffixTotals.damageOverTime)
         );
+        const amount = resolveMonsterTakenDamage(rawAmount, updatedMonsters[idx]!, skillDef.damageType);
         const nextHealth = Math.max(0, updatedMonsters[idx]!.health - amount);
         totalDamageDealt += amount;
         updatedMonsters[idx] = {
@@ -194,8 +196,8 @@ export function resolveSkill(
 
     if ((effect.type === "buff" || effect.type === "debuff") && effect.buffId !== undefined) {
       const duration = effect.duration ?? 1000;
-      const targetId = effect.type === "buff" ? player.id : selectedTargets[0]?.id;
-      if (targetId !== undefined) {
+      const targetIds = effect.type === "buff" ? [player.id] : selectedTargets.map((target) => target.id);
+      for (const targetId of targetIds) {
         buffsApplied.push({
           defId: effect.buffId,
           sourceId: player.id,

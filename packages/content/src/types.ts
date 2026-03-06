@@ -91,6 +91,17 @@ export interface MonsterAffixDef {
   description: string;
 }
 
+export interface BuffDef {
+  id: string;
+  name: string;
+  duration: number;
+  statModifiers?: Partial<Record<"maxHealth" | "maxMana" | "armor" | "attackPower" | "critChance" | "attackSpeed" | "moveSpeed", number>>;
+  statMultipliers?: Partial<Record<"maxHealth" | "maxMana" | "armor" | "attackPower" | "critChance" | "attackSpeed" | "moveSpeed", number>>;
+  dot?: { damagePerTick: number; tickIntervalMs: number };
+  slow?: number;
+  guaranteedCrit?: boolean;
+}
+
 export interface MonsterAiConfig {
   behavior: MonsterAiBehavior;
   chaseRange: number;
@@ -349,6 +360,15 @@ export interface BlueprintDropSource {
   onlyIfNotFound?: boolean;
 }
 
+export interface BlueprintSkillAugment {
+  cooldownMultiplier?: number;
+  manaCostFlat?: number;
+  rangeMultiplier?: number;
+  durationMultiplier?: number;
+  damageMultiplier?: number;
+  appendedEffects?: SkillEffect[];
+}
+
 export interface BlueprintDef {
   id: string;
   name: string;
@@ -357,6 +377,7 @@ export interface BlueprintDef {
   forgeCost: number;
   rarity: "common" | "rare" | "legendary";
   dropSources: BlueprintDropSource[];
+  skillAugment?: BlueprintSkillAugment;
 }
 
 export type MutationEffect =

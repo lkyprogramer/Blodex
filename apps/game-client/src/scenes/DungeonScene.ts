@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import {
+  aggregateBuffEffects,
+  applyBuff,
   applyHazardDamage,
   addRunObols,
   advanceEndlessFloor,
@@ -98,6 +100,7 @@ import {
   selectBossAttack,
   resolveBossAttack,
   syncEndlessMutatorState,
+  updateBuffs,
   useConsumable,
   upsertDailyHistory,
   type CombatEvent,
@@ -139,6 +142,7 @@ import {
 } from "@blodex/core";
 import {
   BIOME_MAP,
+  BUFF_DEF_MAP,
   BLUEPRINT_DEFS,
   BLUEPRINT_DEF_MAP,
   BONE_SOVEREIGN,
@@ -162,7 +166,7 @@ import {
 import { AISystem } from "../systems/AISystem";
 import type { MonsterAiUpdateResult } from "../systems/AISystem";
 import { CombatSystem } from "../systems/CombatSystem";
-import { EntityManager } from "../systems/EntityManager";
+import { EntityManager, type MonsterRuntime } from "../systems/EntityManager";
 import { getContentLocalizer, getI18nService, resolveInitialLocale, setLocale, t } from "../i18n";
 import { gridToIso, isoToGrid } from "../systems/iso";
 import { MonsterSpawnSystem } from "../systems/MonsterSpawnSystem";
@@ -219,6 +223,7 @@ import { RunSaveSnapshotBuilder } from "./dungeon/save/RunSaveSnapshotBuilder";
 import { RunStateRestorer } from "./dungeon/save/RunStateRestorer";
 import type { RunSaveSnapshotHost, RunStateRestoreHost } from "./dungeon/save/savePorts";
 import { SaveCoordinator } from "./dungeon/save/SaveCoordinator";
+import { applyForgedSkillBlueprintAugments } from "./dungeon/skills/skillBlueprintRuntime";
 import { Phase6TelemetryTracker } from "./dungeon/taste/Phase6Telemetry";
 import { TasteRuntimePortHub } from "./dungeon/taste/TasteRuntimePorts";
 import { HudPresenter } from "./dungeon/ui/HudPresenter";
@@ -605,6 +610,9 @@ export class DungeonScene extends Phaser.Scene {
       captureFloorChoiceBudgetSnapshot() {
         return scene.captureFloorChoiceBudgetSnapshot();
       },
+      captureProgressionPromptState(nowMs) {
+        return scene.captureProgressionPromptState(nowMs);
+      },
       capturePhase6TelemetryState(elapsedMs) {
         return scene.capturePhase6TelemetryState(elapsedMs);
       },
@@ -982,6 +990,9 @@ export class DungeonScene extends Phaser.Scene {
       },
       restoreFloorChoiceBudgetSnapshot(snapshot, nowMs) {
         scene.restoreFloorChoiceBudgetSnapshot(snapshot, nowMs);
+      },
+      restoreProgressionPromptState(snapshot, nowMs) {
+        scene.restoreProgressionPromptState(snapshot, nowMs);
       },
       resetFloorChoiceBudget(floor, nowMs) {
         scene.resetFloorChoiceBudget(floor, nowMs);
@@ -2162,6 +2173,8 @@ export class DungeonScene extends Phaser.Scene {
     this.updateKeyboardMoveIntent(nowMs);
     this.updatePlayerMovement((deltaMs / 1000) * playerHazardMovementMultiplier * mutationMoveMultiplier, nowMs);
     this.playerActionModule.applySpecialAffixHealthRegen(deltaMs);
+    this.playerActionModule.applyPassiveManaRegen(deltaMs);
+    this.updateRuntimeBuffs(nowMs);
     this.phase6Telemetry.sampleManaDryWindow(
       this.player.mana,
       this.resolveMinimumActiveSkillManaCost(),
@@ -2887,10 +2900,11 @@ export class DungeonScene extends Phaser.Scene {
 
   private refreshPlayerStatsFromEquipment(player: PlayerState): PlayerState {
     const equipped = Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined);
+    const buffEffects = aggregateBuffEffects(player.activeBuffs ?? [], BUFF_DEF_MAP);
     const derivedStats = deriveStats(
       player.baseStats,
       equipped,
-      undefined,
+      buffEffects,
       this.meta.permanentUpgrades,
       this.talentEffects
     );
@@ -2900,6 +2914,64 @@ export class DungeonScene extends Phaser.Scene {
       derivedStats,
       health: Math.min(player.health, derivedStats.maxHealth),
       mana: Math.min(player.mana, derivedStats.maxMana)
+    };
+  }
+
+  private updateRuntimeBuffs(nowMs: number): void {
+    this.updatePlayerBuffs(nowMs);
+    for (const monster of this.entityManager.listMonsters()) {
+      this.updateMonsterBuffs(monster, nowMs);
+    }
+  }
+
+  private updatePlayerBuffs(nowMs: number): void {
+    const activeBuffs = this.player.activeBuffs ?? [];
+    if (activeBuffs.length === 0) {
+      return;
+    }
+    const updated = updateBuffs(activeBuffs, nowMs);
+    if (updated.expired.length === 0 && updated.active.length === activeBuffs.length) {
+      return;
+    }
+    this.player = this.refreshPlayerStatsFromEquipment({
+      ...this.player,
+      activeBuffs: updated.active
+    });
+    for (const buff of updated.expired) {
+      this.eventBus.emit("buff:expire", {
+        buff,
+        timestampMs: nowMs
+      });
+    }
+  }
+
+  private updateMonsterBuffs(monster: MonsterRuntime, nowMs: number): void {
+    const activeBuffs = monster.state.activeBuffs ?? [];
+    if (activeBuffs.length === 0) {
+      return;
+    }
+    const updated = updateBuffs(activeBuffs, nowMs);
+    if (updated.expired.length === 0 && updated.active.length === activeBuffs.length) {
+      return;
+    }
+    monster.state = {
+      ...monster.state,
+      activeBuffs: updated.active
+    };
+    this.refreshMonsterBuffRuntime(monster);
+    for (const buff of updated.expired) {
+      this.eventBus.emit("buff:expire", {
+        buff,
+        timestampMs: nowMs
+      });
+    }
+  }
+
+  private refreshMonsterBuffRuntime(monster: MonsterRuntime): void {
+    const buffEffects = aggregateBuffEffects(monster.state.activeBuffs ?? [], BUFF_DEF_MAP);
+    monster.state = {
+      ...monster.state,
+      moveSpeed: Number(((monster.baseMoveSpeed ?? monster.state.moveSpeed) * (buffEffects.slowMultiplier ?? 1)).toFixed(2))
     };
   }
 
@@ -3149,8 +3221,19 @@ export class DungeonScene extends Phaser.Scene {
     return this.progressionChoiceRuntime.captureFloorChoiceBudgetSnapshot();
   }
 
+  captureProgressionPromptState(nowMs: number) {
+    return this.progressionChoiceRuntime.capturePromptState(nowMs);
+  }
+
   restoreFloorChoiceBudgetSnapshot(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void {
     this.progressionChoiceRuntime.restoreFloorChoiceBudgetSnapshot(snapshot, this.run.currentFloor, nowMs);
+  }
+
+  restoreProgressionPromptState(
+    snapshot: ReturnType<DungeonScene["captureProgressionPromptState"]> | null | undefined,
+    nowMs: number
+  ): void {
+    this.progressionChoiceRuntime.restorePromptState(snapshot, nowMs);
   }
 
   recordBuildLevelUpChoice(stat: keyof PlayerState["baseStats"], source: string, nowMs: number): void {
@@ -3158,8 +3241,37 @@ export class DungeonScene extends Phaser.Scene {
     this.maybeRecordBuildFormed(source, nowMs);
   }
 
+  recordPlayerFacingChoice(source: string, nowMs: number): void {
+    this.markHighValueChoice(source, nowMs);
+  }
+
   recordPlayerInput(nowMs: number): void {
     this.phase6Telemetry.recordPlayerInput(nowMs);
+  }
+
+  applyResolvedBuffs(buffs: SkillResolution["buffsApplied"], nowMs: number): void {
+    for (const buff of buffs) {
+      if (buff.targetId === this.player.id) {
+        this.player = {
+          ...this.player,
+          activeBuffs: applyBuff(this.player.activeBuffs ?? [], buff)
+        };
+        this.player = this.refreshPlayerStatsFromEquipment(this.player);
+      } else {
+        const monster = this.entityManager.findMonsterById(buff.targetId);
+        if (monster !== undefined) {
+          monster.state = {
+            ...monster.state,
+            activeBuffs: applyBuff(monster.state.activeBuffs ?? [], buff)
+          };
+          this.refreshMonsterBuffRuntime(monster);
+        }
+      }
+      this.eventBus.emit("buff:apply", {
+        buff,
+        timestampMs: nowMs
+      });
+    }
   }
 
   recordBossRewardClosed(choiceId: string, nowMs: number): void {
@@ -3274,7 +3386,7 @@ export class DungeonScene extends Phaser.Scene {
       if (skillDef === undefined) {
         continue;
       }
-      const runtimeSkillDef = this.applySynergyToSkillDef(createSkillDefForLevel(skillDef, slot.level));
+      const runtimeSkillDef = this.resolveRuntimeSkillDef(createSkillDefForLevel(skillDef, slot.level));
       minimum = minimum === null ? runtimeSkillDef.manaCost : Math.min(minimum, runtimeSkillDef.manaCost);
     }
     return minimum;
@@ -3328,7 +3440,8 @@ export class DungeonScene extends Phaser.Scene {
     });
   }
 
-  private applySynergyToSkillDef(skillDef: SkillDef): SkillDef {
+  private resolveRuntimeSkillDef(skillDef: SkillDef): SkillDef {
+    const blueprintAugmentedSkillDef = applyForgedSkillBlueprintAugments(skillDef, this.meta.blueprintForgedIds);
     const damagePercent = this.synergyRuntime.skillDamagePercent[skillDef.id] ?? 0;
     const modifiers = this.synergyRuntime.skillModifiers[skillDef.id] ?? {};
     const cooldownOverride = this.synergyRuntime.cooldownOverridesMs[skillDef.id];
@@ -3336,13 +3449,13 @@ export class DungeonScene extends Phaser.Scene {
     const manaCostScale = 1 + (modifiers.manaCost ?? 0);
 
     return {
-      ...skillDef,
+      ...blueprintAugmentedSkillDef,
       cooldownMs:
         cooldownOverride === undefined
-          ? skillDef.cooldownMs
+          ? blueprintAugmentedSkillDef.cooldownMs
           : Math.max(100, Math.floor(cooldownOverride)),
-      manaCost: Math.max(0, Math.floor(skillDef.manaCost * manaCostScale)),
-      effects: skillDef.effects.map((effect) => {
+      manaCost: Math.max(0, Math.floor(blueprintAugmentedSkillDef.manaCost * manaCostScale)),
+      effects: blueprintAugmentedSkillDef.effects.map((effect) => {
         let next = effect;
         if (effect.type === "damage" && damagePercent !== 0) {
           if (typeof effect.value === "number") {
@@ -3787,7 +3900,7 @@ export class DungeonScene extends Phaser.Scene {
       const skillDef = SKILL_DEF_BY_ID.get(slot.defId);
       const scaledSkillDef = skillDef === undefined ? undefined : createSkillDefForLevel(skillDef, slot.level);
       const runtimeSkillDef =
-        scaledSkillDef === undefined ? undefined : this.applySynergyToSkillDef(scaledSkillDef);
+        scaledSkillDef === undefined ? undefined : this.resolveRuntimeSkillDef(scaledSkillDef);
       const cooldownLeftMs = Math.max(0, (this.player.skills?.cooldowns[slot.defId] ?? 0) - nowMs);
       if (cooldownLeftMs > 0) {
         hasActiveSkillCooldown = true;

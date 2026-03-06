@@ -239,6 +239,7 @@ export class RenderSystem {
     return {
       state,
       archetype,
+      baseMoveSpeed: state.moveSpeed,
       sprite,
       healthBarBg,
       healthBarFg,

@@ -136,6 +136,8 @@ export function progressionChoiceSourceLabel(source: string): string {
       return t("ui.progression.source.levelup");
     case "budget_fallback":
       return t("ui.progression.source.budget_fallback");
+    case "levelup_skill":
+      return t("ui.progression.source.levelup_skill");
     default:
       return source;
   }

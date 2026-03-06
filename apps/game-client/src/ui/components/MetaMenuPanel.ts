@@ -77,7 +77,7 @@ export interface MetaMenuBlueprintCardView {
   category: BlueprintDef["category"];
   rarity: BlueprintDef["rarity"];
   forgeCost: number;
-  unlockTargetId: string;
+  detailText: string;
   statusText: string;
   forged: boolean;
   canForge: boolean;
@@ -303,7 +303,7 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
                 <span class="meta-unlock-name">${escapeHtml(blueprint.name)}</span>
                 <span class="meta-unlock-cost">${blueprint.forgeCost}</span>
               </div>
-              <div class="meta-unlock-description">${escapeHtml(blueprint.unlockTargetId)}</div>
+              <div class="meta-unlock-description">${escapeHtml(blueprint.detailText)}</div>
               <div class="meta-unlock-effect">
                 <span class="meta-rarity-chip rarity-${escapeHtml(blueprint.rarity)}">${escapeHtml(
                   blueprint.rarity.toUpperCase()
