@@ -170,6 +170,10 @@ Phase 6 不承诺完整主动防御系统重写，但必须满足最低战斗节
 4. 新增视觉资源必须沿用 `asset-plan -> manifest -> assets:validate`；新增音频资源必须沿用 `audio-plan -> audio-manifest -> assets:audio:validate`。
 5. 所有新增玩家可见语义，必须在规则链路可追踪；所有新增规则语义，必须在玩家侧可感知。
 6. 新增 runtime 事件命名统一进入 Taste / Feedback / RunLog 三条链，不允许只写一半。
+7. `RealBalanceReport` 的默认 drift threshold 视为 Phase 6 基线合同：
+   - 默认阈值不得为了吸收单一 simulator 改动而做全局放宽；
+   - 若某个场景因模型差异需要额外容忍度，只允许做场景级 override；
+   - 任何 override 都必须附带基线 commit、受影响场景、样本报告和原因说明。
 
 ---
 
@@ -218,6 +222,9 @@ Phase 6 不承诺完整主动防御系统重写，但必须满足最低战斗节
    - 明确 `buffsApplied -> player/monster state` 的断点；
    - 明确 `damageType` 在结算层的空转位置；
    - 明确 `synergy activated` 玩家侧缺失的反馈入口。
+9. 冻结 balance drift 门禁口径：
+   - 保留全局默认阈值作为基线；
+   - 若需要 override，只允许按场景收口并写入证据。
 
 #### 重点模块
 
