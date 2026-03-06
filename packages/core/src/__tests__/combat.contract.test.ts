@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { MonsterState, PlayerState, SkillDef } from "../contracts/types";
+import type { MonsterAffixId, MonsterState, PlayerState, SkillDef } from "../contracts/types";
 import { resolveMonsterAttack, resolvePlayerAttack } from "../combat";
 import { applySoulShardBonus, resolveHealthRegenTick } from "../specialAffix";
 import { markSkillUsed, resolveSkill } from "../skill";
@@ -163,9 +163,10 @@ describe("combat contract", () => {
   });
 
   it("lets arcane suffer less armored mitigation than physical", () => {
-    const armored = {
+    const armoredAffixes: MonsterAffixId[] = ["armored"];
+    const armored: MonsterState = {
       ...makeMonster(100),
-      affixes: ["armored"] as const
+      affixes: armoredAffixes
     };
     const player = makePlayer();
     const physical = resolvePlayerAttack(player, armored, fixedRng(1), 1000);
