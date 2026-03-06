@@ -21,6 +21,7 @@ import {
   type ItemInstance
 } from "@blodex/core";
 import { resolveInitialRunSeed } from "./resolveInitialRunSeed";
+import { analyzeRunOutcome } from "../taste/RunOutcomeAnalyzer";
 
 export interface RunCompletionHost {
   [key: string]: any;
@@ -169,15 +170,34 @@ export class RunCompletionModule {
     }
     if (typeof host.resolveRunRecommendations === "function") {
       const recommendations = host.resolveRunRecommendations();
-      for (const recommendation of recommendations.slice(0, 3)) {
+      const outcomeAnalysis = analyzeRunOutcome({
+        summary,
+        buildIdentity: host.tasteRuntime.snapshotBuildIdentity(),
+        heartbeats: host.tasteRuntime.listHeartbeatEvents(),
+        recommendations,
+        branchChoice: host.run.branchChoice,
+        currentBiomeId: host.run.currentBiomeId,
+        lastDeathReason: host.lastDeathReason
+      });
+      host.runLog.append(
+        `Run diagnosis: ${outcomeAnalysis.failureHeadline}`,
+        isVictory ? "success" : "warn",
+        host.time.now
+      );
+      for (const missed of outcomeAnalysis.missedOpportunities) {
+        host.runLog.append(`Missed opportunity: ${missed}`, "info", host.time.now);
+      }
+      for (const [index, suggestion] of outcomeAnalysis.suggestions.entries()) {
         host.runLog.append(
-          `Next run suggestion: ${recommendation.title} - ${recommendation.action}`,
+          `Next run plan ${index + 1}: ${suggestion.title} - ${suggestion.action}`,
           "info",
           host.time.now
         );
       }
+      host.uiManager.showSummary(summary, outcomeAnalysis);
+    } else {
+      host.uiManager.showSummary(summary);
     }
-    host.uiManager.showSummary(summary);
 
     const runEndPayload: GameEventMap["run:end"] = {
       summary,

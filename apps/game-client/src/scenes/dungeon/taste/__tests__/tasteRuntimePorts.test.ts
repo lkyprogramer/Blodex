@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ItemInstance } from "@blodex/core";
+import { getLocale, setLocale } from "../../../../i18n";
 import { TasteRuntimePortHub } from "../TasteRuntimePorts";
 
 function makeRareItem(defId: string, affixes: ItemInstance["rolledAffixes"]): ItemInstance {
@@ -39,6 +40,25 @@ describe("TasteRuntimePortHub", () => {
     const recommendations = hub.buildRecommendations();
     expect(recommendations.some((entry) => entry.id === "defense-gap")).toBe(true);
     expect(recommendations.some((entry) => entry.id === "offense-gap")).toBe(true);
+  });
+
+  it("localizes fallback recommendation text for the active locale", () => {
+    const previousLocale = getLocale();
+    const hub = new TasteRuntimePortHub();
+
+    try {
+      setLocale("en-US", { persist: false });
+      hub.recordBranch("event", 1, 500);
+
+      const recommendations = hub.buildRecommendations();
+      expect(recommendations.find((entry) => entry.id === "defense-gap")).toMatchObject({
+        title: "Patch the defense lane",
+        reason: "This run never established a real defense tag.",
+        action: "Open the next run with VIT or gear carrying armor and sustain affixes."
+      });
+    } finally {
+      setLocale(previousLocale, { persist: false });
+    }
   });
 
   it("clears run-scoped state when resetRunState is called", () => {

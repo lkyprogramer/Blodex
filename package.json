@@ -12,6 +12,7 @@
     "build": "pnpm -r build",
     "test": "pnpm --filter @blodex/core test && pnpm --filter @blodex/game-client test && pnpm --filter @blodex/content test",
     "balance:report": "pnpm --filter @blodex/core balance:report",
+    "balance:real:report": "pnpm --filter @blodex/game-client balance:real:report",
     "lint": "pnpm -r lint",
     "check": "pnpm -r typecheck",
     "check:source-hygiene": "./scripts/check-source-hygiene.sh",
