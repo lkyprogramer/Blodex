@@ -95,6 +95,21 @@ export interface ProgressionPromptState {
   pendingLevelUpSkillOfferIds: string[];
 }
 
+export type PowerSpikePairId = "1-2" | "3-4" | "5";
+
+export interface PowerSpikePairBudgetState {
+  hitCount: number;
+  majorHitCount: number;
+  satisfied: boolean;
+  fallbackGranted: boolean;
+}
+
+export interface PowerSpikeBudgetRuntimeState {
+  pairStates: Record<PowerSpikePairId, PowerSpikePairBudgetState>;
+  acceptedSpikeCount: number;
+  majorSpikeCount: number;
+}
+
 export interface RunSaveDataV1 {
   schemaVersion: 1;
   savedAtMs: number;
@@ -127,6 +142,7 @@ export interface RunSaveDataV2 extends Omit<RunSaveDataV1, "schemaVersion" | "ru
   deferredOutcomes?: DeferredOutcomeState[];
   floorChoiceBudget?: FloorChoiceBudgetState;
   progressionPromptState?: ProgressionPromptState;
+  powerSpikeBudgetState?: PowerSpikeBudgetRuntimeState;
   phase6TelemetryState?: Phase6TelemetryRuntimeState;
 }
 
@@ -192,6 +208,29 @@ function isProgressionPromptState(value: unknown): value is ProgressionPromptSta
   );
 }
 
+function isPowerSpikePairBudgetState(value: unknown): value is PowerSpikePairBudgetState {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.hitCount) &&
+    isFiniteNumber(value.majorHitCount) &&
+    typeof value.satisfied === "boolean" &&
+    typeof value.fallbackGranted === "boolean"
+  );
+}
+
+function isPowerSpikeBudgetRuntimeState(value: unknown): value is PowerSpikeBudgetRuntimeState {
+  if (!isRecord(value) || !isRecord(value.pairStates)) {
+    return false;
+  }
+  return (
+    isPowerSpikePairBudgetState(value.pairStates["1-2"]) &&
+    isPowerSpikePairBudgetState(value.pairStates["3-4"]) &&
+    isPowerSpikePairBudgetState(value.pairStates["5"]) &&
+    isFiniteNumber(value.acceptedSpikeCount) &&
+    isFiniteNumber(value.majorSpikeCount)
+  );
+}
+
 function isStringNumberRecord(value: unknown): value is Record<string, number> {
   return isRecord(value) && Object.values(value).every((entry) => isFiniteNumber(entry));
 }
@@ -213,6 +252,7 @@ function isPhase6TelemetryRuntimeState(value: unknown): value is Phase6Telemetry
     isFiniteNumber(value.story.playerFacingChoices) &&
     isStringNumberRecord(value.story.choiceCountByFloor) &&
     isFiniteNumber(value.story.powerSpikes) &&
+    isFiniteNumber(value.story.majorPowerSpikes) &&
     isFiniteNumber(value.story.buildFormed) &&
     isFiniteNumber(value.story.rareDropsPresented) &&
     isFiniteNumber(value.story.bossRewardClosed) &&
@@ -498,6 +538,12 @@ function validateSaveCommon(save: Record<string, unknown>): boolean {
     return false;
   }
   if (save.progressionPromptState !== undefined && !isProgressionPromptState(save.progressionPromptState)) {
+    return false;
+  }
+  if (
+    save.powerSpikeBudgetState !== undefined &&
+    !isPowerSpikeBudgetRuntimeState(save.powerSpikeBudgetState)
+  ) {
     return false;
   }
   if (

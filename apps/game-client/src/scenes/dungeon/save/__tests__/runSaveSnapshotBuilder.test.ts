@@ -12,6 +12,7 @@ describe("RunSaveSnapshotBuilder", () => {
         playerFacingChoices: 0,
         choiceCountByFloor: {},
         powerSpikes: 0,
+        majorPowerSpikes: 0,
         buildFormed: 0,
         rareDropsPresented: 0,
         bossRewardClosed: 0
@@ -40,6 +41,15 @@ describe("RunSaveSnapshotBuilder", () => {
     const captureProgressionPromptState = vi.fn(() => ({
       nextPromptDelayMs: 2_100,
       pendingLevelUpSkillOfferIds: ["chain_lightning"]
+    }));
+    const capturePowerSpikeBudgetState = vi.fn(() => ({
+      pairStates: {
+        "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
+        "3-4": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
+        "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+      },
+      acceptedSpikeCount: 1,
+      majorSpikeCount: 0
     }));
     const host = {
       runEnded: false,
@@ -92,6 +102,7 @@ describe("RunSaveSnapshotBuilder", () => {
       eventNode: null,
       merchantOffers: [],
       captureProgressionPromptState,
+      capturePowerSpikeBudgetState,
       capturePhase6TelemetryState,
       deferredOutcomes: [],
       saveManager: {
@@ -112,8 +123,10 @@ describe("RunSaveSnapshotBuilder", () => {
 
     expect(capturePhase6TelemetryState).toHaveBeenCalledWith(160);
     expect(captureProgressionPromptState).toHaveBeenCalledWith(260);
+    expect(capturePowerSpikeBudgetState).toHaveBeenCalledTimes(1);
     expect(snapshot?.runtimeNowMs).toBe(260);
     expect(snapshot?.phase6TelemetryState).toBeDefined();
+    expect(snapshot?.powerSpikeBudgetState?.pairStates["1-2"]?.hitCount).toBe(1);
     expect(snapshot?.progressionPromptState).toEqual({
       nextPromptDelayMs: 2_100,
       pendingLevelUpSkillOfferIds: ["chain_lightning"]

@@ -33,5 +33,9 @@ describe("simulateRealRun", () => {
     expect(report.combatRhythm?.avgSkillCastsPer30s ?? 0).toBeGreaterThan(0);
     expect(report.combatRhythm?.avgSkillDamageShare ?? 0).toBeGreaterThanOrEqual(0);
     expect(report.combatRhythm?.avgAutoAttackDamageShare ?? 0).toBeGreaterThanOrEqual(0);
+    expect(report.powerSpikes?.avgAcceptedSpikesPerRun ?? 0).toBeGreaterThan(0);
+    expect(report.powerSpikes?.pairSatisfactionRate["1-2"] ?? 0).toBeGreaterThanOrEqual(0);
+    expect(report.powerSpikes?.pairSatisfactionRate["3-4"] ?? 0).toBeGreaterThanOrEqual(0);
+    expect(report.powerSpikes?.pairSatisfactionRate["5"] ?? 0).toBeGreaterThanOrEqual(0);
   });
 });

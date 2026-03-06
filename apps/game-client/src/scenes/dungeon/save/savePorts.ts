@@ -8,6 +8,7 @@ import type {
   FloorChoiceBudgetState,
   HazardRuntimeState,
   MerchantOffer,
+  PowerSpikeBudgetRuntimeState,
   MetaProgression,
   ProgressionPromptState,
   Phase6TelemetryRuntimeState,
@@ -68,6 +69,7 @@ export interface RunSaveSnapshotServicePort {
 export interface RunSaveSnapshotHookPort {
   captureFloorChoiceBudgetSnapshot?(): FloorChoiceBudgetState | undefined;
   captureProgressionPromptState?(nowMs: number): ProgressionPromptState | undefined;
+  capturePowerSpikeBudgetState?(): PowerSpikeBudgetRuntimeState | undefined;
   capturePhase6TelemetryState?(elapsedMs?: number): Phase6TelemetryRuntimeState | undefined;
 }
 
@@ -205,6 +207,7 @@ export interface RunStateRestoreBehaviorPort {
   ): void;
   restoreFloorChoiceBudgetSnapshot?(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void;
   restoreProgressionPromptState?(snapshot: ProgressionPromptState | null | undefined, nowMs: number): void;
+  restorePowerSpikeBudgetState?(snapshot: PowerSpikeBudgetRuntimeState | null | undefined): void;
   resetFloorChoiceBudget(floor: number, nowMs: number): void;
 }
 

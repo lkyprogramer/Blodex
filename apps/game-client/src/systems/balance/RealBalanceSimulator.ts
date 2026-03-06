@@ -29,6 +29,7 @@ import {
   type CombatEvent,
   type EquipmentSlot,
   type ItemInstance,
+  type LootTableDef,
   type MonsterState,
   type PlayerState,
   type RunSimulation,
@@ -56,6 +57,11 @@ import {
   createSimulationRegenAccumulator,
   updateSimulationBuffs
 } from "./simulationRuntime";
+import {
+  PowerSpikeBudgetTracker,
+  resolveGuaranteedSpikeReward,
+  scorePowerSpikeFromItem
+} from "../../scenes/dungeon/taste/PowerSpikeRuntime";
 
 const STORY_MAX_FLOOR = 5;
 const LOOP_TICK_MS = 120;
@@ -73,6 +79,7 @@ interface SimulatedRun {
   skillUses: number;
   skillDamage: number;
   autoAttackDamage: number;
+  powerSpikeBudget: ReturnType<PowerSpikeBudgetTracker["snapshot"]>;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -368,6 +375,25 @@ function sumPlayerDamage(events: CombatEvent[], playerId: string): number {
   }, 0);
 }
 
+function recordSimulatedItemPowerSpike(
+  tracker: PowerSpikeBudgetTracker,
+  floor: number,
+  player: PlayerState,
+  item: ItemInstance
+): void {
+  tracker.recordAcceptedSpike(floor, scorePowerSpikeFromItem(player, item));
+}
+
+function resolveProgressionSpikeTable(floor: number): LootTableDef | undefined {
+  if (floor >= 4) {
+    return LOOT_TABLE_MAP.catacomb_elite;
+  }
+  if (floor >= 2) {
+    return LOOT_TABLE_MAP.cathedral_depths;
+  }
+  return LOOT_TABLE_MAP.starter_floor;
+}
+
 function chooseSkillForSimulation(
   player: PlayerState,
   behavior: BalanceConfig["playerBehavior"],
@@ -409,7 +435,8 @@ function applyMonsterKillRewards(
   monster: MonsterState,
   lootRng: SeededRng,
   behavior: BalanceConfig["playerBehavior"],
-  slotWeightMultiplier: Partial<Record<EquipmentSlot, number>> | undefined
+  slotWeightMultiplier: Partial<Record<EquipmentSlot, number>> | undefined,
+  tracker: PowerSpikeBudgetTracker
 ): {
   player: PlayerState;
   run: RunState;
@@ -448,6 +475,7 @@ function applyMonsterKillRewards(
           slotWeightMultiplier === undefined ? undefined : { slotWeightMultiplier }
         );
   if (droppedItem !== null && droppedItem !== undefined) {
+    recordSimulatedItemPowerSpike(tracker, run.currentFloor, nextPlayer, droppedItem);
     rarityCounts[droppedItem.rarity] += 1;
     lootCollected += 1;
     nextPlayer = collectItem(nextPlayer, droppedItem, behavior);
@@ -470,7 +498,8 @@ function simulateFloorCombat(
   config: BalanceConfig,
   floor: number,
   runSeed: string,
-  branchChoice: BranchChoice | undefined
+  branchChoice: BranchChoice | undefined,
+  tracker: PowerSpikeBudgetTracker
 ): {
   player: PlayerState;
   elapsedMs: number;
@@ -560,7 +589,8 @@ function simulateFloorCombat(
             deadMonster.state,
             lootRng,
             config.playerBehavior,
-            slotWeightMultiplier
+            slotWeightMultiplier,
+            tracker
           );
           nextPlayer = rewards.player;
           run = rewards.run;
@@ -604,6 +634,7 @@ function simulateFloorCombat(
       }
     }
     if (playerTurn.droppedItem !== undefined) {
+      recordSimulatedItemPowerSpike(tracker, floor, nextPlayer, playerTurn.droppedItem.item);
       rarityCounts[playerTurn.droppedItem.item.rarity] += 1;
       lootCollected += 1;
       nextPlayer = collectItem(nextPlayer, playerTurn.droppedItem.item, config.playerBehavior);
@@ -624,6 +655,27 @@ function simulateFloorCombat(
     elapsedMs += LOOP_TICK_MS;
   }
 
+  if (nextPlayer.health > 0 && tracker.needsFallbackReward(floor)) {
+    const fallbackTable = resolveProgressionSpikeTable(floor);
+    const fallback = fallbackTable === undefined
+      ? null
+      : resolveGuaranteedSpikeReward({
+          table: fallbackTable,
+          floor,
+          player: nextPlayer,
+          itemDefs: ITEM_DEF_MAP,
+          seedBase: `${runSeed}:real:fallback:${floor}`,
+          preferMajor: floor >= 4 && !tracker.hasMajorSpike()
+        });
+    tracker.markFallbackGranted(floor);
+    if (fallback !== null) {
+      recordSimulatedItemPowerSpike(tracker, floor, nextPlayer, fallback);
+      rarityCounts[fallback.rarity] += 1;
+      lootCollected += 1;
+      nextPlayer = collectItem(nextPlayer, fallback, config.playerBehavior);
+    }
+  }
+
   return {
     player: nextPlayer,
     elapsedMs,
@@ -639,7 +691,8 @@ function simulateFloorCombat(
 function simulateBossCombat(
   player: PlayerState,
   config: BalanceConfig,
-  runSeed: string
+  runSeed: string,
+  tracker: PowerSpikeBudgetTracker
 ): {
   player: PlayerState;
   elapsedMs: number;
@@ -829,6 +882,7 @@ function simulateBossCombat(
       (item): item is ItemInstance => item !== undefined
     );
     for (const item of collected) {
+      recordSimulatedItemPowerSpike(tracker, STORY_MAX_FLOOR, nextPlayer, item);
       rarityCounts[item.rarity] += 1;
       lootCollected += 1;
       nextPlayer = collectItem(nextPlayer, item, config.playerBehavior);
@@ -881,12 +935,13 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
   let skillDamage = 0;
   let autoAttackDamage = 0;
   let cleared = true;
+  const powerSpikeBudget = new PowerSpikeBudgetTracker();
 
   for (let floor = 1; floor <= floors; floor += 1) {
     const result =
       floor >= STORY_MAX_FLOOR
-        ? simulateBossCombat(player, config, runSeed)
-        : simulateFloorCombat(player, config, floor, runSeed, branchChoice);
+        ? simulateBossCombat(player, config, runSeed, powerSpikeBudget)
+        : simulateFloorCombat(player, config, floor, runSeed, branchChoice, powerSpikeBudget);
     player = result.player;
     runDurationMs += result.elapsedMs;
     floorReached = floor;
@@ -916,7 +971,8 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
     rarityCounts,
     skillUses,
     skillDamage,
-    autoAttackDamage
+    autoAttackDamage,
+    powerSpikeBudget: powerSpikeBudget.snapshot()
   };
 }
 
@@ -936,6 +992,13 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
   let totalSkillUses = 0;
   let totalSkillDamage = 0;
   let totalAutoAttackDamage = 0;
+  let totalAcceptedPowerSpikes = 0;
+  let totalMajorPowerSpikes = 0;
+  const pairSatisfiedCounts: Record<string, number> = {
+    "1-2": 0,
+    "3-4": 0,
+    "5": 0
+  };
 
   for (const run of runs) {
     deathCauseDistribution[run.deathCause] = (deathCauseDistribution[run.deathCause] ?? 0) + 1;
@@ -945,6 +1008,14 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
     totalSkillUses += run.skillUses;
     totalSkillDamage += run.skillDamage;
     totalAutoAttackDamage += run.autoAttackDamage;
+    totalAcceptedPowerSpikes += run.powerSpikeBudget.acceptedSpikeCount;
+    totalMajorPowerSpikes += run.powerSpikeBudget.majorSpikeCount;
+    const pair12Satisfied = run.powerSpikeBudget.pairStates["1-2"].satisfied;
+    const pair34Satisfied = run.powerSpikeBudget.pairStates["3-4"].satisfied;
+    const pair5Satisfied = run.powerSpikeBudget.pairStates["5"].satisfied;
+    pairSatisfiedCounts["1-2"] = (pairSatisfiedCounts["1-2"] ?? 0) + (pair12Satisfied ? 1 : 0);
+    pairSatisfiedCounts["3-4"] = (pairSatisfiedCounts["3-4"] ?? 0) + (pair34Satisfied ? 1 : 0);
+    pairSatisfiedCounts["5"] = (pairSatisfiedCounts["5"] ?? 0) + (pair5Satisfied ? 1 : 0);
   }
 
   const hpCurveP50: number[] = [];
@@ -977,6 +1048,15 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
       avgSkillCastsPer30s: Number(avgSkillCastsPer30s.toFixed(3)),
       avgSkillDamageShare: Number((totalSkillDamage / Math.max(1, totalPlayerDamage)).toFixed(4)),
       avgAutoAttackDamageShare: Number((totalAutoAttackDamage / Math.max(1, totalPlayerDamage)).toFixed(4))
+    },
+    powerSpikes: {
+      avgAcceptedSpikesPerRun: Number((totalAcceptedPowerSpikes / sampleSize).toFixed(3)),
+      avgMajorSpikesPerRun: Number((totalMajorPowerSpikes / sampleSize).toFixed(3)),
+      pairSatisfactionRate: {
+        "1-2": Number((((pairSatisfiedCounts["1-2"] ?? 0) / sampleSize)).toFixed(4)),
+        "3-4": Number((((pairSatisfiedCounts["3-4"] ?? 0) / sampleSize)).toFixed(4)),
+        "5": Number((((pairSatisfiedCounts["5"] ?? 0) / sampleSize)).toFixed(4))
+      }
     }
   };
 }

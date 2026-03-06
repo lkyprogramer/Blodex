@@ -96,6 +96,7 @@ describe("renderRunSummaryScreen", () => {
           playerFacingChoices: 6,
           choiceCountByFloor: { "1": 1, "2": 2 },
           powerSpikes: 2,
+          majorPowerSpikes: 1,
           buildFormed: 1,
           rareDropsPresented: 2,
           bossRewardClosed: 1

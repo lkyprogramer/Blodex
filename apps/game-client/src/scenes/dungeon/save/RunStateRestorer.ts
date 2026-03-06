@@ -326,6 +326,9 @@ export class RunStateRestorer {
         }
       }
       host.progressionRuntimeModule.restoreChallengeRoom(host.time.now);
+      if (typeof host.restorePowerSpikeBudgetState === "function") {
+        host.restorePowerSpikeBudgetState(save.powerSpikeBudgetState);
+      }
       if (typeof host.restorePhase6TelemetryState === "function") {
         host.restorePhase6TelemetryState(save.phase6TelemetryState);
       }

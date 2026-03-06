@@ -570,6 +570,7 @@ export interface Phase6StoryTelemetry {
   playerFacingChoices: number;
   choiceCountByFloor: Record<string, number>;
   powerSpikes: number;
+  majorPowerSpikes: number;
   buildFormed: number;
   rareDropsPresented: number;
   bossRewardClosed: number;

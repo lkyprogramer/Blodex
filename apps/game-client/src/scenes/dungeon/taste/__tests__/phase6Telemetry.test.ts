@@ -21,6 +21,7 @@ describe("Phase6TelemetryTracker", () => {
       seed: "test-seed",
       rolledAffixes: {}
     });
+    tracker.recordPowerSpike(true);
     const resolution: SkillResolution = {
       player: {} as SkillResolution["player"],
       affectedMonsters: [],
@@ -85,6 +86,7 @@ describe("Phase6TelemetryTracker", () => {
 
     expect(snapshot.story.playerFacingChoices).toBe(1);
     expect(snapshot.story.powerSpikes).toBe(1);
+    expect(snapshot.story.majorPowerSpikes).toBe(1);
     expect(snapshot.story.buildFormed).toBe(1);
     expect(snapshot.combat.skillUses).toBe(1);
     expect(snapshot.combat.skillDamage).toBe(32);

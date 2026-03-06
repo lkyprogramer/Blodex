@@ -280,9 +280,13 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
       );
     });
 
-    host.eventBus.on("power_spike", ({ floor, source, itemDefId, rarity, timestampMs }) => {
+    host.eventBus.on("power_spike", ({ floor, source, sourceKind, pairId, itemDefId, rarity, major, amplitude, timestampMs }) => {
+      const amplitudeSuffix =
+        amplitude === undefined
+          ? ""
+          : ` [off ${Math.round(amplitude.offensiveDelta * 100)}%, def ${Math.round(amplitude.defensiveDelta * 100)}%, util ${Math.round(amplitude.utilityDelta * 100)}%]`;
       host.runLog.append(
-        `Power spike detected on floor ${floor} via ${source}${itemDefId === undefined ? "" : ` (${itemDefId}:${rarity ?? "unknown"})`}.`,
+        `Power spike detected on floor ${floor}${pairId === undefined ? "" : ` [pair ${pairId}]`} via ${source}${sourceKind === undefined ? "" : `/${sourceKind}`}${itemDefId === undefined ? "" : ` (${itemDefId}:${rarity ?? "unknown"})`}${major ? " [major]" : ""}${amplitudeSuffix}.`,
         "success",
         timestampMs
       );

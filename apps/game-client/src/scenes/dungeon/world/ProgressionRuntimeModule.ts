@@ -309,7 +309,7 @@ export class ProgressionRuntimeModule {
           })
         );
         if (reward !== null) {
-          host.spawnLootDrop(reward, target.entrance);
+          host.spawnLootDrop(reward, target.entrance, "hidden_room_reward");
         }
       }
       target.rewardsClaimed = true;
@@ -534,7 +534,7 @@ export class ProgressionRuntimeModule {
             );
       const center = this.challengeRoomCenter(host.challengeRoomState.roomId);
       if (reward !== null && center !== null) {
-        host.spawnLootDrop(reward, center);
+        host.spawnLootDrop(reward, center, "challenge_reward");
       }
       host.tryDiscoverBlueprints("challenge_room", nowMs, host.challengeRoomState.roomId);
       host.runLog.appendKey("log.challenge.cleared_rewards", undefined, "success", nowMs);

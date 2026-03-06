@@ -216,6 +216,15 @@ function makeSave(): RunSaveDataV2 {
       nextPromptDelayMs: 2_100,
       pendingLevelUpSkillOfferIds: ["chain_lightning"]
     },
+    powerSpikeBudgetState: {
+      pairStates: {
+        "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
+        "3-4": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
+        "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+      },
+      acceptedSpikeCount: 1,
+      majorSpikeCount: 0
+    },
     deferredOutcomes: [
       {
         outcomeId: "event-1",
@@ -241,6 +250,7 @@ function makeSave(): RunSaveDataV2 {
           "2": 2
         },
         powerSpikes: 2,
+        majorPowerSpikes: 1,
         buildFormed: 1,
         rareDropsPresented: 1,
         bossRewardClosed: 0
@@ -404,6 +414,13 @@ describe("save", () => {
     expect(loaded?.phase6TelemetryState).toEqual(save.phase6TelemetryState);
   });
 
+  it("round-trips power spike budget runtime state", () => {
+    const save = makeSave();
+    const loaded = deserializeRunState(serializeRunState(save));
+
+    expect(loaded?.powerSpikeBudgetState).toEqual(save.powerSpikeBudgetState);
+  });
+
   it("rejects invalid floor choice budget snapshot shape", () => {
     const broken = makeSave() as unknown as Record<string, unknown>;
     broken.floorChoiceBudget = {
@@ -433,6 +450,21 @@ describe("save", () => {
     broken.progressionPromptState = {
       nextPromptDelayMs: "soon",
       pendingLevelUpSkillOfferIds: ["chain_lightning"]
+    };
+
+    expect(validateSave(broken)).toBe(false);
+  });
+
+  it("rejects invalid power spike budget runtime state shape", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    broken.powerSpikeBudgetState = {
+      pairStates: {
+        "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
+        "3-4": { hitCount: "0", majorHitCount: 0, satisfied: false, fallbackGranted: false },
+        "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+      },
+      acceptedSpikeCount: 1,
+      majorSpikeCount: 0
     };
 
     expect(validateSave(broken)).toBe(false);
