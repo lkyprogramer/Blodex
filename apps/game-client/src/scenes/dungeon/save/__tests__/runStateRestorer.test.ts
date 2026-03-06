@@ -26,6 +26,7 @@ function createSave(): RunSaveDataV2 {
   const derivedStats = deriveStats(baseStats, []);
   return {
     schemaVersion: 2,
+    runtimeNowMs: 500,
     savedAtMs: 123,
     appVersion: "test",
     runId: "seed-1:10",
@@ -62,6 +63,7 @@ function createSave(): RunSaveDataV2 {
       xp: 0,
       xpToNextLevel: 10,
       pendingLevelUpChoices: 0,
+      pendingSkillChoices: 1,
       health: 100,
       mana: 40,
       baseStats,
@@ -73,7 +75,15 @@ function createSave(): RunSaveDataV2 {
         skillSlots: [null, null],
         cooldowns: {}
       },
-      activeBuffs: []
+      activeBuffs: [
+        {
+          defId: "war_cry",
+          sourceId: "player-1",
+          targetId: "player-1",
+          appliedAtMs: 100,
+          expiresAtMs: 1000
+        }
+      ]
     },
     consumables: createInitialConsumableState(0),
     dungeon: {
@@ -92,7 +102,37 @@ function createSave(): RunSaveDataV2 {
     },
     hazards: [],
     boss: null,
-    monsters: [],
+    monsters: [
+      {
+        state: {
+          id: "monster-1",
+          archetypeId: "melee_grunt",
+          level: 2,
+          health: 30,
+          maxHealth: 30,
+          damage: 8,
+          attackRange: 1.5,
+          moveSpeed: 64,
+          xpValue: 4,
+          dropTableId: "starter_floor",
+          position: { x: 2, y: 2 },
+          aiState: "attack",
+          aiBehavior: "chase",
+          activeBuffs: [
+            {
+              defId: "frost_slow",
+              sourceId: "player-1",
+              targetId: "monster-1",
+              appliedAtMs: 100,
+              expiresAtMs: 1000
+            }
+          ]
+        },
+        baseMoveSpeed: 128,
+        nextAttackAt: 250,
+        nextSupportAt: 0
+      }
+    ],
     lootOnGround: [],
     eventNode: null,
     minimap: {
@@ -115,6 +155,10 @@ function createSave(): RunSaveDataV2 {
     selectedMutationIds: [],
     blueprintFoundIdsInRun: [],
     deferredOutcomes: [],
+    progressionPromptState: {
+      nextPromptDelayMs: 2_100,
+      pendingLevelUpSkillOfferIds: ["chain_lightning"]
+    },
     phase6TelemetryState: {
       startedAtMs: 10,
       buildFormedState: false,
@@ -155,7 +199,7 @@ function createHost(): RunStateRestoreHost {
   return {
     pendingResumeSave: null,
     time: {
-      now: 200
+      now: 600
     },
     meta: {
       selectedMutationIds: [],
@@ -209,6 +253,18 @@ function createHost(): RunStateRestoreHost {
         sprite: {},
         yOffset: 0
       })),
+      spawnMonster: vi.fn((state) => ({
+        state,
+        baseMoveSpeed: state.moveSpeed,
+        sprite: {},
+        healthBarBg: {},
+        healthBarFg: {},
+        affixMarker: undefined,
+        healthBarYOffset: 0,
+        yOffset: 0,
+        nextAttackAt: 0,
+        nextSupportAt: 0
+      })),
       configureCamera: vi.fn()
     },
     cameras: {
@@ -227,6 +283,7 @@ function createHost(): RunStateRestoreHost {
     updateMinimap: vi.fn(),
     resetMutationRuntimeState: vi.fn(),
     refreshSynergyRuntime: vi.fn(),
+    restoreProgressionPromptState: vi.fn(),
     resetFloorChoiceBudget: vi.fn(),
     floorConfig: null,
     currentBiome: null
@@ -247,5 +304,30 @@ describe("RunStateRestorer", () => {
       emitActivationEvents: false,
       recordTelemetry: false
     });
+    expect(host.restoreProgressionPromptState).toHaveBeenCalledWith(
+      {
+        nextPromptDelayMs: 2_100,
+        pendingLevelUpSkillOfferIds: ["chain_lightning"]
+      },
+      600
+    );
+  });
+
+  it("restores monster baseMoveSpeed separately from current slowed moveSpeed", () => {
+    const host = createHost();
+    const restorer = new RunStateRestorer({
+      host
+    });
+
+    const restored = restorer.restore(createSave());
+
+    expect(restored).toBe(true);
+    const restoredMonsters = vi.mocked(host.entityManager.setMonsters).mock.calls[0]?.[0] ?? [];
+    expect(restoredMonsters[0]?.baseMoveSpeed).toBe(128);
+    expect(restoredMonsters[0]?.state.moveSpeed).toBe(64);
+    expect(restoredMonsters[0]?.state.activeBuffs?.[0]?.appliedAtMs).toBe(200);
+    expect(restoredMonsters[0]?.state.activeBuffs?.[0]?.expiresAtMs).toBe(1100);
+    expect(host.player.activeBuffs?.[0]?.appliedAtMs).toBe(200);
+    expect(host.player.activeBuffs?.[0]?.expiresAtMs).toBe(1100);
   });
 });

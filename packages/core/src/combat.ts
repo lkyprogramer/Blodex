@@ -1,5 +1,6 @@
-import type { CombatEvent, MonsterState, PlayerState } from "./contracts/types";
+import type { CombatEvent, DamageType, MonsterState, PlayerState } from "./contracts/types";
 import type { RngLike } from "./contracts/types";
+import { hasMonsterAffix } from "./monsterAffix";
 import {
   clampSpecialAffixTotals,
   createEmptySpecialAffixTotals,
@@ -25,6 +26,8 @@ function clamp(num: number, min: number, max: number): number {
 
 const DEFAULT_ARMOR_MITIGATION_K = 110;
 const MIN_INCOMING_DAMAGE = 1;
+const ARMORED_PHYSICAL_DAMAGE_MULTIPLIER = 0.78;
+const ARMORED_ARCANE_DAMAGE_MULTIPLIER = 0.92;
 
 export function resolveArmorMitigationRatio(armor: number, k = DEFAULT_ARMOR_MITIGATION_K): number {
   const normalizedArmor = Math.max(0, armor);
@@ -36,6 +39,16 @@ export function resolveMitigatedMonsterDamage(rawDamage: number, armor: number, 
   const normalizedRawDamage = Math.max(0, rawDamage);
   const mitigationRatio = resolveArmorMitigationRatio(armor, k);
   return Math.max(MIN_INCOMING_DAMAGE, Math.floor(normalizedRawDamage * (1 - mitigationRatio)));
+}
+
+export function resolveMonsterTakenDamage(rawDamage: number, monster: MonsterState, damageType: DamageType): number {
+  const normalizedRawDamage = Math.max(0, rawDamage);
+  if (!hasMonsterAffix(monster, "armored")) {
+    return Math.max(1, Math.floor(normalizedRawDamage));
+  }
+  const multiplier =
+    damageType === "arcane" ? ARMORED_ARCANE_DAMAGE_MULTIPLIER : ARMORED_PHYSICAL_DAMAGE_MULTIPLIER;
+  return Math.max(1, Math.floor(normalizedRawDamage * multiplier));
 }
 
 export function resolvePlayerAttack(
@@ -56,7 +69,11 @@ export function resolvePlayerAttack(
   const damageMultiplier = Math.max(0.05, modifiers.damageMultiplier ?? 1);
   const critMultiplier = Math.max(1, (modifiers.critDamageMultiplier ?? 1.7) * (1 + specialAffixTotals.critDamage));
   const crit = rng.next() < critChance;
-  const damage = Math.max(1, Math.floor(player.derivedStats.attackPower * damageMultiplier * (crit ? critMultiplier : 1)));
+  const damage = resolveMonsterTakenDamage(
+    Math.max(1, Math.floor(player.derivedStats.attackPower * damageMultiplier * (crit ? critMultiplier : 1))),
+    monster,
+    "physical"
+  );
   const nextHealth = Math.max(0, monster.health - damage);
   const lifestealHeal =
     specialAffixTotals.lifesteal > 0 && damage > 0

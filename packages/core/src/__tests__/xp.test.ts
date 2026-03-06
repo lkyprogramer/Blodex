@@ -10,6 +10,7 @@ function makePlayer(): PlayerState {
     xp: 0,
     xpToNextLevel: 100,
     pendingLevelUpChoices: 0,
+    pendingSkillChoices: 0,
     health: 120,
     mana: 50,
     baseStats: { strength: 10, dexterity: 9, vitality: 11, intelligence: 7 },
@@ -35,6 +36,7 @@ describe("xp settlement", () => {
     expect(result.leveledUp).toBe(true);
     expect(result.levelsGained).toBe(2);
     expect(result.pendingLevelUpChoices).toBe(2);
+    expect(result.pendingSkillChoices).toBe(2);
     expect(result.player.baseStats.strength).toBe(10);
   });
 
@@ -44,6 +46,7 @@ describe("xp settlement", () => {
     expect(result.levelsGained).toBe(1);
     expect(result.player.baseStats.dexterity).toBe(10);
     expect(result.pendingLevelUpChoices).toBe(0);
+    expect(result.pendingSkillChoices).toBe(0);
   });
 
   it("consumes one pending point when applying a level-up choice", () => {
@@ -52,5 +55,6 @@ describe("xp settlement", () => {
 
     expect(picked.baseStats.vitality).toBe(12);
     expect(picked.pendingLevelUpChoices).toBe(0);
+    expect(picked.pendingSkillChoices).toBe(1);
   });
 });

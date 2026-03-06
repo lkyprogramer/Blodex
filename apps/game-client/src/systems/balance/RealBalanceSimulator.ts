@@ -11,12 +11,12 @@ import {
   getDifficultyModifier,
   initBossState,
   markSkillUsed,
+  pickSkillChoicesWeighted,
   markBossAttackUsed,
   resolveBranchChoiceBySeed,
   resolveBiomeForFloorBySeed,
   resolveBossAttack,
   resolveEquippedWeaponType,
-  resolveHealthRegenTick,
   resolvePlayerAttack,
   resolveSpecialAffixTotals,
   resolveWeaponTypeDef,
@@ -50,6 +50,12 @@ import {
 } from "@blodex/content";
 import { CombatSystem } from "../CombatSystem";
 import type { MonsterRuntime } from "../EntityManager";
+import {
+  applyPassiveRegenForSimulation,
+  applyResolvedBuffsForSimulation,
+  createSimulationRegenAccumulator,
+  updateSimulationBuffs
+} from "./simulationRuntime";
 
 const STORY_MAX_FLOOR = 5;
 const LOOP_TICK_MS = 120;
@@ -109,6 +115,7 @@ function createBalancePlayer(): PlayerState {
     xp: 0,
     xpToNextLevel: xpForNextLevel(1),
     pendingLevelUpChoices: 0,
+    pendingSkillChoices: 0,
     health: derivedStats.maxHealth,
     mana: derivedStats.maxMana,
     baseStats,
@@ -199,6 +206,55 @@ function applyPendingLevelUps(
       mana: Math.min(derivedStats.maxMana, next.mana + 4)
     };
   }
+  while ((next.pendingSkillChoices ?? 0) > 0 && next.skills !== undefined) {
+    const ownedSkillIds = next.skills.skillSlots
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+      .map((entry) => entry.defId);
+    const strongestStat =
+      next.baseStats.strength >= next.baseStats.dexterity && next.baseStats.strength >= next.baseStats.intelligence
+        ? "strength"
+        : next.baseStats.dexterity >= next.baseStats.intelligence
+          ? "dexterity"
+          : "intelligence";
+    const offers = pickSkillChoicesWeighted(SKILL_DEFS, new SeededRng(`sim-skill-offer:${next.level}:${next.pendingSkillChoices ?? 0}`), {
+      strongestStat,
+      ownedSkillIds
+    }, 3);
+    const chosen = offers[0];
+    if (chosen === undefined) {
+      next = {
+        ...next,
+        pendingSkillChoices: 0
+      };
+      break;
+    }
+    const slots = [...next.skills.skillSlots];
+    const existingIndex = slots.findIndex((entry) => entry?.defId === chosen.id);
+    if (existingIndex >= 0) {
+      const existing = slots[existingIndex];
+      if (existing !== null && existing !== undefined) {
+        slots[existingIndex] = {
+          defId: existing.defId,
+          level: Math.min(3, existing.level + 1)
+        };
+      }
+    } else {
+      const firstEmpty = slots.findIndex((entry) => entry === null);
+      if (firstEmpty >= 0) {
+        slots[firstEmpty] = { defId: chosen.id, level: 1 };
+      } else {
+        slots[0] = { defId: chosen.id, level: 1 };
+      }
+    }
+    next = {
+      ...next,
+      pendingSkillChoices: Math.max(0, Math.floor(next.pendingSkillChoices ?? 0) - 1),
+      skills: {
+        ...next.skills,
+        skillSlots: slots
+      }
+    };
+  }
   return next;
 }
 
@@ -237,23 +293,6 @@ function collectItem(
   };
 }
 
-function applyPassiveRegen(player: PlayerState, deltaMs: number): PlayerState {
-  const equipped = Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined);
-  const totals = resolveSpecialAffixTotals(equipped);
-  const regen = resolveHealthRegenTick(
-    player.health,
-    player.derivedStats.maxHealth,
-    totals.healthRegen,
-    deltaMs
-  );
-  return regen.healed <= 0
-    ? player
-    : {
-        ...player,
-        health: regen.health
-      };
-}
-
 function createMonsterRuntime(
   archetype: MonsterArchetypeDef,
   state: MonsterState
@@ -261,6 +300,7 @@ function createMonsterRuntime(
   return {
     state,
     archetype,
+    baseMoveSpeed: state.moveSpeed,
     sprite: makeSpriteStub<MonsterRuntime["sprite"]>(),
     healthBarBg: makeSpriteStub<MonsterRuntime["healthBarBg"]>(),
     healthBarFg: makeSpriteStub<MonsterRuntime["healthBarFg"]>(),
@@ -454,6 +494,7 @@ function simulateFloorCombat(
   let skillUses = 0;
   let skillDamage = 0;
   let autoAttackDamage = 0;
+  let regenAccumulator = createSimulationRegenAccumulator();
   const rarityCounts: Record<"common" | "magic" | "rare", number> = {
     common: 0,
     magic: 0,
@@ -471,6 +512,7 @@ function simulateFloorCombat(
   );
 
   while (nextPlayer.health > 0 && (monsterQueue.length > 0 || activeMonsters.length > 0) && elapsedMs < MAX_FLOOR_SIM_MS) {
+    nextPlayer = updateSimulationBuffs(nextPlayer, activeMonsters, elapsedMs);
     if (activeMonsters.length === 0) {
       activeMonsters.push(...monsterQueue.splice(0, packSize));
       attackTargetId = null;
@@ -486,10 +528,14 @@ function simulateFloorCombat(
     );
     if (skillDef !== null && nextPlayer.skills !== undefined) {
       const resolution = combatSystem.useSkill(nextPlayer, activeMonsters, skillDef, skillRng, elapsedMs, WEAPON_TYPE_DEF_MAP);
-      nextPlayer = {
-        ...resolution.player,
-        skills: markSkillUsed(nextPlayer.skills, skillDef, elapsedMs)
-      };
+      nextPlayer = applyResolvedBuffsForSimulation(
+        {
+          ...resolution.player,
+          skills: markSkillUsed(nextPlayer.skills, skillDef, elapsedMs)
+        },
+        activeMonsters,
+        resolution.buffsApplied
+      );
       skillUses += 1;
       skillDamage += sumPlayerDamage(resolution.events, nextPlayer.id);
       const deadIds = new Set(
@@ -572,7 +618,9 @@ function simulateFloorCombat(
     }
 
     const monsterTurn = combatSystem.updateMonsterAttacks(activeMonsters, nextPlayer, elapsedMs, combatRng);
-    nextPlayer = applyPassiveRegen(monsterTurn.player, LOOP_TICK_MS);
+    const regen = applyPassiveRegenForSimulation(monsterTurn.player, LOOP_TICK_MS, regenAccumulator);
+    nextPlayer = regen.player;
+    regenAccumulator = regen.accumulator;
     elapsedMs += LOOP_TICK_MS;
   }
 
@@ -631,42 +679,49 @@ function simulateBossCombat(
   let skillUses = 0;
   let skillDamage = 0;
   let autoAttackDamage = 0;
+  let regenAccumulator = createSimulationRegenAccumulator();
+  let bossActiveBuffs: MonsterState["activeBuffs"] = [];
 
   while (nextPlayer.health > 0 && bossState.health > 0 && elapsedMs < MAX_FLOOR_SIM_MS) {
+    const bossRuntime = createMonsterRuntime(
+      proxyArchetype,
+      {
+        id: bossState.bossId,
+        archetypeId: "melee_grunt",
+        level: STORY_MAX_FLOOR,
+        health: bossState.health,
+        maxHealth: bossState.maxHealth,
+        damage: 0,
+        attackRange: 1.5,
+        moveSpeed: 0,
+        xpValue: 0,
+        dropTableId: BONE_SOVEREIGN.dropTableId,
+        position: { ...bossState.position },
+        aiState: "attack",
+        isBoss: true,
+        activeBuffs: bossActiveBuffs
+      }
+    );
+    nextPlayer = updateSimulationBuffs(nextPlayer, [bossRuntime], elapsedMs);
+    bossActiveBuffs = bossRuntime.state.activeBuffs ?? [];
     const skillDef = chooseSkillForSimulation(nextPlayer, config.playerBehavior, 1, elapsedMs, skillRng);
     if (skillDef !== null && nextPlayer.skills !== undefined && bossState.health > 0) {
-      const proxy = createMonsterRuntime(
-        proxyArchetype,
+      const resolution = combatSystem.useSkill(nextPlayer, [bossRuntime], skillDef, skillRng, elapsedMs, WEAPON_TYPE_DEF_MAP);
+      nextPlayer = applyResolvedBuffsForSimulation(
         {
-          id: bossState.bossId,
-          archetypeId: "melee_grunt",
-          level: STORY_MAX_FLOOR,
-          health: bossState.health,
-          maxHealth: bossState.maxHealth,
-          damage: 0,
-          attackRange: 1.5,
-          moveSpeed: 0,
-          xpValue: 0,
-          dropTableId: BONE_SOVEREIGN.dropTableId,
-          position: { ...bossState.position },
-          aiState: "attack",
-          isBoss: true
-        }
+          ...resolution.player,
+          skills: markSkillUsed(nextPlayer.skills, skillDef, elapsedMs)
+        },
+        [bossRuntime],
+        resolution.buffsApplied
       );
-      const resolution = combatSystem.useSkill(nextPlayer, [proxy], skillDef, skillRng, elapsedMs, WEAPON_TYPE_DEF_MAP);
-      nextPlayer = {
-        ...resolution.player,
-        skills: markSkillUsed(nextPlayer.skills, skillDef, elapsedMs)
-      };
       skillUses += 1;
       skillDamage += sumPlayerDamage(resolution.events, nextPlayer.id);
-      const nextBossState = resolution.affectedMonsters[0];
-      if (nextBossState !== undefined) {
-        bossState = {
-          ...bossState,
-          health: nextBossState.health
-        };
-      }
+      bossActiveBuffs = bossRuntime.state.activeBuffs ?? [];
+      bossState = {
+        ...bossState,
+        health: bossRuntime.state.health
+      };
       if (bossState.health <= 0) {
         break;
       }
@@ -700,7 +755,9 @@ function simulateBossCombat(
       });
       const dealt = Math.max(0, proxy.health - playerHit.monster.health);
       autoAttackDamage += dealt;
-      nextPlayer = applyPassiveRegen(playerHit.player, LOOP_TICK_MS);
+      const regen = applyPassiveRegenForSimulation(playerHit.player, LOOP_TICK_MS, regenAccumulator);
+      nextPlayer = regen.player;
+      regenAccumulator = regen.accumulator;
       if (dealt > 0) {
         bossState = updateBossPhase(applyDamageToBoss(bossState, dealt), BONE_SOVEREIGN);
       }
@@ -726,7 +783,9 @@ function simulateBossCombat(
         nextPlayer.position,
         specialTotals
       );
-      nextPlayer = applyPassiveRegen(result.player, LOOP_TICK_MS);
+      const regen = applyPassiveRegenForSimulation(result.player, LOOP_TICK_MS, regenAccumulator);
+      nextPlayer = regen.player;
+      regenAccumulator = regen.accumulator;
       pendingBossAttack = undefined;
     } else if (pendingBossAttack === undefined) {
       const attack = selectBossAttack(bossState, BONE_SOVEREIGN, elapsedMs, bossRng);
@@ -747,7 +806,9 @@ function simulateBossCombat(
             nextPlayer.position,
             specialTotals
           );
-          nextPlayer = applyPassiveRegen(result.player, LOOP_TICK_MS);
+          const regen = applyPassiveRegenForSimulation(result.player, LOOP_TICK_MS, regenAccumulator);
+          nextPlayer = regen.player;
+          regenAccumulator = regen.accumulator;
         }
       }
     }

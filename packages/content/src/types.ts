@@ -349,6 +349,15 @@ export interface BlueprintDropSource {
   onlyIfNotFound?: boolean;
 }
 
+export interface BlueprintSkillAugment {
+  cooldownMultiplier?: number;
+  manaCostFlat?: number;
+  rangeMultiplier?: number;
+  durationMultiplier?: number;
+  damageMultiplier?: number;
+  appendedEffects?: SkillEffect[];
+}
+
 export interface BlueprintDef {
   id: string;
   name: string;
@@ -357,6 +366,7 @@ export interface BlueprintDef {
   forgeCost: number;
   rarity: "common" | "rare" | "legendary";
   dropSources: BlueprintDropSource[];
+  skillAugment?: BlueprintSkillAugment;
 }
 
 export type MutationEffect =

@@ -138,6 +138,56 @@ describe("combat contract", () => {
     expect(resolution.player.health).toBeGreaterThan(player.health);
   });
 
+  it("applies debuffs to every monster hit by an aoe skill", () => {
+    const player = makePlayer();
+    const skill: SkillDef = {
+      id: "frost_probe",
+      name: "Frost Probe",
+      description: "",
+      icon: "",
+      cooldownMs: 1000,
+      manaCost: 5,
+      damageType: "arcane",
+      targeting: "aoe_around",
+      range: 3,
+      effects: [{ type: "debuff", value: 0.5, duration: 3000, radius: 3, buffId: "frost_slow" }]
+    };
+    const monsters: MonsterState[] = [
+      { ...makeMonster(30), id: "m1", position: { x: 1, y: 0 } },
+      { ...makeMonster(30), id: "m2", position: { x: 2, y: 0 } }
+    ];
+
+    const resolution = resolveSkill(player, monsters, skill, fixedRng(1), 500);
+
+    expect(resolution.buffsApplied.map((entry) => entry.targetId)).toEqual(["m1", "m2"]);
+  });
+
+  it("lets arcane suffer less armored mitigation than physical", () => {
+    const armored = {
+      ...makeMonster(100),
+      affixes: ["armored"] as const
+    };
+    const player = makePlayer();
+    const physical = resolvePlayerAttack(player, armored, fixedRng(1), 1000);
+    const arcaneSkill: SkillDef = {
+      id: "arcane_probe",
+      name: "Arcane Probe",
+      description: "",
+      icon: "",
+      cooldownMs: 1000,
+      manaCost: 5,
+      damageType: "arcane",
+      targeting: "nearest",
+      range: 3,
+      effects: [{ type: "damage", value: 20 }]
+    };
+    const arcane = resolveSkill(player, [armored], arcaneSkill, fixedRng(1), 1200);
+    const physicalDamage = physical.events.find((event) => event.kind === "damage")?.amount ?? 0;
+    const arcaneDamage = arcane.events.find((event) => event.kind === "damage")?.amount ?? 0;
+
+    expect(physicalDamage).toBeLessThan(arcaneDamage);
+  });
+
   it("consumes cooldownReduction when applying skill cooldown", () => {
     const state = {
       skillSlots: [],

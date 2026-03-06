@@ -1,14 +1,18 @@
 import {
+  aggregateBuffEffects,
   buildMutationDefMap,
   canStartDailyScoredAttempt,
   collectUnlockedMutationIds,
   normalizeDifficultyMode,
+  resolveMonsterBaseMoveSpeedWithAffixes,
   validateMutationSelection,
+  type BuffInstance,
   type RunSaveDataV2
 } from "@blodex/core";
 import Phaser from "phaser";
 import {
   BIOME_MAP,
+  BUFF_DEF_MAP,
   MUTATION_DEFS,
   MUTATION_DEF_MAP,
   MONSTER_ARCHETYPES,
@@ -18,6 +22,61 @@ import {
 import { resolveBiomeVisualTheme } from "../presentation/BiomeVisualThemeRegistry";
 import type { RunStateRestoreHost } from "./savePorts";
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
+
+function resolveSavedMonsterBaseMoveSpeed(
+  archetypeMoveSpeed: number,
+  monster: RunSaveDataV2["monsters"][number]
+): number {
+  if (monster.baseMoveSpeed !== undefined) {
+    return monster.baseMoveSpeed;
+  }
+  return resolveMonsterBaseMoveSpeedWithAffixes(archetypeMoveSpeed, monster.state.affixes ?? []);
+}
+
+function resolveSavedMonsterMoveSpeed(
+  baseMoveSpeed: number,
+  monster: RunSaveDataV2["monsters"][number]
+): number {
+  const buffEffects = aggregateBuffEffects(monster.state.activeBuffs ?? [], BUFF_DEF_MAP);
+  return Number((baseMoveSpeed * (buffEffects.slowMultiplier ?? 1)).toFixed(2));
+}
+
+function rebaseSavedBuffs(
+  buffs: BuffInstance[],
+  savedRuntimeNowMs: number | undefined,
+  runtimeNowMs: number
+): BuffInstance[];
+function rebaseSavedBuffs(
+  buffs: undefined,
+  savedRuntimeNowMs: number | undefined,
+  runtimeNowMs: number
+): undefined;
+function rebaseSavedBuffs(
+  buffs: BuffInstance[] | undefined,
+  savedRuntimeNowMs: number | undefined,
+  runtimeNowMs: number
+): BuffInstance[] | undefined {
+  if (buffs === undefined) {
+    return undefined;
+  }
+  if (savedRuntimeNowMs === undefined) {
+    return buffs.map((buff) => ({ ...buff }));
+  }
+  return buffs.flatMap((buff) => {
+    const remainingMs = Math.max(0, Math.floor(buff.expiresAtMs - savedRuntimeNowMs));
+    if (remainingMs <= 0) {
+      return [];
+    }
+    const elapsedSinceAppliedMs = Math.max(0, Math.floor(savedRuntimeNowMs - buff.appliedAtMs));
+    return [
+      {
+        ...buff,
+        appliedAtMs: runtimeNowMs - elapsedSinceAppliedMs,
+        expiresAtMs: runtimeNowMs + remainingMs
+      }
+    ];
+  });
+}
 
 export interface RunStateRestorerOptions {
   host: RunStateRestoreHost;
@@ -127,7 +186,12 @@ export class RunStateRestorer {
         ...save.player,
         position: { ...save.player.position },
         inventory: [...save.player.inventory],
-        equipment: { ...save.player.equipment }
+        equipment: { ...save.player.equipment },
+        ...(save.player.activeBuffs === undefined
+          ? {}
+          : {
+              activeBuffs: rebaseSavedBuffs(save.player.activeBuffs, save.runtimeNowMs, host.time.now)
+            })
       });
       host.staircaseState = {
         position: { ...save.staircase.position },
@@ -187,11 +251,21 @@ export class RunStateRestorer {
             {
               ...monster.state,
               position: { ...monster.state.position },
-              ...(monster.state.affixes === undefined ? {} : { affixes: [...monster.state.affixes] })
+              ...(monster.state.affixes === undefined ? {} : { affixes: [...monster.state.affixes] }),
+              ...(monster.state.activeBuffs === undefined
+                ? {}
+                : {
+                    activeBuffs: rebaseSavedBuffs(monster.state.activeBuffs, save.runtimeNowMs, host.time.now)
+                  })
             },
             archetype,
             host.origin
           );
+          runtime.baseMoveSpeed = resolveSavedMonsterBaseMoveSpeed(archetype.moveSpeed, monster);
+          runtime.state = {
+            ...runtime.state,
+            moveSpeed: resolveSavedMonsterMoveSpeed(runtime.baseMoveSpeed, monster)
+          };
           runtime.nextAttackAt = monster.nextAttackAt;
           runtime.nextSupportAt = monster.nextSupportAt;
           host.entityLabelById.set(runtime.state.id, archetype.name);
@@ -291,6 +365,9 @@ export class RunStateRestorer {
         host.restoreFloorChoiceBudgetSnapshot(save.floorChoiceBudget, host.time.now);
       } else {
         host.resetFloorChoiceBudget(host.run.currentFloor, host.time.now);
+      }
+      if (typeof host.restoreProgressionPromptState === "function") {
+        host.restoreProgressionPromptState(save.progressionPromptState, host.time.now);
       }
       return true;
     } catch (error) {

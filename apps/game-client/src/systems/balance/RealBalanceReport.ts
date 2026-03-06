@@ -4,6 +4,7 @@ import {
   type BalanceReportScenario,
   type RunSimulation
 } from "@blodex/core";
+import { resolveRealBalanceScenarioCalibration } from "./RealBalanceCalibration";
 import { simulateRealRun } from "./RealBalanceSimulator";
 
 export interface BalanceDriftThresholds {
@@ -24,6 +25,7 @@ export interface BalanceDriftRow {
   name: string;
   sampleSize: number;
   seedBase: string;
+  calibrationId?: string;
   heuristic: RunSimulation;
   real: RunSimulation;
   delta: BalanceDriftDelta;
@@ -45,12 +47,6 @@ export const DEFAULT_BALANCE_DRIFT_THRESHOLDS: BalanceDriftThresholds = {
   avgRunDurationMs: 150_000
 };
 
-const DEFAULT_SCENARIO_THRESHOLD_OVERRIDES: Partial<Record<string, Partial<BalanceDriftThresholds>>> = {
-  "hard-average": {
-    clearRate: 0.68
-  }
-};
-
 function absoluteDelta(left: number, right: number): number {
   return Number(Math.abs(left - right).toFixed(4));
 }
@@ -60,9 +56,10 @@ export function createBalanceDriftRow(
   sampleSize: number,
   thresholds: BalanceDriftThresholds = DEFAULT_BALANCE_DRIFT_THRESHOLDS
 ): BalanceDriftRow {
+  const calibration = resolveRealBalanceScenarioCalibration(scenario.name, sampleSize);
   const effectiveThresholds: BalanceDriftThresholds = {
     ...thresholds,
-    ...(DEFAULT_SCENARIO_THRESHOLD_OVERRIDES[scenario.name] ?? {})
+    ...(calibration?.thresholds ?? {})
   };
   const seedBase = `phase5-real-${scenario.name}`;
   const heuristic = simulateRun({
@@ -102,6 +99,7 @@ export function createBalanceDriftRow(
     name: scenario.name,
     sampleSize,
     seedBase,
+    ...(calibration === undefined ? {} : { calibrationId: calibration.id }),
     heuristic,
     real,
     delta,

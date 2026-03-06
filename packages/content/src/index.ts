@@ -9,6 +9,7 @@ export * from "./monsterAffixes";
 export * from "./randomEvents";
 export * from "./bosses";
 export * from "./skills";
+export * from "./buffs";
 export * from "./unlocks";
 export * from "./talents";
 export * from "./types";

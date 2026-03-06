@@ -157,6 +157,7 @@ function makeRngCursor(): Record<RunRngStreamName, number> {
 function makeSave(): RunSaveDataV2 {
   return {
     schemaVersion: 2,
+    runtimeNowMs: 260,
     savedAtMs: 123,
     appVersion: "test",
     runId: "seed-1:100",
@@ -211,6 +212,10 @@ function makeSave(): RunSaveDataV2 {
     rngCursor: makeRngCursor(),
     blueprintFoundIdsInRun: ["bp_1"],
     selectedMutationIds: ["mut_1"],
+    progressionPromptState: {
+      nextPromptDelayMs: 2_100,
+      pendingLevelUpSkillOfferIds: ["chain_lightning"]
+    },
     deferredOutcomes: [
       {
         outcomeId: "event-1",
@@ -306,6 +311,7 @@ describe("save", () => {
 
     expect(loaded).not.toBeNull();
     expect(loaded?.runId).toBe(save.runId);
+    expect(loaded?.runtimeNowMs).toBe(260);
     expect(loaded?.monsters[0]?.nextAttackAt).toBe(300);
     expect(loaded?.rngCursor.event).toBe(6);
   });
@@ -384,6 +390,13 @@ describe("save", () => {
     });
   });
 
+  it("round-trips progression prompt state", () => {
+    const save = makeSave();
+    const loaded = deserializeRunState(serializeRunState(save));
+
+    expect(loaded?.progressionPromptState).toEqual(save.progressionPromptState);
+  });
+
   it("round-trips phase6 telemetry runtime state", () => {
     const save = makeSave();
     const loaded = deserializeRunState(serializeRunState(save));
@@ -411,6 +424,23 @@ describe("save", () => {
       combat: {},
       runtimeEffects: {}
     };
+
+    expect(validateSave(broken)).toBe(false);
+  });
+
+  it("rejects invalid progression prompt state shape", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    broken.progressionPromptState = {
+      nextPromptDelayMs: "soon",
+      pendingLevelUpSkillOfferIds: ["chain_lightning"]
+    };
+
+    expect(validateSave(broken)).toBe(false);
+  });
+
+  it("rejects invalid runtime clock shape", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    broken.runtimeNowMs = "260";
 
     expect(validateSave(broken)).toBe(false);
   });

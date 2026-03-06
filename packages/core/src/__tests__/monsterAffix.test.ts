@@ -3,6 +3,7 @@ import { SeededRng } from "../rng";
 import {
   affixRollChanceForFloor,
   applyAffixesToMonsterState,
+  resolveMonsterBaseMoveSpeedWithAffixes,
   resolveMonsterAffixOnDealDamage,
   resolveMonsterAffixOnKilled,
   rollMonsterAffixes
@@ -85,6 +86,16 @@ describe("monster affix", () => {
     expect(frenzied.damage).toBeGreaterThan(20);
     expect(armored.maxHealth).toBeGreaterThan(100);
     expect(armored.damage).toBeLessThan(20);
+  });
+
+  it("reuses the same frenzied move-speed rule for restore fallbacks", () => {
+    const frenzied = applyAffixesToMonsterState({
+      ...baseMonster(),
+      affixes: ["frenzied"]
+    });
+
+    expect(resolveMonsterBaseMoveSpeedWithAffixes(100, ["frenzied"])).toBe(frenzied.moveSpeed);
+    expect(resolveMonsterBaseMoveSpeedWithAffixes(100, [])).toBe(100);
   });
 
   it("applies vampiric leech from dealt damage with max health clamp", () => {

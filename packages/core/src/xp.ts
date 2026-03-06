@@ -13,6 +13,7 @@ export interface XpGainResult {
   leveledUp: boolean;
   levelsGained: number;
   pendingLevelUpChoices: number;
+  pendingSkillChoices: number;
 }
 
 export function applyLevelUpChoice(player: PlayerState, stat: keyof BaseStats): PlayerState {
@@ -48,6 +49,7 @@ export function applyXpGain(
   let xpToNext = player.xpToNextLevel;
   const base = { ...player.baseStats };
   let pendingLevelUpChoices = Math.max(0, Math.floor(player.pendingLevelUpChoices ?? 0));
+  let pendingSkillChoices = Math.max(0, Math.floor(player.pendingSkillChoices ?? 0));
   let leveledUp = false;
   let levelsGained = 0;
 
@@ -57,6 +59,7 @@ export function applyXpGain(
     xpToNext = xpForNextLevel(level);
     if (statPreference === "manual") {
       pendingLevelUpChoices += 1;
+      pendingSkillChoices += 1;
     } else {
       base[statPreference] += 1;
     }
@@ -71,10 +74,12 @@ export function applyXpGain(
       xp,
       xpToNextLevel: xpToNext,
       baseStats: base,
-      pendingLevelUpChoices
+      pendingLevelUpChoices,
+      pendingSkillChoices
     },
     leveledUp,
     levelsGained,
-    pendingLevelUpChoices
+    pendingLevelUpChoices,
+    pendingSkillChoices
   };
 }
