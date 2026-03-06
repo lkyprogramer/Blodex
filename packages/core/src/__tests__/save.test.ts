@@ -421,6 +421,26 @@ describe("save", () => {
     expect(loaded?.powerSpikeBudgetState).toEqual(save.powerSpikeBudgetState);
   });
 
+  it("defaults missing legacy major power spikes during v2 deserialize", () => {
+    const save = makeSave();
+    const legacyTelemetrySave = {
+      ...save,
+      phase6TelemetryState: {
+        ...save.phase6TelemetryState!,
+        story: {
+          ...save.phase6TelemetryState!.story
+        }
+      }
+    };
+    delete (legacyTelemetrySave.phase6TelemetryState.story as { majorPowerSpikes?: number }).majorPowerSpikes;
+
+    const result = deserializeRunStateResult(JSON.stringify(legacyTelemetrySave));
+
+    expect(result.sourceVersion).toBe(2);
+    expect(result.migratedFromV1).toBe(false);
+    expect(result.save?.phase6TelemetryState?.story.majorPowerSpikes).toBe(0);
+  });
+
   it("rejects invalid floor choice budget snapshot shape", () => {
     const broken = makeSave() as unknown as Record<string, unknown>;
     broken.floorChoiceBudget = {

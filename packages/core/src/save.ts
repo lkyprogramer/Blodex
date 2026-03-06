@@ -474,6 +474,16 @@ function normalizeLegacyDraftFields(input: Record<string, unknown>): Record<stri
     normalized.selectedMutationIds = [...input.selectedMutations];
   }
 
+  if (isRecord(normalized.phase6TelemetryState) && isRecord(normalized.phase6TelemetryState.story)) {
+    normalized.phase6TelemetryState = {
+      ...normalized.phase6TelemetryState,
+      story: {
+        ...normalized.phase6TelemetryState.story,
+        majorPowerSpikes: normalized.phase6TelemetryState.story.majorPowerSpikes ?? 0
+      }
+    };
+  }
+
   delete normalized.blueprintsFoundThisRun;
   delete normalized.selectedMutations;
   return normalized;
