@@ -132,6 +132,7 @@ import {
   type RunState,
   type StaircaseState,
   type SkillDef,
+  type SkillResolution,
   type SynergyRuntimeEffects,
   type TalentEffectTotals,
   type WeaponType
@@ -186,7 +187,8 @@ import {
 } from "../assets/imageAsset";
 import { removeConnectedBackgroundFromTexture } from "../assets/removeBackground";
 import { DebugApiBinder } from "./dungeon/debug/DebugApiBinder";
-import { DebugCommandRegistry, type DebugCommandHost } from "./dungeon/debug/DebugCommandRegistry";
+import { DebugCommandRegistry } from "./dungeon/debug/DebugCommandRegistry";
+import type { DebugCommandHost } from "./dungeon/debug/ports";
 import { DebugRuntimeModule } from "./dungeon/debug/DebugRuntimeModule";
 import {
   resolveDebugCheatsEnabled,
@@ -195,10 +197,11 @@ import {
 } from "./dungeon/debug/debugFlags";
 import { injectDebugLockedEquipment } from "./dungeon/debug/injectDebugLockedEquipment";
 import { DiagnosticsService } from "./dungeon/diagnostics/DiagnosticsService";
-import { BossCombatService, type BossCombatHost } from "./dungeon/encounter/BossCombatService";
+import { BossCombatService } from "./dungeon/encounter/BossCombatService";
 import { BossRuntimeModule, type BossRuntimeHost } from "./dungeon/encounter/BossRuntimeModule";
-import { BossSpawnService, type BossSpawnHost } from "./dungeon/encounter/BossSpawnService";
-import { BossTelegraphPresenter, type BossTelegraphHost } from "./dungeon/encounter/BossTelegraphPresenter";
+import { BossSpawnService } from "./dungeon/encounter/BossSpawnService";
+import { BossTelegraphPresenter } from "./dungeon/encounter/BossTelegraphPresenter";
+import type { BossCombatHost, BossSpawnHost, BossTelegraphHost } from "./dungeon/encounter/ports";
 import { EncounterController } from "./dungeon/encounter/EncounterController";
 import { PlayerActionModule, type PlayerActionHost } from "./dungeon/encounter/PlayerActionModule";
 import { entityLabel } from "./dungeon/logging/labelResolvers";
@@ -212,9 +215,11 @@ import { ProgressionChoiceRuntime, type ProgressionChoiceHost } from "./dungeon/
 import { RunCompletionModule, type RunCompletionHost } from "./dungeon/run/RunCompletionModule";
 import { resolveInitialRunSeed } from "./dungeon/run/resolveInitialRunSeed";
 import { RunPersistenceModule } from "./dungeon/save/RunPersistenceModule";
-import { RunSaveSnapshotBuilder, type RunSaveSnapshotHost } from "./dungeon/save/RunSaveSnapshotBuilder";
-import { RunStateRestorer, type RunStateRestoreHost } from "./dungeon/save/RunStateRestorer";
+import { RunSaveSnapshotBuilder } from "./dungeon/save/RunSaveSnapshotBuilder";
+import { RunStateRestorer } from "./dungeon/save/RunStateRestorer";
+import type { RunSaveSnapshotHost, RunStateRestoreHost } from "./dungeon/save/savePorts";
 import { SaveCoordinator } from "./dungeon/save/SaveCoordinator";
+import { Phase6TelemetryTracker } from "./dungeon/taste/Phase6Telemetry";
 import { TasteRuntimePortHub } from "./dungeon/taste/TasteRuntimePorts";
 import { HudPresenter } from "./dungeon/ui/HudPresenter";
 import {
@@ -224,12 +229,17 @@ import {
 } from "../ui/hud/compare/StatDeltaHighlighter";
 import { EventResolutionService } from "./dungeon/world/EventResolutionService";
 import { EventRuntimeModule } from "./dungeon/world/EventRuntimeModule";
-import { DeferredOutcomeRuntime, type DeferredOutcomeHost } from "./dungeon/world/DeferredOutcomeRuntime";
+import { DeferredOutcomeRuntime } from "./dungeon/world/DeferredOutcomeRuntime";
 import { FloorProgressionModule, type FloorProgressionHost } from "./dungeon/world/FloorProgressionModule";
-import { HazardRuntimeModule, type HazardRuntimeHost } from "./dungeon/world/HazardRuntimeModule";
+import { HazardRuntimeModule } from "./dungeon/world/HazardRuntimeModule";
 import { MerchantFlowService } from "./dungeon/world/MerchantFlowService";
-import { ProgressionRuntimeModule, type ProgressionRuntimeHost } from "./dungeon/world/ProgressionRuntimeModule";
-import type { RuntimeEventHost } from "./dungeon/world/types";
+import { ProgressionRuntimeModule } from "./dungeon/world/ProgressionRuntimeModule";
+import type {
+  DeferredOutcomeHost,
+  HazardRuntimeHost,
+  ProgressionRuntimeHost,
+  RuntimeEventHost
+} from "./dungeon/world/types";
 import { WorldEventController } from "./dungeon/world/WorldEventController";
 
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
@@ -339,13 +349,13 @@ export class DungeonScene extends Phaser.Scene {
   private readonly runFlowOrchestrator = new RunFlowOrchestrator();
   private readonly diagnosticsService = new DiagnosticsService();
   private readonly hudPresenter = new HudPresenter();
-  private readonly debugCommandRegistry = new DebugCommandRegistry(this as unknown as DebugCommandHost);
+  private readonly debugCommandRegistry = new DebugCommandRegistry(this.createDebugCommandHost());
   private readonly runSaveSnapshotBuilder = new RunSaveSnapshotBuilder({
-    host: this as unknown as RunSaveSnapshotHost,
+    host: this.createRunSaveSnapshotHost(),
     appVersion: RUN_SAVE_APP_VERSION
   });
   private readonly runStateRestorer = new RunStateRestorer({
-    host: this as unknown as RunStateRestoreHost
+    host: this.createRunStateRestoreHost()
   });
   private readonly contentLocalizer = getContentLocalizer();
   private readonly runLog = new RunLogService({
@@ -354,7 +364,7 @@ export class DungeonScene extends Phaser.Scene {
     }
   }, getI18nService());
   private readonly deferredOutcomeRuntime = new DeferredOutcomeRuntime({
-    host: this as unknown as DeferredOutcomeHost
+    host: this.createDeferredOutcomeHost()
   });
   private saveCoordinator!: SaveCoordinator;
   private debugRuntimeModule!: DebugRuntimeModule;
@@ -505,6 +515,7 @@ export class DungeonScene extends Phaser.Scene {
     host: this as unknown as ProgressionChoiceHost
   });
   private readonly tasteRuntime = new TasteRuntimePortHub();
+  private readonly phase6Telemetry = new Phase6TelemetryTracker();
   private nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
   private readonly debugLockedEquipQuery = DEBUG_LOCKED_EQUIP_QUERY;
   private readonly debugLockedEquipIconId = DEBUG_LOCKED_EQUIP_ICON_ID;
@@ -532,6 +543,1225 @@ export class DungeonScene extends Phaser.Scene {
         }
       }
     );
+  }
+
+  private createRunSaveSnapshotHost(): RunSaveSnapshotHost {
+    const scene = this;
+    return {
+      get runEnded() {
+        return scene.runEnded;
+      },
+      get runSeed() {
+        return scene.runSeed;
+      },
+      get run() {
+        return scene.run;
+      },
+      get player() {
+        return scene.player;
+      },
+      get consumables() {
+        return scene.consumables;
+      },
+      get dungeon() {
+        return scene.dungeon;
+      },
+      get staircaseState() {
+        return scene.staircaseState;
+      },
+      get hazards() {
+        return scene.hazards;
+      },
+      get bossState() {
+        return scene.bossState;
+      },
+      get eventNode() {
+        return scene.eventNode;
+      },
+      get merchantOffers() {
+        return scene.merchantOffers;
+      },
+      get mapRevealActive() {
+        return scene.mapRevealActive;
+      },
+      get blueprintFoundIdsInRun() {
+        return scene.blueprintFoundIdsInRun;
+      },
+      get mutationRuntime() {
+        return scene.mutationRuntime;
+      },
+      get deferredOutcomes() {
+        return scene.deferredOutcomes;
+      },
+      get uiManager() {
+        return scene.uiManager;
+      },
+      get entityManager() {
+        return scene.entityManager;
+      },
+      get saveManager() {
+        return scene.saveManager;
+      },
+      captureFloorChoiceBudgetSnapshot() {
+        return scene.captureFloorChoiceBudgetSnapshot();
+      },
+      capturePhase6TelemetryState(elapsedMs) {
+        return scene.capturePhase6TelemetryState(elapsedMs);
+      },
+      get spawnRng() {
+        return scene.spawnRng;
+      },
+      get combatRng() {
+        return scene.combatRng;
+      },
+      get lootRng() {
+        return scene.lootRng;
+      },
+      get skillRng() {
+        return scene.skillRng;
+      },
+      get bossRng() {
+        return scene.bossRng;
+      },
+      get biomeRng() {
+        return scene.biomeRng;
+      },
+      get hazardRng() {
+        return scene.hazardRng;
+      },
+      get eventRng() {
+        return scene.eventRng;
+      },
+      get merchantRng() {
+        return scene.merchantRng;
+      }
+    };
+  }
+
+  private createRunStateRestoreHost(): RunStateRestoreHost {
+    const scene = this;
+    return {
+      get pendingResumeSave() {
+        return scene.pendingResumeSave;
+      },
+      set pendingResumeSave(value) {
+        scene.pendingResumeSave = value;
+      },
+      get runSeed() {
+        return scene.runSeed;
+      },
+      set runSeed(value) {
+        scene.runSeed = value;
+      },
+      get run() {
+        return scene.run;
+      },
+      set run(value) {
+        scene.run = value;
+      },
+      get dailyPracticeMode() {
+        return scene.dailyPracticeMode;
+      },
+      set dailyPracticeMode(value) {
+        scene.dailyPracticeMode = value;
+      },
+      get dailyFixedWeaponType() {
+        return scene.dailyFixedWeaponType;
+      },
+      set dailyFixedWeaponType(value) {
+        scene.dailyFixedWeaponType = value;
+      },
+      get selectedDifficulty() {
+        return scene.selectedDifficulty;
+      },
+      set selectedDifficulty(value) {
+        scene.selectedDifficulty = value;
+      },
+      get runEnded() {
+        return scene.runEnded;
+      },
+      set runEnded(value) {
+        scene.runEnded = value;
+      },
+      get lastDeathReason() {
+        return scene.lastDeathReason;
+      },
+      set lastDeathReason(value) {
+        scene.lastDeathReason = value;
+      },
+      get manualMoveTarget() {
+        return scene.manualMoveTarget;
+      },
+      set manualMoveTarget(value) {
+        scene.manualMoveTarget = value;
+      },
+      get manualMoveTargetFailures() {
+        return scene.manualMoveTargetFailures;
+      },
+      set manualMoveTargetFailures(value) {
+        scene.manualMoveTargetFailures = value;
+      },
+      get nextManualPathReplanAt() {
+        return scene.nextManualPathReplanAt;
+      },
+      set nextManualPathReplanAt(value) {
+        scene.nextManualPathReplanAt = value;
+      },
+      get nextKeyboardMoveInputAt() {
+        return scene.nextKeyboardMoveInputAt;
+      },
+      set nextKeyboardMoveInputAt(value) {
+        scene.nextKeyboardMoveInputAt = value;
+      },
+      get eventPanelOpen() {
+        return scene.eventPanelOpen;
+      },
+      set eventPanelOpen(value) {
+        scene.eventPanelOpen = value;
+      },
+      get statHighlightEntries() {
+        return scene.statHighlightEntries;
+      },
+      set statHighlightEntries(value) {
+        scene.statHighlightEntries = value;
+      },
+      get levelUpPulseUntilMs() {
+        return scene.levelUpPulseUntilMs;
+      },
+      set levelUpPulseUntilMs(value) {
+        scene.levelUpPulseUntilMs = value;
+      },
+      get levelUpPulseLevel() {
+        return scene.levelUpPulseLevel;
+      },
+      set levelUpPulseLevel(value) {
+        scene.levelUpPulseLevel = value;
+      },
+      get nextTransientHudRefreshAt() {
+        return scene.nextTransientHudRefreshAt;
+      },
+      set nextTransientHudRefreshAt(value) {
+        scene.nextTransientHudRefreshAt = value;
+      },
+      get lastAiNearCount() {
+        return scene.lastAiNearCount;
+      },
+      set lastAiNearCount(value) {
+        scene.lastAiNearCount = value;
+      },
+      get lastAiFarCount() {
+        return scene.lastAiFarCount;
+      },
+      set lastAiFarCount(value) {
+        scene.lastAiFarCount = value;
+      },
+      get path() {
+        return scene.path;
+      },
+      set path(value) {
+        scene.path = value;
+      },
+      get blueprintFoundIdsInRun() {
+        return scene.blueprintFoundIdsInRun;
+      },
+      set blueprintFoundIdsInRun(value) {
+        scene.blueprintFoundIdsInRun = value;
+      },
+      get attackTargetId() {
+        return scene.attackTargetId;
+      },
+      set attackTargetId(value) {
+        scene.attackTargetId = value;
+      },
+      get nextPlayerAttackAt() {
+        return scene.nextPlayerAttackAt;
+      },
+      set nextPlayerAttackAt(value) {
+        scene.nextPlayerAttackAt = value;
+      },
+      get nextBossAttackAt() {
+        return scene.nextBossAttackAt;
+      },
+      set nextBossAttackAt(value) {
+        scene.nextBossAttackAt = value;
+      },
+      get consumables() {
+        return scene.consumables;
+      },
+      set consumables(value) {
+        scene.consumables = value;
+      },
+      get mapRevealActive() {
+        return scene.mapRevealActive;
+      },
+      set mapRevealActive(value) {
+        scene.mapRevealActive = value;
+      },
+      get deferredOutcomes() {
+        return scene.deferredOutcomes;
+      },
+      set deferredOutcomes(value) {
+        scene.deferredOutcomes = value;
+      },
+      get merchantOffers() {
+        return scene.merchantOffers;
+      },
+      set merchantOffers(value) {
+        scene.merchantOffers = value;
+      },
+      get floorConfig() {
+        return scene.floorConfig;
+      },
+      set floorConfig(value) {
+        scene.floorConfig = value;
+      },
+      get currentBiome() {
+        return scene.currentBiome;
+      },
+      set currentBiome(value) {
+        scene.currentBiome = value;
+      },
+      get dungeon() {
+        return scene.dungeon;
+      },
+      set dungeon(value) {
+        scene.dungeon = value;
+      },
+      get player() {
+        return scene.player;
+      },
+      set player(value) {
+        scene.player = value;
+      },
+      get staircaseState() {
+        return scene.staircaseState;
+      },
+      set staircaseState(value) {
+        scene.staircaseState = value;
+      },
+      get origin() {
+        return scene.origin;
+      },
+      set origin(value) {
+        scene.origin = value;
+      },
+      get worldBounds() {
+        return scene.worldBounds;
+      },
+      set worldBounds(value) {
+        scene.worldBounds = value;
+      },
+      get playerSprite() {
+        return scene.playerSprite;
+      },
+      set playerSprite(value) {
+        scene.playerSprite = value;
+      },
+      get playerYOffset() {
+        return scene.playerYOffset;
+      },
+      set playerYOffset(value) {
+        scene.playerYOffset = value;
+      },
+      get bossDef() {
+        return scene.bossDef;
+      },
+      get bossState() {
+        return scene.bossState;
+      },
+      set bossState(value) {
+        scene.bossState = value;
+      },
+      get bossSprite() {
+        return scene.bossSprite;
+      },
+      set bossSprite(value) {
+        scene.bossSprite = value;
+      },
+      get hudDirty() {
+        return scene.hudDirty;
+      },
+      set hudDirty(value) {
+        scene.hudDirty = value;
+      },
+      get resumedFromSave() {
+        return scene.resumedFromSave;
+      },
+      set resumedFromSave(value) {
+        scene.resumedFromSave = value;
+      },
+      get lastAutoSaveAt() {
+        return scene.lastAutoSaveAt;
+      },
+      set lastAutoSaveAt(value) {
+        scene.lastAutoSaveAt = value;
+      },
+      get lastMinimapRefreshAt() {
+        return scene.lastMinimapRefreshAt;
+      },
+      set lastMinimapRefreshAt(value) {
+        scene.lastMinimapRefreshAt = value;
+      },
+      get eventNode() {
+        return scene.eventNode;
+      },
+      get entityLabelById() {
+        return scene.entityLabelById;
+      },
+      get newlyAcquiredItemUntilMs() {
+        return scene.newlyAcquiredItemUntilMs;
+      },
+      get previousSkillCooldownLeftById() {
+        return scene.previousSkillCooldownLeftById;
+      },
+      get skillReadyFlashUntilMsById() {
+        return scene.skillReadyFlashUntilMsById;
+      },
+      get time() {
+        return scene.time;
+      },
+      get meta() {
+        return scene.meta;
+      },
+      get children() {
+        return scene.children;
+      },
+      get cameras() {
+        return scene.cameras;
+      },
+      get uiManager() {
+        return scene.uiManager;
+      },
+      get entityManager() {
+        return scene.entityManager;
+      },
+      get hazardRuntimeModule() {
+        return scene.hazardRuntimeModule;
+      },
+      get progressionRuntimeModule() {
+        return scene.progressionRuntimeModule;
+      },
+      get movementSystem() {
+        return scene.movementSystem;
+      },
+      get renderSystem() {
+        return scene.renderSystem;
+      },
+      get eventRuntimeModule() {
+        return scene.eventRuntimeModule;
+      },
+      get sfxSystem() {
+        return scene.sfxSystem;
+      },
+      syncEndlessMutators(nowMs) {
+        scene.syncEndlessMutators(nowMs);
+      },
+      resolveDailyWeaponType(runSeed) {
+        return scene.resolveDailyWeaponType(runSeed);
+      },
+      refreshUnlockSnapshots() {
+        scene.refreshUnlockSnapshots();
+      },
+      configureRngStreams(floor, cursor) {
+        scene.configureRngStreams(floor, cursor);
+      },
+      refreshPlayerStatsFromEquipment(player) {
+        return scene.refreshPlayerStatsFromEquipment(player);
+      },
+      restorePhase6TelemetryState(state) {
+        scene.restorePhase6TelemetryState(state);
+      },
+      updateMinimap(nowMs) {
+        scene.updateMinimap(nowMs);
+      },
+      resetMutationRuntimeState(selectedIds) {
+        scene.resetMutationRuntimeState(selectedIds);
+      },
+      refreshSynergyRuntime(persistDiscovery, options) {
+        scene.refreshSynergyRuntime(persistDiscovery, options);
+      },
+      restoreFloorChoiceBudgetSnapshot(snapshot, nowMs) {
+        scene.restoreFloorChoiceBudgetSnapshot(snapshot, nowMs);
+      },
+      resetFloorChoiceBudget(floor, nowMs) {
+        scene.resetFloorChoiceBudget(floor, nowMs);
+      }
+    };
+  }
+
+  private createHazardRuntimeHost(): HazardRuntimeHost {
+    const scene = this;
+    return {
+      get hazardVisuals() {
+        return scene.hazardVisuals;
+      },
+      set hazardVisuals(value) {
+        scene.hazardVisuals = value;
+      },
+      get hazards() {
+        return scene.hazards;
+      },
+      set hazards(value) {
+        scene.hazards = value;
+      },
+      get playerHazardContact() {
+        return scene.playerHazardContact;
+      },
+      get floorConfig() {
+        return scene.floorConfig;
+      },
+      get currentBiome() {
+        return scene.currentBiome;
+      },
+      get run() {
+        return scene.run;
+      },
+      set run(value) {
+        scene.run = value;
+      },
+      get hazardRng() {
+        return scene.hazardRng;
+      },
+      get dungeon() {
+        return scene.dungeon;
+      },
+      get player() {
+        return scene.player;
+      },
+      set player(value) {
+        scene.player = value;
+      },
+      get renderSystem() {
+        return scene.renderSystem;
+      },
+      get origin() {
+        return scene.origin;
+      },
+      get eventBus() {
+        return scene.eventBus;
+      },
+      get entityManager() {
+        return scene.entityManager;
+      },
+      get progressionRuntimeModule() {
+        return scene.progressionRuntimeModule;
+      },
+      tryDiscoverBlueprints(sourceType, nowMs, sourceId) {
+        scene.tryDiscoverBlueprints(sourceType, nowMs, sourceId);
+      },
+      applyOnKillMutationEffects(nowMs) {
+        scene.applyOnKillMutationEffects(nowMs);
+      },
+      resolveMutationDropBonus() {
+        return scene.resolveMutationDropBonus();
+      },
+      get lastDeathReason() {
+        return scene.lastDeathReason;
+      },
+      set lastDeathReason(value) {
+        scene.lastDeathReason = value;
+      },
+      get hudDirty() {
+        return scene.hudDirty;
+      },
+      set hudDirty(value) {
+        scene.hudDirty = value;
+      }
+    };
+  }
+
+  private createProgressionRuntimeHost(): ProgressionRuntimeHost {
+    const scene = this;
+    return {
+      get children() {
+        return scene.children;
+      },
+      get entityManager() {
+        return scene.entityManager;
+      },
+      get hazardRuntimeModule() {
+        return scene.hazardRuntimeModule;
+      },
+      get movementSystem() {
+        return scene.movementSystem;
+      },
+      get floorConfig() {
+        return scene.floorConfig;
+      },
+      set floorConfig(value) {
+        scene.floorConfig = value;
+      },
+      configureRngStreams(floor) {
+        scene.configureRngStreams(floor);
+      },
+      get run() {
+        return scene.run;
+      },
+      set run(value) {
+        scene.run = value;
+      },
+      get runSeed() {
+        return scene.runSeed;
+      },
+      get unlockedBiomeIds() {
+        return scene.unlockedBiomeIds;
+      },
+      get currentBiome() {
+        return scene.currentBiome;
+      },
+      set currentBiome(value) {
+        scene.currentBiome = value;
+      },
+      get mapRevealActive() {
+        return scene.mapRevealActive;
+      },
+      set mapRevealActive(value) {
+        scene.mapRevealActive = value;
+      },
+      get eventPanelOpen() {
+        return scene.eventPanelOpen;
+      },
+      set eventPanelOpen(value) {
+        scene.eventPanelOpen = value;
+      },
+      get merchantOffers() {
+        return scene.merchantOffers;
+      },
+      set merchantOffers(value) {
+        scene.merchantOffers = value;
+      },
+      get uiManager() {
+        return scene.uiManager;
+      },
+      get eventRuntimeModule() {
+        return scene.eventRuntimeModule;
+      },
+      get dungeon() {
+        return scene.dungeon;
+      },
+      set dungeon(value) {
+        scene.dungeon = value;
+      },
+      get player() {
+        return scene.player;
+      },
+      set player(value) {
+        scene.player = value;
+      },
+      refreshPlayerStatsFromEquipment(player) {
+        return scene.refreshPlayerStatsFromEquipment(player);
+      },
+      applyDailyLoadout(player, nowMs) {
+        return scene.applyDailyLoadout(player, nowMs);
+      },
+      get time() {
+        return scene.time;
+      },
+      get debugCheatsEnabled() {
+        return scene.debugCheatsEnabled;
+      },
+      get debugLockedEquipQuery() {
+        return scene.debugLockedEquipQuery;
+      },
+      get debugLockedEquipIconId() {
+        return scene.debugLockedEquipIconId;
+      },
+      get runLog() {
+        return scene.runLog;
+      },
+      get entityLabelById() {
+        return scene.entityLabelById;
+      },
+      get path() {
+        return scene.path;
+      },
+      set path(value) {
+        scene.path = value;
+      },
+      get attackTargetId() {
+        return scene.attackTargetId;
+      },
+      set attackTargetId(value) {
+        scene.attackTargetId = value;
+      },
+      get manualMoveTarget() {
+        return scene.manualMoveTarget;
+      },
+      set manualMoveTarget(value) {
+        scene.manualMoveTarget = value;
+      },
+      get manualMoveTargetFailures() {
+        return scene.manualMoveTargetFailures;
+      },
+      set manualMoveTargetFailures(value) {
+        scene.manualMoveTargetFailures = value;
+      },
+      get nextManualPathReplanAt() {
+        return scene.nextManualPathReplanAt;
+      },
+      set nextManualPathReplanAt(value) {
+        scene.nextManualPathReplanAt = value;
+      },
+      get nextPlayerAttackAt() {
+        return scene.nextPlayerAttackAt;
+      },
+      set nextPlayerAttackAt(value) {
+        scene.nextPlayerAttackAt = value;
+      },
+      get nextBossAttackAt() {
+        return scene.nextBossAttackAt;
+      },
+      set nextBossAttackAt(value) {
+        scene.nextBossAttackAt = value;
+      },
+      get bossState() {
+        return scene.bossState;
+      },
+      set bossState(value) {
+        scene.bossState = value;
+      },
+      get bossSprite() {
+        return scene.bossSprite;
+      },
+      set bossSprite(value) {
+        scene.bossSprite = value;
+      },
+      get staircaseState() {
+        return scene.staircaseState;
+      },
+      set staircaseState(value) {
+        scene.staircaseState = value;
+      },
+      get renderSystem() {
+        return scene.renderSystem;
+      },
+      get origin() {
+        return scene.origin;
+      },
+      set origin(value) {
+        scene.origin = value;
+      },
+      get worldBounds() {
+        return scene.worldBounds;
+      },
+      set worldBounds(value) {
+        scene.worldBounds = value;
+      },
+      get cameras() {
+        return scene.cameras;
+      },
+      get playerSprite() {
+        return scene.playerSprite;
+      },
+      set playerSprite(value) {
+        scene.playerSprite = value;
+      },
+      get playerYOffset() {
+        return scene.playerYOffset;
+      },
+      set playerYOffset(value) {
+        scene.playerYOffset = value;
+      },
+      get bossRuntimeModule() {
+        return scene.bossRuntimeModule;
+      },
+      spawnMonsters() {
+        scene.spawnMonsters();
+      },
+      resetFloorChoiceBudget(floor, nowMs) {
+        scene.resetFloorChoiceBudget(floor, nowMs);
+      },
+      get lastMinimapRefreshAt() {
+        return scene.lastMinimapRefreshAt;
+      },
+      set lastMinimapRefreshAt(value) {
+        scene.lastMinimapRefreshAt = value;
+      },
+      updateMinimap(nowMs) {
+        scene.updateMinimap(nowMs);
+      },
+      refreshSynergyRuntime(persistDiscovery) {
+        scene.refreshSynergyRuntime(persistDiscovery);
+      },
+      get hudDirty() {
+        return scene.hudDirty;
+      },
+      set hudDirty(value) {
+        scene.hudDirty = value;
+      },
+      get runEnded() {
+        return scene.runEnded;
+      },
+      set runEnded(value) {
+        scene.runEnded = value;
+      },
+      get talentEffects() {
+        return scene.talentEffects;
+      },
+      get meta() {
+        return scene.meta;
+      },
+      get lootRng() {
+        return scene.lootRng;
+      },
+      get spawnRng() {
+        return scene.spawnRng;
+      },
+      get eventRng() {
+        return scene.eventRng;
+      },
+      get unlockedAffixIds() {
+        return scene.unlockedAffixIds;
+      },
+      get hiddenEntranceMarkers() {
+        return scene.hiddenEntranceMarkers;
+      },
+      resolveProgressionLootTable(floor) {
+        return scene.resolveProgressionLootTable(floor);
+      },
+      resolveLootRollOptions(options) {
+        return scene.resolveLootRollOptions(options);
+      },
+      isItemDefUnlocked(itemDef) {
+        return scene.isItemDefUnlocked(itemDef);
+      },
+      spawnLootDrop(item, position) {
+        scene.spawnLootDrop(item, position);
+      },
+      tryDiscoverBlueprints(sourceType, nowMs, sourceId) {
+        scene.tryDiscoverBlueprints(sourceType, nowMs, sourceId);
+      },
+      scheduleRunSave() {
+        scene.scheduleRunSave();
+      },
+      resolveHiddenRoomRevealRadius() {
+        return scene.resolveHiddenRoomRevealRadius();
+      },
+      get challengeMarker() {
+        return scene.challengeMarker;
+      },
+      set challengeMarker(value) {
+        scene.challengeMarker = value;
+      },
+      get challengeRoomState() {
+        return scene.challengeRoomState;
+      },
+      set challengeRoomState(value) {
+        scene.challengeRoomState = value;
+      },
+      get challengeWaveTotal() {
+        return scene.challengeWaveTotal;
+      },
+      set challengeWaveTotal(value) {
+        scene.challengeWaveTotal = value;
+      },
+      get challengeMonsterIds() {
+        return scene.challengeMonsterIds;
+      },
+      get eventBus() {
+        return scene.eventBus;
+      },
+      get add() {
+        return scene.add;
+      },
+      get tileWidth() {
+        return scene.tileWidth;
+      },
+      get tileHeight() {
+        return scene.tileHeight;
+      },
+      get entityDepthOffset() {
+        return scene.entityDepthOffset;
+      }
+    };
+  }
+
+  private createDeferredOutcomeHost(): DeferredOutcomeHost {
+    const scene = this;
+    return {
+      get eventRng() {
+        return scene.eventRng;
+      },
+      get run() {
+        return scene.run;
+      },
+      set run(value) {
+        scene.run = value;
+      },
+      get deferredOutcomes() {
+        return scene.deferredOutcomes;
+      },
+      set deferredOutcomes(value) {
+        scene.deferredOutcomes = value;
+      },
+      get runLog() {
+        return scene.runLog;
+      },
+      scheduleRunSave() {
+        scene.scheduleRunSave();
+      },
+      get hudDirty() {
+        return scene.hudDirty;
+      },
+      set hudDirty(value) {
+        scene.hudDirty = value;
+      },
+      get player() {
+        return scene.player;
+      },
+      set player(value) {
+        scene.player = value;
+      },
+      get lootRng() {
+        return scene.lootRng;
+      },
+      resolveLootRollOptions(options) {
+        return scene.resolveLootRollOptions(options);
+      },
+      isItemDefUnlocked(itemDef) {
+        return scene.isItemDefUnlocked(itemDef);
+      },
+      get contentLocalizer() {
+        return scene.contentLocalizer;
+      }
+    };
+  }
+
+  private createBossSpawnHost(): BossSpawnHost {
+    const scene = this;
+    return {
+      get dungeon() {
+        return scene.dungeon;
+      },
+      get bossDef() {
+        return scene.bossDef;
+      },
+      get bossState() {
+        return scene.bossState;
+      },
+      set bossState(value) {
+        scene.bossState = value;
+      },
+      get bossSprite() {
+        return scene.bossSprite;
+      },
+      set bossSprite(value) {
+        scene.bossSprite = value;
+      },
+      get entityLabelById() {
+        return scene.entityLabelById;
+      },
+      get renderSystem() {
+        return scene.renderSystem;
+      },
+      get entityManager() {
+        return scene.entityManager;
+      },
+      get origin() {
+        return scene.origin;
+      },
+      get run() {
+        return scene.run;
+      },
+      get unlockedAffixIds() {
+        return scene.unlockedAffixIds;
+      },
+      get spawnRng() {
+        return scene.spawnRng;
+      },
+      get time() {
+        return scene.time;
+      },
+      get floorConfig() {
+        return scene.floorConfig;
+      },
+      get eventBus() {
+        return scene.eventBus;
+      }
+    };
+  }
+
+  private createBossTelegraphHost(): BossTelegraphHost {
+    const scene = this;
+    return {
+      get renderSystem() {
+        return scene.renderSystem;
+      },
+      get origin() {
+        return scene.origin;
+      },
+      get tweens() {
+        return scene.tweens;
+      },
+      get tileWidth() {
+        return scene.tileWidth;
+      },
+      get tileHeight() {
+        return scene.tileHeight;
+      }
+    };
+  }
+
+  private createBossCombatHost(): BossCombatHost {
+    const scene = this;
+    return {
+      get floorConfig() {
+        return scene.floorConfig;
+      },
+      get bossState() {
+        return scene.bossState;
+      },
+      set bossState(value) {
+        scene.bossState = value;
+      },
+      get player() {
+        return scene.player;
+      },
+      set player(value) {
+        scene.player = value;
+      },
+      resolveMutationAttackSpeedMultiplier(nowMs) {
+        return scene.resolveMutationAttackSpeedMultiplier(nowMs);
+      },
+      get nextPlayerAttackAt() {
+        return scene.nextPlayerAttackAt;
+      },
+      set nextPlayerAttackAt(value) {
+        scene.nextPlayerAttackAt = value;
+      },
+      get combatRng() {
+        return scene.combatRng;
+      },
+      get eventBus() {
+        return scene.eventBus;
+      },
+      get bossDef() {
+        return scene.bossDef;
+      },
+      get hudDirty() {
+        return scene.hudDirty;
+      },
+      set hudDirty(value) {
+        scene.hudDirty = value;
+      },
+      get nextBossAttackAt() {
+        return scene.nextBossAttackAt;
+      },
+      set nextBossAttackAt(value) {
+        scene.nextBossAttackAt = value;
+      },
+      get bossRng() {
+        return scene.bossRng;
+      },
+      emitCombatEvents(events) {
+        scene.emitCombatEvents(events);
+      }
+    };
+  }
+
+  private createDebugCommandHost(): DebugCommandHost {
+    const scene = this;
+    return {
+      collectDiagnosticsSnapshot() {
+        return scene.collectDiagnosticsSnapshot();
+      },
+      get entityManager() {
+        return scene.entityManager;
+      },
+      get eventBus() {
+        return scene.eventBus;
+      },
+      bootstrapRun(runSeed, difficulty) {
+        scene.bootstrapRun(runSeed, difficulty);
+      },
+      get time() {
+        return scene.time;
+      },
+      get selectedDifficulty() {
+        return scene.selectedDifficulty;
+      },
+      get runSeed() {
+        return scene.runSeed;
+      },
+      get hudDirty() {
+        return scene.hudDirty;
+      },
+      set hudDirty(value) {
+        scene.hudDirty = value;
+      },
+      get runEnded() {
+        return scene.runEnded;
+      },
+      set runEnded(value) {
+        scene.runEnded = value;
+      },
+      get run() {
+        return scene.run;
+      },
+      set run(value) {
+        scene.run = value;
+      },
+      get consumables() {
+        return scene.consumables;
+      },
+      set consumables(value) {
+        scene.consumables = value;
+      },
+      get floorConfig() {
+        return scene.floorConfig;
+      },
+      get eventPanelOpen() {
+        return scene.eventPanelOpen;
+      },
+      set eventPanelOpen(value) {
+        scene.eventPanelOpen = value;
+      },
+      get eventRuntimeModule() {
+        return scene.eventRuntimeModule;
+      },
+      pickFloorEventPosition() {
+        return scene.pickFloorEventPosition();
+      },
+      get dungeon() {
+        return scene.dungeon;
+      },
+      set dungeon(value) {
+        scene.dungeon = value;
+      },
+      get eventRng() {
+        return scene.eventRng;
+      },
+      get progressionRuntimeModule() {
+        return scene.progressionRuntimeModule;
+      },
+      get challengeRoomState() {
+        return scene.challengeRoomState;
+      },
+      set challengeRoomState(value) {
+        scene.challengeRoomState = value;
+      },
+      get challengeWaveTotal() {
+        return scene.challengeWaveTotal;
+      },
+      set challengeWaveTotal(value) {
+        scene.challengeWaveTotal = value;
+      },
+      get challengeMarker() {
+        return scene.challengeMarker;
+      },
+      set challengeMarker(value) {
+        scene.challengeMarker = value;
+      },
+      get renderSystem() {
+        return scene.renderSystem;
+      },
+      get origin() {
+        return scene.origin;
+      },
+      scheduleRunSave() {
+        scene.scheduleRunSave();
+      },
+      flushRunSave() {
+        scene.flushRunSave();
+      },
+      get bossState() {
+        return scene.bossState;
+      },
+      set bossState(value) {
+        scene.bossState = value;
+      },
+      get bossRuntimeModule() {
+        return scene.bossRuntimeModule;
+      },
+      get runCompletionModule() {
+        return scene.runCompletionModule;
+      },
+      getRunRelativeNowMs() {
+        return scene.getRunRelativeNowMs();
+      },
+      syncEndlessMutators(nowMs) {
+        scene.syncEndlessMutators(nowMs);
+      },
+      get deferredOutcomeRuntime() {
+        return scene.deferredOutcomeRuntime;
+      },
+      refreshPlayerStatsFromEquipment(player) {
+        return scene.refreshPlayerStatsFromEquipment(player);
+      },
+      get player() {
+        return scene.player;
+      },
+      set player(value) {
+        scene.player = value;
+      },
+      handleLevelUpGain(levelsGained, nowMs, source) {
+        scene.handleLevelUpGain(levelsGained, nowMs, source);
+      },
+      get lootRng() {
+        return scene.lootRng;
+      },
+      resolveLootRollOptions(options) {
+        return scene.resolveLootRollOptions(options);
+      },
+      isItemDefUnlocked(itemDef) {
+        return scene.isItemDefUnlocked(itemDef);
+      },
+      spawnLootDrop(item, position) {
+        scene.spawnLootDrop(item, position);
+      },
+      get staircaseState() {
+        return scene.staircaseState;
+      },
+      set staircaseState(value) {
+        scene.staircaseState = value;
+      },
+      tryDiscoverBlueprints(sourceType, nowMs, sourceId) {
+        scene.tryDiscoverBlueprints(sourceType, nowMs, sourceId);
+      },
+      get uiManager() {
+        return scene.uiManager;
+      },
+      get lastDeathReason() {
+        return scene.lastDeathReason;
+      },
+      set lastDeathReason(value) {
+        scene.lastDeathReason = value;
+      },
+      get synergyRuntime() {
+        return scene.synergyRuntime;
+      },
+      refreshSynergyRuntime() {
+        scene.refreshSynergyRuntime();
+      },
+      get currentBiome() {
+        return scene.currentBiome;
+      },
+      get runLog() {
+        return scene.runLog;
+      }
+    };
+  }
+
+  private pickFloorEventPosition(): { x: number; y: number } | null {
+    const candidates = this.dungeon.spawnPoints.filter((point) => {
+      if (Math.hypot(point.x - this.player.position.x, point.y - this.player.position.y) < 6) {
+        return false;
+      }
+      if (Math.hypot(point.x - this.staircaseState.position.x, point.y - this.staircaseState.position.y) < 2) {
+        return false;
+      }
+      for (const hazard of this.hazards) {
+        if (Math.hypot(point.x - hazard.position.x, point.y - hazard.position.y) < hazard.radiusTiles + 1) {
+          return false;
+        }
+      }
+      return true;
+    });
+    if (candidates.length === 0) {
+      return null;
+    }
+    const picked = this.eventRng.pick(candidates);
+    return { x: picked.x, y: picked.y };
   }
 
   init(data: DungeonSceneInitData): void {
@@ -748,13 +1978,13 @@ export class DungeonScene extends Phaser.Scene {
       merchantFlowService
     });
     const bossSpawnService = new BossSpawnService({
-      host: this as unknown as BossSpawnHost
+      host: this.createBossSpawnHost()
     });
     const bossTelegraphPresenter = new BossTelegraphPresenter({
-      host: this as unknown as BossTelegraphHost
+      host: this.createBossTelegraphHost()
     });
     const bossCombatService = new BossCombatService({
-      host: this as unknown as BossCombatHost,
+      host: this.createBossCombatHost(),
       spawnService: bossSpawnService,
       telegraphPresenter: bossTelegraphPresenter
     });
@@ -767,10 +1997,10 @@ export class DungeonScene extends Phaser.Scene {
       host: this as unknown as RunCompletionHost
     });
     this.hazardRuntimeModule = new HazardRuntimeModule({
-      host: this as unknown as HazardRuntimeHost
+      host: this.createHazardRuntimeHost()
     });
     this.progressionRuntimeModule = new ProgressionRuntimeModule({
-      host: this as unknown as ProgressionRuntimeHost
+      host: this.createProgressionRuntimeHost()
     });
     this.floorProgressionModule = new FloorProgressionModule({
       host: this as unknown as FloorProgressionHost
@@ -890,6 +2120,7 @@ export class DungeonScene extends Phaser.Scene {
       render: this.renderSystem.getLastSyncStats(),
       vfx: this.vfxSystem.getDiagnostics(),
       sfx: this.sfxSystem.getDiagnostics(),
+      phase6: this.capturePhase6TelemetrySummary(),
       taste: { buildIdentity: this.tasteRuntime.snapshotBuildIdentity(), recentHeartbeats: this.tasteRuntime.listHeartbeatEvents(10), recommendations: this.tasteRuntime.buildRecommendations() }
     };
   }
@@ -931,6 +2162,11 @@ export class DungeonScene extends Phaser.Scene {
     this.updateKeyboardMoveIntent(nowMs);
     this.updatePlayerMovement((deltaMs / 1000) * playerHazardMovementMultiplier * mutationMoveMultiplier, nowMs);
     this.playerActionModule.applySpecialAffixHealthRegen(deltaMs);
+    this.phase6Telemetry.sampleManaDryWindow(
+      this.player.mana,
+      this.resolveMinimumActiveSkillManaCost(),
+      deltaMs
+    );
     this.progressionRuntimeModule.revealNearbyHiddenRoomsByMutation(nowMs);
     this.encounterController.updateFrame({
       deltaSeconds: deltaMs / 1000,
@@ -1223,7 +2459,8 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private bootstrapRun(runSeed: string, difficulty: DifficultyMode): void {
-    this.tasteRuntime.resetRunState(); this.runSeed = runSeed;
+    this.tasteRuntime.resetRunState();
+    this.runSeed = runSeed;
     const requestedMode: RunMode = this.pendingRunMode === "daily" ? "daily" : "normal";
     const selectedRunMode: RunMode = requestedMode;
     const resolvedDailyDate = selectedRunMode === "daily" ? this.pendingDailyDate ?? resolveDailyDate() : undefined;
@@ -1287,6 +2524,7 @@ export class DungeonScene extends Phaser.Scene {
             ...(resolvedDailyDate === undefined ? {} : { dailyDate: resolvedDailyDate })
           }
         : run;
+    this.phase6Telemetry.resetRun(this.run.startedAtMs);
     this.progressionChoiceRuntime.resetRuntime(this.time.now, this.run.currentFloor);
     this.progressionRuntimeModule.setupFloor(1, true);
 
@@ -1382,7 +2620,13 @@ export class DungeonScene extends Phaser.Scene {
     };
   }
 
-  private refreshSynergyRuntime(persistDiscovery = true): void {
+  private refreshSynergyRuntime(
+    persistDiscovery = true,
+    options: {
+      emitActivationEvents?: boolean;
+      recordTelemetry?: boolean;
+    } = {}
+  ): void {
     if (this.player === undefined) {
       this.synergyRuntime = {
         activeSynergyIds: [],
@@ -1393,6 +2637,9 @@ export class DungeonScene extends Phaser.Scene {
       };
       return;
     }
+    const emitActivationEvents = options.emitActivationEvents ?? true;
+    const recordTelemetry = options.recordTelemetry ?? emitActivationEvents;
+    const previousSynergyIds = new Set(this.synergyRuntime.activeSynergyIds);
 
     const activeSkills =
       this.player.skills?.skillSlots
@@ -1417,6 +2664,29 @@ export class DungeonScene extends Phaser.Scene {
       if (persistDiscovery) {
         this.saveMeta(discoveredMeta);
       }
+    }
+    for (const synergyId of this.synergyRuntime.activeSynergyIds) {
+      if (previousSynergyIds.has(synergyId)) {
+        continue;
+      }
+      if (recordTelemetry) {
+        this.phase6Telemetry.recordSynergyActivated(synergyId, this.run.currentFloor);
+      }
+      if (!emitActivationEvents) {
+        continue;
+      }
+      this.tasteRuntime.recordHeartbeat({
+        type: "synergy_activated",
+        floor: this.run.currentFloor,
+        source: "synergy_runtime",
+        timestampMs: this.time.now,
+        detail: synergyId
+      });
+      this.eventBus.emit("synergy_activated", {
+        floor: this.run.currentFloor,
+        synergyId,
+        timestampMs: this.time.now
+      });
     }
     this.hudDirty = true;
   }
@@ -1637,6 +2907,7 @@ export class DungeonScene extends Phaser.Scene {
     if (this.runEnded || this.eventPanelOpen) {
       return;
     }
+    const nowMs = this.time.now;
 
     const clickedGrid = isoToGrid(
       pointer.worldX,
@@ -1659,7 +2930,8 @@ export class DungeonScene extends Phaser.Scene {
       );
     });
     if (hiddenRoom !== undefined) {
-      this.progressionRuntimeModule.revealHiddenRoom(hiddenRoom.roomId, this.time.now, "click");
+      this.progressionRuntimeModule.revealHiddenRoom(hiddenRoom.roomId, nowMs, "click");
+      this.recordPlayerInput(nowMs);
       return;
     }
 
@@ -1673,6 +2945,7 @@ export class DungeonScene extends Phaser.Scene {
         atMs: this.getRunRelativeNowMs(),
         targetId: clickedMonster.state.id
       });
+      this.recordPlayerInput(nowMs);
       return;
     }
 
@@ -1686,6 +2959,7 @@ export class DungeonScene extends Phaser.Scene {
       atMs: this.getRunRelativeNowMs(),
       target: targetTile
     });
+    this.recordPlayerInput(nowMs);
   }
 
   private getRunRelativeNowMs(): number {
@@ -1730,6 +3004,7 @@ export class DungeonScene extends Phaser.Scene {
       atMs: this.getRunRelativeNowMs(),
       target: targetTile
     });
+    this.recordPlayerInput(nowMs);
   }
 
   private updatePlayerMovement(dt: number, nowMs: number): void {
@@ -1821,6 +3096,7 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     this.emitCombatEvents(playerCombat.combatEvents);
+    this.phase6Telemetry.recordCombatEvents(this.player.id, playerCombat.combatEvents, "auto");
     if (playerCombat.combatEvents.length > 0) {
       this.hudDirty = true;
     }
@@ -1861,16 +3137,197 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  handleLevelUpGain(levelsGained: number, nowMs: number, source: string): void { this.progressionChoiceRuntime.handleLevelUpGain(levelsGained, nowMs, source); }
-  resetFloorChoiceBudget(floor: number, nowMs: number): void { this.progressionChoiceRuntime.resetFloorChoiceBudget(floor, nowMs); }
-  captureFloorChoiceBudgetSnapshot(): FloorChoiceBudgetState { return this.progressionChoiceRuntime.captureFloorChoiceBudgetSnapshot(); }
-  restoreFloorChoiceBudgetSnapshot(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void { this.progressionChoiceRuntime.restoreFloorChoiceBudgetSnapshot(snapshot, this.run.currentFloor, nowMs); }
-  recordBuildLevelUpChoice(stat: keyof PlayerState["baseStats"], source: string, nowMs: number): void { this.tasteRuntime.recordLevelUpChoice(stat, this.run.currentFloor, source, nowMs); }
-  resolveRunRecommendations() { return this.tasteRuntime.buildRecommendations(); }
-  markHighValueChoice(source: string, nowMs: number): void { this.progressionChoiceRuntime.markHighValueChoice(source, nowMs); this.tasteRuntime.recordBranch(source, this.run.currentFloor, nowMs); }
-  ensureFloorChoiceBudget(nowMs: number): void { this.progressionChoiceRuntime.ensureFloorChoiceBudget(nowMs); }
-  resolveProgressionLootTable(floor: number): LootTableDef | undefined { return this.progressionChoiceRuntime.resolveProgressionLootTable(floor); }
-  resolveLootRollOptions(options: RollItemDropOptions = {}): RollItemDropOptions { return this.progressionChoiceRuntime.resolveLootRollOptions(options); }
+  handleLevelUpGain(levelsGained: number, nowMs: number, source: string): void {
+    this.progressionChoiceRuntime.handleLevelUpGain(levelsGained, nowMs, source);
+  }
+
+  resetFloorChoiceBudget(floor: number, nowMs: number): void {
+    this.progressionChoiceRuntime.resetFloorChoiceBudget(floor, nowMs);
+  }
+
+  captureFloorChoiceBudgetSnapshot(): FloorChoiceBudgetState {
+    return this.progressionChoiceRuntime.captureFloorChoiceBudgetSnapshot();
+  }
+
+  restoreFloorChoiceBudgetSnapshot(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void {
+    this.progressionChoiceRuntime.restoreFloorChoiceBudgetSnapshot(snapshot, this.run.currentFloor, nowMs);
+  }
+
+  recordBuildLevelUpChoice(stat: keyof PlayerState["baseStats"], source: string, nowMs: number): void {
+    this.tasteRuntime.recordLevelUpChoice(stat, this.run.currentFloor, source, nowMs);
+    this.maybeRecordBuildFormed(source, nowMs);
+  }
+
+  recordPlayerInput(nowMs: number): void {
+    this.phase6Telemetry.recordPlayerInput(nowMs);
+  }
+
+  recordBossRewardClosed(choiceId: string, nowMs: number): void {
+    this.phase6Telemetry.recordBossRewardClosed();
+    this.tasteRuntime.recordHeartbeat({
+      type: "player_facing_choice",
+      floor: this.run.currentFloor,
+      source: "boss_reward_closed",
+      timestampMs: nowMs,
+      detail: choiceId
+    });
+    this.eventBus.emit("boss_reward_closed", {
+      floor: this.run.currentFloor,
+      choiceId,
+      timestampMs: nowMs
+    });
+  }
+
+  recordSkillResolutionTelemetry(resolution: SkillResolution, nowMs: number): void {
+    this.phase6Telemetry.recordSkillResolution(this.player.id, resolution);
+    this.runLog.append(
+      `Skill telemetry: ${resolution.buffsApplied.length} buff applies, ${resolution.events.length} combat events.`,
+      "info",
+      nowMs
+    );
+  }
+
+  capturePhase6TelemetrySummary(elapsedMs = Math.max(0, this.time.now - this.run.startedAtMs)) {
+    return this.phase6Telemetry.snapshot(elapsedMs);
+  }
+
+  capturePhase6TelemetryState(elapsedMs = Math.max(0, this.time.now - this.run.startedAtMs)) {
+    return this.phase6Telemetry.exportRuntimeState(elapsedMs);
+  }
+
+  restorePhase6TelemetryState(state?: ReturnType<DungeonScene["capturePhase6TelemetryState"]>): void {
+    if (state === undefined) {
+      this.phase6Telemetry.resetRun(this.run.startedAtMs);
+      return;
+    }
+    this.phase6Telemetry.restoreRuntimeState(state);
+  }
+
+  resolveRunRecommendations() {
+    return this.tasteRuntime.buildRecommendations();
+  }
+
+  markHighValueChoice(source: string, nowMs: number): void {
+    this.progressionChoiceRuntime.markHighValueChoice(source, nowMs);
+    this.tasteRuntime.recordBranch(source, this.run.currentFloor, nowMs);
+    if (source === "key_drop") {
+      return;
+    }
+    this.phase6Telemetry.recordPlayerFacingChoice(this.run.currentFloor);
+    this.tasteRuntime.recordHeartbeat({
+      type: "player_facing_choice",
+      floor: this.run.currentFloor,
+      source,
+      timestampMs: nowMs,
+      detail: source
+    });
+    this.eventBus.emit("player_facing_choice", {
+      floor: this.run.currentFloor,
+      source,
+      timestampMs: nowMs,
+      detail: source
+    });
+  }
+
+  ensureFloorChoiceBudget(nowMs: number): void {
+    this.progressionChoiceRuntime.ensureFloorChoiceBudget(nowMs);
+  }
+
+  resolveProgressionLootTable(floor: number): LootTableDef | undefined {
+    return this.progressionChoiceRuntime.resolveProgressionLootTable(floor);
+  }
+
+  resolveLootRollOptions(options: RollItemDropOptions = {}): RollItemDropOptions {
+    return this.progressionChoiceRuntime.resolveLootRollOptions(options);
+  }
+
+  private maybeRecordBuildFormed(source: string, nowMs: number): void {
+    const snapshot = this.tasteRuntime.snapshotBuildIdentity();
+    if (!this.phase6Telemetry.syncBuildIdentity(snapshot)) {
+      return;
+    }
+    this.tasteRuntime.recordHeartbeat({
+      type: "build_formed",
+      floor: this.run.currentFloor,
+      source,
+      timestampMs: nowMs,
+      detail: snapshot.tags.join(",")
+    });
+    this.eventBus.emit("build_formed", {
+      floor: this.run.currentFloor,
+      source,
+      timestampMs: nowMs,
+      tags: snapshot.tags,
+      keyItemDefIds: snapshot.keyItemDefIds
+    });
+  }
+
+  private resolveMinimumActiveSkillManaCost(): number | null {
+    const activeSlots =
+      this.player.skills?.skillSlots.filter((slot): slot is NonNullable<typeof slot> => slot !== null) ?? [];
+    if (activeSlots.length === 0) {
+      return null;
+    }
+    let minimum: number | null = null;
+    for (const slot of activeSlots) {
+      const skillDef = SKILL_DEF_BY_ID.get(slot.defId);
+      if (skillDef === undefined) {
+        continue;
+      }
+      const runtimeSkillDef = this.applySynergyToSkillDef(createSkillDefForLevel(skillDef, slot.level));
+      minimum = minimum === null ? runtimeSkillDef.manaCost : Math.min(minimum, runtimeSkillDef.manaCost);
+    }
+    return minimum;
+  }
+
+  recordAcquiredItemTelemetry(item: ItemInstance, source: string, nowMs: number): void {
+    this.recordPowerSpikeItem(item, source, nowMs, false);
+    this.maybeRecordBuildFormed(source, nowMs);
+  }
+
+  private recordRareDropPresented(item: ItemInstance, source: string, nowMs: number): void {
+    this.recordPowerSpikeItem(item, source, nowMs, true);
+  }
+
+  private recordPowerSpikeItem(
+    item: ItemInstance,
+    source: string,
+    nowMs: number,
+    countsAsPresentation: boolean
+  ): void {
+    if (item.rarity !== "rare" && item.kind !== "unique") {
+      return;
+    }
+    if (countsAsPresentation) {
+      this.phase6Telemetry.recordRareDropPresented(item);
+    } else {
+      this.phase6Telemetry.recordPowerSpike();
+    }
+    this.tasteRuntime.recordHeartbeat({
+      type: "power_spike",
+      floor: this.run.currentFloor,
+      source,
+      timestampMs: nowMs,
+      detail: item.defId
+    });
+    if (countsAsPresentation) {
+      this.eventBus.emit("rare_drop_presented", {
+        floor: this.run.currentFloor,
+        source,
+        timestampMs: nowMs,
+        itemDefId: item.defId,
+        rarity: item.rarity
+      });
+    }
+    this.eventBus.emit("power_spike", {
+      floor: this.run.currentFloor,
+      source,
+      timestampMs: nowMs,
+      itemDefId: item.defId,
+      rarity: item.rarity
+    });
+  }
+
   private applySynergyToSkillDef(skillDef: SkillDef): SkillDef {
     const damagePercent = this.synergyRuntime.skillDamagePercent[skillDef.id] ?? 0;
     const modifiers = this.synergyRuntime.skillModifiers[skillDef.id] ?? {};
@@ -2143,6 +3600,7 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     this.emitCombatEvents(monsterCombat.combatEvents);
+    this.phase6Telemetry.recordCombatEvents(this.player.id, monsterCombat.combatEvents, "other");
     for (const event of monsterCombat.combatEvents) {
       if (event.kind === "dodge" || event.amount <= 0) {
         continue;
@@ -2210,6 +3668,7 @@ export class DungeonScene extends Phaser.Scene {
         lootCollected: this.run.lootCollected + 1
       };
       this.tasteRuntime.recordPickup(drop.item, this.run.currentFloor, "auto_pickup", nowMs);
+      this.maybeRecordBuildFormed("key_pickup", nowMs);
       drop.sprite.destroy();
       this.eventBus.emit("loot:pickup", {
         playerId: this.player.id,
@@ -2273,6 +3732,7 @@ export class DungeonScene extends Phaser.Scene {
       position: { ...position }
     });
     this.tasteRuntime.recordDrop(item, this.run.currentFloor, "drop_spawn", this.time.now);
+    this.recordRareDropPresented(item, "drop_spawn", this.time.now);
     if (item.rarity === "rare" || item.kind === "unique") {
       this.markHighValueChoice("key_drop", this.time.now);
     }

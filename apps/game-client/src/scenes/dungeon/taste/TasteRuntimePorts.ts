@@ -10,7 +10,11 @@ export type HeartbeatEventType =
   | "key_pickup"
   | "key_levelup"
   | "key_kill"
-  | "key_branch";
+  | "key_branch"
+  | "player_facing_choice"
+  | "power_spike"
+  | "build_formed"
+  | "synergy_activated";
 
 export interface HeartbeatEvent {
   type: HeartbeatEventType;

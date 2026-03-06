@@ -8,9 +8,11 @@ import type {
   EquipmentSlot,
   HazardType,
   ItemInstance,
+  ItemRarity,
   MonsterAffixId,
   MutationEffect,
   MonsterState,
+  Phase6CombatRhythmTelemetry,
   ReplayInputEvent,
   RunSummary,
   SkillResolution,
@@ -75,6 +77,51 @@ export interface GameEventMap {
     checksum?: string;
     inputs: ReplayInputEvent[];
     finishedAtMs: number;
+  };
+  "player_facing_choice": {
+    floor: number;
+    source: string;
+    timestampMs: number;
+    detail?: string;
+  };
+  "power_spike": {
+    floor: number;
+    source: string;
+    timestampMs: number;
+    itemDefId?: string;
+    rarity?: ItemRarity;
+  };
+  "build_formed": {
+    floor: number;
+    source: string;
+    timestampMs: number;
+    tags: string[];
+    keyItemDefIds: string[];
+  };
+  "rare_drop_presented": {
+    floor: number;
+    source: string;
+    timestampMs: number;
+    itemDefId: string;
+    rarity: ItemRarity;
+  };
+  "boss_reward_closed": {
+    floor: number;
+    choiceId: string;
+    timestampMs: number;
+  };
+  "combat_rhythm_window": {
+    floor: number;
+    timestampMs: number;
+    metrics: Pick<
+      Phase6CombatRhythmTelemetry,
+      "skillCastsPer30s" | "autoAttackDamageShare" | "manaDryWindowMs" | "averageNoInputGapMs" | "maxNoInputGapMs"
+    >;
+  };
+  "synergy_activated": {
+    floor: number;
+    synergyId: string;
+    timestampMs: number;
   };
   "monster:stateChange": {
     monsterId: string;

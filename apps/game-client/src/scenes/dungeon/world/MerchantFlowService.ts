@@ -129,6 +129,9 @@ export class MerchantFlowService {
       ...host.run,
       lootCollected: host.run.lootCollected + 1
     };
+    if (typeof host.recordAcquiredItemTelemetry === "function") {
+      host.recordAcquiredItemTelemetry(item, "merchant_purchase", nowMs);
+    }
     host.eventBus.emit("merchant:purchase", {
       offerId: offer.offerId,
       itemId: item.id,

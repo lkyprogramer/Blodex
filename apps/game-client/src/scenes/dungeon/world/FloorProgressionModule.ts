@@ -8,10 +8,42 @@ import {
   resolveBranchChoiceFromSide,
   resolveBranchSideAtPosition
 } from "@blodex/core";
+import type {
+  GameEventMap,
+  PlayerState,
+  RunState,
+  StaircaseState,
+  TypedEventBus
+} from "@blodex/core";
 import { GAME_CONFIG } from "@blodex/content";
 
 export interface FloorProgressionHost {
-  [key: string]: any;
+  floorConfig: {
+    isBossFloor: boolean;
+    monsterCount: number;
+    clearThreshold: number;
+  };
+  staircaseState: StaircaseState;
+  run: RunState;
+  player: Pick<PlayerState, "position">;
+  ensureFloorChoiceBudget(nowMs: number): void;
+  progressionRuntimeModule: {
+    renderStaircases(): void;
+    setupFloor(floor: number, isFreshFloor: boolean): void;
+  };
+  eventBus: TypedEventBus<GameEventMap>;
+  tryDiscoverBlueprints(
+    sourceType: "floor_clear",
+    nowMs: number,
+    sourceId?: string
+  ): void;
+  eventPanelOpen: boolean;
+  getRunRelativeNowMs(): number;
+  syncEndlessMutators(nowMs: number): void;
+  deferredOutcomeRuntime: {
+    settle(trigger: string, nowMs: number): void;
+  };
+  markHighValueChoice(source: string, nowMs: number): void;
 }
 
 export interface FloorProgressionModuleOptions {
@@ -59,14 +91,16 @@ export class FloorProgressionModule {
       if (side === undefined) {
         return;
       }
+      const branchChoice = resolveBranchChoiceFromSide(side);
       host.staircaseState = {
         ...host.staircaseState,
         selected: side
       };
       host.run = {
         ...host.run,
-        branchChoice: resolveBranchChoiceFromSide(side)
+        branchChoice
       };
+      host.markHighValueChoice(branchChoice, nowMs);
     }
 
     const storyMaxFloor = GAME_CONFIG.maxFloors ?? 5;

@@ -564,6 +564,49 @@ export interface RunEconomyState {
   spentObols?: number;
 }
 
+export interface Phase6StoryTelemetry {
+  playerFacingChoices: number;
+  choiceCountByFloor: Record<string, number>;
+  powerSpikes: number;
+  buildFormed: number;
+  rareDropsPresented: number;
+  bossRewardClosed: number;
+}
+
+export interface Phase6CombatRhythmTelemetry {
+  skillUses: number;
+  skillCastsPer30s: number;
+  skillDamage: number;
+  autoAttackDamage: number;
+  skillDamageShare: number;
+  autoAttackDamageShare: number;
+  manaDryWindowMs: number;
+  averageNoInputGapMs: number;
+  maxNoInputGapMs: number;
+}
+
+export interface Phase6RuntimeEffectTelemetry {
+  buffApplyCountById: Record<string, number>;
+  buffUptimeMsById: Record<string, number>;
+  damageDealtByType: Partial<Record<DamageType, number>>;
+  damageTakenByType: Partial<Record<DamageType, number>>;
+  resolvedHitCountByType: Partial<Record<DamageType, number>>;
+  synergyActivationCountById: Record<string, number>;
+  synergyFirstActivatedFloorById: Record<string, number>;
+}
+
+export interface Phase6TelemetrySnapshot {
+  story: Phase6StoryTelemetry;
+  combat: Phase6CombatRhythmTelemetry;
+  runtimeEffects: Phase6RuntimeEffectTelemetry;
+}
+
+export interface Phase6TelemetryRuntimeState extends Phase6TelemetrySnapshot {
+  startedAtMs: number;
+  buildFormedState: boolean;
+  inputTimestampsMs: number[];
+}
+
 export interface RunSummary {
   floorReached: number;
   kills: number;
@@ -579,6 +622,7 @@ export interface RunSummary {
   runMode?: RunMode;
   dailyDate?: string;
   score?: number;
+  phase6Telemetry?: Phase6TelemetrySnapshot;
 }
 
 export interface PermanentUpgrade {

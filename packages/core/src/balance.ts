@@ -32,6 +32,12 @@ export interface RunSimulation {
   hpCurveP90: number[];
   deathCauseDistribution: Record<string, number>;
   itemRarityDistribution: Record<string, number>;
+  combatRhythm?: {
+    avgSkillUsesPerRun: number;
+    avgSkillCastsPer30s: number;
+    avgSkillDamageShare: number;
+    avgAutoAttackDamageShare: number;
+  };
 }
 
 interface SimulatedRun {

@@ -16,6 +16,7 @@
 4. 收口 Phase 5 留下的契约漂移与架构债，包括 `damageOverTime`、`boss reward runtime`、`Host Port typing`。
 5. 资源口径同步冻结：6.3 的专属音频 cue 视为硬增量，视觉资源默认优先复用现有 `VFXSystem`，仅允许少量可选增强。
 6. 补齐已有系统空洞：`buff/debuff` runtime 闭环、`physical/arcane` 最小差异化、`synergy` 激活反馈。
+7. `RealBalanceReport` 的 drift threshold 作为 Phase 6 基线合同冻结：默认阈值不得为吞掉单一场景漂移而全局放宽；如需调整，只允许做场景级 override，并附证据归档。
 
 ---
 

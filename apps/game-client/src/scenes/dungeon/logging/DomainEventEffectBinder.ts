@@ -1,7 +1,13 @@
 import { BIOME_MAP } from "@blodex/content";
 import {
   resolveEquippedWeaponType,
+  type BossAttack,
+  type CombatEvent,
   type GameEventMap,
+  type ItemInstance,
+  type PlayerState,
+  type HazardType,
+  type RunSummary,
   type TypedEventBus
 } from "@blodex/core";
 import { t } from "../../../i18n";
@@ -15,11 +21,43 @@ import {
 
 const ITEM_NEWLY_ACQUIRED_TTL_MS = 2_000;
 
-export type DomainEventEffectHost = {
+interface DomainEventRunLog {
+  append(message: string, level: string, timestampMs: number): void;
+  appendKey(key: string, params: Record<string, unknown> | undefined, level: string, timestampMs: number): void;
+}
+
+interface DomainEventContentLocalizer {
+  itemName(itemDefId: string, fallback: string): string;
+  biomeName(biomeId: string, fallback: string): string;
+}
+
+interface DomainEventHostTime {
+  now: number;
+}
+
+interface DomainEventUiPersistence {
+  scheduleRunSave(): void;
+  flushRunSave(): void;
+}
+
+export interface DomainEventEffectHost extends DomainEventUiPersistence {
   eventBus: TypedEventBus<GameEventMap>;
-} & {
-  [key: string]: any;
-};
+  player: PlayerState;
+  routeFeedback(input: { type: string; [key: string]: unknown }): void;
+  hudDirty: boolean;
+  resolveEntityLabel(entityId: string): string;
+  runLog: DomainEventRunLog;
+  lastDeathReason: string;
+  contentLocalizer: DomainEventContentLocalizer;
+  newlyAcquiredItemUntilMs: Map<string, number>;
+  nextTransientHudRefreshAt: number;
+  levelUpPulseUntilMs: number;
+  levelUpPulseLevel: number | null;
+  time: DomainEventHostTime;
+  currentBiome: {
+    id: string;
+  };
+}
 
 export function bindDomainEventEffects(host: DomainEventEffectHost): void {
     host.eventBus.on("combat:hit", ({ combat }) => {
@@ -220,6 +258,75 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
         },
         "info",
         host.time.now
+      );
+    });
+
+    host.eventBus.on("buff:apply", ({ buff, timestampMs }) => {
+      host.runLog.append(
+        `Buff observed: ${buff.defId} on ${host.resolveEntityLabel(buff.targetId)} for ${Math.max(
+          0,
+          buff.expiresAtMs - buff.appliedAtMs
+        )}ms.`,
+        "info",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("player_facing_choice", ({ floor, source, timestampMs }) => {
+      host.runLog.append(
+        `Player-facing choice surfaced on floor ${floor}: ${source}.`,
+        "info",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("power_spike", ({ floor, source, itemDefId, rarity, timestampMs }) => {
+      host.runLog.append(
+        `Power spike detected on floor ${floor} via ${source}${itemDefId === undefined ? "" : ` (${itemDefId}:${rarity ?? "unknown"})`}.`,
+        "success",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("build_formed", ({ floor, source, tags, timestampMs }) => {
+      host.runLog.append(
+        `Build formed on floor ${floor} via ${source}: ${tags.join(", ")}.`,
+        "success",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("rare_drop_presented", ({ floor, itemDefId, rarity, timestampMs }) => {
+      host.runLog.append(
+        `Rare drop presented on floor ${floor}: ${itemDefId} (${rarity}).`,
+        "success",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("boss_reward_closed", ({ choiceId, timestampMs }) => {
+      host.runLog.append(
+        `Boss reward closed with choice: ${choiceId}.`,
+        "info",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("combat_rhythm_window", ({ floor, metrics, timestampMs }) => {
+      host.runLog.append(
+        `Combat rhythm baseline @ floor ${floor}: ${metrics.skillCastsPer30s.toFixed(1)} casts / 30s, ${Math.round(
+          metrics.autoAttackDamageShare * 100
+        )}% auto share, ${metrics.averageNoInputGapMs.toFixed(0)}ms average idle gap.`,
+        "info",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("synergy_activated", ({ floor, synergyId, timestampMs }) => {
+      host.runLog.append(
+        `Synergy activated on floor ${floor}: ${synergyId}.`,
+        "success",
+        timestampMs
       );
     });
 

@@ -225,6 +225,42 @@ function makeSave(): RunSaveDataV2 {
         status: "pending"
       }
     ],
+    phase6TelemetryState: {
+      startedAtMs: 100,
+      buildFormedState: true,
+      inputTimestampsMs: [120, 150, 190],
+      story: {
+        playerFacingChoices: 4,
+        choiceCountByFloor: {
+          "1": 1,
+          "2": 2
+        },
+        powerSpikes: 2,
+        buildFormed: 1,
+        rareDropsPresented: 1,
+        bossRewardClosed: 0
+      },
+      combat: {
+        skillUses: 7,
+        skillCastsPer30s: 3.5,
+        skillDamage: 120,
+        autoAttackDamage: 180,
+        skillDamageShare: 0.4,
+        autoAttackDamageShare: 0.6,
+        manaDryWindowMs: 800,
+        averageNoInputGapMs: 950,
+        maxNoInputGapMs: 2100
+      },
+      runtimeEffects: {
+        buffApplyCountById: { war_cry: 2 },
+        buffUptimeMsById: { war_cry: 6_000 },
+        damageDealtByType: { physical: 180, arcane: 120 },
+        damageTakenByType: { physical: 25 },
+        resolvedHitCountByType: { physical: 14, arcane: 6 },
+        synergyActivationCountById: { crit_chain: 1 },
+        synergyFirstActivatedFloorById: { crit_chain: 3 }
+      }
+    },
     lease: {
       tabId: "tab-a",
       leaseUntilMs: 1000,
@@ -348,11 +384,32 @@ describe("save", () => {
     });
   });
 
+  it("round-trips phase6 telemetry runtime state", () => {
+    const save = makeSave();
+    const loaded = deserializeRunState(serializeRunState(save));
+
+    expect(loaded?.phase6TelemetryState).toEqual(save.phase6TelemetryState);
+  });
+
   it("rejects invalid floor choice budget snapshot shape", () => {
     const broken = makeSave() as unknown as Record<string, unknown>;
     broken.floorChoiceBudget = {
       floor: "3",
       satisfied: true
+    };
+
+    expect(validateSave(broken)).toBe(false);
+  });
+
+  it("rejects invalid phase6 telemetry runtime state shape", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    broken.phase6TelemetryState = {
+      startedAtMs: 100,
+      buildFormedState: "yes",
+      inputTimestampsMs: [],
+      story: {},
+      combat: {},
+      runtimeEffects: {}
     };
 
     expect(validateSave(broken)).toBe(false);

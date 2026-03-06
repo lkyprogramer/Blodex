@@ -20,10 +20,7 @@ import { GAME_CONFIG, ITEM_DEF_MAP, LOOT_TABLE_MAP, RANDOM_EVENT_DEFS } from "@b
 import { t } from "../../../i18n";
 import type { MessageParams } from "../../../i18n/types";
 import { describeDebugCommands, type DebugLogLevel } from "./types";
-
-export interface DebugCommandHost {
-  [key: string]: any;
-}
+import type { DebugCommandHost } from "./ports";
 
 export class DebugCommandRegistry {
   constructor(private readonly host: DebugCommandHost) {}
@@ -167,7 +164,7 @@ export class DebugCommandRegistry {
       this.host.eventRuntimeModule.consumeCurrentEvent();
     }
 
-    let challengeRoom = this.host.dungeon.rooms.find((room: { roomType: string }) => room.roomType === "challenge");
+    let challengeRoom = this.host.dungeon.rooms.find((room) => room.roomType === "challenge");
     if (challengeRoom === undefined) {
       const picked = chooseChallengeRoom(this.host.dungeon, this.host.eventRng);
       if (picked === null) {
@@ -175,7 +172,7 @@ export class DebugCommandRegistry {
         return false;
       }
       this.host.dungeon = markRoomAsChallenge(this.host.dungeon, picked.id);
-      challengeRoom = this.host.dungeon.rooms.find((room: { id: string }) => room.id === picked.id);
+      challengeRoom = this.host.dungeon.rooms.find((room) => room.id === picked.id);
     }
     if (challengeRoom === undefined) {
       this.debugLogKey("log.debug.challenge_injection_failed", undefined, "warn");

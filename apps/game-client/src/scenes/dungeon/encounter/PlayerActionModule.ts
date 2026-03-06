@@ -1,6 +1,7 @@
 import {
   addRunObols,
   applyXpGain,
+  appendReplayInput,
   canUseConsumable,
   canUseSkill,
   createSkillDefForLevel,
@@ -10,13 +11,78 @@ import {
   resolveSpecialAffixTotals,
   useConsumable,
   type ConsumableId,
+  type ConsumableState,
+  type GameEventMap,
   type ItemInstance,
-  type SkillDef
+  type MetaProgression,
+  type MonsterState,
+  type MutationEffect,
+  type PlayerState,
+  type RunState,
+  type SkillDef,
+  type SkillResolution,
+  type TypedEventBus
 } from "@blodex/core";
 import { BLUEPRINT_DEF_MAP, SKILL_DEFS, WEAPON_TYPE_DEF_MAP } from "@blodex/content";
+import type { MonsterRuntime } from "../../../systems/EntityManager";
+
+interface PlayerActionRunLog {
+  appendKey(key: string, params: Record<string, unknown> | undefined, level: string, timestampMs: number): void;
+}
+
+interface PlayerActionEntityManager {
+  listMonsters(): MonsterRuntime[];
+  removeMonsterById(id: string): MonsterRuntime | null;
+}
+
+interface PlayerActionCombatSystem {
+  useSkill(
+    player: PlayerState,
+    monsters: MonsterRuntime[],
+    skillDef: SkillDef,
+    rng: { next(): number; nextInt(min: number, max: number): number; pick<T>(items: T[]): T },
+    nowMs: number,
+    weaponTypeDefs: typeof WEAPON_TYPE_DEF_MAP
+  ): SkillResolution;
+}
 
 export interface PlayerActionHost {
-  [key: string]: any;
+  player: PlayerState;
+  run: RunState;
+  runEnded: boolean;
+  eventPanelOpen: boolean;
+  time: { now: number };
+  applySynergyToSkillDef(skillDef: SkillDef): SkillDef;
+  entityManager: PlayerActionEntityManager;
+  combatSystem: PlayerActionCombatSystem;
+  skillRng: { next(): number; nextInt(min: number, max: number): number; pick<T>(items: T[]): T };
+  progressionRuntimeModule: {
+    onMonsterDefeated(monster: MonsterState, nowMs: number): void;
+  };
+  tryDiscoverBlueprints(
+    sourceType: "monster_affix",
+    nowMs: number,
+    sourceId?: string
+  ): void;
+  applyOnKillMutationEffects(nowMs: number): void;
+  spawnSplitChildren(monster: MonsterState, archetype: MonsterRuntime["archetype"], nowMs: number): void;
+  refreshPlayerStatsFromEquipment(player: PlayerState): PlayerState;
+  handleLevelUpGain(levelsGained: number, nowMs: number, source: string): void;
+  resolveMutationDropBonus(): { obolMultiplier: number; soulShardMultiplier: number };
+  getRunRelativeNowMs(): number;
+  recordPlayerInput?(nowMs: number): void;
+  recordSkillResolutionTelemetry?(resolution: SkillResolution, nowMs: number): void;
+  eventBus: TypedEventBus<GameEventMap>;
+  refreshSynergyRuntime(persistDiscovery?: boolean): void;
+  hudDirty: boolean;
+  consumables: ConsumableState;
+  collectMutationEffects<T extends MutationEffect["type"]>(
+    type: T
+  ): Array<Extract<MutationEffect, { type: T }>>;
+  mapRevealActive: boolean;
+  runLog: PlayerActionRunLog;
+  meta: Pick<MetaProgression, "blueprintForgedIds" | "unlocks">;
+  scheduleRunSave(): void;
 }
 
 export interface PlayerActionModuleOptions {
@@ -60,21 +126,21 @@ export class PlayerActionModule {
     host.hudDirty = true;
   }
 
-  tryUseSkill(slotIndex: number): void {
+  tryUseSkill(slotIndex: number): boolean {
     const host = this.options.host;
     if (host.player.skills === undefined || host.runEnded || host.eventPanelOpen) {
-      return;
+      return false;
     }
     const nowMs = host.time.now;
 
     const slot = host.player.skills.skillSlots[slotIndex];
     if (slot === null || slot === undefined) {
-      return;
+      return false;
     }
 
     const def = SKILL_DEFS.find((entry) => entry.id === slot.defId);
     if (def === undefined) {
-      return;
+      return false;
     }
     const scaledDef = createSkillDefForLevel(def, slot.level);
     const runtimeSkillDef = host.applySynergyToSkillDef(scaledDef);
@@ -83,7 +149,7 @@ export class PlayerActionModule {
     );
 
     if (!canUseSkill(host.player, host.player.skills, runtimeSkillDef, nowMs)) {
-      return;
+      return false;
     }
 
     const monsters = host.entityManager.listMonsters();
@@ -144,6 +210,23 @@ export class PlayerActionModule {
       );
     }
 
+    host.run = appendReplayInput(host.run, {
+      type: "skill_use",
+      atMs: host.getRunRelativeNowMs(),
+      skillId: def.id
+    });
+    if (typeof host.recordPlayerInput === "function") {
+      host.recordPlayerInput(nowMs);
+    }
+    if (typeof host.recordSkillResolutionTelemetry === "function") {
+      host.recordSkillResolutionTelemetry(resolution, nowMs);
+    }
+    for (const buff of resolution.buffsApplied) {
+      host.eventBus.emit("buff:apply", {
+        buff,
+        timestampMs: nowMs
+      });
+    }
     host.eventBus.emit("skill:use", {
       playerId: host.player.id,
       skillId: def.id,
@@ -157,12 +240,13 @@ export class PlayerActionModule {
     });
     host.refreshSynergyRuntime();
     host.hudDirty = true;
+    return true;
   }
 
-  tryUseConsumable(consumableId: ConsumableId): void {
+  tryUseConsumable(consumableId: ConsumableId): boolean {
     const host = this.options.host;
     if (host.runEnded || host.eventPanelOpen) {
-      return;
+      return false;
     }
     const nowMs = host.time.now;
     const availability = canUseConsumable(host.player, host.consumables, consumableId, nowMs);
@@ -173,7 +257,7 @@ export class PlayerActionModule {
         reason: availability.reason,
         timestampMs: nowMs
       });
-      return;
+      return false;
     }
 
     const result = useConsumable(host.player, host.consumables, consumableId, nowMs);
@@ -213,7 +297,11 @@ export class PlayerActionModule {
       remainingCharges: host.consumables.charges[consumableId] ?? 0,
       timestampMs: nowMs
     });
+    if (typeof host.recordPlayerInput === "function") {
+      host.recordPlayerInput(nowMs);
+    }
     host.hudDirty = true;
+    return true;
   }
 
   offerLevelupSkill(): void {

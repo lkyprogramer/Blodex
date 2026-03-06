@@ -268,7 +268,7 @@ export class EventRuntimeModule {
       resolved: host.eventNode.resolved,
       ...(host.merchantOffers.length === 0
         ? {}
-        : { merchantOffers: host.merchantOffers.map((offer: Record<string, unknown>) => ({ ...offer })) })
+        : { merchantOffers: host.merchantOffers.map((offer) => ({ ...offer })) })
     };
   }
 

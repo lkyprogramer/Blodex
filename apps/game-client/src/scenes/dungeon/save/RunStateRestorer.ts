@@ -16,10 +16,7 @@ import {
   getFloorConfig
 } from "@blodex/content";
 import { resolveBiomeVisualTheme } from "../presentation/BiomeVisualThemeRegistry";
-
-export interface RunStateRestoreHost {
-  [key: string]: any;
-}
+import type { RunStateRestoreHost } from "./savePorts";
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
 
 export interface RunStateRestorerOptions {
@@ -160,10 +157,18 @@ export class RunStateRestorer {
         Phaser.Display.Color.IntegerToColor(host.currentBiome.ambientColor).rgba
       );
       const biomeVisualTheme = resolveBiomeVisualTheme(host.currentBiome);
-      host.renderSystem.drawDungeon(host.dungeon, host.origin, {
-        tileKey: biomeVisualTheme.floorTileKey,
-        tintColor: biomeVisualTheme.tileTint
-      });
+      host.renderSystem.drawDungeon(
+        host.dungeon,
+        host.origin,
+        biomeVisualTheme.tileTint === undefined
+          ? {
+              tileKey: biomeVisualTheme.floorTileKey
+            }
+          : {
+              tileKey: biomeVisualTheme.floorTileKey,
+              tintColor: biomeVisualTheme.tileTint
+            }
+      );
       host.progressionRuntimeModule.renderHiddenRoomMarkers();
 
       const playerRender = host.renderSystem.spawnPlayer(host.player.position, host.origin);
@@ -247,6 +252,9 @@ export class RunStateRestorer {
         }
       }
       host.progressionRuntimeModule.restoreChallengeRoom(host.time.now);
+      if (typeof host.restorePhase6TelemetryState === "function") {
+        host.restorePhase6TelemetryState(save.phase6TelemetryState);
+      }
 
       host.renderSystem.configureCamera(host.cameras.main, host.worldBounds, host.playerSprite);
       host.uiManager.configureMinimap({
@@ -275,7 +283,10 @@ export class RunStateRestorer {
       host.resetMutationRuntimeState(
         selectionValidation.ok ? selectionValidation.selected : host.meta.selectedMutationIds
       );
-      host.refreshSynergyRuntime();
+      host.refreshSynergyRuntime(false, {
+        emitActivationEvents: false,
+        recordTelemetry: false
+      });
       if (typeof host.restoreFloorChoiceBudgetSnapshot === "function") {
         host.restoreFloorChoiceBudgetSnapshot(save.floorChoiceBudget, host.time.now);
       } else {

@@ -6,10 +6,7 @@ import {
   type ItemDef
 } from "@blodex/core";
 import { ITEM_DEF_MAP } from "@blodex/content";
-
-export interface DeferredOutcomeHost {
-  [key: string]: any;
-}
+import type { DeferredOutcomeHost } from "./types";
 
 export interface DeferredOutcomeRuntimeOptions {
   host: DeferredOutcomeHost;

@@ -246,6 +246,9 @@ export class EventResolutionService {
       ...host.run,
       lootCollected: host.run.lootCollected + 1
     };
+    if (typeof host.recordAcquiredItemTelemetry === "function") {
+      host.recordAcquiredItemTelemetry(item, "event_reward", nowMs);
+    }
     host.runLog.appendKey(
       "log.event.reward.item_acquired",
       {

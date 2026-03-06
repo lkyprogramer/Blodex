@@ -1,11 +1,16 @@
 import {
+  addRunObols,
   applyDamageToBoss,
+  applyXpGain,
   applyLevelUpChoice,
+  canUseSkill,
+  createSkillDefForLevel,
   createRunState,
   defaultBaseStats,
   deriveStats,
   getDifficultyModifier,
   initBossState,
+  markSkillUsed,
   markBossAttackUsed,
   resolveBranchChoiceBySeed,
   resolveBiomeForFloorBySeed,
@@ -15,15 +20,20 @@ import {
   resolvePlayerAttack,
   resolveSpecialAffixTotals,
   resolveWeaponTypeDef,
+  rollItemDrop,
   rollBossDrops,
   SeededRng,
   selectBossAttack,
   type BalanceConfig,
   type BranchChoice,
+  type CombatEvent,
+  type EquipmentSlot,
   type ItemInstance,
   type MonsterState,
   type PlayerState,
   type RunSimulation,
+  type RunState,
+  type SkillDef,
   type WeaponTypeDef,
   updateBossPhase,
   xpForNextLevel
@@ -34,6 +44,7 @@ import {
   ITEM_DEF_MAP,
   LOOT_TABLE_MAP,
   MONSTER_ARCHETYPE_MAP,
+  SKILL_DEFS,
   WEAPON_TYPE_DEF_MAP,
   type MonsterArchetypeDef
 } from "@blodex/content";
@@ -44,6 +55,7 @@ const STORY_MAX_FLOOR = 5;
 const LOOP_TICK_MS = 120;
 const MAX_FLOOR_SIM_MS = 240_000;
 const BOSS_EXCLUSIVE_TABLE_ID = "boss_bone_sovereign_exclusive";
+const DEFAULT_SIM_SKILL_IDS = ["cleave", "shadow_step", "blade_fan"] as const;
 
 interface SimulatedRun {
   cleared: boolean;
@@ -52,6 +64,9 @@ interface SimulatedRun {
   hpByFloor: number[];
   deathCause: string;
   rarityCounts: Record<"common" | "magic" | "rare", number>;
+  skillUses: number;
+  skillDamage: number;
+  autoAttackDamage: number;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -102,7 +117,10 @@ function createBalancePlayer(): PlayerState {
     equipment: {},
     gold: 0,
     skills: {
-      skillSlots: [],
+      skillSlots: DEFAULT_SIM_SKILL_IDS.map((defId) => ({
+        defId,
+        level: 1
+      })),
       cooldowns: {}
     },
     activeBuffs: []
@@ -301,6 +319,112 @@ function resolveWeaponDef(player: PlayerState): WeaponTypeDef {
   return resolveWeaponTypeDef(resolveEquippedWeaponType(player), WEAPON_TYPE_DEF_MAP);
 }
 
+function sumPlayerDamage(events: CombatEvent[], playerId: string): number {
+  return events.reduce((sum, event) => {
+    if (event.sourceId !== playerId || (event.kind !== "damage" && event.kind !== "crit")) {
+      return sum;
+    }
+    return sum + Math.max(0, event.amount);
+  }, 0);
+}
+
+function chooseSkillForSimulation(
+  player: PlayerState,
+  behavior: BalanceConfig["playerBehavior"],
+  monsterCount: number,
+  nowMs: number,
+  rng: SeededRng
+): SkillDef | null {
+  if (player.skills === undefined) {
+    return null;
+  }
+  const usageChance = behavior === "optimal" ? 0.68 : behavior === "average" ? 0.03 : 0.01;
+  if (rng.next() > usageChance) {
+    return null;
+  }
+
+  const candidates = player.skills.skillSlots
+    .filter((slot): slot is NonNullable<typeof slot> => slot !== null)
+    .map((slot) => {
+      const def = SKILL_DEFS.find((entry) => entry.id === slot.defId);
+      return def === undefined ? undefined : createSkillDefForLevel(def, slot.level);
+    })
+    .filter((def): def is SkillDef => def !== undefined)
+    .filter((def) => canUseSkill(player, player.skills!, def, nowMs));
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const preferred =
+    (monsterCount >= 2 ? candidates.find((def) => def.targeting === "aoe_around") : undefined) ??
+    candidates.find((def) => def.targeting !== "self") ??
+    candidates[0];
+  return preferred ?? null;
+}
+
+function applyMonsterKillRewards(
+  player: PlayerState,
+  run: RunState,
+  monster: MonsterState,
+  lootRng: SeededRng,
+  behavior: BalanceConfig["playerBehavior"],
+  slotWeightMultiplier: Partial<Record<EquipmentSlot, number>> | undefined
+): {
+  player: PlayerState;
+  run: RunState;
+  lootCollected: number;
+  rarityCounts: Record<"common" | "magic" | "rare", number>;
+} {
+  const equippedItems = Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined);
+  const specialAffixTotals = resolveSpecialAffixTotals(equippedItems);
+  const xpResult = applyXpGain(player, monster.xpValue, "manual", {
+    xpBonus: specialAffixTotals.xpBonus
+  });
+  const nextDerived = deriveStats(xpResult.player.baseStats, equippedItems);
+  let nextPlayer: PlayerState = {
+    ...xpResult.player,
+    derivedStats: nextDerived,
+    health: Math.min(xpResult.player.health + 4, nextDerived.maxHealth),
+    mana: Math.min(xpResult.player.mana + 1, nextDerived.maxMana)
+  };
+  const nextKills = run.kills + 1;
+  let lootCollected = 0;
+  const rarityCounts: Record<"common" | "magic" | "rare", number> = {
+    common: 0,
+    magic: 0,
+    rare: 0
+  };
+  const lootTable = LOOT_TABLE_MAP[monster.dropTableId];
+  const droppedItem =
+    lootTable === undefined
+      ? undefined
+      : rollItemDrop(
+          lootTable,
+          ITEM_DEF_MAP,
+          run.currentFloor,
+          lootRng,
+          `${run.currentFloor}-${monster.id}-${nextKills}`,
+          slotWeightMultiplier === undefined ? undefined : { slotWeightMultiplier }
+        );
+  if (droppedItem !== null && droppedItem !== undefined) {
+    rarityCounts[droppedItem.rarity] += 1;
+    lootCollected += 1;
+    nextPlayer = collectItem(nextPlayer, droppedItem, behavior);
+  }
+  return {
+    player: nextPlayer,
+    run: {
+      ...addRunObols(run, 1),
+      kills: nextKills,
+      totalKills: run.totalKills + 1,
+      endlessKills: (run.endlessKills ?? 0) + (run.inEndless ? 1 : 0)
+    },
+    lootCollected,
+    rarityCounts
+  };
+}
+
 function simulateFloorCombat(
   player: PlayerState,
   config: BalanceConfig,
@@ -313,16 +437,23 @@ function simulateFloorCombat(
   lootCollected: number;
   rarityCounts: Record<"common" | "magic" | "rare", number>;
   cleared: boolean;
+  skillUses: number;
+  skillDamage: number;
+  autoAttackDamage: number;
 } {
   const combatSystem = new CombatSystem();
   const monsterQueue = createFloorMonsters(floor, runSeed, branchChoice, config);
   const combatRng = new SeededRng(`${runSeed}:real:combat:${floor}`);
   const lootRng = new SeededRng(`${runSeed}:real:loot:${floor}`);
+  const skillRng = new SeededRng(`${runSeed}:real:skill:${floor}`);
   let nextPlayer = player;
   let attackTargetId: string | null = null;
   let nextPlayerAttackAt = 0;
   let elapsedMs = 0;
   let lootCollected = 0;
+  let skillUses = 0;
+  let skillDamage = 0;
+  let autoAttackDamage = 0;
   const rarityCounts: Record<"common" | "magic" | "rare", number> = {
     common: 0,
     magic: 0,
@@ -345,6 +476,61 @@ function simulateFloorCombat(
       attackTargetId = null;
       nextPlayerAttackAt = elapsedMs;
     }
+
+    const skillDef = chooseSkillForSimulation(
+      nextPlayer,
+      config.playerBehavior,
+      activeMonsters.length,
+      elapsedMs,
+      skillRng
+    );
+    if (skillDef !== null && nextPlayer.skills !== undefined) {
+      const resolution = combatSystem.useSkill(nextPlayer, activeMonsters, skillDef, skillRng, elapsedMs, WEAPON_TYPE_DEF_MAP);
+      nextPlayer = {
+        ...resolution.player,
+        skills: markSkillUsed(nextPlayer.skills, skillDef, elapsedMs)
+      };
+      skillUses += 1;
+      skillDamage += sumPlayerDamage(resolution.events, nextPlayer.id);
+      const deadIds = new Set(
+        resolution.events
+          .filter((event) => event.kind === "death")
+          .map((event) => event.targetId)
+      );
+      if (deadIds.size > 0) {
+        const slotWeightMultiplier = BIOME_MAP[resolveBiomeForFloorBySeed(floor, runSeed, branchChoice)].lootBias;
+        for (const targetId of deadIds) {
+          const index = activeMonsters.findIndex((monster) => monster.state.id === targetId);
+          if (index < 0) {
+            continue;
+          }
+          const [deadMonster] = activeMonsters.splice(index, 1);
+          if (deadMonster === undefined) {
+            continue;
+          }
+          const rewards = applyMonsterKillRewards(
+            nextPlayer,
+            run,
+            deadMonster.state,
+            lootRng,
+            config.playerBehavior,
+            slotWeightMultiplier
+          );
+          nextPlayer = rewards.player;
+          run = rewards.run;
+          lootCollected += rewards.lootCollected;
+          rarityCounts.common += rewards.rarityCounts.common;
+          rarityCounts.magic += rewards.rarityCounts.magic;
+          rarityCounts.rare += rewards.rarityCounts.rare;
+          nextPlayer = applyPendingLevelUps(nextPlayer, config.playerBehavior);
+        }
+      }
+      if (nextPlayer.health <= 0 || activeMonsters.length === 0) {
+        elapsedMs += LOOP_TICK_MS;
+        continue;
+      }
+    }
+
     const playerTurn = combatSystem.updatePlayerAttack({
       player: nextPlayer,
       run,
@@ -364,6 +550,7 @@ function simulateFloorCombat(
     run = playerTurn.run;
     attackTargetId = playerTurn.attackTargetId;
     nextPlayerAttackAt = playerTurn.nextPlayerAttackAt;
+    autoAttackDamage += sumPlayerDamage(playerTurn.combatEvents, nextPlayer.id);
     if (playerTurn.killedMonsterId !== undefined) {
       const index = activeMonsters.findIndex((monster) => monster.state.id === playerTurn.killedMonsterId);
       if (index >= 0) {
@@ -394,7 +581,10 @@ function simulateFloorCombat(
     elapsedMs,
     lootCollected,
     rarityCounts,
-    cleared: monsterQueue.length === 0 && activeMonsters.length === 0 && nextPlayer.health > 0
+    cleared: monsterQueue.length === 0 && activeMonsters.length === 0 && nextPlayer.health > 0,
+    skillUses,
+    skillDamage,
+    autoAttackDamage
   };
 }
 
@@ -408,10 +598,15 @@ function simulateBossCombat(
   lootCollected: number;
   rarityCounts: Record<"common" | "magic" | "rare", number>;
   cleared: boolean;
+  skillUses: number;
+  skillDamage: number;
+  autoAttackDamage: number;
 } {
   const combatRng = new SeededRng(`${runSeed}:real:boss:combat`);
   const bossRng = new SeededRng(`${runSeed}:real:boss:ai`);
   const lootRng = new SeededRng(`${runSeed}:real:boss:loot`);
+  const skillRng = new SeededRng(`${runSeed}:real:boss:skill`);
+  const combatSystem = new CombatSystem();
   const weaponDef = resolveWeaponDef(player);
   const specialTotals = resolveSpecialAffixTotals(
     Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined)
@@ -431,9 +626,52 @@ function simulateBossCombat(
     magic: 0,
     rare: 0
   };
+  const proxyArchetype = MONSTER_ARCHETYPE_MAP.melee_grunt ?? Object.values(MONSTER_ARCHETYPE_MAP)[0]!;
   let lootCollected = 0;
+  let skillUses = 0;
+  let skillDamage = 0;
+  let autoAttackDamage = 0;
 
   while (nextPlayer.health > 0 && bossState.health > 0 && elapsedMs < MAX_FLOOR_SIM_MS) {
+    const skillDef = chooseSkillForSimulation(nextPlayer, config.playerBehavior, 1, elapsedMs, skillRng);
+    if (skillDef !== null && nextPlayer.skills !== undefined && bossState.health > 0) {
+      const proxy = createMonsterRuntime(
+        proxyArchetype,
+        {
+          id: bossState.bossId,
+          archetypeId: "melee_grunt",
+          level: STORY_MAX_FLOOR,
+          health: bossState.health,
+          maxHealth: bossState.maxHealth,
+          damage: 0,
+          attackRange: 1.5,
+          moveSpeed: 0,
+          xpValue: 0,
+          dropTableId: BONE_SOVEREIGN.dropTableId,
+          position: { ...bossState.position },
+          aiState: "attack",
+          isBoss: true
+        }
+      );
+      const resolution = combatSystem.useSkill(nextPlayer, [proxy], skillDef, skillRng, elapsedMs, WEAPON_TYPE_DEF_MAP);
+      nextPlayer = {
+        ...resolution.player,
+        skills: markSkillUsed(nextPlayer.skills, skillDef, elapsedMs)
+      };
+      skillUses += 1;
+      skillDamage += sumPlayerDamage(resolution.events, nextPlayer.id);
+      const nextBossState = resolution.affectedMonsters[0];
+      if (nextBossState !== undefined) {
+        bossState = {
+          ...bossState,
+          health: nextBossState.health
+        };
+      }
+      if (bossState.health <= 0) {
+        break;
+      }
+    }
+
     if (elapsedMs >= nextPlayerAttackAt) {
       const proxy = {
         id: bossState.bossId,
@@ -461,6 +699,7 @@ function simulateBossCombat(
           : {})
       });
       const dealt = Math.max(0, proxy.health - playerHit.monster.health);
+      autoAttackDamage += dealt;
       nextPlayer = applyPassiveRegen(playerHit.player, LOOP_TICK_MS);
       if (dealt > 0) {
         bossState = updateBossPhase(applyDamageToBoss(bossState, dealt), BONE_SOVEREIGN);
@@ -540,7 +779,10 @@ function simulateBossCombat(
     elapsedMs,
     lootCollected,
     rarityCounts,
-    cleared: bossState.health <= 0 && nextPlayer.health > 0
+    cleared: bossState.health <= 0 && nextPlayer.health > 0,
+    skillUses,
+    skillDamage,
+    autoAttackDamage
   };
 }
 
@@ -574,6 +816,9 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
     magic: 0,
     rare: 0
   };
+  let skillUses = 0;
+  let skillDamage = 0;
+  let autoAttackDamage = 0;
   let cleared = true;
 
   for (let floor = 1; floor <= floors; floor += 1) {
@@ -588,6 +833,9 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
     rarityCounts.common += result.rarityCounts.common;
     rarityCounts.magic += result.rarityCounts.magic;
     rarityCounts.rare += result.rarityCounts.rare;
+    skillUses += result.skillUses;
+    skillDamage += result.skillDamage;
+    autoAttackDamage += result.autoAttackDamage;
     if (!result.cleared || player.health <= 0) {
       cleared = false;
       break;
@@ -604,7 +852,10 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
     runDurationMs,
     hpByFloor,
     deathCause: resolveDeathCause(floorReached, player, branchChoice),
-    rarityCounts
+    rarityCounts,
+    skillUses,
+    skillDamage,
+    autoAttackDamage
   };
 }
 
@@ -621,12 +872,18 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
     magic: 0,
     rare: 0
   };
+  let totalSkillUses = 0;
+  let totalSkillDamage = 0;
+  let totalAutoAttackDamage = 0;
 
   for (const run of runs) {
     deathCauseDistribution[run.deathCause] = (deathCauseDistribution[run.deathCause] ?? 0) + 1;
     totalRarity.common += run.rarityCounts.common;
     totalRarity.magic += run.rarityCounts.magic;
     totalRarity.rare += run.rarityCounts.rare;
+    totalSkillUses += run.skillUses;
+    totalSkillDamage += run.skillDamage;
+    totalAutoAttackDamage += run.autoAttackDamage;
   }
 
   const hpCurveP50: number[] = [];
@@ -638,6 +895,10 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
   }
 
   const rarityDenominator = Math.max(1, totalRarity.common + totalRarity.magic + totalRarity.rare);
+  const avgSkillUsesPerRun = totalSkillUses / sampleSize;
+  const avgSkillCastsPer30s =
+    totalSkillUses / Math.max(1, runs.reduce((sum, run) => sum + run.runDurationMs / 30_000, 0));
+  const totalPlayerDamage = totalSkillDamage + totalAutoAttackDamage;
   return {
     clearRate: Number((clearedCount / sampleSize).toFixed(4)),
     avgFloorReached: Number(avgFloorReached.toFixed(3)),
@@ -649,6 +910,12 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
       common: Number((totalRarity.common / rarityDenominator).toFixed(4)),
       magic: Number((totalRarity.magic / rarityDenominator).toFixed(4)),
       rare: Number((totalRarity.rare / rarityDenominator).toFixed(4))
+    },
+    combatRhythm: {
+      avgSkillUsesPerRun: Number(avgSkillUsesPerRun.toFixed(3)),
+      avgSkillCastsPer30s: Number(avgSkillCastsPer30s.toFixed(3)),
+      avgSkillDamageShare: Number((totalSkillDamage / Math.max(1, totalPlayerDamage)).toFixed(4)),
+      avgAutoAttackDamageShare: Number((totalAutoAttackDamage / Math.max(1, totalPlayerDamage)).toFixed(4))
     }
   };
 }

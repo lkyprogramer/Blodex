@@ -12,10 +12,7 @@ import {
   type HazardRuntimeState
 } from "@blodex/core";
 import { HAZARD_MAP } from "@blodex/content";
-
-export interface HazardRuntimeHost {
-  [key: string]: any;
-}
+import type { HazardRuntimeHost } from "./types";
 
 export interface HazardRuntimeModuleOptions {
   host: HazardRuntimeHost;
