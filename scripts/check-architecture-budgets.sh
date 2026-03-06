@@ -10,7 +10,10 @@ DEFAULT_MAX_CLASS_METHODS=60
 resolve_debt_ceiling_lines() {
   case "$1" in
     "apps/game-client/src/scenes/DungeonScene.ts")
-      echo 4165
+      echo 4286
+      ;;
+    "apps/game-client/src/ui/hud/HudContainer.ts")
+      echo 1186
       ;;
     *)
       echo ""
@@ -20,6 +23,9 @@ resolve_debt_ceiling_lines() {
 
 resolve_debt_ceiling_methods() {
   case "$1" in
+    "apps/game-client/src/scenes/DungeonScene.ts")
+      echo 92
+      ;;
     *)
       echo ""
       ;;

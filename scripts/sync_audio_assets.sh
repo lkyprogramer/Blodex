@@ -186,6 +186,18 @@ generate_procedural_source() {
     ui_biome_enter_01)
       render_dual_tone "$src" 260 520 0.32 0.14 0.07
       ;;
+    ui_loot_rare_drop_01)
+      render_dual_tone "$src" 520 760 0.24 0.10 0.06
+      ;;
+    ui_build_formed_01)
+      render_dual_tone "$src" 280 440 0.30 0.16 0.08
+      ;;
+    ui_boss_reward_open_01)
+      render_dual_tone "$src" 190 330 0.36 0.18 0.09
+      ;;
+    ui_equipment_compare_open_01)
+      render_dual_tone "$src" 360 540 0.24 0.14 0.07
+      ;;
 
     ui_merchant_open_01)
       render_dual_tone "$src" 330 550 0.26 0.13 0.06

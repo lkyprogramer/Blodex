@@ -202,6 +202,7 @@ import {
 } from "./dungeon/debug/debugFlags";
 import { injectDebugLockedEquipment } from "./dungeon/debug/injectDebugLockedEquipment";
 import { DiagnosticsService } from "./dungeon/diagnostics/DiagnosticsService";
+import { HeartbeatFeedbackRuntime, type HeartbeatFeedbackRuntimeHost } from "./dungeon/feedback/HeartbeatFeedbackRuntime";
 import { BossCombatService } from "./dungeon/encounter/BossCombatService";
 import { BossRuntimeModule, type BossRuntimeHost } from "./dungeon/encounter/BossRuntimeModule";
 import { BossSpawnService } from "./dungeon/encounter/BossSpawnService";
@@ -303,6 +304,11 @@ const MANUAL_PATH_REPLAN_INTERVAL_MS = 90;
 const KEYBOARD_MOVE_INPUT_INTERVAL_MS = 70;
 const AI_ACTIVE_RADIUS_TILES = 10;
 const AI_FAR_UPDATE_INTERVAL_FRAMES = 3;
+const ELITE_DROP_TABLE_ID = "catacomb_elite";
+const NEAR_DEATH_ARM_THRESHOLD = 0.2;
+const NEAR_DEATH_RECOVERY_THRESHOLD = 0.45;
+const NEAR_DEATH_RECOVERY_WINDOW_MS = 8_000;
+const NEAR_DEATH_FEEDBACK_COOLDOWN_MS = 10_000;
 const MONSTER_COMBAT_RADIUS_TILES = 12;
 const LOOT_PICKUP_RADIUS_TILES = 1.15;
 const SKILL_READY_FLASH_DURATION_MS = 480;
@@ -488,6 +494,8 @@ export class DungeonScene extends Phaser.Scene {
   private hudDirty = true;
   private runEnded = false;
   private lastDeathReason = "Unknown cause.";
+  private nearDeathWindowArmedAtMs: number | null = null;
+  private nearDeathFeedbackCooldownUntilMs = 0;
   private readonly entityLabelById = new Map<string, string>();
   private consumables: ConsumableState = createInitialConsumableState(0);
   private eventNode: {
@@ -502,6 +510,7 @@ export class DungeonScene extends Phaser.Scene {
   private readonly challengeMonsterIds = new Set<string>();
   private merchantOffers: MerchantOffer[] = [];
   private eventPanelOpen = false;
+  private comparePromptOpen = false;
   private mapRevealActive = false;
   private deferredOutcomes: DeferredOutcomeState[] = [];
   private debugCheatsEnabled = false;
@@ -526,6 +535,7 @@ export class DungeonScene extends Phaser.Scene {
   private readonly powerSpikeRuntimeModule = new PowerSpikeRuntimeModule({
     host: this.createPowerSpikeRuntimeHost()
   });
+  private readonly heartbeatFeedbackRuntime = new HeartbeatFeedbackRuntime(this.createHeartbeatFeedbackHost());
   private nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
   private readonly debugLockedEquipQuery = DEBUG_LOCKED_EQUIP_QUERY;
   private readonly debugLockedEquipIconId = DEBUG_LOCKED_EQUIP_ICON_ID;
@@ -553,6 +563,7 @@ export class DungeonScene extends Phaser.Scene {
         }
       }
     );
+    this.heartbeatFeedbackRuntime.bind();
   }
 
   private createPowerSpikeRuntimeHost(): PowerSpikeRuntimeHost {
@@ -580,6 +591,39 @@ export class DungeonScene extends Phaser.Scene {
       resolveProgressionLootTable(floor) { return scene.resolveProgressionLootTable(floor); },
       resolveLootRollOptions(options) { return scene.resolveLootRollOptions(options); },
       isItemDefUnlocked(itemDef) { return scene.isItemDefUnlocked(itemDef); }
+    };
+  }
+
+  private createHeartbeatFeedbackHost(): HeartbeatFeedbackRuntimeHost {
+    const scene = this;
+    return {
+      get eventBus() {
+        return scene.eventBus;
+      },
+      get uiManager() {
+        return scene.uiManager;
+      },
+      get contentLocalizer() {
+        return scene.contentLocalizer;
+      },
+      get player() {
+        return scene.player;
+      },
+      routeFeedback(input) {
+        scene.routeFeedback(input);
+      },
+      get comparePromptOpen() {
+        return scene.comparePromptOpen;
+      },
+      set comparePromptOpen(value) {
+        scene.comparePromptOpen = value;
+      },
+      get hudDirty() {
+        return scene.hudDirty;
+      },
+      set hudDirty(value) {
+        scene.hudDirty = value;
+      }
     };
   }
 
@@ -2175,11 +2219,15 @@ export class DungeonScene extends Phaser.Scene {
     };
   }
 
+  private isBlockingOverlayOpen(): boolean {
+    return this.eventPanelOpen || this.comparePromptOpen;
+  }
+
   update(_: number, deltaMs: number): void {
     const nowMs = this.time.now;
     this.runFlowOrchestrator.update({
       runEnded: this.runEnded,
-      eventPanelOpen: this.eventPanelOpen,
+      eventPanelOpen: this.isBlockingOverlayOpen(),
       nowMs,
       deltaMs,
       onEventPanelFrame: (panelNowMs) => this.runEventPanelFrame(panelNowMs),
@@ -2201,7 +2249,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private runActiveFrame(nowMs: number, deltaMs: number): void {
     this.progressionChoiceRuntime.maybePromptLevelUpChoice(nowMs, "runtime_tick");
-    if (this.eventPanelOpen) {
+    if (this.isBlockingOverlayOpen()) {
       this.runEventPanelFrame(nowMs);
       return;
     }
@@ -2247,6 +2295,7 @@ export class DungeonScene extends Phaser.Scene {
       return;
     }
 
+    this.updatePressurePeakRuntime(nowMs);
     this.worldEventController.updatePostResolution(nowMs);
     if (nowMs - this.lastAutoSaveAt >= AUTO_SAVE_INTERVAL_MS) {
       this.flushRunSave();
@@ -2347,6 +2396,21 @@ export class DungeonScene extends Phaser.Scene {
         return;
       case "boss_phase":
         this.vfxSystem.playBossPhaseChange(this.resolveEntitySprite(action.bossId));
+        return;
+      case "rare_drop":
+        this.vfxSystem.playRareDrop(action.rarity);
+        return;
+      case "build_formed":
+        this.vfxSystem.playBuildFormed();
+        return;
+      case "boss_reward":
+        this.vfxSystem.playBossReward();
+        return;
+      case "synergy_activated":
+        this.vfxSystem.playSynergyActivated();
+        return;
+      case "power_spike":
+        this.vfxSystem.playPowerSpike(action.major);
         return;
       case "hazard_trigger": {
         const mapped = gridToIso(
@@ -2554,6 +2618,8 @@ export class DungeonScene extends Phaser.Scene {
     this.uiManager.clearLogs();
     this.uiManager.hideDeathOverlay();
     this.uiManager.hideEventPanel();
+    this.uiManager.hideHeartbeatToast();
+    this.uiManager.hideEquipmentComparePrompt();
     this.blueprintFoundIdsInRun = [];
     this.refreshUnlockSnapshots();
     if (selectedRunMode === "daily") {
@@ -2564,6 +2630,9 @@ export class DungeonScene extends Phaser.Scene {
     this.consumables = createInitialConsumableState(this.meta.permanentUpgrades.potionCharges);
     this.mapRevealActive = false;
     this.eventPanelOpen = false;
+    this.comparePromptOpen = false;
+    this.nearDeathWindowArmedAtMs = null;
+    this.nearDeathFeedbackCooldownUntilMs = 0;
     this.merchantOffers = [];
     this.deferredOutcomes = [];
     this.eventRuntimeModule.destroyEventNode();
@@ -2577,6 +2646,7 @@ export class DungeonScene extends Phaser.Scene {
           }
         : run;
     this.powerSpikeRuntimeModule.resetRun();
+    this.heartbeatFeedbackRuntime.reset();
     this.phase6Telemetry.resetRun(this.run.startedAtMs);
     this.progressionChoiceRuntime.resetRuntime(this.time.now, this.run.currentFloor);
     this.progressionRuntimeModule.setupFloor(1, true);
@@ -3016,7 +3086,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
-    if (this.runEnded || this.eventPanelOpen) {
+    if (this.runEnded || this.isBlockingOverlayOpen()) {
       return;
     }
     const nowMs = this.time.now;
@@ -3079,7 +3149,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private updateKeyboardMoveIntent(nowMs: number): void {
-    if (this.runEnded || this.eventPanelOpen || this.cursorKeys === null) {
+    if (this.runEnded || this.isBlockingOverlayOpen() || this.cursorKeys === null) {
       return;
     }
     if (this.path.length > 0 || nowMs < this.nextKeyboardMoveInputAt) {
@@ -3135,7 +3205,7 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private updateManualMoveTarget(nowMs: number): void {
-    if (this.manualMoveTarget === null || this.runEnded || this.eventPanelOpen) {
+    if (this.manualMoveTarget === null || this.runEnded || this.isBlockingOverlayOpen()) {
       return;
     }
     if (this.attackTargetId !== null) {
@@ -3225,16 +3295,7 @@ export class DungeonScene extends Phaser.Scene {
       }
       const dead = this.entityManager.removeMonsterById(playerCombat.killedMonsterId);
       if (dead !== null) {
-        this.progressionRuntimeModule.onMonsterDefeated(dead.state, nowMs);
-        for (const affixId of dead.state.affixes ?? []) {
-          this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
-        }
-        this.applyOnKillMutationEffects(nowMs);
-        dead.sprite.destroy();
-        dead.healthBarBg.destroy();
-        dead.healthBarFg.destroy();
-        dead.affixMarker?.destroy();
-        this.spawnSplitChildren(dead.state, dead.archetype, nowMs);
+        this.handleMonsterDefeat(dead, nowMs);
       }
     }
 
@@ -3252,6 +3313,31 @@ export class DungeonScene extends Phaser.Scene {
         timestampMs: nowMs
       });
     }
+  }
+
+  private handleMonsterDefeat(
+    dead: NonNullable<ReturnType<EntityManager["removeMonsterById"]>>,
+    nowMs: number
+  ): void {
+    if (dead.archetype.dropTableId === ELITE_DROP_TABLE_ID) {
+      this.tasteRuntime.recordKeyKill("elite", this.run.currentFloor, "elite_kill", nowMs);
+      this.eventBus.emit("pressure_peak", {
+        floor: this.run.currentFloor,
+        kind: "elite_kill",
+        timestampMs: nowMs,
+        label: this.contentLocalizer.monsterName(dead.archetype.id, dead.archetype.name)
+      });
+    }
+    this.progressionRuntimeModule.onMonsterDefeated(dead.state, nowMs);
+    for (const affixId of dead.state.affixes ?? []) {
+      this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
+    }
+    this.applyOnKillMutationEffects(nowMs);
+    dead.sprite.destroy();
+    dead.healthBarBg.destroy();
+    dead.healthBarFg.destroy();
+    dead.affixMarker?.destroy();
+    this.spawnSplitChildren(dead.state, dead.archetype, nowMs);
   }
 
   handleLevelUpGain(levelsGained: number, nowMs: number, source: string): void {
@@ -3339,6 +3425,38 @@ export class DungeonScene extends Phaser.Scene {
     this.eventBus.emit("boss_reward_closed", {
       floor: this.run.currentFloor,
       choiceId,
+      timestampMs: nowMs
+    });
+  }
+
+  private updatePressurePeakRuntime(nowMs: number): void {
+    if (this.player.health <= 0) {
+      this.nearDeathWindowArmedAtMs = null;
+      return;
+    }
+
+    const healthRatio = this.player.health / Math.max(1, this.player.derivedStats.maxHealth);
+    if (healthRatio <= NEAR_DEATH_ARM_THRESHOLD) {
+      this.nearDeathWindowArmedAtMs ??= nowMs;
+      return;
+    }
+
+    if (this.nearDeathWindowArmedAtMs === null) {
+      return;
+    }
+    if (nowMs - this.nearDeathWindowArmedAtMs > NEAR_DEATH_RECOVERY_WINDOW_MS) {
+      this.nearDeathWindowArmedAtMs = null;
+      return;
+    }
+    if (healthRatio < NEAR_DEATH_RECOVERY_THRESHOLD || nowMs < this.nearDeathFeedbackCooldownUntilMs) {
+      return;
+    }
+
+    this.nearDeathWindowArmedAtMs = null;
+    this.nearDeathFeedbackCooldownUntilMs = nowMs + NEAR_DEATH_FEEDBACK_COOLDOWN_MS;
+    this.eventBus.emit("pressure_peak", {
+      floor: this.run.currentFloor,
+      kind: "near_death_reversal",
       timestampMs: nowMs
     });
   }
@@ -3435,6 +3553,16 @@ export class DungeonScene extends Phaser.Scene {
     baselinePlayer: PlayerState = this.player
   ): void {
     this.powerSpikeRuntimeModule.recordAcquiredItemTelemetry(item, source, nowMs, baselinePlayer);
+    if (
+      source === "merchant_purchase" ||
+      source === "event_reward" ||
+      source === "boss_reward" ||
+      source === "challenge_reward" ||
+      source === "hidden_room_reward" ||
+      source === "pair_fallback"
+    ) {
+      this.heartbeatFeedbackRuntime.maybeQueueEquipmentCompare(item, source);
+    }
   }
 
   private resolveRuntimeSkillDef(skillDef: SkillDef): SkillDef {
@@ -3686,16 +3814,7 @@ export class DungeonScene extends Phaser.Scene {
         if (dead === null) {
           continue;
         }
-        this.progressionRuntimeModule.onMonsterDefeated(dead.state, nowMs);
-        dead.sprite.destroy();
-        dead.healthBarBg.destroy();
-        dead.healthBarFg.destroy();
-        dead.affixMarker?.destroy();
-        this.spawnSplitChildren(dead.state, dead.archetype, nowMs);
-        for (const affixId of dead.state.affixes ?? []) {
-          this.tryDiscoverBlueprints("monster_affix", nowMs, affixId);
-        }
-        this.applyOnKillMutationEffects(nowMs);
+        this.handleMonsterDefeat(dead, nowMs);
         const { obolMultiplier } = this.resolveMutationDropBonus();
         this.run = addRunObols(
           {
@@ -3772,13 +3891,15 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     for (const drop of picked) {
+      const baselinePlayer = this.player;
       this.player = collectLoot(this.player, drop.item);
       this.run = {
         ...this.run,
         lootCollected: this.run.lootCollected + 1
       };
       this.tasteRuntime.recordPickup(drop.item, this.run.currentFloor, "auto_pickup", nowMs);
-      this.powerSpikeRuntimeModule.recordBuildFormed("key_pickup", nowMs);
+      this.recordAcquiredItemTelemetry(drop.item, "auto_pickup", nowMs, baselinePlayer);
+      this.heartbeatFeedbackRuntime.maybeQueueEquipmentCompare(drop.item, "auto_pickup");
       drop.sprite.destroy();
       this.eventBus.emit("loot:pickup", {
         playerId: this.player.id,
@@ -3984,7 +4105,7 @@ export class DungeonScene extends Phaser.Scene {
       logs: this.uiManager.getLogs(),
       flags: {
         runEnded: this.runEnded,
-        eventPanelOpen: this.eventPanelOpen,
+        eventPanelOpen: this.isBlockingOverlayOpen(),
         debugCheatsEnabled: this.debugCheatsEnabled,
         timestampMs: nowMs
       }

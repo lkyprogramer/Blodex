@@ -285,6 +285,12 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
         amplitude === undefined
           ? ""
           : ` [off ${Math.round(amplitude.offensiveDelta * 100)}%, def ${Math.round(amplitude.defensiveDelta * 100)}%, util ${Math.round(amplitude.utilityDelta * 100)}%]`;
+      if (sourceKind !== "drop_spawn" && sourceKind !== "boss_reward" && sourceKind !== "build_threshold") {
+        host.routeFeedback({
+          type: "power_spike",
+          major
+        });
+      }
       host.runLog.append(
         `Power spike detected on floor ${floor}${pairId === undefined ? "" : ` [pair ${pairId}]`} via ${source}${sourceKind === undefined ? "" : `/${sourceKind}`}${itemDefId === undefined ? "" : ` (${itemDefId}:${rarity ?? "unknown"})`}${major ? " [major]" : ""}${amplitudeSuffix}.`,
         "success",
@@ -293,6 +299,9 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
     });
 
     host.eventBus.on("build_formed", ({ floor, source, tags, timestampMs }) => {
+      host.routeFeedback({
+        type: "build:formed"
+      });
       host.runLog.append(
         `Build formed on floor ${floor} via ${source}: ${tags.join(", ")}.`,
         "success",
@@ -301,6 +310,10 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
     });
 
     host.eventBus.on("rare_drop_presented", ({ floor, itemDefId, rarity, timestampMs }) => {
+      host.routeFeedback({
+        type: "loot:rare_drop",
+        rarity
+      });
       host.runLog.append(
         `Rare drop presented on floor ${floor}: ${itemDefId} (${rarity}).`,
         "success",
@@ -309,6 +322,9 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
     });
 
     host.eventBus.on("boss_reward_closed", ({ choiceId, timestampMs }) => {
+      host.routeFeedback({
+        type: "boss:reward"
+      });
       host.runLog.append(
         `Boss reward closed with choice: ${choiceId}.`,
         "info",
@@ -327,8 +343,19 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
     });
 
     host.eventBus.on("synergy_activated", ({ floor, synergyId, timestampMs }) => {
+      host.routeFeedback({
+        type: "synergy:activated"
+      });
       host.runLog.append(
         `Synergy activated on floor ${floor}: ${synergyId}.`,
+        "success",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("pressure_peak", ({ floor, kind, label, timestampMs }) => {
+      host.runLog.append(
+        `Pressure peak on floor ${floor}: ${kind}${label === undefined ? "" : ` (${label})`}.`,
         "success",
         timestampMs
       );

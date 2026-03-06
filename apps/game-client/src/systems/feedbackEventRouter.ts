@@ -70,6 +70,32 @@ export type FeedbackAction =
       level: number;
     }
   | {
+      channel: "sfx";
+      cue: "rare_drop";
+      rarity: "rare" | "unique";
+    }
+  | {
+      channel: "sfx";
+      cue: "build_formed";
+    }
+  | {
+      channel: "sfx";
+      cue: "boss_reward";
+    }
+  | {
+      channel: "sfx";
+      cue: "equipment_compare";
+    }
+  | {
+      channel: "sfx";
+      cue: "synergy_activated";
+    }
+  | {
+      channel: "sfx";
+      cue: "power_spike";
+      major: boolean;
+    }
+  | {
       channel: "vfx";
       cue: "combat_hit";
       targetId: string;
@@ -109,6 +135,28 @@ export type FeedbackAction =
       cue: "level_up";
       playerId: string;
       level: number;
+    }
+  | {
+      channel: "vfx";
+      cue: "rare_drop";
+      rarity: "rare" | "unique";
+    }
+  | {
+      channel: "vfx";
+      cue: "build_formed";
+    }
+  | {
+      channel: "vfx";
+      cue: "boss_reward";
+    }
+  | {
+      channel: "vfx";
+      cue: "synergy_activated";
+    }
+  | {
+      channel: "vfx";
+      cue: "power_spike";
+      major: boolean;
     };
 
 export type FeedbackRouterInput =
@@ -168,6 +216,26 @@ export type FeedbackRouterInput =
       type: "player:levelup";
       playerId: string;
       level: number;
+    }
+  | {
+      type: "loot:rare_drop";
+      rarity: "rare" | "unique";
+    }
+  | {
+      type: "build:formed";
+    }
+  | {
+      type: "boss:reward";
+    }
+  | {
+      type: "equipment:compare";
+    }
+  | {
+      type: "synergy:activated";
+    }
+  | {
+      type: "power_spike";
+      major: boolean;
     };
 
 function unreachableFeedbackAction(action: never): never {
@@ -191,6 +259,10 @@ export function feedbackActionKey(action: FeedbackAction): string {
         return `sfx:${action.cue}:${action.hazardType}`;
       case "level_up":
         return `sfx:${action.cue}:${action.level}`;
+      case "rare_drop":
+        return `sfx:${action.cue}:${action.rarity}`;
+      case "power_spike":
+        return `sfx:${action.cue}:${action.major ? "major" : "minor"}`;
       default:
         return `sfx:${action.cue}`;
     }
@@ -210,6 +282,14 @@ export function feedbackActionKey(action: FeedbackAction): string {
       return `vfx:${action.cue}:${action.hazardType}:${action.position.x},${action.position.y}`;
     case "level_up":
       return `vfx:${action.cue}:${action.playerId}:${action.level}`;
+    case "rare_drop":
+      return `vfx:${action.cue}:${action.rarity}`;
+    case "power_spike":
+      return `vfx:${action.cue}:${action.major ? "major" : "minor"}`;
+    case "build_formed":
+    case "boss_reward":
+    case "synergy_activated":
+      return `vfx:${action.cue}`;
     default:
       return unreachableFeedbackAction(action);
   }
@@ -370,6 +450,72 @@ export function deriveFeedbackActions(input: FeedbackRouterInput): FeedbackActio
           cue: "level_up",
           playerId: input.playerId,
           level: input.level
+        }
+      ];
+    case "loot:rare_drop":
+      return [
+        {
+          channel: "sfx",
+          cue: "rare_drop",
+          rarity: input.rarity
+        },
+        {
+          channel: "vfx",
+          cue: "rare_drop",
+          rarity: input.rarity
+        }
+      ];
+    case "build:formed":
+      return [
+        {
+          channel: "sfx",
+          cue: "build_formed"
+        },
+        {
+          channel: "vfx",
+          cue: "build_formed"
+        }
+      ];
+    case "boss:reward":
+      return [
+        {
+          channel: "sfx",
+          cue: "boss_reward"
+        },
+        {
+          channel: "vfx",
+          cue: "boss_reward"
+        }
+      ];
+    case "equipment:compare":
+      return [
+        {
+          channel: "sfx",
+          cue: "equipment_compare"
+        }
+      ];
+    case "synergy:activated":
+      return [
+        {
+          channel: "sfx",
+          cue: "synergy_activated"
+        },
+        {
+          channel: "vfx",
+          cue: "synergy_activated"
+        }
+      ];
+    case "power_spike":
+      return [
+        {
+          channel: "sfx",
+          cue: "power_spike",
+          major: input.major
+        },
+        {
+          channel: "vfx",
+          cue: "power_spike",
+          major: input.major
         }
       ];
     default:

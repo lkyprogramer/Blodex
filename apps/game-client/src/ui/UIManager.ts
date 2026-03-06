@@ -5,6 +5,7 @@ import {
   type MinimapExplorationSnapshot,
   type MinimapFrame
 } from "./components/Minimap";
+import type { ItemInstance } from "@blodex/core";
 
 export type UIRenderState = Parameters<Hud["render"]>[0];
 
@@ -96,6 +97,31 @@ export class UIManager {
 
   hideEventPanel(): void {
     this.hud.hideEventPanel();
+  }
+
+  showHeartbeatToast(...args: Parameters<Hud["showHeartbeatToast"]>): void {
+    this.hud.showHeartbeatToast(...args);
+  }
+
+  hideHeartbeatToast(): void {
+    this.hud.hideHeartbeatToast();
+  }
+
+  showEquipmentComparePrompt(
+    item: ItemInstance,
+    compareItem: ItemInstance | undefined,
+    options: {
+      title: string;
+      subtitle: string;
+      sourceLabel: string;
+      onAction: (action: "equip" | "later" | "ignore") => void;
+    }
+  ): void {
+    this.hud.showEquipmentComparePrompt(item, compareItem, options);
+  }
+
+  hideEquipmentComparePrompt(): void {
+    this.hud.hideEquipmentComparePrompt();
   }
 
   showSummary(...args: Parameters<Hud["showSummary"]>): void {

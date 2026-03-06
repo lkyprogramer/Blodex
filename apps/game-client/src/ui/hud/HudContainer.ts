@@ -22,6 +22,13 @@ import {
   renderMerchantDialog,
   type EventChoiceView
 } from "../components/EventDialog";
+import {
+  bindEquipmentComparePromptActions,
+  renderEquipmentComparePrompt,
+  type EquipmentComparePromptAffixLine,
+  type EquipmentComparePromptSummaryLine
+} from "../components/EquipmentComparePrompt";
+import { renderHeartbeatToast, type HeartbeatToastView } from "../components/HeartbeatToast";
 import { renderHudPanel } from "../components/HudPanel";
 import {
   bindConsumableBarActions,
@@ -35,11 +42,15 @@ import type { RunOutcomeAnalysis } from "../../scenes/dungeon/taste/RunOutcomeAn
 import { getContentLocalizer, t } from "../../i18n";
 import { difficultyLabel } from "../../i18n/labelResolvers";
 import {
-  buildEquipmentDeltaSummary,
   resolveDeltaDirection,
   type DeltaDirection,
   type EquipmentDeltaSummaryKey
 } from "./compare/EquipmentDeltaPresenter";
+import {
+  buildEquipmentCompareView,
+  summaryDirectionSymbol,
+  summaryKeyLabelKey
+} from "./compare/EquipmentCompareViewPresenter";
 import type { HudStatHighlight } from "./compare/StatDeltaHighlighter";
 
 interface HudState {
@@ -255,6 +266,17 @@ function directionSymbol(direction: DeltaDirection): string {
   }
 }
 
+function directionToPromptTone(direction: DeltaDirection): "positive" | "negative" | "neutral" {
+  switch (direction) {
+    case "up":
+      return "positive";
+    case "down":
+      return "negative";
+    case "equal":
+      return "neutral";
+  }
+}
+
 function summaryLabel(key: EquipmentDeltaSummaryKey): string {
   switch (key) {
     case "offense":
@@ -369,12 +391,15 @@ export class HudContainer {
   private readonly summaryEl = document.querySelector("#run-summary-overlay") as HTMLDivElement;
   private readonly deathOverlayEl = document.querySelector("#death-overlay") as HTMLDivElement;
   private readonly eventPanelEl = document.querySelector("#event-panel") as HTMLDivElement;
+  private readonly heartbeatToastEl = document.querySelector("#heartbeat-toast-layer") as HTMLDivElement;
+  private readonly equipmentCompareEl = document.querySelector("#equipment-compare-overlay") as HTMLDivElement;
   private readonly tooltipEl: HTMLDivElement;
   private readonly preferredImageFormat = detectPreferredImageFormat();
   private readonly contentLocalizer = getContentLocalizer();
 
   private logEntries: LogEntry[] = [];
   private nextLogId = 1;
+  private heartbeatToastTimeoutId: number | null = null;
   private readonly onSummaryContinueKeydown = (event: KeyboardEvent): void => {
     if (event.key !== "Enter" && event.key !== " ") {
       return;
@@ -398,6 +423,8 @@ export class HudContainer {
     this.renderLogPanel();
     this.hideDeathOverlay();
     this.hideEventPanel();
+    this.hideHeartbeatToast();
+    this.hideEquipmentComparePrompt();
   }
 
   render(state: HudState): void {
@@ -937,37 +964,27 @@ export class HudContainer {
       compareItem === undefined
         ? undefined
         : this.contentLocalizer.itemName(compareItem.defId, compareItem.name);
-    const itemAffixes = collectItemAffixMap(item);
-    const compareAffixes = compareItem === undefined ? new Map<string, number>() : collectItemAffixMap(compareItem);
-    const keys = new Set<string>([...itemAffixes.keys(), ...compareAffixes.keys()]);
-    const affixLines = [...keys]
-      .sort((left, right) => left.localeCompare(right))
-      .map((key) => {
-        const itemValue = itemAffixes.get(key) ?? 0;
-        const compareValue = compareAffixes.get(key) ?? 0;
-        const delta = itemValue - compareValue;
-        const deltaClass = directionToDeltaClass(resolveDeltaDirection(delta));
+    const compareView = buildEquipmentCompareView(item, compareItem);
+    const affixLines = compareView.affixLines
+      .map((line) => {
+        const deltaClass = directionToDeltaClass(line.direction);
         return `
           <div class="tooltip-affix-line">
-            <span>${escapeHtml(localizeAffixName(key))}</span>
+            <span>${escapeHtml(localizeAffixName(line.key))}</span>
             <span class="tooltip-affix-value ${deltaClass}">${escapeHtml(
-              formatAffixValue(key, itemValue)
-            )}${compareItem === undefined ? "" : ` (${escapeHtml(formatSignedValue(delta))})`}</span>
+              formatAffixValue(line.key, line.value)
+            )}${line.delta === undefined ? "" : ` (${escapeHtml(formatSignedValue(line.delta))})`}</span>
           </div>
         `;
       })
       .join("");
-    const itemPowerScore = calculateItemPowerScore(item);
-    const comparePowerScore = compareItem === undefined ? 0 : calculateItemPowerScore(compareItem);
-    const powerDelta = itemPowerScore - comparePowerScore;
-    const powerDeltaDirection = resolveDeltaDirection(powerDelta);
-    const powerDeltaClass = directionToDeltaClass(powerDeltaDirection);
+    const powerDeltaClass = directionToDeltaClass(compareView.powerDirection);
     const compareSummaryLines =
       compareItem === undefined
         ? []
-        : buildEquipmentDeltaSummary(item, compareItem).map((line) => `
+        : compareView.summaryLines.map((line) => `
             <div class="tooltip-compare-summary-line">
-              <span>${escapeHtml(summaryLabel(line.key))}</span>
+              <span>${escapeHtml(summaryLabel(summaryKeyLabelKey(line.key)))}</span>
               <span class="tooltip-compare-summary-value ${directionToDeltaClass(line.direction)}">${directionSymbol(
                 line.direction
               )}</span>
@@ -1002,7 +1019,7 @@ export class HudContainer {
             <div class="tooltip-compare-score ${powerDeltaClass}">
               ${escapeHtml(
                 t("ui.hud.tooltip.power_delta", {
-                  delta: formatSignedValue(powerDelta)
+                  delta: formatSignedValue(compareView.powerDelta)
                 })
               )}
             </div>
@@ -1015,6 +1032,88 @@ export class HudContainer {
 
   private hideTooltip(): void {
     this.tooltipEl.classList.add("hidden");
+  }
+
+  showHeartbeatToast(view: HeartbeatToastView): void {
+    if (this.heartbeatToastTimeoutId !== null) {
+      window.clearTimeout(this.heartbeatToastTimeoutId);
+      this.heartbeatToastTimeoutId = null;
+    }
+    this.heartbeatToastEl.className = "heartbeat-toast-layer";
+    this.heartbeatToastEl.innerHTML = renderHeartbeatToast(view);
+    this.heartbeatToastTimeoutId = window.setTimeout(() => {
+      this.hideHeartbeatToast();
+    }, 2_200);
+  }
+
+  hideHeartbeatToast(): void {
+    if (this.heartbeatToastTimeoutId !== null) {
+      window.clearTimeout(this.heartbeatToastTimeoutId);
+      this.heartbeatToastTimeoutId = null;
+    }
+    this.heartbeatToastEl.className = "hidden";
+    this.heartbeatToastEl.innerHTML = "";
+  }
+
+  showEquipmentComparePrompt(
+    item: ItemInstance,
+    compareItem: ItemInstance | undefined,
+    options: {
+      title: string;
+      subtitle: string;
+      sourceLabel: string;
+      onAction: (action: "equip" | "later" | "ignore") => void;
+    }
+  ): void {
+    const compareView = buildEquipmentCompareView(item, compareItem);
+    const localizedItemName = this.contentLocalizer.itemName(item.defId, item.name);
+    const localizedCompareName =
+      compareItem === undefined
+        ? undefined
+        : this.contentLocalizer.itemName(compareItem.defId, compareItem.name);
+    const summaryLines: EquipmentComparePromptSummaryLine[] = compareView.summaryLines.map((line) => ({
+      label: summaryLabel(summaryKeyLabelKey(line.key)),
+      symbol: summaryDirectionSymbol(line.direction),
+      tone: directionToPromptTone(line.direction)
+    }));
+    const affixLines: EquipmentComparePromptAffixLine[] = compareView.affixLines.map((line) => ({
+      label: localizeAffixName(line.key),
+      value: formatAffixValue(line.key, line.value),
+      ...(line.delta === undefined ? {} : { delta: formatSignedValue(line.delta) }),
+      tone: directionToPromptTone(line.direction)
+    }));
+
+    this.equipmentCompareEl.className = "equipment-compare-overlay";
+    this.equipmentCompareEl.innerHTML = renderEquipmentComparePrompt({
+      itemId: item.id,
+      title: options.title,
+      subtitle: options.subtitle,
+      sourceLabel: options.sourceLabel,
+      candidateName: localizedItemName,
+      ...(localizedCompareName === undefined ? {} : { compareName: localizedCompareName }),
+      rarityLabel: localizeRarity(item.rarity),
+      powerDeltaLabel: t("ui.hud.tooltip.power_delta", {
+        delta: formatSignedValue(compareView.powerDelta)
+      }),
+      powerDeltaTone: directionToPromptTone(compareView.powerDirection),
+      summaryLines,
+      affixLines,
+      equipNowLabel: t("ui.feedback.compare.equip_now"),
+      laterLabel: t("ui.feedback.compare.later"),
+      ignoreLabel: t("ui.feedback.compare.ignore")
+    });
+    bindEquipmentComparePromptActions(this.equipmentCompareEl, (action, itemId) => {
+      this.hideEquipmentComparePrompt();
+      if (action === "equip" && itemId !== undefined) {
+        this.onEquip(itemId);
+      }
+      options.onAction(action);
+    });
+  }
+
+  hideEquipmentComparePrompt(): void {
+    this.equipmentCompareEl.className = "hidden";
+    this.equipmentCompareEl.innerHTML = "";
   }
 
   showEventPanel(
@@ -1055,12 +1154,15 @@ export class HudContainer {
     this.summaryEl.innerHTML = "";
     document.removeEventListener("keydown", this.onSummaryContinueKeydown);
     this.hideEventPanel();
+    this.hideEquipmentComparePrompt();
   }
 
   reset(): void {
     this.clearSummary();
     this.hideDeathOverlay();
     this.hideEventPanel();
+    this.hideHeartbeatToast();
+    this.hideEquipmentComparePrompt();
     this.hideTooltip();
     this.clearLogs();
 

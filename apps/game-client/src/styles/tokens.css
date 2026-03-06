@@ -30,6 +30,8 @@
   --z-meta-nav: 3;
   --z-screen-vignette: 24000;
   --z-overlay-event: 25000;
+  --z-overlay-heartbeat: 25500;
+  --z-overlay-compare: 25750;
   --z-overlay-meta: 26000;
   --z-overlay-transition: 27000;
   --z-overlay-summary: 28000;

@@ -1,6 +1,7 @@
 import type { ItemInstance } from "@blodex/core";
 import { describe, expect, it } from "vitest";
 import { buildEquipmentDeltaSummary } from "../EquipmentDeltaPresenter";
+import { isMerchantHighValueCompareCandidate } from "../EquipmentCompareViewPresenter";
 
 function makeItem(partial: Partial<ItemInstance>): ItemInstance {
   return {
@@ -55,5 +56,38 @@ describe("EquipmentDeltaPresenter", () => {
     const candidate = makeItem({});
     const summary = buildEquipmentDeltaSummary(candidate, undefined);
     expect(summary.every((entry) => entry.direction === "equal")).toBe(true);
+  });
+
+  it("treats only materially better merchant upgrades as high-value compare candidates", () => {
+    const lowValueCandidate = makeItem({
+      rolledAffixes: {
+        attackPower: 5,
+        armor: 0,
+        maxMana: 0,
+        critChance: 0
+      }
+    });
+    const equipped = makeItem({
+      id: "equipped",
+      rolledAffixes: {
+        attackPower: 4,
+        armor: 1,
+        maxMana: 0,
+        critChance: 0
+      }
+    });
+    const highValueCandidate = makeItem({
+      id: "item-b",
+      rolledAffixes: {
+        attackPower: 12,
+        armor: 3,
+        maxMana: 4,
+        critChance: 0.08
+      }
+    });
+
+    expect(isMerchantHighValueCompareCandidate(lowValueCandidate, equipped)).toBe(false);
+    expect(isMerchantHighValueCompareCandidate(highValueCandidate, equipped)).toBe(true);
+    expect(isMerchantHighValueCompareCandidate(highValueCandidate, undefined)).toBe(false);
   });
 });
