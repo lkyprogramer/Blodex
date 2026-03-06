@@ -21,6 +21,26 @@ export function renderRunSummaryScreen(summary: RunSummary, analysis?: RunOutcom
     { label: t("ui.summary.time"), value: `${(summary.elapsedMs / 1000).toFixed(1)}s` },
     { label: t("ui.summary.level"), value: String(summary.leveledTo) }
   ];
+  if (summary.phase6Telemetry !== undefined) {
+    rows.push(
+      {
+        label: t("ui.summary.phase6.choices"),
+        value: `${summary.phase6Telemetry.story.playerFacingChoices}`
+      },
+      {
+        label: t("ui.summary.phase6.spikes"),
+        value: `${summary.phase6Telemetry.story.powerSpikes} / ${summary.phase6Telemetry.story.buildFormed}`
+      },
+      {
+        label: t("ui.summary.phase6.rhythm"),
+        value: t("ui.summary.phase6.rhythm_value", {
+          casts: summary.phase6Telemetry.combat.skillCastsPer30s.toFixed(1),
+          autoShare: Math.round(summary.phase6Telemetry.combat.autoAttackDamageShare * 100),
+          idleGap: summary.phase6Telemetry.combat.averageNoInputGapMs.toFixed(0)
+        })
+      }
+    );
+  }
   const rowsHtml = rows
     .map(
       (row, index) => `

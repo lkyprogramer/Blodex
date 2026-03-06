@@ -2,11 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { getLocale, setLocale } from "../../../../i18n";
 import { ProgressionChoiceRuntime } from "../ProgressionChoiceRuntime";
 
-function createHost() {
+function createHost(): any {
   return {
     runEnded: false,
     eventPanelOpen: false,
     time: { now: 0 },
+    eventBus: {
+      emit: vi.fn()
+    },
     run: { currentFloor: 2 },
     player: {
       id: "player",
@@ -29,6 +32,8 @@ function createHost() {
       appendKey: vi.fn()
     },
     refreshSynergyRuntime: vi.fn(),
+    refreshPlayerStatsFromEquipment: vi.fn((player) => player),
+    registerStatDeltaHighlights: vi.fn(),
     playerActionModule: {
       offerLevelupSkill: vi.fn()
     },

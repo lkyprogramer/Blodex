@@ -2,14 +2,10 @@ import { SAVE_LEASE_TTL_MS } from "../../../systems/SaveManager";
 import type {
   RunRngStreamName,
   RunSaveDataV2,
-  RunState,
   RuntimeEventNodeState,
   StaircaseState
 } from "@blodex/core";
-
-export interface RunSaveSnapshotHost {
-  [key: string]: any;
-}
+import type { RunSaveSnapshotHost } from "./savePorts";
 
 export interface RunSaveSnapshotBuilderOptions {
   host: RunSaveSnapshotHost;
@@ -21,9 +17,12 @@ export class RunSaveSnapshotBuilder {
 
   build(nowMs: number): RunSaveDataV2 | null {
     const host = this.options.host;
-    if (host.runEnded || (host.run as RunState | undefined) === undefined || host.player === undefined) {
+    const run = host.run;
+    const player = host.player;
+    if (host.runEnded || run === undefined || player === undefined) {
       return null;
     }
+    const elapsedMs = Math.max(0, nowMs - run.startedAtMs);
     const minimapSnapshot = host.uiManager.getMinimapSnapshot() ?? {
       layoutHash: host.dungeon.layoutHash,
       exploredKeys: []
@@ -53,19 +52,23 @@ export class RunSaveSnapshotBuilder {
     }
     const floorChoiceBudget =
       typeof host.captureFloorChoiceBudgetSnapshot === "function" ? host.captureFloorChoiceBudgetSnapshot() : undefined;
+    const phase6TelemetryState =
+      typeof host.capturePhase6TelemetryState === "function"
+        ? host.capturePhase6TelemetryState(elapsedMs)
+        : undefined;
 
     return {
       schemaVersion: 2,
       savedAtMs: wallNowMs,
       appVersion: this.options.appVersion,
-      runId: `${host.runSeed}:${host.run.startedAtMs}`,
+      runId: `${host.runSeed}:${run.startedAtMs}`,
       runSeed: host.runSeed,
       run: {
-        ...host.run
+        ...run
       },
       player: {
-        ...host.player,
-        position: { ...host.player.position }
+        ...player,
+        position: { ...player.position }
       },
       consumables: {
         charges: { ...host.consumables.charges },
@@ -74,29 +77,22 @@ export class RunSaveSnapshotBuilder {
       dungeon: {
         ...host.dungeon,
         walkable: host.dungeon.walkable.map((row: boolean[]) => [...row]),
-        rooms: host.dungeon.rooms.map((room: Record<string, unknown>) => ({ ...room })),
-        corridors: host.dungeon.corridors.map((corridor: { path: Array<Record<string, number>> }) => ({
+        rooms: host.dungeon.rooms.map((room) => ({ ...room })),
+        corridors: host.dungeon.corridors.map((corridor) => ({
           ...corridor,
           path: corridor.path.map((point) => ({ ...point }))
         })),
-        spawnPoints: host.dungeon.spawnPoints.map((point: Record<string, number>) => ({ ...point })),
+        spawnPoints: host.dungeon.spawnPoints.map((point) => ({ ...point })),
         playerSpawn: { ...host.dungeon.playerSpawn },
-        hiddenRooms: (host.dungeon.hiddenRooms ?? []).map(
-          (room: {
-            roomId: string;
-            entrance: { x: number; y: number };
-            revealed: boolean;
-            rewardsClaimed: boolean;
-          }) => ({
+        hiddenRooms: (host.dungeon.hiddenRooms ?? []).map((room) => ({
             roomId: room.roomId,
             entrance: { ...room.entrance },
             revealed: room.revealed,
             rewardsClaimed: room.rewardsClaimed
-          })
-        )
+          }))
       },
       staircase: staircaseSnapshot,
-      hazards: host.hazards.map((hazard: { position: { x: number; y: number } }) => ({
+      hazards: host.hazards.map((hazard) => ({
         ...hazard,
         position: { ...hazard.position }
       })),
@@ -134,6 +130,7 @@ export class RunSaveSnapshotBuilder {
       },
       mapRevealActive: host.mapRevealActive,
       ...(floorChoiceBudget === undefined ? {} : { floorChoiceBudget }),
+      ...(phase6TelemetryState === undefined ? {} : { phase6TelemetryState }),
       rngCursor: this.collectRngCursor(),
       blueprintFoundIdsInRun: [...host.blueprintFoundIdsInRun],
       selectedMutationIds: [...host.mutationRuntime.activeIds],
@@ -144,7 +141,7 @@ export class RunSaveSnapshotBuilder {
           outcome.trigger?.type === "floor_reached"
             ? {
                 type: "floor_reached",
-                value: Math.max(1, Math.floor(outcome.trigger.value ?? host.run.currentFloor))
+                value: Math.max(1, Math.floor(outcome.trigger.value ?? run.currentFloor))
               }
             : outcome.trigger?.type === "boss_kill"
               ? {
@@ -196,7 +193,7 @@ export class RunSaveSnapshotBuilder {
       resolved: host.eventNode.resolved,
       ...(host.merchantOffers.length === 0
         ? {}
-        : { merchantOffers: host.merchantOffers.map((offer: Record<string, unknown>) => ({ ...offer })) })
+        : { merchantOffers: host.merchantOffers.map((offer) => ({ ...offer })) })
     };
   }
 }

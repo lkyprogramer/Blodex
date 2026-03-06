@@ -2,9 +2,13 @@ import {
   applyLevelUpChoice,
   type BaseStats,
   type FloorChoiceBudgetState,
+  type GameEventMap,
   type LootTableDef,
+  type PlayerState,
   type RandomEventDef,
-  type RollItemDropOptions
+  type RollItemDropOptions,
+  type RunState,
+  type TypedEventBus
 } from "@blodex/core";
 import { LOOT_TABLE_MAP } from "@blodex/content";
 import {
@@ -14,8 +18,51 @@ import {
   progressionChoiceSourceLabel
 } from "../../../i18n/labelResolvers";
 
+interface ProgressionChoiceUiManager {
+  showEventDialog(
+    eventDef: RandomEventDef,
+    choices: Array<{
+      choice: RandomEventDef["choices"][number];
+      enabled: boolean;
+      disabledReason?: string;
+    }>,
+    onSelect: (choiceId: string) => void,
+    onClose: () => void
+  ): void;
+  hideEventPanel(): void;
+}
+
+interface ProgressionChoiceRunLog {
+  appendKey(key: string, params: Record<string, unknown> | undefined, level: string, timestampMs: number): void;
+}
+
+interface ProgressionChoicePlayerActionPort {
+  offerLevelupSkill(): void;
+}
+
 export interface ProgressionChoiceHost {
-  [key: string]: any;
+  player: PlayerState;
+  run: RunState;
+  eventBus: TypedEventBus<GameEventMap>;
+  refreshSynergyRuntime(persistDiscovery?: boolean): void;
+  playerActionModule: ProgressionChoicePlayerActionPort;
+  runEnded: boolean;
+  eventPanelOpen: boolean;
+  uiManager: ProgressionChoiceUiManager;
+  runLog: ProgressionChoiceRunLog;
+  time: { now: number };
+  hudDirty: boolean;
+  currentBiome: {
+    lootBias?: RollItemDropOptions["slotWeightMultiplier"];
+  };
+  refreshPlayerStatsFromEquipment(player: PlayerState): PlayerState;
+  registerStatDeltaHighlights(
+    before: PlayerState["derivedStats"],
+    after: PlayerState["derivedStats"],
+    nowMs: number
+  ): void;
+  scheduleRunSave(): void;
+  recordBuildLevelUpChoice?(stat: keyof BaseStats, source: string, nowMs: number): void;
 }
 
 export interface ProgressionChoiceRuntimeOptions {

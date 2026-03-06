@@ -1,10 +1,7 @@
 import type { BossAttack, BossRuntimeState } from "@blodex/core";
 import Phaser from "phaser";
 import { gridToIso } from "../../../systems/iso";
-
-export interface BossTelegraphHost {
-  [key: string]: any;
-}
+import type { BossTelegraphHost } from "./ports";
 
 export interface BossTelegraphPresenterOptions {
   host: BossTelegraphHost;

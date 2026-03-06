@@ -1,11 +1,48 @@
-import type { RandomEventDef } from "@blodex/core";
+import type { RandomEventDef, RunState } from "@blodex/core";
 import { t } from "../../../i18n";
 import { gridToIso } from "../../../systems/iso";
 import { BossCombatService } from "./BossCombatService";
 import { BossSpawnService } from "./BossSpawnService";
 
+interface BossRuntimeUiManager {
+  showEventDialog(
+    eventDef: RandomEventDef,
+    choices: Array<{
+      choice: RandomEventDef["choices"][number];
+      enabled: boolean;
+      disabledReason?: string;
+    }>,
+    onSelect: (choiceId: string) => void,
+    onClose: () => void
+  ): void;
+}
+
+interface BossRuntimeRunLog {
+  appendKey(key: string, params: Record<string, unknown> | undefined, level: string, timestampMs: number): void;
+}
+
 export interface BossRuntimeHost {
-  [key: string]: any;
+  bossState: { position: { x: number; y: number }; health: number } | null;
+  bossSprite: { setPosition(x: number, y: number): void; setVisible(visible: boolean): void } | null;
+  tileWidth: number;
+  tileHeight: number;
+  origin: { x: number; y: number };
+  eventPanelOpen: boolean;
+  runEnded: boolean;
+  run: RunState;
+  uiManager: BossRuntimeUiManager;
+  eventRuntimeModule: {
+    consumeCurrentEvent(): void;
+  };
+  runCompletionModule: {
+    enterAbyss(nowMs: number): void;
+    finishRun(isVictory: boolean): void;
+  };
+  recordBossRewardClosed?(choiceId: string, nowMs: number): void;
+  time: {
+    now: number;
+  };
+  runLog: BossRuntimeRunLog;
 }
 
 const ABYSS_VICTORY_EVENT_ID = "boss_victory_choice";
@@ -97,6 +134,9 @@ export class BossRuntimeModule {
       choices,
       (choiceId: string) => {
         host.eventRuntimeModule.consumeCurrentEvent();
+        if (typeof host.recordBossRewardClosed === "function") {
+          host.recordBossRewardClosed(choiceId, host.time.now);
+        }
         if (choiceId === "enter_abyss" && canEnterAbyss) {
           host.runCompletionModule.enterAbyss(host.time.now);
           return;
@@ -105,6 +145,9 @@ export class BossRuntimeModule {
       },
       () => {
         host.eventRuntimeModule.consumeCurrentEvent();
+        if (typeof host.recordBossRewardClosed === "function") {
+          host.recordBossRewardClosed("dismiss", host.time.now);
+        }
         host.runCompletionModule.finishRun(true);
       }
     );

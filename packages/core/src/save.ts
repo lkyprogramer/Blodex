@@ -7,6 +7,7 @@ import type {
   ItemInstance,
   MerchantOffer,
   MonsterState,
+  Phase6TelemetryRuntimeState,
   PlayerState,
   RunRngStreamName,
   StaircaseState
@@ -118,6 +119,7 @@ export interface RunSaveDataV2 extends Omit<RunSaveDataV1, "schemaVersion" | "ru
   staircase: StaircaseState;
   deferredOutcomes?: DeferredOutcomeState[];
   floorChoiceBudget?: FloorChoiceBudgetState;
+  phase6TelemetryState?: Phase6TelemetryRuntimeState;
 }
 
 export type RunSaveEnvelope = RunSaveDataV2 & Record<string, unknown>;
@@ -171,6 +173,49 @@ function isFloorChoiceBudgetState(value: unknown): value is FloorChoiceBudgetSta
     isFiniteNumber(value.floor) &&
     typeof value.satisfied === "boolean" &&
     (value.source === undefined || typeof value.source === "string")
+  );
+}
+
+function isStringNumberRecord(value: unknown): value is Record<string, number> {
+  return isRecord(value) && Object.values(value).every((entry) => isFiniteNumber(entry));
+}
+
+function isPhase6TelemetryRuntimeState(value: unknown): value is Phase6TelemetryRuntimeState {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (!isFiniteNumber(value.startedAtMs) || typeof value.buildFormedState !== "boolean") {
+    return false;
+  }
+  if (!Array.isArray(value.inputTimestampsMs) || !value.inputTimestampsMs.every((entry) => isFiniteNumber(entry))) {
+    return false;
+  }
+  if (!isRecord(value.story) || !isRecord(value.combat) || !isRecord(value.runtimeEffects)) {
+    return false;
+  }
+  return (
+    isFiniteNumber(value.story.playerFacingChoices) &&
+    isStringNumberRecord(value.story.choiceCountByFloor) &&
+    isFiniteNumber(value.story.powerSpikes) &&
+    isFiniteNumber(value.story.buildFormed) &&
+    isFiniteNumber(value.story.rareDropsPresented) &&
+    isFiniteNumber(value.story.bossRewardClosed) &&
+    isFiniteNumber(value.combat.skillUses) &&
+    isFiniteNumber(value.combat.skillCastsPer30s) &&
+    isFiniteNumber(value.combat.skillDamage) &&
+    isFiniteNumber(value.combat.autoAttackDamage) &&
+    isFiniteNumber(value.combat.skillDamageShare) &&
+    isFiniteNumber(value.combat.autoAttackDamageShare) &&
+    isFiniteNumber(value.combat.manaDryWindowMs) &&
+    isFiniteNumber(value.combat.averageNoInputGapMs) &&
+    isFiniteNumber(value.combat.maxNoInputGapMs) &&
+    isStringNumberRecord(value.runtimeEffects.buffApplyCountById) &&
+    isStringNumberRecord(value.runtimeEffects.buffUptimeMsById) &&
+    isStringNumberRecord(value.runtimeEffects.damageDealtByType) &&
+    isStringNumberRecord(value.runtimeEffects.damageTakenByType) &&
+    isStringNumberRecord(value.runtimeEffects.resolvedHitCountByType) &&
+    isStringNumberRecord(value.runtimeEffects.synergyActivationCountById) &&
+    isStringNumberRecord(value.runtimeEffects.synergyFirstActivatedFloorById)
   );
 }
 
@@ -430,6 +475,12 @@ function validateSaveCommon(save: Record<string, unknown>): boolean {
   if (
     save.deferredOutcomes !== undefined &&
     (!Array.isArray(save.deferredOutcomes) || !save.deferredOutcomes.every((entry) => isDeferredOutcomeState(entry)))
+  ) {
+    return false;
+  }
+  if (
+    save.phase6TelemetryState !== undefined &&
+    !isPhase6TelemetryRuntimeState(save.phase6TelemetryState)
   ) {
     return false;
   }

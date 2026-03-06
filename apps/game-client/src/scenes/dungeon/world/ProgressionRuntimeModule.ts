@@ -40,10 +40,7 @@ import { playSceneTransition } from "../../../ui/SceneTransitionOverlay";
 import { resolveDebugLockedEquipEnabled } from "../debug/debugFlags";
 import { injectDebugLockedEquipment } from "../debug/injectDebugLockedEquipment";
 import { resolveBiomeVisualTheme } from "../presentation/BiomeVisualThemeRegistry";
-
-export interface ProgressionRuntimeHost {
-  [key: string]: any;
-}
+import type { ProgressionRuntimeHost } from "./types";
 
 export interface ProgressionRuntimeModuleOptions {
   host: ProgressionRuntimeHost;
@@ -115,10 +112,18 @@ export class ProgressionRuntimeModule {
     host.worldBounds = world.worldBounds;
     const biomeVisualTheme = resolveBiomeVisualTheme(host.currentBiome);
     host.cameras.main.setBackgroundColor(Phaser.Display.Color.IntegerToColor(host.currentBiome.ambientColor).rgba);
-    host.renderSystem.drawDungeon(host.dungeon, host.origin, {
-      tileKey: biomeVisualTheme.floorTileKey,
-      tintColor: biomeVisualTheme.tileTint
-    });
+    host.renderSystem.drawDungeon(
+      host.dungeon,
+      host.origin,
+      biomeVisualTheme.tileTint === undefined
+        ? {
+            tileKey: biomeVisualTheme.floorTileKey
+          }
+        : {
+            tileKey: biomeVisualTheme.floorTileKey,
+            tintColor: biomeVisualTheme.tileTint
+          }
+    );
     this.renderHiddenRoomMarkers();
 
     const playerRender = host.renderSystem.spawnPlayer(host.player.position, host.origin);
@@ -400,7 +405,7 @@ export class ProgressionRuntimeModule {
     if (host.floorConfig.isBossFloor || host.run.currentFloor < 2) {
       return;
     }
-    const existing = host.dungeon.rooms.find((room: { roomType: string }) => room.roomType === "challenge");
+    const existing = host.dungeon.rooms.find((room) => room.roomType === "challenge");
     let selected = existing;
     if (selected === undefined && shouldSpawnChallengeRoom(host.run.currentFloor, host.eventRng)) {
       const chosen = chooseChallengeRoom(host.dungeon, host.eventRng);
@@ -591,7 +596,7 @@ export class ProgressionRuntimeModule {
     if (host.floorConfig.isBossFloor || host.run.currentFloor < 2) {
       return;
     }
-    const challengeRoom = host.dungeon.rooms.find((room: { roomType: string }) => room.roomType === "challenge");
+    const challengeRoom = host.dungeon.rooms.find((room) => room.roomType === "challenge");
     if (challengeRoom === undefined) {
       return;
     }
@@ -705,7 +710,7 @@ export class ProgressionRuntimeModule {
 
   private findChallengeRoomById(roomId: string) {
     const host = this.options.host;
-    return host.dungeon.rooms.find((room: { id: string }) => room.id === roomId);
+    return host.dungeon.rooms.find((room) => room.id === roomId);
   }
 
   private spawnChallengeWave(nowMs: number): void {

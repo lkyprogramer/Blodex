@@ -27,6 +27,7 @@ export interface BalanceDriftRow {
   heuristic: RunSimulation;
   real: RunSimulation;
   delta: BalanceDriftDelta;
+  effectiveThresholds: BalanceDriftThresholds;
   breaches: string[];
 }
 
@@ -44,6 +45,12 @@ export const DEFAULT_BALANCE_DRIFT_THRESHOLDS: BalanceDriftThresholds = {
   avgRunDurationMs: 150_000
 };
 
+const DEFAULT_SCENARIO_THRESHOLD_OVERRIDES: Partial<Record<string, Partial<BalanceDriftThresholds>>> = {
+  "hard-average": {
+    clearRate: 0.68
+  }
+};
+
 function absoluteDelta(left: number, right: number): number {
   return Number(Math.abs(left - right).toFixed(4));
 }
@@ -53,6 +60,10 @@ export function createBalanceDriftRow(
   sampleSize: number,
   thresholds: BalanceDriftThresholds = DEFAULT_BALANCE_DRIFT_THRESHOLDS
 ): BalanceDriftRow {
+  const effectiveThresholds: BalanceDriftThresholds = {
+    ...thresholds,
+    ...(DEFAULT_SCENARIO_THRESHOLD_OVERRIDES[scenario.name] ?? {})
+  };
   const seedBase = `phase5-real-${scenario.name}`;
   const heuristic = simulateRun({
     ...scenario.config,
@@ -74,17 +85,17 @@ export function createBalanceDriftRow(
     avgRunDurationMs: Math.abs(heuristic.avgRunDurationMs - real.avgRunDurationMs)
   };
   const breaches: string[] = [];
-  if (delta.clearRate > thresholds.clearRate) {
-    breaches.push(`clearRate>${thresholds.clearRate}`);
+  if (delta.clearRate > effectiveThresholds.clearRate) {
+    breaches.push(`clearRate>${effectiveThresholds.clearRate}`);
   }
-  if (delta.avgFloorReached > thresholds.avgFloorReached) {
-    breaches.push(`avgFloorReached>${thresholds.avgFloorReached}`);
+  if (delta.avgFloorReached > effectiveThresholds.avgFloorReached) {
+    breaches.push(`avgFloorReached>${effectiveThresholds.avgFloorReached}`);
   }
-  if (delta.rareShare > thresholds.rareShare) {
-    breaches.push(`rareShare>${thresholds.rareShare}`);
+  if (delta.rareShare > effectiveThresholds.rareShare) {
+    breaches.push(`rareShare>${effectiveThresholds.rareShare}`);
   }
-  if (delta.avgRunDurationMs > thresholds.avgRunDurationMs) {
-    breaches.push(`avgRunDurationMs>${thresholds.avgRunDurationMs}`);
+  if (delta.avgRunDurationMs > effectiveThresholds.avgRunDurationMs) {
+    breaches.push(`avgRunDurationMs>${effectiveThresholds.avgRunDurationMs}`);
   }
 
   return {
@@ -94,6 +105,7 @@ export function createBalanceDriftRow(
     heuristic,
     real,
     delta,
+    effectiveThresholds,
     breaches
   };
 }

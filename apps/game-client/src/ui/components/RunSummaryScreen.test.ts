@@ -79,4 +79,53 @@ describe("renderRunSummaryScreen", () => {
     expect(html).toContain("summary-plan-card pivot");
     expect(html).toContain("Pivot through Frozen Route");
   });
+
+  it("renders phase 6 baseline rows when telemetry is present", () => {
+    const html = renderRunSummaryScreen({
+      isVictory: true,
+      floorReached: 5,
+      kills: 31,
+      lootCollected: 11,
+      obolsEarned: 22,
+      soulShardsEarned: 8,
+      elapsedMs: 82_000,
+      leveledTo: 7,
+      difficulty: "hard",
+      phase6Telemetry: {
+        story: {
+          playerFacingChoices: 6,
+          choiceCountByFloor: { "1": 1, "2": 2 },
+          powerSpikes: 2,
+          buildFormed: 1,
+          rareDropsPresented: 2,
+          bossRewardClosed: 1
+        },
+        combat: {
+          skillUses: 11,
+          skillCastsPer30s: 4.1,
+          skillDamage: 140,
+          autoAttackDamage: 210,
+          skillDamageShare: 0.4,
+          autoAttackDamageShare: 0.6,
+          manaDryWindowMs: 8_000,
+          averageNoInputGapMs: 1_250,
+          maxNoInputGapMs: 3_800
+        },
+        runtimeEffects: {
+          buffApplyCountById: { war_cry_buff: 2 },
+          buffUptimeMsById: { war_cry_buff: 6_000 },
+          damageDealtByType: { physical: 210, arcane: 140 },
+          damageTakenByType: { physical: 32 },
+          resolvedHitCountByType: { physical: 10, arcane: 4 },
+          synergyActivationCountById: { crit_chain: 1 },
+          synergyFirstActivatedFloorById: { crit_chain: 3 }
+        }
+      }
+    });
+
+    expect(html).toContain("Choices");
+    expect(html).toContain("Spikes / Builds");
+    expect(html).toContain("Rhythm");
+    expect(html).toContain("4.1 casts / 30s");
+  });
 });

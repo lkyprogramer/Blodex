@@ -12,10 +12,7 @@ import {
 import { WEAPON_TYPE_DEF_MAP } from "@blodex/content";
 import { BossSpawnService } from "./BossSpawnService";
 import { BossTelegraphPresenter } from "./BossTelegraphPresenter";
-
-export interface BossCombatHost {
-  [key: string]: any;
-}
+import type { BossCombatHost } from "./ports";
 
 export interface BossCombatServiceOptions {
   host: BossCombatHost;
@@ -25,6 +22,14 @@ export interface BossCombatServiceOptions {
 
 export class BossCombatService {
   constructor(private readonly options: BossCombatServiceOptions) {}
+
+  private clearTelegraphState(state: NonNullable<BossCombatHost["bossState"]>, aiState: "idle" | "attacking") {
+    const { telegraphAttackId, telegraphEndMs, telegraphTarget, ...rest } = state;
+    return {
+      ...rest,
+      aiState
+    };
+  }
 
   updateCombat(nowMs: number): void {
     const host = this.options.host;
@@ -102,45 +107,34 @@ export class BossCombatService {
         host.bossState.telegraphEndMs === undefined ||
         host.bossState.telegraphAttackId === undefined
       ) {
-        host.bossState = {
-          ...host.bossState,
-          aiState: "idle",
-          telegraphEndMs: undefined,
-          telegraphTarget: undefined,
-          telegraphAttackId: undefined
-        };
+        host.bossState = this.clearTelegraphState(host.bossState, "idle");
         this.options.telegraphPresenter.clear();
         return;
       }
       if (nowMs < host.bossState.telegraphEndMs) {
         return;
       }
-      const telegraphedAttack = this.findAttackById(host.bossState.telegraphAttackId);
+      const telegraphingBossState = host.bossState;
+      const telegraphAttackId = telegraphingBossState.telegraphAttackId;
+      if (telegraphAttackId === undefined) {
+        host.bossState = this.clearTelegraphState(telegraphingBossState, "idle");
+        this.options.telegraphPresenter.clear();
+        return;
+      }
+      const telegraphedAttack = this.findAttackById(telegraphAttackId);
       if (telegraphedAttack === null) {
-        host.bossState = {
-          ...host.bossState,
-          aiState: "idle",
-          telegraphEndMs: undefined,
-          telegraphTarget: undefined,
-          telegraphAttackId: undefined
-        };
+        host.bossState = this.clearTelegraphState(telegraphingBossState, "idle");
         this.options.telegraphPresenter.clear();
         return;
       }
       this.resolveBossAttack(
         telegraphedAttack,
         nowMs,
-        host.bossState.telegraphTarget,
+        telegraphingBossState.telegraphTarget,
         false,
         specialAffixTotals
       );
-      host.bossState = {
-        ...host.bossState,
-        aiState: "attacking",
-        telegraphEndMs: undefined,
-        telegraphTarget: undefined,
-        telegraphAttackId: undefined
-      };
+      host.bossState = this.clearTelegraphState(telegraphingBossState, "attacking");
       this.options.telegraphPresenter.clear();
       host.nextBossAttackAt = nowMs + Math.max(800, telegraphedAttack.cooldownMs * 0.4);
       host.hudDirty = true;
@@ -151,7 +145,11 @@ export class BossCombatService {
       return;
     }
 
-    const attack = selectBossAttack(host.bossState, host.bossDef, nowMs, host.bossRng);
+    const currentBossState = host.bossState;
+    if (currentBossState === null) {
+      return;
+    }
+    const attack = selectBossAttack(currentBossState, host.bossDef, nowMs, host.bossRng);
     if (attack === null) {
       return;
     }
@@ -161,11 +159,11 @@ export class BossCombatService {
       const executeAtMs = nowMs + attack.telegraphMs;
       host.bossState = markBossAttackUsed(
         {
-          ...host.bossState,
+          ...currentBossState,
           aiState: "telegraph",
-          telegraphTarget: target,
           telegraphEndMs: executeAtMs,
-          telegraphAttackId: attack.id
+          telegraphAttackId: attack.id,
+          ...(target === undefined ? {} : { telegraphTarget: target })
         },
         attack,
         nowMs
@@ -185,7 +183,7 @@ export class BossCombatService {
 
     this.resolveBossAttack(attack, nowMs, undefined, true, specialAffixTotals);
     host.bossState = {
-      ...markBossAttackUsed(host.bossState, attack, nowMs),
+      ...markBossAttackUsed(currentBossState, attack, nowMs),
       aiState: "attacking"
     };
     host.nextBossAttackAt = nowMs + Math.max(800, attack.cooldownMs * 0.4);
@@ -205,6 +203,9 @@ export class BossCombatService {
 
   private findAttackById(attackId: string): BossAttack | null {
     const host = this.options.host;
+    if (host.bossState === null) {
+      return null;
+    }
     const currentPhase = host.bossDef.phases[host.bossState.currentPhaseIndex];
     const fromCurrent = currentPhase?.attackPattern.find((entry: BossAttack) => entry.id === attackId);
     if (fromCurrent !== undefined) {
@@ -227,9 +228,13 @@ export class BossCombatService {
     specialAffixTotals: ReturnType<typeof resolveSpecialAffixTotals>
   ): void {
     const host = this.options.host;
+    const currentBossState = host.bossState;
+    if (currentBossState === null) {
+      return;
+    }
     const attackResult = resolveBossAttack(
       attack,
-      host.bossState,
+      currentBossState,
       host.player,
       host.bossRng,
       nowMs,
@@ -245,7 +250,7 @@ export class BossCombatService {
       timestampMs: nowMs
     });
     host.eventBus.emit("boss:attack", {
-      boss: host.bossState,
+      boss: currentBossState,
       attack,
       timestampMs: nowMs
     });
@@ -261,7 +266,7 @@ export class BossCombatService {
     }
 
     if (markCooldown) {
-      host.bossState = markBossAttackUsed(host.bossState, attack, nowMs);
+      host.bossState = markBossAttackUsed(currentBossState, attack, nowMs);
     }
   }
 }

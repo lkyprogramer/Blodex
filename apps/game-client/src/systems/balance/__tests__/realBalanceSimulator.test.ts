@@ -29,5 +29,9 @@ describe("simulateRealRun", () => {
     expect(report.hpCurveP50).toHaveLength(5);
     expect(report.itemRarityDistribution.rare).toBeGreaterThanOrEqual(0);
     expect(report.itemRarityDistribution.rare).toBeLessThanOrEqual(1);
+    expect(report.combatRhythm?.avgSkillUsesPerRun ?? 0).toBeGreaterThan(0);
+    expect(report.combatRhythm?.avgSkillCastsPer30s ?? 0).toBeGreaterThan(0);
+    expect(report.combatRhythm?.avgSkillDamageShare ?? 0).toBeGreaterThanOrEqual(0);
+    expect(report.combatRhythm?.avgAutoAttackDamageShare ?? 0).toBeGreaterThanOrEqual(0);
   });
 });

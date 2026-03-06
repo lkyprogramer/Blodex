@@ -6,10 +6,7 @@ import {
   type MonsterState
 } from "@blodex/core";
 import { MONSTER_ARCHETYPES } from "@blodex/content";
-
-export interface BossSpawnHost {
-  [key: string]: any;
-}
+import type { BossSpawnHost } from "./ports";
 
 export interface BossSpawnServiceOptions {
   host: BossSpawnHost;

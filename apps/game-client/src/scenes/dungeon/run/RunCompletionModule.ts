@@ -17,14 +17,112 @@ import {
   resolveSpecialAffixTotals,
   recordEndlessBestFloor,
   upsertDailyHistory,
+  type BossRuntimeState,
+  type DifficultyMode,
   type GameEventMap,
-  type ItemInstance
+  type ItemInstance,
+  type MetaProgression,
+  type PlayerState,
+  type RunState,
+  type RunSummary,
+  type TypedEventBus
 } from "@blodex/core";
 import { resolveInitialRunSeed } from "./resolveInitialRunSeed";
-import { analyzeRunOutcome } from "../taste/RunOutcomeAnalyzer";
+import { analyzeRunOutcome, type RunOutcomeAnalysis } from "../taste/RunOutcomeAnalyzer";
+import type {
+  BuildIdentitySnapshot,
+  HeartbeatEvent,
+  RunRecommendation
+} from "../taste/TasteRuntimePorts";
+
+interface RunCompletionRunLog {
+  append(message: string, level: string, timestampMs: number): void;
+  appendKey(key: string, params: Record<string, unknown> | undefined, level: string, timestampMs: number): void;
+}
+
+interface RunCompletionUiManager {
+  hideDeathOverlay(): void;
+  showDeathOverlay(reason: string): void;
+  showSummary(summary: RunSummary, analysis?: RunOutcomeAnalysis): void;
+  clearSummary(): void;
+}
+
+interface RunCompletionSaveManager {
+  isRunSettled(runId: string): boolean;
+  markRunSettled(runId: string): void;
+  deleteSave(): void;
+}
+
+interface RunCompletionTastePort {
+  snapshotBuildIdentity(): BuildIdentitySnapshot;
+  listHeartbeatEvents(limit?: number): HeartbeatEvent[];
+  buildRecommendations(): RunRecommendation[];
+}
 
 export interface RunCompletionHost {
-  [key: string]: any;
+  run: RunState;
+  getRunRelativeNowMs(): number;
+  syncEndlessMutators(nowMs: number): void;
+  runLog: RunCompletionRunLog;
+  progressionRuntimeModule: {
+    setupFloor(floor: number, isNewRun: boolean): void;
+  };
+  deferredOutcomeRuntime: {
+    settle(trigger: string, nowMs: number): void;
+  };
+  flushRunSave(): void;
+  runEnded: boolean;
+  sfxSystem: {
+    stopAmbient(): void;
+  };
+  eventRuntimeModule: {
+    consumeCurrentEvent(): void;
+  };
+  time: {
+    now: number;
+  };
+  tryDiscoverBlueprints(
+    sourceType:
+      | "monster_affix"
+      | "boss_kill"
+      | "boss_first_kill"
+      | "challenge_room"
+      | "hidden_room"
+      | "random_event"
+      | "floor_clear",
+    nowMs: number,
+    sourceId?: string
+  ): void;
+  bossDef: {
+    id: string;
+  };
+  player: PlayerState;
+  meta: MetaProgression;
+  resolveMutationDropBonus(): {
+    obolMultiplier: number;
+    soulShardMultiplier: number;
+  };
+  dailyPracticeMode: boolean;
+  runSeed: string;
+  blueprintFoundIdsInRun: string[];
+  saveManager: RunCompletionSaveManager;
+  saveMeta(meta: MetaProgression): boolean;
+  saveCoordinator: {
+    stopHeartbeat(): void;
+    startHeartbeat(): void;
+  };
+  bossState: BossRuntimeState | null;
+  renderHud(): void;
+  hudDirty: boolean;
+  uiManager: RunCompletionUiManager;
+  lastDeathReason: string;
+  resolveRunRecommendations?(): RunRecommendation[];
+  tasteRuntime: RunCompletionTastePort;
+  capturePhase6TelemetrySummary?(elapsedMs?: number): RunSummary["phase6Telemetry"];
+  eventBus: TypedEventBus<GameEventMap>;
+  bootstrapRun(runSeed: string, difficulty: DifficultyMode): void;
+  pendingRunSeed?: string;
+  selectedDifficulty: DifficultyMode;
 }
 
 export interface RunCompletionModuleOptions {
@@ -146,6 +244,34 @@ export class RunCompletionModule {
         }
       }
     }
+    const phase6Telemetry =
+      typeof host.capturePhase6TelemetrySummary === "function"
+        ? host.capturePhase6TelemetrySummary(summary.elapsedMs)
+        : undefined;
+    if (phase6Telemetry !== undefined) {
+      summary = {
+        ...summary,
+        phase6Telemetry
+      };
+      host.runLog.append(
+        `Phase 6 baseline: ${phase6Telemetry.combat.skillCastsPer30s.toFixed(1)} skill casts / 30s, ${Math.round(
+          phase6Telemetry.combat.autoAttackDamageShare * 100
+        )}% auto damage share, ${phase6Telemetry.combat.averageNoInputGapMs.toFixed(0)}ms average idle gap.`,
+        "info",
+        host.time.now
+      );
+      host.eventBus.emit("combat_rhythm_window", {
+        floor: host.run.currentFloor,
+        timestampMs: host.time.now,
+        metrics: {
+          skillCastsPer30s: phase6Telemetry.combat.skillCastsPer30s,
+          autoAttackDamageShare: phase6Telemetry.combat.autoAttackDamageShare,
+          manaDryWindowMs: phase6Telemetry.combat.manaDryWindowMs,
+          averageNoInputGapMs: phase6Telemetry.combat.averageNoInputGapMs,
+          maxNoInputGapMs: phase6Telemetry.combat.maxNoInputGapMs
+        }
+      });
+    }
 
     const runId = `${host.runSeed}:${host.run.startedAtMs}`;
     if (!host.saveManager.isRunSettled(runId)) {
@@ -175,9 +301,9 @@ export class RunCompletionModule {
         buildIdentity: host.tasteRuntime.snapshotBuildIdentity(),
         heartbeats: host.tasteRuntime.listHeartbeatEvents(),
         recommendations,
-        branchChoice: host.run.branchChoice,
-        currentBiomeId: host.run.currentBiomeId,
-        lastDeathReason: host.lastDeathReason
+        ...(host.run.branchChoice === undefined ? {} : { branchChoice: host.run.branchChoice }),
+        ...(host.run.currentBiomeId === undefined ? {} : { currentBiomeId: host.run.currentBiomeId }),
+        ...(host.lastDeathReason.length === 0 ? {} : { lastDeathReason: host.lastDeathReason })
       });
       host.runLog.appendKey(
         "log.run.diagnosis",
