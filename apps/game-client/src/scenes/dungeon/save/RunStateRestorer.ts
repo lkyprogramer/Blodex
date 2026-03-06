@@ -35,9 +35,9 @@ function resolveSavedMonsterBaseMoveSpeed(
 
 function resolveSavedMonsterMoveSpeed(
   baseMoveSpeed: number,
-  monster: RunSaveDataV2["monsters"][number]
+  activeBuffs: BuffInstance[] | undefined
 ): number {
-  const buffEffects = aggregateBuffEffects(monster.state.activeBuffs ?? [], BUFF_DEF_MAP);
+  const buffEffects = aggregateBuffEffects(activeBuffs ?? [], BUFF_DEF_MAP);
   return Number((baseMoveSpeed * (buffEffects.slowMultiplier ?? 1)).toFixed(2));
 }
 
@@ -247,16 +247,16 @@ export class RunStateRestorer {
           if (archetype === undefined) {
             return null;
           }
+          const rebasedActiveBuffs =
+            monster.state.activeBuffs === undefined
+              ? undefined
+              : rebaseSavedBuffs(monster.state.activeBuffs, save.runtimeNowMs, host.time.now);
           const runtime = host.renderSystem.spawnMonster(
             {
               ...monster.state,
               position: { ...monster.state.position },
               ...(monster.state.affixes === undefined ? {} : { affixes: [...monster.state.affixes] }),
-              ...(monster.state.activeBuffs === undefined
-                ? {}
-                : {
-                    activeBuffs: rebaseSavedBuffs(monster.state.activeBuffs, save.runtimeNowMs, host.time.now)
-                  })
+              ...(rebasedActiveBuffs === undefined ? {} : { activeBuffs: rebasedActiveBuffs })
             },
             archetype,
             host.origin
@@ -264,7 +264,7 @@ export class RunStateRestorer {
           runtime.baseMoveSpeed = resolveSavedMonsterBaseMoveSpeed(archetype.moveSpeed, monster);
           runtime.state = {
             ...runtime.state,
-            moveSpeed: resolveSavedMonsterMoveSpeed(runtime.baseMoveSpeed, monster)
+            moveSpeed: resolveSavedMonsterMoveSpeed(runtime.baseMoveSpeed, runtime.state.activeBuffs)
           };
           runtime.nextAttackAt = monster.nextAttackAt;
           runtime.nextSupportAt = monster.nextSupportAt;

@@ -195,6 +195,29 @@ function createSave(): RunSaveDataV2 {
   };
 }
 
+function createExpiredMonsterSlowSave(): RunSaveDataV2 {
+  const save = createSave();
+  return {
+    ...save,
+    runtimeNowMs: 1_200,
+    monsters: save.monsters.map((monster) => ({
+      ...monster,
+      state: {
+        ...monster.state,
+        activeBuffs: [
+          {
+            defId: "frost_slow",
+            sourceId: "player-1",
+            targetId: monster.state.id,
+            appliedAtMs: 100,
+            expiresAtMs: 1_000
+          }
+        ]
+      }
+    }))
+  };
+}
+
 function createHost(): RunStateRestoreHost {
   return {
     pendingResumeSave: null,
@@ -329,5 +352,20 @@ describe("RunStateRestorer", () => {
     expect(restoredMonsters[0]?.state.activeBuffs?.[0]?.expiresAtMs).toBe(1100);
     expect(host.player.activeBuffs?.[0]?.appliedAtMs).toBe(200);
     expect(host.player.activeBuffs?.[0]?.expiresAtMs).toBe(1100);
+  });
+
+  it("does not preserve expired slow when rebuilding restored moveSpeed", () => {
+    const host = createHost();
+    const restorer = new RunStateRestorer({
+      host
+    });
+
+    const restored = restorer.restore(createExpiredMonsterSlowSave());
+
+    expect(restored).toBe(true);
+    const restoredMonsters = vi.mocked(host.entityManager.setMonsters).mock.calls[0]?.[0] ?? [];
+    expect(restoredMonsters[0]?.state.activeBuffs).toEqual([]);
+    expect(restoredMonsters[0]?.baseMoveSpeed).toBe(128);
+    expect(restoredMonsters[0]?.state.moveSpeed).toBe(128);
   });
 });
