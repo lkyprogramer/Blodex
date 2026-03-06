@@ -1,4 +1,4 @@
-import type { BuffDef } from "@blodex/core";
+import type { BuffDef } from "./types";
 
 export const BUFF_DEFS: BuffDef[] = [
   {

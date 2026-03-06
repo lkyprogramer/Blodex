@@ -91,6 +91,17 @@ export interface MonsterAffixDef {
   description: string;
 }
 
+export interface BuffDef {
+  id: string;
+  name: string;
+  duration: number;
+  statModifiers?: Partial<Record<"maxHealth" | "maxMana" | "armor" | "attackPower" | "critChance" | "attackSpeed" | "moveSpeed", number>>;
+  statMultipliers?: Partial<Record<"maxHealth" | "maxMana" | "armor" | "attackPower" | "critChance" | "attackSpeed" | "moveSpeed", number>>;
+  dot?: { damagePerTick: number; tickIntervalMs: number };
+  slow?: number;
+  guaranteedCrit?: boolean;
+}
+
 export interface MonsterAiConfig {
   behavior: MonsterAiBehavior;
   chaseRange: number;
