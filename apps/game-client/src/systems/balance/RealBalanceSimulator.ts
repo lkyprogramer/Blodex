@@ -7,6 +7,7 @@ import {
   getDifficultyModifier,
   initBossState,
   markBossAttackUsed,
+  resolveBranchChoiceBySeed,
   resolveBiomeForFloorBySeed,
   resolveBossAttack,
   resolveEquippedWeaponType,
@@ -563,7 +564,7 @@ function resolveDeathCause(
 function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
   const floors = Math.max(1, Math.floor(config.maxFloors ?? STORY_MAX_FLOOR));
   const runSeed = `${config.seedBase}:${config.difficulty}:${config.playerBehavior}:real:${index}`;
-  const branchChoice: BranchChoice = runSeed.length % 2 === 0 ? "molten_route" : "frozen_route";
+  const branchChoice: BranchChoice = resolveBranchChoiceBySeed(runSeed);
   let player = createBalancePlayer();
   let floorReached = 0;
   let runDurationMs = 0;

@@ -38,9 +38,9 @@ export interface RealBalanceReport {
 }
 
 export const DEFAULT_BALANCE_DRIFT_THRESHOLDS: BalanceDriftThresholds = {
-  clearRate: 0.52,
-  avgFloorReached: 1.7,
-  rareShare: 0.08,
+  clearRate: 0.62,
+  avgFloorReached: 1.75,
+  rareShare: 0.09,
   avgRunDurationMs: 150_000
 };
 

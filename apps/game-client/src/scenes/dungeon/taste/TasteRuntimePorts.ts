@@ -1,4 +1,5 @@
 import type { BaseStats, ItemInstance } from "@blodex/core";
+import { t } from "../../../i18n";
 
 const MAX_HEARTBEAT_EVENTS = 128;
 const MAX_BUILD_PIVOTS = 64;
@@ -201,9 +202,9 @@ export class TasteRuntimePortHub implements BuildIdentityPort, HeartbeatEventPor
       recommendations.push({
         id: "defense-gap",
         priority: "high",
-        title: "补足防御轴",
-        reason: "本局未形成明确防御标签。",
-        action: "下局优先选择 VIT 或含护甲/回复词缀的装备。"
+        title: t("ui.summary.recommendation.defense_gap.title"),
+        reason: t("ui.summary.recommendation.defense_gap.reason"),
+        action: t("ui.summary.recommendation.defense_gap.action")
       });
     }
 
@@ -211,9 +212,9 @@ export class TasteRuntimePortHub implements BuildIdentityPort, HeartbeatEventPor
       recommendations.push({
         id: "offense-gap",
         priority: "high",
-        title: "补足输出轴",
-        reason: "本局缺少明确输出构筑标签。",
-        action: "下局优先选择 STR/DEX/INT 分支并锁定主伤害技能。"
+        title: t("ui.summary.recommendation.offense_gap.title"),
+        reason: t("ui.summary.recommendation.offense_gap.reason"),
+        action: t("ui.summary.recommendation.offense_gap.action")
       });
     }
 
@@ -221,9 +222,9 @@ export class TasteRuntimePortHub implements BuildIdentityPort, HeartbeatEventPor
       recommendations.push({
         id: "branch-low",
         priority: "medium",
-        title: "增加构筑分岔",
-        reason: `本局关键分岔事件仅 ${branchCount} 次。`,
-        action: "优先触发商店/事件/升级选择，避免线性推进。"
+        title: t("ui.summary.recommendation.branch_low.title"),
+        reason: t("ui.summary.recommendation.branch_low.reason", { count: branchCount }),
+        action: t("ui.summary.recommendation.branch_low.action")
       });
     }
 
@@ -231,9 +232,9 @@ export class TasteRuntimePortHub implements BuildIdentityPort, HeartbeatEventPor
       recommendations.push({
         id: "key-item-miss",
         priority: "medium",
-        title: "提高关键件命中率",
-        reason: "本局未获得关键掉落。",
-        action: "提高清图密度并优先处理精英与高价值房间。"
+        title: t("ui.summary.recommendation.key_item_miss.title"),
+        reason: t("ui.summary.recommendation.key_item_miss.reason"),
+        action: t("ui.summary.recommendation.key_item_miss.action")
       });
     }
 
@@ -241,9 +242,9 @@ export class TasteRuntimePortHub implements BuildIdentityPort, HeartbeatEventPor
       recommendations.push({
         id: "stabilize-build",
         priority: "low",
-        title: "保持主轴连贯",
-        reason: "构筑标签较完整，暂无明显短板。",
-        action: "下局围绕当前主轴继续堆叠同向词缀。"
+        title: t("ui.summary.recommendation.stabilize_build.title"),
+        reason: t("ui.summary.recommendation.stabilize_build.reason"),
+        action: t("ui.summary.recommendation.stabilize_build.action")
       });
     }
 
