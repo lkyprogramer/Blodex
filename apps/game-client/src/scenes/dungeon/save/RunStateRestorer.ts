@@ -284,7 +284,8 @@ export class RunStateRestorer {
         selectionValidation.ok ? selectionValidation.selected : host.meta.selectedMutationIds
       );
       host.refreshSynergyRuntime(false, {
-        emitActivationEvents: false
+        emitActivationEvents: false,
+        recordTelemetry: false
       });
       if (typeof host.restoreFloorChoiceBudgetSnapshot === "function") {
         host.restoreFloorChoiceBudgetSnapshot(save.floorChoiceBudget, host.time.now);

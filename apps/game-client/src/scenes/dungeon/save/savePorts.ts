@@ -198,6 +198,7 @@ export interface RunStateRestoreBehaviorPort {
     persistDiscovery?: boolean,
     options?: {
       emitActivationEvents?: boolean;
+      recordTelemetry?: boolean;
     }
   ): void;
   restoreFloorChoiceBudgetSnapshot?(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void;

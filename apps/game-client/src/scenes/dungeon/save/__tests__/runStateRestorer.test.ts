@@ -244,7 +244,8 @@ describe("RunStateRestorer", () => {
 
     expect(restored).toBe(true);
     expect(host.refreshSynergyRuntime).toHaveBeenCalledWith(false, {
-      emitActivationEvents: false
+      emitActivationEvents: false,
+      recordTelemetry: false
     });
   });
 });

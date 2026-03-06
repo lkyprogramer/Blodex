@@ -2624,6 +2624,7 @@ export class DungeonScene extends Phaser.Scene {
     persistDiscovery = true,
     options: {
       emitActivationEvents?: boolean;
+      recordTelemetry?: boolean;
     } = {}
   ): void {
     if (this.player === undefined) {
@@ -2637,6 +2638,7 @@ export class DungeonScene extends Phaser.Scene {
       return;
     }
     const emitActivationEvents = options.emitActivationEvents ?? true;
+    const recordTelemetry = options.recordTelemetry ?? emitActivationEvents;
     const previousSynergyIds = new Set(this.synergyRuntime.activeSynergyIds);
 
     const activeSkills =
@@ -2667,7 +2669,9 @@ export class DungeonScene extends Phaser.Scene {
       if (previousSynergyIds.has(synergyId)) {
         continue;
       }
-      this.phase6Telemetry.recordSynergyActivated(synergyId, this.run.currentFloor);
+      if (recordTelemetry) {
+        this.phase6Telemetry.recordSynergyActivated(synergyId, this.run.currentFloor);
+      }
       if (!emitActivationEvents) {
         continue;
       }
