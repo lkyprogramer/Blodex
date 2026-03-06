@@ -54,6 +54,13 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.common.score": "Score",
   "ui.common.goal": "Goal",
 
+  "ui.consumable.health_potion.name": "Health Potion",
+  "ui.consumable.health_potion.description": "Restore 40% max HP.",
+  "ui.consumable.mana_potion.name": "Mana Potion",
+  "ui.consumable.mana_potion.description": "Restore 60% max Mana.",
+  "ui.consumable.scroll_of_mapping.name": "Scroll of Mapping",
+  "ui.consumable.scroll_of_mapping.description": "Reveal current floor objective.",
+
   "ui.hud.meta.runs": "Runs",
   "ui.hud.meta.best_floor": "Best F",
   "ui.hud.meta.best_time": "Best T",
@@ -241,6 +248,21 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.summary.route_reason.molten": "Molten favors weapon and ring spikes, which is better when you need faster damage conversion.",
   "ui.summary.route_reason.frozen": "Frozen favors helm and boots stability, which is better when you need survivability and cleaner fights.",
 
+  "ui.progression.levelup.title": "Level Up - Attribute Allocation",
+  "ui.progression.levelup.description": "Choose 1 attribute point. Pending points: {pendingPoints}.",
+  "ui.progression.levelup.choice.strength.name": "Power Drill (+1 STR)",
+  "ui.progression.levelup.choice.strength.description": "Raise attack scaling and stabilize close-range kill pace.",
+  "ui.progression.levelup.choice.dexterity.name": "Tempo Edge (+1 DEX)",
+  "ui.progression.levelup.choice.dexterity.description": "Raise crit consistency, attack speed, and movement tempo.",
+  "ui.progression.levelup.choice.vitality.name": "Iron Blood (+1 VIT)",
+  "ui.progression.levelup.choice.vitality.description": "Raise max health and reinforce sustained survivability.",
+  "ui.progression.levelup.choice.intelligence.name": "Arcane Focus (+1 INT)",
+  "ui.progression.levelup.choice.intelligence.description": "Raise mana ceiling and improve skill-rotation uptime.",
+  "ui.progression.source.event": "event",
+  "ui.progression.source.merchant": "merchant",
+  "ui.progression.source.levelup": "level-up",
+  "ui.progression.source.budget_fallback": "budget fallback",
+
   "ui.event.close": "Close",
   "ui.event.leave": "Leave",
   "ui.event.merchant.title": "Wandering Merchant",
@@ -389,6 +411,9 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.legacy.meta.click_unlock_hint": "Click an unlock to purchase. Hotkeys: unlocks 1-0, difficulty Q/W/E.",
 
   "log.debug.prefix": "[Debug] {message}",
+  "log.debug.cheats_enabled": "Cheats enabled (?debugCheats=1). Press Alt+H for command list.",
+  "log.debug.locked_item_added": "Added locked item: {itemName}. Press E to verify level-gate feedback.",
+  "log.debug.forced_player_death": "Forced player death.",
   "log.run.resumed_saved": "Resumed saved run.",
   "log.system.feedback_degraded": "Feedback degraded for {type}; continuing run safely.",
   "log.item.equip_failed_missing": "Equip failed: item {itemId} not found in backpack.",
@@ -431,6 +456,9 @@ const UI_MESSAGES: Record<string, string> = {
   "log.run.started": "Run started on floor {floor} ({difficulty}, seed {runSeed}).",
   "log.run.completed_victory": "Run complete! Floor {floor}, level {level}.",
   "log.run.completed_defeat": "Run ended on floor {floor}, level {level}.",
+  "log.run.diagnosis": "Run diagnosis: {headline}",
+  "log.run.missed_opportunity": "Missed opportunity: {message}",
+  "log.run.next_plan": "Next run plan {index}: {title} - {action}",
   "log.floor.entered": "Entered floor {floor}.",
   "log.floor.entered_biome": "Entered floor {floor} ({biomeName}).",
   "log.floor.cleared": "Floor {floor} cleared with {kills} kills.",
@@ -482,7 +510,12 @@ const UI_MESSAGES: Record<string, string> = {
   "log.monster.support_heal": "{sourceName} healed {targetName} for {amount}.",
   "log.boss.bone_sovereign_defeated": "Bone Sovereign defeated. Choose your fate.",
   "log.run.entered_abyss_floor": "Entered Abyss Floor {floor}.",
-  "log.blueprint.discovered": "Blueprint discovered ({sourceLabel}): {blueprintName}."
+  "log.blueprint.discovered": "Blueprint discovered ({sourceLabel}): {blueprintName}.",
+  "log.progression.branch_unlocked": "Floor {floor} build branch unlocked via {source}.",
+  "log.progression.branch_fallback_injected": "Floor {floor} lacked major branching; injected 1 bonus stat choice.",
+  "log.progression.levelup_panel_opened": "Level-up choice panel opened ({pendingPoints} pending).",
+  "log.progression.levelup_choice": "Level-up choice: {choiceName} ({pendingPoints} pending).",
+  "log.debug.kill_player.death_reason": "Debug cheat forced death to validate death feedback pipeline."
 };
 
 function buildContentMessages(): Record<string, string> {

@@ -259,6 +259,7 @@ export class RunStateRestorer {
       host.uiManager.restoreMinimap(save.minimap);
       host.lastMinimapRefreshAt = 0;
       host.updateMinimap(host.time.now);
+      host.sfxSystem.playAmbientForBiome(host.currentBiome.id);
 
       host.hudDirty = true;
       host.resumedFromSave = true;

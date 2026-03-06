@@ -33,6 +33,7 @@ import {
 } from "../components/RunSummaryScreen";
 import type { RunOutcomeAnalysis } from "../../scenes/dungeon/taste/RunOutcomeAnalyzer";
 import { getContentLocalizer, t } from "../../i18n";
+import { difficultyLabel } from "../../i18n/labelResolvers";
 import {
   buildEquipmentDeltaSummary,
   resolveDeltaDirection,
@@ -504,7 +505,7 @@ export class HudContainer {
           : t("ui.hud.run.mode.abyss", { floor: state.run.endlessFloor })
         : state.run.runMode === "daily"
           ? t("ui.hud.run.mode.daily")
-          : (state.run.difficulty ?? "normal").toUpperCase();
+          : difficultyLabel(state.run.difficulty ?? "normal");
     const runBody = `
       <div class="mini-grid mini-2">
         <div><span class="k">${t("ui.hud.run.floor")}</span><span>${state.run.floor}</span></div>

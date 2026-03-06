@@ -17,6 +17,7 @@ import {
   type RandomEventDef
 } from "@blodex/core";
 import { GAME_CONFIG, ITEM_DEF_MAP, LOOT_TABLE_MAP, RANDOM_EVENT_DEFS } from "@blodex/content";
+import { t } from "../../../i18n";
 import { DEBUG_COMMANDS, type DebugLogLevel } from "./types";
 
 export interface DebugCommandHost {
@@ -525,13 +526,13 @@ export class DebugCommandRegistry {
       this.debugLog("Run already ended.", "warn");
       return;
     }
-    this.host.lastDeathReason = "Debug cheat forced death to validate death feedback pipeline.";
+    this.host.lastDeathReason = t("log.debug.kill_player.death_reason");
     this.host.player = {
       ...this.host.player,
       health: 0
     };
     this.host.hudDirty = true;
-    this.debugLog("Forced player death.", "danger");
+    this.debugLog(t("log.debug.forced_player_death"), "danger");
     this.host.runCompletionModule.finishRun(false);
   }
 

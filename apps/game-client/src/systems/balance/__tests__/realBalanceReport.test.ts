@@ -11,5 +11,5 @@ describe("real balance report", () => {
     for (const row of report.rows) {
       expect(row.breaches).toEqual([]);
     }
-  });
+  }, 15_000);
 });

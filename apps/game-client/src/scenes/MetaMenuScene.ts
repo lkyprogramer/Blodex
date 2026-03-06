@@ -30,6 +30,7 @@ import {
 } from "@blodex/core";
 import { BLUEPRINT_DEF_MAP, BLUEPRINT_DEFS, MUTATION_DEFS, TALENT_DEFS, UNLOCK_DEFS } from "@blodex/content";
 import { getContentLocalizer, getLocale, resolveInitialLocale, setLocale, t } from "../i18n";
+import { difficultyLabel } from "../i18n/labelResolvers";
 import type { LocaleCode } from "../i18n/types";
 import { SaveManager } from "../systems/SaveManager";
 import {
@@ -47,11 +48,6 @@ const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
 const PURCHASE_HOTKEYS = ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "ZERO"];
 const DIFFICULTY_ORDER: DifficultyMode[] = ["normal", "hard", "nightmare"];
-const DIFFICULTY_LABEL_KEY: Record<DifficultyMode, string> = {
-  normal: "ui.meta.difficulty.normal",
-  hard: "ui.meta.difficulty.hard",
-  nightmare: "ui.meta.difficulty.nightmare"
-};
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
 const MUTATION_EFFECT_LABEL_KEY: Record<MutationEffect["type"], string> = {
   on_kill_heal_percent: "ui.meta.mutation.effect.on_kill_heal_percent",
@@ -64,10 +60,6 @@ const MUTATION_EFFECT_LABEL_KEY: Record<MutationEffect["type"], string> = {
   potion_heal_amp_and_self_damage: "ui.meta.mutation.effect.potion_heal_amp_and_self_damage",
   hidden_room_reveal_radius: "ui.meta.mutation.effect.hidden_room_reveal_radius"
 };
-
-function difficultyLabel(mode: DifficultyMode): string {
-  return t(DIFFICULTY_LABEL_KEY[mode]);
-}
 
 function hotkeyLabelFromKey(eventName: string): string {
   switch (eventName) {
@@ -702,7 +694,7 @@ export class MetaMenuScene extends Phaser.Scene {
       statusText: leaseBlocked ? t("ui.meta.save.active_in_another_tab") : t("ui.meta.save.ready_to_continue"),
       detailText: t("ui.meta.save.detail", {
         floor: this.runSave.run.currentFloor,
-        difficulty: (this.runSave.run.difficulty ?? "normal").toUpperCase(),
+        difficulty: difficultyLabel(this.runSave.run.difficulty ?? "normal"),
         when
       })
     };
@@ -903,7 +895,7 @@ export class MetaMenuScene extends Phaser.Scene {
     playSceneTransition({
       title: t("ui.transition.enter_dungeon.title"),
       subtitle: t("ui.transition.enter_dungeon.subtitle", {
-        difficulty: difficulty.toUpperCase()
+        difficulty: difficultyLabel(difficulty)
       }),
       mode: "scene",
       durationMs: 620
@@ -961,7 +953,7 @@ export class MetaMenuScene extends Phaser.Scene {
       title: t("ui.transition.resume.title"),
       subtitle: t("ui.transition.resume.subtitle", {
         floor: lease.save.run.currentFloor,
-        difficulty: lease.save.run.difficulty.toUpperCase()
+        difficulty: difficultyLabel(lease.save.run.difficulty)
       }),
       mode: "scene",
       durationMs: 620

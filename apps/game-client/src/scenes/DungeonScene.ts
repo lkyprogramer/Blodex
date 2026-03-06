@@ -175,6 +175,7 @@ import {
   type FeedbackRouterInput
 } from "../systems/feedbackEventRouter";
 import { SAVE_LEASE_TTL_MS, SaveManager } from "../systems/SaveManager";
+import { consumableDescriptionLabel, consumableFailureReasonLabel, consumableNameLabel, difficultyLabel } from "../i18n/labelResolvers";
 import { UIManager } from "../ui/UIManager";
 import { hideSceneTransition, playSceneTransition } from "../ui/SceneTransitionOverlay";
 import {
@@ -864,7 +865,7 @@ export class DungeonScene extends Phaser.Scene {
     const render = this.renderSystem.getLastSyncStats();
     const fps = this.game.loop.actualFps;
     this.diagnosticsService.render(this.diagnosticsEnabled, nowMs, [
-      `FPS ${fps.toFixed(1)} | floor ${this.run.currentFloor} ${this.run.difficulty.toUpperCase()}`,
+      `FPS ${fps.toFixed(1)} | floor ${this.run.currentFloor} ${difficultyLabel(this.run.difficulty)}`,
       `AI near/far ${this.lastAiNearCount}/${this.lastAiFarCount}`,
       `Listeners eventBus ${this.eventBus.listenerCount()}`,
       `Entity M ${entity.monsters} (alive ${entity.livingMonsters}) L ${entity.loot} T ${entity.telegraphs}`,
@@ -1297,7 +1298,7 @@ export class DungeonScene extends Phaser.Scene {
       replayVersion: this.run.replay?.version ?? "unknown"
     });
     if (this.debugCheatsEnabled) {
-      this.runLog.debug("Cheats enabled (?debugCheats=1). Press Alt+H for command list.", "info", this.time.now);
+      this.runLog.debug(t("log.debug.cheats_enabled"), "info", this.time.now);
     }
     this.pendingRunMode = "normal";
     this.pendingDailyDate = undefined;
@@ -2293,20 +2294,19 @@ export class DungeonScene extends Phaser.Scene {
     if (this.levelUpPulseUntilMs <= nowMs) {
       this.levelUpPulseLevel = null;
     }
-    const levelUpPulseLevel =
-      this.levelUpPulseUntilMs > nowMs ? (this.levelUpPulseLevel ?? this.player.level) : undefined;
+    const levelUpPulseLevel = this.levelUpPulseUntilMs > nowMs ? (this.levelUpPulseLevel ?? this.player.level) : undefined;
     const consumables = CONSUMABLE_DEFS.map((def) => {
       const cooldownLeftMs = Math.max(0, (this.consumables.cooldowns[def.id] ?? 0) - nowMs);
       const availability = canUseConsumable(this.player, this.consumables, def.id, nowMs);
       return {
         id: def.id,
-        name: def.name,
-        description: def.description,
+        name: consumableNameLabel(def.id, def.name),
+        description: consumableDescriptionLabel(def.id, def.description),
         hotkey: def.hotkey ?? "-",
         iconId: CONSUMABLE_ICON_BY_ID[def.id],
         charges: this.consumables.charges[def.id] ?? 0,
         cooldownLeftMs,
-        ...(availability.ok ? {} : { disabledReason: availability.reason })
+        ...(availability.ok ? {} : { disabledReason: consumableFailureReasonLabel(availability.reason) })
       };
     });
     const activeSkillIds = new Set<string>();

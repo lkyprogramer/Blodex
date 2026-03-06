@@ -179,17 +179,32 @@ export class RunCompletionModule {
         currentBiomeId: host.run.currentBiomeId,
         lastDeathReason: host.lastDeathReason
       });
-      host.runLog.append(
-        `Run diagnosis: ${outcomeAnalysis.failureHeadline}`,
+      host.runLog.appendKey(
+        "log.run.diagnosis",
+        {
+          headline: outcomeAnalysis.failureHeadline
+        },
         isVictory ? "success" : "warn",
         host.time.now
       );
       for (const missed of outcomeAnalysis.missedOpportunities) {
-        host.runLog.append(`Missed opportunity: ${missed}`, "info", host.time.now);
+        host.runLog.appendKey(
+          "log.run.missed_opportunity",
+          {
+            message: missed
+          },
+          "info",
+          host.time.now
+        );
       }
       for (const [index, suggestion] of outcomeAnalysis.suggestions.entries()) {
-        host.runLog.append(
-          `Next run plan ${index + 1}: ${suggestion.title} - ${suggestion.action}`,
+        host.runLog.appendKey(
+          "log.run.next_plan",
+          {
+            index: index + 1,
+            title: suggestion.title,
+            action: suggestion.action
+          },
           "info",
           host.time.now
         );

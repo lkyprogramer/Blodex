@@ -23,6 +23,13 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "ui.common.score": "得分",
   "ui.common.goal": "目标",
 
+  "ui.consumable.health_potion.name": "生命药剂",
+  "ui.consumable.health_potion.description": "恢复 40% 最大生命值。",
+  "ui.consumable.mana_potion.name": "法力药剂",
+  "ui.consumable.mana_potion.description": "恢复 60% 最大法力值。",
+  "ui.consumable.scroll_of_mapping.name": "制图卷轴",
+  "ui.consumable.scroll_of_mapping.description": "揭示当前楼层目标位置。",
+
   "ui.hud.meta.runs": "总局数",
   "ui.hud.meta.best_floor": "最高层",
   "ui.hud.meta.best_time": "最佳时长",
@@ -210,6 +217,21 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "ui.summary.route_reason.molten": "熔火路线更偏向武器和戒指爆发，适合需要更快完成伤害转化的局。",
   "ui.summary.route_reason.frozen": "冰霜路线更偏向头盔和鞋子稳态，适合需要生存与读图余裕的局。",
 
+  "ui.progression.levelup.title": "升级 - 属性分配",
+  "ui.progression.levelup.description": "请选择 1 点属性。当前待分配：{pendingPoints} 点。",
+  "ui.progression.levelup.choice.strength.name": "力量钻头（+1 力量）",
+  "ui.progression.levelup.choice.strength.description": "提高攻击成长，并稳住近战清怪节奏。",
+  "ui.progression.levelup.choice.dexterity.name": "节奏锋刃（+1 敏捷）",
+  "ui.progression.levelup.choice.dexterity.description": "提高暴击稳定性、攻速与移动节奏。",
+  "ui.progression.levelup.choice.vitality.name": "铁血脉动（+1 体质）",
+  "ui.progression.levelup.choice.vitality.description": "提高最大生命值，并强化持续生存能力。",
+  "ui.progression.levelup.choice.intelligence.name": "奥术聚焦（+1 智力）",
+  "ui.progression.levelup.choice.intelligence.description": "提高法力上限，并强化技能循环续航。",
+  "ui.progression.source.event": "事件",
+  "ui.progression.source.merchant": "商人",
+  "ui.progression.source.levelup": "升级选择",
+  "ui.progression.source.budget_fallback": "保底补偿",
+
   "ui.event.close": "关闭",
   "ui.event.leave": "离开",
   "ui.event.merchant.title": "流浪商人",
@@ -356,6 +378,9 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "ui.legacy.meta.click_unlock_hint": "点击条目购买解锁。快捷键：解锁 1-0，难度 Q/W/E。",
 
   "log.debug.prefix": "[调试] {message}",
+  "log.debug.cheats_enabled": "已启用金手指（?debugCheats=1）。按 Alt+H 查看命令列表。",
+  "log.debug.locked_item_added": "已加入锁定装备：{itemName}。按 E 验证等级门槛反馈。",
+  "log.debug.forced_player_death": "已强制触发玩家死亡。",
   "log.run.resumed_saved": "已恢复存档进度。",
   "log.system.feedback_degraded": "反馈系统降级（{type}），已安全继续运行。",
   "log.item.equip_failed_missing": "装备失败：背包中未找到物品 {itemId}。",
@@ -398,6 +423,9 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "log.run.started": "挑战开始：第 {floor} 层（{difficulty}，种子 {runSeed}）。",
   "log.run.completed_victory": "挑战完成！到达第 {floor} 层，等级 {level}。",
   "log.run.completed_defeat": "挑战结束于第 {floor} 层，等级 {level}。",
+  "log.run.diagnosis": "本局诊断：{headline}",
+  "log.run.missed_opportunity": "错过机会：{message}",
+  "log.run.next_plan": "下一局方案 {index}：{title} - {action}",
   "log.floor.entered": "进入第 {floor} 层。",
   "log.floor.entered_biome": "进入第 {floor} 层（{biomeName}）。",
   "log.floor.cleared": "第 {floor} 层清剿完成，击杀 {kills}。",
@@ -449,7 +477,12 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "log.monster.support_heal": "{sourceName} 为 {targetName} 回复了 {amount} 点生命。",
   "log.boss.bone_sovereign_defeated": "白骨主宰已被击败，请选择你的命运。",
   "log.run.entered_abyss_floor": "已进入深渊第 {floor} 层。",
-  "log.blueprint.discovered": "发现蓝图（{sourceLabel}）：{blueprintName}。"
+  "log.blueprint.discovered": "发现蓝图（{sourceLabel}）：{blueprintName}。",
+  "log.progression.branch_unlocked": "第 {floor} 层构筑分岔已通过{source}解锁。",
+  "log.progression.branch_fallback_injected": "第 {floor} 层缺少关键分岔，已补偿 1 次额外属性选择。",
+  "log.progression.levelup_panel_opened": "升级选择面板已打开（待分配 {pendingPoints} 点）。",
+  "log.progression.levelup_choice": "已选择升级：{choiceName}（剩余 {pendingPoints} 点待分配）。",
+  "log.debug.kill_player.death_reason": "这是一次用于验证死亡反馈链路的调试强制死亡。"
 };
 
 export const ZH_CN_CATALOG: MessageCatalog = {

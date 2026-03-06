@@ -1,4 +1,5 @@
 import type { ItemInstance, PlayerState } from "@blodex/core";
+import { t } from "../../../i18n";
 import { RunLogService } from "../logging/RunLogService";
 
 export interface InjectDebugLockedEquipmentOptions {
@@ -33,8 +34,10 @@ export function injectDebugLockedEquipment(options: InjectDebugLockedEquipmentOp
     }
   };
 
-  runLog.append(
-    `[Debug] Added locked item: ${debugItem.name}. Click E to verify level gate feedback.`,
+  runLog.debug(
+    t("log.debug.locked_item_added", {
+      itemName: debugItem.name
+    }),
     "info",
     nowMs
   );

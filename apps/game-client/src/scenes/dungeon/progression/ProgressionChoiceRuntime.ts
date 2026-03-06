@@ -7,6 +7,12 @@ import {
   type RollItemDropOptions
 } from "@blodex/core";
 import { LOOT_TABLE_MAP } from "@blodex/content";
+import {
+  levelUpDialogDescription,
+  levelUpDialogTitle,
+  levelUpStatChoiceLabel,
+  progressionChoiceSourceLabel
+} from "../../../i18n/labelResolvers";
 
 export interface ProgressionChoiceHost {
   [key: string]: any;
@@ -88,8 +94,12 @@ export class ProgressionChoiceRuntime {
     }
     this.floorChoiceBudgetSatisfied = true;
     this.floorChoiceBudgetSource = source;
-    host.runLog.append(
-      `Floor ${host.run.currentFloor} build branch unlocked via ${source}.`,
+    host.runLog.appendKey(
+      "log.progression.branch_unlocked",
+      {
+        floor: host.run.currentFloor,
+        source: progressionChoiceSourceLabel(source)
+      },
       "info",
       nowMs
     );
@@ -108,8 +118,11 @@ export class ProgressionChoiceRuntime {
       pendingLevelUpChoices: Math.max(0, Math.floor(host.player.pendingLevelUpChoices ?? 0)) + 1
     };
     this.markHighValueChoice("budget_fallback", nowMs);
-    host.runLog.append(
-      `Floor ${host.run.currentFloor} lacked major branching; injected 1 bonus stat choice.`,
+    host.runLog.appendKey(
+      "log.progression.branch_fallback_injected",
+      {
+        floor: host.run.currentFloor
+      },
       "warn",
       nowMs
     );
@@ -169,8 +182,8 @@ export class ProgressionChoiceRuntime {
 
     const eventDef: RandomEventDef = {
       id: "levelup_stat_choice",
-      name: "Level Up - Attribute Allocation",
-      description: `Choose 1 attribute point. Pending points: ${pendingPoints}.`,
+      name: levelUpDialogTitle(),
+      description: levelUpDialogDescription(pendingPoints),
       floorRange: {
         min: host.run.currentFloor,
         max: host.run.currentFloor
@@ -191,8 +204,11 @@ export class ProgressionChoiceRuntime {
         host.hudDirty = true;
       }
     );
-    host.runLog.append(
-      `Level-up choice panel opened (${pendingPoints} pending).`,
+    host.runLog.appendKey(
+      "log.progression.levelup_panel_opened",
+      {
+        pendingPoints
+      },
       "info",
       nowMs
     );
@@ -226,29 +242,10 @@ export class ProgressionChoiceRuntime {
       picks[picks.length - 1] = "vitality";
     }
 
-    const labels: Record<keyof BaseStats, { name: string; description: string }> = {
-      strength: {
-        name: "Power Drill (+1 STR)",
-        description: "Raise attack scaling and stabilize close-range kill pace."
-      },
-      dexterity: {
-        name: "Tempo Edge (+1 DEX)",
-        description: "Raise crit consistency, attack speed, and movement tempo."
-      },
-      vitality: {
-        name: "Iron Blood (+1 VIT)",
-        description: "Raise max health and reinforce sustained survivability."
-      },
-      intelligence: {
-        name: "Arcane Focus (+1 INT)",
-        description: "Raise mana ceiling and improve skill-rotation uptime."
-      }
-    };
-
     return picks.slice(0, 3).map((stat) => ({
       stat,
-      name: labels[stat].name,
-      description: labels[stat].description
+      name: levelUpStatChoiceLabel(stat).name,
+      description: levelUpStatChoiceLabel(stat).description
     }));
   }
 
@@ -273,8 +270,12 @@ export class ProgressionChoiceRuntime {
     if (typeof host.recordBuildLevelUpChoice === "function") {
       host.recordBuildLevelUpChoice(stat, source, nowMs);
     }
-    host.runLog.append(
-      `Level-up choice: +1 ${stat.toUpperCase()} (${Math.max(0, host.player.pendingLevelUpChoices ?? 0)} pending).`,
+    host.runLog.appendKey(
+      "log.progression.levelup_choice",
+      {
+        choiceName: levelUpStatChoiceLabel(stat).name,
+        pendingPoints: Math.max(0, host.player.pendingLevelUpChoices ?? 0)
+      },
       "success",
       nowMs
     );

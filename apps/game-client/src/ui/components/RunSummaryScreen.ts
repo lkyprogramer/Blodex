@@ -1,12 +1,13 @@
 import type { RunSummary } from "@blodex/core";
 import { t } from "../../i18n";
+import { difficultyLabel } from "../../i18n/labelResolvers";
 import type { RunOutcomeAnalysis } from "../../scenes/dungeon/taste/RunOutcomeAnalyzer";
 
 function summaryModeLabel(summary: RunSummary): string {
   if (summary.runMode === "daily") {
     return t("ui.summary.mode.daily");
   }
-  return (summary.difficulty ?? "normal").toUpperCase();
+  return difficultyLabel(summary.difficulty ?? "normal");
 }
 
 export function renderRunSummaryScreen(summary: RunSummary, analysis?: RunOutcomeAnalysis): string {

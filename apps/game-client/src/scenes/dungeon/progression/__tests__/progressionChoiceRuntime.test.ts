@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { getLocale, setLocale } from "../../../../i18n";
 import { ProgressionChoiceRuntime } from "../ProgressionChoiceRuntime";
 
 function createHost() {
@@ -24,7 +25,8 @@ function createHost() {
     },
     currentBiome: { lootBias: {} },
     runLog: {
-      append: vi.fn()
+      append: vi.fn(),
+      appendKey: vi.fn()
     },
     refreshSynergyRuntime: vi.fn(),
     playerActionModule: {
@@ -63,6 +65,31 @@ describe("ProgressionChoiceRuntime", () => {
     runtime.ensureFloorChoiceBudget(40);
 
     expect(host.player.pendingLevelUpChoices).toBe(0);
-    expect(host.runLog.append).toHaveBeenCalledTimes(1);
+    expect(host.runLog.appendKey).toHaveBeenCalledTimes(1);
+  });
+
+  it("localizes level-up prompt metadata in zh-CN", () => {
+    const previousLocale = getLocale();
+    setLocale("zh-CN", { persist: false });
+    try {
+      const host = createHost();
+      host.player.pendingLevelUpChoices = 1;
+      const runtime = new ProgressionChoiceRuntime({ host });
+
+      runtime.maybePromptLevelUpChoice(100, "runtime_tick");
+
+      expect(host.uiManager.showEventDialog).toHaveBeenCalledTimes(1);
+      const [eventDef] = vi.mocked(host.uiManager.showEventDialog).mock.calls[0] ?? [];
+      expect(eventDef?.name).toBe("升级 - 属性分配");
+      expect(eventDef?.description).toContain("当前待分配：1 点");
+      expect(host.runLog.appendKey).toHaveBeenCalledWith(
+        "log.progression.levelup_panel_opened",
+        { pendingPoints: 1 },
+        "info",
+        100
+      );
+    } finally {
+      setLocale(previousLocale, { persist: false });
+    }
   });
 });
