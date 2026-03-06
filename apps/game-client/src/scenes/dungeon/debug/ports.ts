@@ -88,7 +88,7 @@ export interface DebugCommandHost {
   };
   resolveLootRollOptions(options: RollItemDropOptions): RollItemDropOptions;
   isItemDefUnlocked(itemDef: ItemDef): boolean;
-  spawnLootDrop(item: ItemInstance, position: { x: number; y: number }): void;
+  spawnLootDrop(item: ItemInstance, position: { x: number; y: number }, source?: string): void;
   staircaseState: StaircaseState;
   tryDiscoverBlueprints(
     sourceType: "floor_clear" | "monster_affix",

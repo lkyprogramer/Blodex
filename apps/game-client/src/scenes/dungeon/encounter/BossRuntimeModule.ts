@@ -1,4 +1,4 @@
-import type { RandomEventDef, RunState } from "@blodex/core";
+import type { ItemInstance, RandomEventDef, RunState } from "@blodex/core";
 import { t } from "../../../i18n";
 import { gridToIso } from "../../../systems/iso";
 import { BossCombatService } from "./BossCombatService";
@@ -38,6 +38,8 @@ export interface BossRuntimeHost {
     enterAbyss(nowMs: number): void;
     finishRun(isVictory: boolean): void;
   };
+  grantStoryBossReward(nowMs: number): ItemInstance[];
+  describeItem(item: ItemInstance): string;
   recordBossRewardClosed?(choiceId: string, nowMs: number): void;
   time: {
     now: number;
@@ -89,26 +91,35 @@ export class BossRuntimeModule {
       return;
     }
 
+    const rewards = host.grantStoryBossReward(nowMs);
     const canEnterAbyss = host.run.runMode !== "daily";
+    const rewardSummary =
+      rewards.length === 0 ? "" : ` ${rewards.map((item) => host.describeItem(item)).join(" / ")}.`;
     const eventDef: RandomEventDef = {
       id: ABYSS_VICTORY_EVENT_ID,
       name: t("ui.boss.victory.title"),
       description: canEnterAbyss
-        ? t("ui.boss.victory.description.normal")
-        : t("ui.boss.victory.description.daily"),
+        ? `${t("ui.boss.victory.description.normal")}${rewardSummary}`
+        : `${t("ui.boss.victory.description.daily")}${rewardSummary}`,
       floorRange: { min: host.run.currentFloor, max: host.run.currentFloor },
       spawnWeight: 1,
       choices: [
         {
           id: "claim_victory",
           name: t("ui.boss.victory.choice.claim.name"),
-          description: t("ui.boss.victory.choice.claim.description"),
+          description:
+            rewards.length === 0
+              ? t("ui.boss.victory.choice.claim.description")
+              : `${t("ui.boss.victory.choice.claim.description")} ${rewardSummary.trim()}`,
           rewards: []
         },
         {
           id: "enter_abyss",
           name: t("ui.boss.victory.choice.enter_abyss.name"),
-          description: t("ui.boss.victory.choice.enter_abyss.description"),
+          description:
+            rewards.length === 0
+              ? t("ui.boss.victory.choice.enter_abyss.description")
+              : `${t("ui.boss.victory.choice.enter_abyss.description")} ${rewardSummary.trim()}`,
           rewards: []
         }
       ]

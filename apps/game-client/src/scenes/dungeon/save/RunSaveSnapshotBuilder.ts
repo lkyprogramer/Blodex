@@ -54,6 +54,8 @@ export class RunSaveSnapshotBuilder {
       typeof host.captureFloorChoiceBudgetSnapshot === "function" ? host.captureFloorChoiceBudgetSnapshot() : undefined;
     const progressionPromptState =
       typeof host.captureProgressionPromptState === "function" ? host.captureProgressionPromptState(nowMs) : undefined;
+    const powerSpikeBudgetState =
+      typeof host.capturePowerSpikeBudgetState === "function" ? host.capturePowerSpikeBudgetState() : undefined;
     const phase6TelemetryState =
       typeof host.capturePhase6TelemetryState === "function"
         ? host.capturePhase6TelemetryState(elapsedMs)
@@ -135,6 +137,7 @@ export class RunSaveSnapshotBuilder {
       mapRevealActive: host.mapRevealActive,
       ...(floorChoiceBudget === undefined ? {} : { floorChoiceBudget }),
       ...(progressionPromptState === undefined ? {} : { progressionPromptState }),
+      ...(powerSpikeBudgetState === undefined ? {} : { powerSpikeBudgetState }),
       ...(phase6TelemetryState === undefined ? {} : { phase6TelemetryState }),
       rngCursor: this.collectRngCursor(),
       blueprintFoundIdsInRun: [...host.blueprintFoundIdsInRun],

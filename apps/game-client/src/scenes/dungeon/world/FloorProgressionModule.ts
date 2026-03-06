@@ -31,6 +31,7 @@ export interface FloorProgressionHost {
     renderStaircases(): void;
     setupFloor(floor: number, isFreshFloor: boolean): void;
   };
+  grantFloorPairFallbackReward(nowMs: number): void;
   eventBus: TypedEventBus<GameEventMap>;
   tryDiscoverBlueprints(
     sourceType: "floor_clear",
@@ -67,6 +68,7 @@ export class FloorProgressionModule {
         visible: true
       };
       host.progressionRuntimeModule.renderStaircases();
+      host.grantFloorPairFallbackReward(nowMs);
       host.eventBus.emit("floor:clear", {
         floor: host.run.currentFloor,
         kills: host.run.kills,

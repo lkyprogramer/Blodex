@@ -38,6 +38,11 @@ export interface RunSimulation {
     avgSkillDamageShare: number;
     avgAutoAttackDamageShare: number;
   };
+  powerSpikes?: {
+    avgAcceptedSpikesPerRun: number;
+    avgMajorSpikesPerRun: number;
+    pairSatisfactionRate: Record<string, number>;
+  };
 }
 
 interface SimulatedRun {

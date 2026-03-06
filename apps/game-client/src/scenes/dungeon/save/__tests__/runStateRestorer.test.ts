@@ -159,6 +159,15 @@ function createSave(): RunSaveDataV2 {
       nextPromptDelayMs: 2_100,
       pendingLevelUpSkillOfferIds: ["chain_lightning"]
     },
+    powerSpikeBudgetState: {
+      pairStates: {
+        "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
+        "3-4": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
+        "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+      },
+      acceptedSpikeCount: 1,
+      majorSpikeCount: 0
+    },
     phase6TelemetryState: {
       startedAtMs: 10,
       buildFormedState: false,
@@ -167,6 +176,7 @@ function createSave(): RunSaveDataV2 {
         playerFacingChoices: 0,
         choiceCountByFloor: {},
         powerSpikes: 0,
+        majorPowerSpikes: 0,
         buildFormed: 0,
         rareDropsPresented: 0,
         bossRewardClosed: 0
@@ -306,6 +316,7 @@ function createHost(): RunStateRestoreHost {
     updateMinimap: vi.fn(),
     resetMutationRuntimeState: vi.fn(),
     refreshSynergyRuntime: vi.fn(),
+    restorePowerSpikeBudgetState: vi.fn(),
     restoreProgressionPromptState: vi.fn(),
     resetFloorChoiceBudget: vi.fn(),
     floorConfig: null,
@@ -334,6 +345,15 @@ describe("RunStateRestorer", () => {
       },
       600
     );
+    expect(host.restorePowerSpikeBudgetState).toHaveBeenCalledWith({
+      pairStates: {
+        "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
+        "3-4": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
+        "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+      },
+      acceptedSpikeCount: 1,
+      majorSpikeCount: 0
+    });
   });
 
   it("restores monster baseMoveSpeed separately from current slowed moveSpeed", () => {

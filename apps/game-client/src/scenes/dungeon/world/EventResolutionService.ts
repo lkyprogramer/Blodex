@@ -241,13 +241,14 @@ export class EventResolutionService {
       return;
     }
 
+    const baselinePlayer = host.player;
     host.player = collectLoot(host.player, item);
     host.run = {
       ...host.run,
       lootCollected: host.run.lootCollected + 1
     };
     if (typeof host.recordAcquiredItemTelemetry === "function") {
-      host.recordAcquiredItemTelemetry(item, "event_reward", nowMs);
+      host.recordAcquiredItemTelemetry(item, "event_reward", nowMs, baselinePlayer);
     }
     host.runLog.appendKey(
       "log.event.reward.item_acquired",

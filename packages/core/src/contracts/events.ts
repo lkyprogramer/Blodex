@@ -87,9 +87,20 @@ export interface GameEventMap {
   "power_spike": {
     floor: number;
     source: string;
+    sourceKind?: string;
+    pairId?: string;
     timestampMs: number;
     itemDefId?: string;
     rarity?: ItemRarity;
+    accepted?: boolean;
+    major?: boolean;
+    amplitude?: {
+      offensiveDelta: number;
+      defensiveDelta: number;
+      utilityDelta: number;
+      ttkDelta: number;
+      sustainDelta: number;
+    };
   };
   "build_formed": {
     floor: number;

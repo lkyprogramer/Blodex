@@ -38,6 +38,7 @@ export class Phase6TelemetryTracker {
   private startedAtMs = 0;
   private playerFacingChoices = 0;
   private powerSpikes = 0;
+  private majorPowerSpikes = 0;
   private buildFormedCount = 0;
   private rareDropsPresented = 0;
   private bossRewardClosed = 0;
@@ -60,6 +61,7 @@ export class Phase6TelemetryTracker {
     this.startedAtMs = startedAtMs;
     this.playerFacingChoices = 0;
     this.powerSpikes = 0;
+    this.majorPowerSpikes = 0;
     this.buildFormedCount = 0;
     this.rareDropsPresented = 0;
     this.bossRewardClosed = 0;
@@ -113,11 +115,13 @@ export class Phase6TelemetryTracker {
       return;
     }
     this.rareDropsPresented += 1;
-    this.recordPowerSpike();
   }
 
-  recordPowerSpike(): void {
+  recordPowerSpike(major = false): void {
     this.powerSpikes += 1;
+    if (major) {
+      this.majorPowerSpikes += 1;
+    }
   }
 
   recordBossRewardClosed(): void {
@@ -185,6 +189,7 @@ export class Phase6TelemetryTracker {
         playerFacingChoices: this.playerFacingChoices,
         choiceCountByFloor: { ...this.choiceCountByFloor },
         powerSpikes: this.powerSpikes,
+        majorPowerSpikes: this.majorPowerSpikes,
         buildFormed: this.buildFormedCount,
         rareDropsPresented: this.rareDropsPresented,
         bossRewardClosed: this.bossRewardClosed
@@ -227,6 +232,7 @@ export class Phase6TelemetryTracker {
     this.startedAtMs = state.startedAtMs;
     this.playerFacingChoices = state.story.playerFacingChoices;
     this.powerSpikes = state.story.powerSpikes;
+    this.majorPowerSpikes = state.story.majorPowerSpikes;
     this.buildFormedCount = state.story.buildFormed;
     this.rareDropsPresented = state.story.rareDropsPresented;
     this.bossRewardClosed = state.story.bossRewardClosed;

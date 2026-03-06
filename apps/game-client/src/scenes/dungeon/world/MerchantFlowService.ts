@@ -123,6 +123,7 @@ export class MerchantFlowService {
       return { kind: "delivery_failed" };
     }
 
+    const baselinePlayer = host.player;
     host.run = spendRunObols(host.run, offer.priceObol);
     host.player = collectLoot(host.player, item);
     host.run = {
@@ -130,7 +131,7 @@ export class MerchantFlowService {
       lootCollected: host.run.lootCollected + 1
     };
     if (typeof host.recordAcquiredItemTelemetry === "function") {
-      host.recordAcquiredItemTelemetry(item, "merchant_purchase", nowMs);
+      host.recordAcquiredItemTelemetry(item, "merchant_purchase", nowMs, baselinePlayer);
     }
     host.eventBus.emit("merchant:purchase", {
       offerId: offer.offerId,

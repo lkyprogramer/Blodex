@@ -125,6 +125,7 @@ import {
   type MutationEffect,
   type MonsterAffixId,
   type MonsterState,
+  type PowerSpikeBudgetRuntimeState,
   type PlayerState,
   type RandomEventDef,
   type RunMode,
@@ -225,6 +226,7 @@ import type { RunSaveSnapshotHost, RunStateRestoreHost } from "./dungeon/save/sa
 import { SaveCoordinator } from "./dungeon/save/SaveCoordinator";
 import { applyForgedSkillBlueprintAugments } from "./dungeon/skills/skillBlueprintRuntime";
 import { Phase6TelemetryTracker } from "./dungeon/taste/Phase6Telemetry";
+import { PowerSpikeRuntimeModule, type PowerSpikeRuntimeHost } from "./dungeon/taste/PowerSpikeRuntimeModule";
 import { TasteRuntimePortHub } from "./dungeon/taste/TasteRuntimePorts";
 import { HudPresenter } from "./dungeon/ui/HudPresenter";
 import {
@@ -521,6 +523,9 @@ export class DungeonScene extends Phaser.Scene {
   });
   private readonly tasteRuntime = new TasteRuntimePortHub();
   private readonly phase6Telemetry = new Phase6TelemetryTracker();
+  private readonly powerSpikeRuntimeModule = new PowerSpikeRuntimeModule({
+    host: this.createPowerSpikeRuntimeHost()
+  });
   private nextTransientHudRefreshAt = Number.POSITIVE_INFINITY;
   private readonly debugLockedEquipQuery = DEBUG_LOCKED_EQUIP_QUERY;
   private readonly debugLockedEquipIconId = DEBUG_LOCKED_EQUIP_ICON_ID;
@@ -548,6 +553,34 @@ export class DungeonScene extends Phaser.Scene {
         }
       }
     );
+  }
+
+  private createPowerSpikeRuntimeHost(): PowerSpikeRuntimeHost {
+    const scene = this;
+    return {
+      get runSeed() { return scene.runSeed; },
+      get run() { return scene.run; },
+      set run(value) { scene.run = value; },
+      get player() { return scene.player; },
+      set player(value) { scene.player = value; },
+      get bossDef() { return scene.bossDef; },
+      get staircaseState() { return scene.staircaseState; },
+      get lootRng() { return scene.lootRng; },
+      get origin() { return scene.origin; },
+      get eventBus() { return scene.eventBus; },
+      get renderSystem() { return scene.renderSystem; },
+      get entityManager() { return scene.entityManager; },
+      get tasteRuntime() { return scene.tasteRuntime; },
+      get phase6Telemetry() { return scene.phase6Telemetry; },
+      get contentLocalizer() { return scene.contentLocalizer; },
+      get runLog() { return scene.runLog; },
+      get hudDirty() { return scene.hudDirty; },
+      set hudDirty(value) { scene.hudDirty = value; },
+      markHighValueChoice(source, nowMs) { scene.markHighValueChoice(source, nowMs); },
+      resolveProgressionLootTable(floor) { return scene.resolveProgressionLootTable(floor); },
+      resolveLootRollOptions(options) { return scene.resolveLootRollOptions(options); },
+      isItemDefUnlocked(itemDef) { return scene.isItemDefUnlocked(itemDef); }
+    };
   }
 
   private createRunSaveSnapshotHost(): RunSaveSnapshotHost {
@@ -612,6 +645,9 @@ export class DungeonScene extends Phaser.Scene {
       },
       captureProgressionPromptState(nowMs) {
         return scene.captureProgressionPromptState(nowMs);
+      },
+      capturePowerSpikeBudgetState() {
+        return scene.capturePowerSpikeBudgetState();
       },
       capturePhase6TelemetryState(elapsedMs) {
         return scene.capturePhase6TelemetryState(elapsedMs);
@@ -994,6 +1030,9 @@ export class DungeonScene extends Phaser.Scene {
       restoreProgressionPromptState(snapshot, nowMs) {
         scene.restoreProgressionPromptState(snapshot, nowMs);
       },
+      restorePowerSpikeBudgetState(snapshot) {
+        scene.restorePowerSpikeBudgetState(snapshot);
+      },
       resetFloorChoiceBudget(floor, nowMs) {
         scene.resetFloorChoiceBudget(floor, nowMs);
       }
@@ -1336,8 +1375,8 @@ export class DungeonScene extends Phaser.Scene {
       isItemDefUnlocked(itemDef) {
         return scene.isItemDefUnlocked(itemDef);
       },
-      spawnLootDrop(item, position) {
-        scene.spawnLootDrop(item, position);
+      spawnLootDrop(item, position, source) {
+        scene.powerSpikeRuntimeModule.spawnLootDrop(item, position, source, scene.time.now);
       },
       tryDiscoverBlueprints(sourceType, nowMs, sourceId) {
         scene.tryDiscoverBlueprints(sourceType, nowMs, sourceId);
@@ -1717,8 +1756,8 @@ export class DungeonScene extends Phaser.Scene {
       isItemDefUnlocked(itemDef) {
         return scene.isItemDefUnlocked(itemDef);
       },
-      spawnLootDrop(item, position) {
-        scene.spawnLootDrop(item, position);
+      spawnLootDrop(item, position, source) {
+        scene.powerSpikeRuntimeModule.spawnLootDrop(item, position, source, scene.time.now);
       },
       get staircaseState() {
         return scene.staircaseState;
@@ -2537,6 +2576,7 @@ export class DungeonScene extends Phaser.Scene {
             ...(resolvedDailyDate === undefined ? {} : { dailyDate: resolvedDailyDate })
           }
         : run;
+    this.powerSpikeRuntimeModule.resetRun();
     this.phase6Telemetry.resetRun(this.run.startedAtMs);
     this.progressionChoiceRuntime.resetRuntime(this.time.now, this.run.currentFloor);
     this.progressionRuntimeModule.setupFloor(1, true);
@@ -3199,7 +3239,12 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     if (playerCombat.droppedItem !== undefined) {
-      this.spawnLootDrop(playerCombat.droppedItem.item, playerCombat.droppedItem.position);
+      this.powerSpikeRuntimeModule.spawnLootDrop(
+        playerCombat.droppedItem.item,
+        playerCombat.droppedItem.position,
+        "drop_spawn",
+        nowMs
+      );
       this.eventBus.emit("loot:drop", {
         sourceId: playerCombat.droppedItem.sourceId,
         item: playerCombat.droppedItem.item,
@@ -3225,6 +3270,10 @@ export class DungeonScene extends Phaser.Scene {
     return this.progressionChoiceRuntime.capturePromptState(nowMs);
   }
 
+  capturePowerSpikeBudgetState(): PowerSpikeBudgetRuntimeState {
+    return this.powerSpikeRuntimeModule.captureBudgetState();
+  }
+
   restoreFloorChoiceBudgetSnapshot(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void {
     this.progressionChoiceRuntime.restoreFloorChoiceBudgetSnapshot(snapshot, this.run.currentFloor, nowMs);
   }
@@ -3236,9 +3285,13 @@ export class DungeonScene extends Phaser.Scene {
     this.progressionChoiceRuntime.restorePromptState(snapshot, nowMs);
   }
 
+  restorePowerSpikeBudgetState(snapshot: PowerSpikeBudgetRuntimeState | null | undefined): void {
+    this.powerSpikeRuntimeModule.restoreBudgetState(snapshot);
+  }
+
   recordBuildLevelUpChoice(stat: keyof PlayerState["baseStats"], source: string, nowMs: number): void {
     this.tasteRuntime.recordLevelUpChoice(stat, this.run.currentFloor, source, nowMs);
-    this.maybeRecordBuildFormed(source, nowMs);
+    this.powerSpikeRuntimeModule.recordBuildFormed(source, nowMs);
   }
 
   recordPlayerFacingChoice(source: string, nowMs: number): void {
@@ -3288,6 +3341,10 @@ export class DungeonScene extends Phaser.Scene {
       choiceId,
       timestampMs: nowMs
     });
+  }
+
+  describeItem(item: ItemInstance): string {
+    return this.powerSpikeRuntimeModule.describeItem(item);
   }
 
   recordSkillResolutionTelemetry(resolution: SkillResolution, nowMs: number): void {
@@ -3353,27 +3410,6 @@ export class DungeonScene extends Phaser.Scene {
     return this.progressionChoiceRuntime.resolveLootRollOptions(options);
   }
 
-  private maybeRecordBuildFormed(source: string, nowMs: number): void {
-    const snapshot = this.tasteRuntime.snapshotBuildIdentity();
-    if (!this.phase6Telemetry.syncBuildIdentity(snapshot)) {
-      return;
-    }
-    this.tasteRuntime.recordHeartbeat({
-      type: "build_formed",
-      floor: this.run.currentFloor,
-      source,
-      timestampMs: nowMs,
-      detail: snapshot.tags.join(",")
-    });
-    this.eventBus.emit("build_formed", {
-      floor: this.run.currentFloor,
-      source,
-      timestampMs: nowMs,
-      tags: snapshot.tags,
-      keyItemDefIds: snapshot.keyItemDefIds
-    });
-  }
-
   private resolveMinimumActiveSkillManaCost(): number | null {
     const activeSlots =
       this.player.skills?.skillSlots.filter((slot): slot is NonNullable<typeof slot> => slot !== null) ?? [];
@@ -3392,52 +3428,13 @@ export class DungeonScene extends Phaser.Scene {
     return minimum;
   }
 
-  recordAcquiredItemTelemetry(item: ItemInstance, source: string, nowMs: number): void {
-    this.recordPowerSpikeItem(item, source, nowMs, false);
-    this.maybeRecordBuildFormed(source, nowMs);
-  }
-
-  private recordRareDropPresented(item: ItemInstance, source: string, nowMs: number): void {
-    this.recordPowerSpikeItem(item, source, nowMs, true);
-  }
-
-  private recordPowerSpikeItem(
+  recordAcquiredItemTelemetry(
     item: ItemInstance,
     source: string,
     nowMs: number,
-    countsAsPresentation: boolean
+    baselinePlayer: PlayerState = this.player
   ): void {
-    if (item.rarity !== "rare" && item.kind !== "unique") {
-      return;
-    }
-    if (countsAsPresentation) {
-      this.phase6Telemetry.recordRareDropPresented(item);
-    } else {
-      this.phase6Telemetry.recordPowerSpike();
-    }
-    this.tasteRuntime.recordHeartbeat({
-      type: "power_spike",
-      floor: this.run.currentFloor,
-      source,
-      timestampMs: nowMs,
-      detail: item.defId
-    });
-    if (countsAsPresentation) {
-      this.eventBus.emit("rare_drop_presented", {
-        floor: this.run.currentFloor,
-        source,
-        timestampMs: nowMs,
-        itemDefId: item.defId,
-        rarity: item.rarity
-      });
-    }
-    this.eventBus.emit("power_spike", {
-      floor: this.run.currentFloor,
-      source,
-      timestampMs: nowMs,
-      itemDefId: item.defId,
-      rarity: item.rarity
-    });
+    this.powerSpikeRuntimeModule.recordAcquiredItemTelemetry(item, source, nowMs, baselinePlayer);
   }
 
   private resolveRuntimeSkillDef(skillDef: SkillDef): SkillDef {
@@ -3781,7 +3778,7 @@ export class DungeonScene extends Phaser.Scene {
         lootCollected: this.run.lootCollected + 1
       };
       this.tasteRuntime.recordPickup(drop.item, this.run.currentFloor, "auto_pickup", nowMs);
-      this.maybeRecordBuildFormed("key_pickup", nowMs);
+      this.powerSpikeRuntimeModule.recordBuildFormed("key_pickup", nowMs);
       drop.sprite.destroy();
       this.eventBus.emit("loot:pickup", {
         playerId: this.player.id,
@@ -3838,17 +3835,12 @@ export class DungeonScene extends Phaser.Scene {
     this.entityManager.setMonsters(runtimes);
   }
 
-  private spawnLootDrop(item: ItemInstance, position: { x: number; y: number }): void {
-    this.entityManager.addLoot({
-      item,
-      sprite: this.renderSystem.spawnLootSprite(item, position, this.origin),
-      position: { ...position }
-    });
-    this.tasteRuntime.recordDrop(item, this.run.currentFloor, "drop_spawn", this.time.now);
-    this.recordRareDropPresented(item, "drop_spawn", this.time.now);
-    if (item.rarity === "rare" || item.kind === "unique") {
-      this.markHighValueChoice("key_drop", this.time.now);
-    }
+  grantFloorPairFallbackReward(nowMs: number): void {
+    this.powerSpikeRuntimeModule.grantFloorPairFallbackReward(nowMs);
+  }
+
+  grantStoryBossReward(nowMs: number): ItemInstance[] {
+    return this.powerSpikeRuntimeModule.grantStoryBossReward(nowMs);
   }
 
   private tryUseSkill(slotIndex: number): void {

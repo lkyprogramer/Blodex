@@ -151,7 +151,7 @@ export interface RuntimeEventHost {
   refreshPlayerStatsFromEquipment(player: PlayerState): PlayerState;
   handleLevelUpGain(levelsGained: number, nowMs: number, source: string): void;
   lastDeathReason: string;
-  recordAcquiredItemTelemetry?(item: ItemInstance, source: string, nowMs: number): void;
+  recordAcquiredItemTelemetry?(item: ItemInstance, source: string, nowMs: number, baselinePlayer?: PlayerState): void;
 }
 
 interface HazardRuntimeEntityPort {
@@ -320,7 +320,7 @@ export interface ProgressionRuntimeHost {
   resolveProgressionLootTable(floor: number): LootTableDef | undefined;
   resolveLootRollOptions(options: RollItemDropOptions): RollItemDropOptions;
   isItemDefUnlocked(itemDef: ItemDef): boolean;
-  spawnLootDrop(item: ItemInstance, position: { x: number; y: number }): void;
+  spawnLootDrop(item: ItemInstance, position: { x: number; y: number }, source?: string): void;
   tryDiscoverBlueprints(
     sourceType: "challenge_room" | "hidden_room",
     nowMs: number,
