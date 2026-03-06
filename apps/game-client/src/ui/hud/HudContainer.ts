@@ -31,6 +31,7 @@ import {
   bindRunSummaryActions,
   renderRunSummaryScreen
 } from "../components/RunSummaryScreen";
+import type { RunOutcomeAnalysis } from "../../scenes/dungeon/taste/RunOutcomeAnalyzer";
 import { getContentLocalizer, t } from "../../i18n";
 import {
   buildEquipmentDeltaSummary,
@@ -1041,9 +1042,9 @@ export class HudContainer {
     this.eventPanelEl.innerHTML = "";
   }
 
-  showSummary(summary: RunSummary): void {
+  showSummary(summary: RunSummary, analysis?: RunOutcomeAnalysis): void {
     this.summaryEl.className = "run-summary-overlay";
-    this.summaryEl.innerHTML = renderRunSummaryScreen(summary);
+    this.summaryEl.innerHTML = renderRunSummaryScreen(summary, analysis);
     bindRunSummaryActions(this.summaryEl, () => this.onNewRun());
     document.addEventListener("keydown", this.onSummaryContinueKeydown);
   }

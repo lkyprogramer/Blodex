@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
+    "balance:real:report": "vitest run src/systems/balance/__tests__/realBalanceReport.test.ts --reporter=verbose",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
     "i18n:check": "node --experimental-strip-types scripts/check-i18n-catalog.ts && vitest run src/i18n/__tests__/catalog-parser.test.ts src/i18n/__tests__/catalog-completeness.test.ts src/i18n/__tests__/placeholder-consistency.test.ts src/i18n/__tests__/fallback.test.ts src/i18n/__tests__/zh-cn-smoke.test.ts src/i18n/__tests__/content-localizer-zh-cn.test.ts src/i18n/content/__tests__/content-coverage.test.ts",
