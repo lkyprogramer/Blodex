@@ -3975,6 +3975,10 @@ export class DungeonScene extends Phaser.Scene {
     return this.heartbeatFeedbackRuntime.flushImmediateComparePrompts(onDrained);
   }
 
+  flushQueuedComparePrompts(): boolean {
+    return this.heartbeatFeedbackRuntime.flushImmediateComparePrompts();
+  }
+
   private tryUseSkill(slotIndex: number): void {
     this.playerActionModule.tryUseSkill(slotIndex);
   }
