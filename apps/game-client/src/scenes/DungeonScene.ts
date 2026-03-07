@@ -612,6 +612,9 @@ export class DungeonScene extends Phaser.Scene {
       routeFeedback(input) {
         scene.routeFeedback(input);
       },
+      get eventPanelOpen() {
+        return scene.eventPanelOpen;
+      },
       get comparePromptOpen() {
         return scene.comparePromptOpen;
       },
@@ -3961,7 +3964,15 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   grantStoryBossReward(nowMs: number): ItemInstance[] {
-    return this.powerSpikeRuntimeModule.grantStoryBossReward(nowMs);
+    const rewards = this.powerSpikeRuntimeModule.grantStoryBossReward(nowMs);
+    for (const item of rewards) {
+      this.heartbeatFeedbackRuntime.maybeQueueEquipmentCompare(item, "boss_reward");
+    }
+    return rewards;
+  }
+
+  flushBossRewardComparePrompts(onDrained: () => void): boolean {
+    return this.heartbeatFeedbackRuntime.flushImmediateComparePrompts(onDrained);
   }
 
   private tryUseSkill(slotIndex: number): void {

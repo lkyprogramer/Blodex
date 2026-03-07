@@ -39,6 +39,7 @@ export interface BossRuntimeHost {
     finishRun(isVictory: boolean): void;
   };
   grantStoryBossReward(nowMs: number): ItemInstance[];
+  flushBossRewardComparePrompts?(onDrained: () => void): boolean;
   describeItem(item: ItemInstance): string;
   recordBossRewardClosed?(choiceId: string, nowMs: number): void;
   time: {
@@ -91,6 +92,7 @@ export class BossRuntimeModule {
       return;
     }
 
+    host.eventPanelOpen = true;
     const rewards = host.grantStoryBossReward(nowMs);
     const canEnterAbyss = host.run.runMode !== "daily";
     const rewardSummary =
@@ -148,18 +150,30 @@ export class BossRuntimeModule {
         if (typeof host.recordBossRewardClosed === "function") {
           host.recordBossRewardClosed(choiceId, host.time.now);
         }
-        if (choiceId === "enter_abyss" && canEnterAbyss) {
-          host.runCompletionModule.enterAbyss(host.time.now);
+        const resolveChoice = () => {
+          if (choiceId === "enter_abyss" && canEnterAbyss) {
+            host.runCompletionModule.enterAbyss(host.time.now);
+            return;
+          }
+          host.runCompletionModule.finishRun(true);
+        };
+        if (host.flushBossRewardComparePrompts?.(resolveChoice) === true) {
           return;
         }
-        host.runCompletionModule.finishRun(true);
+        resolveChoice();
       },
       () => {
         host.eventRuntimeModule.consumeCurrentEvent();
         if (typeof host.recordBossRewardClosed === "function") {
           host.recordBossRewardClosed("dismiss", host.time.now);
         }
-        host.runCompletionModule.finishRun(true);
+        const resolveChoice = () => {
+          host.runCompletionModule.finishRun(true);
+        };
+        if (host.flushBossRewardComparePrompts?.(resolveChoice) === true) {
+          return;
+        }
+        resolveChoice();
       }
     );
     host.runLog.appendKey("log.boss.bone_sovereign_defeated", undefined, "success", nowMs);

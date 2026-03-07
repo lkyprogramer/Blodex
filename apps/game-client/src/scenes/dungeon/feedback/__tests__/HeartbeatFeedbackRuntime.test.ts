@@ -55,6 +55,7 @@ function createHost(): {
     },
     player,
     routeFeedback,
+    eventPanelOpen: false,
     comparePromptOpen: false,
     hudDirty: false
   };
@@ -187,6 +188,45 @@ describe("HeartbeatFeedbackRuntime", () => {
 
     runtime.maybeQueueEquipmentCompare(highValue, "merchant_purchase");
     expect(showEquipmentComparePrompt).toHaveBeenCalledTimes(1);
+  });
+
+  it("defers compare prompts while the event panel is open and flushes them after close", () => {
+    const { host, runtime, showEquipmentComparePrompt } = createHost();
+    const first = makeItem("sanctified_greatsword", {
+      rolledAffixes: {
+        attackPower: 16
+      }
+    });
+    const second = makeItem("oathbound_cuirass", {
+      rolledAffixes: {
+        armor: 14
+      }
+    });
+    const onDrained = vi.fn();
+    host.eventPanelOpen = true;
+
+    runtime.maybeQueueEquipmentCompare(first, "boss_reward");
+    runtime.maybeQueueEquipmentCompare(second, "boss_reward");
+
+    expect(showEquipmentComparePrompt).not.toHaveBeenCalled();
+
+    host.eventPanelOpen = false;
+    runtime.flushImmediateComparePrompts(onDrained);
+
+    expect(showEquipmentComparePrompt).toHaveBeenCalledTimes(1);
+    const firstOptions = showEquipmentComparePrompt.mock.calls[0]![2] as {
+      onAction: (action: "equip" | "later" | "ignore") => void;
+    };
+    firstOptions.onAction("later");
+
+    expect(showEquipmentComparePrompt).toHaveBeenCalledTimes(2);
+    const secondOptions = showEquipmentComparePrompt.mock.calls[1]![2] as {
+      onAction: (action: "equip" | "later" | "ignore") => void;
+    };
+    secondOptions.onAction("ignore");
+
+    expect(onDrained).toHaveBeenCalledTimes(1);
+    expect(showEquipmentComparePrompt).toHaveBeenCalledTimes(2);
   });
 
   it("renders a unique drop toast when the presentation rarity is unique", () => {

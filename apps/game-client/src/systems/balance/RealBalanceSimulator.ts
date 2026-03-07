@@ -9,6 +9,7 @@ import {
   createRunState,
   defaultBaseStats,
   deriveStats,
+  estimateStoryFloorPacingOverheadMs,
   getDifficultyModifier,
   initBossState,
   markSkillUsed,
@@ -74,6 +75,8 @@ interface SimulatedRun {
   cleared: boolean;
   floorReached: number;
   runDurationMs: number;
+  combatDurationMs: number;
+  floorDurationsMs: number[];
   hpByFloor: number[];
   deathCause: string;
   rarityCounts: Record<"common" | "magic" | "rare", number>;
@@ -909,6 +912,8 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
   let player = createBalancePlayer();
   let floorReached = 0;
   let runDurationMs = 0;
+  let combatDurationMs = 0;
+  const floorDurationsMs = new Array<number>(floors).fill(0);
   const hpByFloor = new Array<number>(floors).fill(0);
   const rarityCounts: Record<"common" | "magic" | "rare", number> = {
     common: 0,
@@ -926,8 +931,18 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
       floor >= STORY_MAX_FLOOR
         ? simulateBossCombat(player, config, runSeed, powerSpikeBudget)
         : simulateFloorCombat(player, config, floor, runSeed, branchChoice, powerSpikeBudget);
+    const pacedFloorDurationMs =
+      result.elapsedMs +
+      estimateStoryFloorPacingOverheadMs({
+        floor,
+        difficulty: config.difficulty,
+        playerBehavior: config.playerBehavior,
+        isBossFloor: floor >= STORY_MAX_FLOOR
+      });
     player = result.player;
-    runDurationMs += result.elapsedMs;
+    combatDurationMs += result.elapsedMs;
+    runDurationMs += pacedFloorDurationMs;
+    floorDurationsMs[floor - 1] = pacedFloorDurationMs;
     floorReached = floor;
     hpByFloor[floor - 1] = Number((player.health / Math.max(1, player.derivedStats.maxHealth)).toFixed(4));
     rarityCounts.common += result.rarityCounts.common;
@@ -950,6 +965,8 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
     cleared,
     floorReached,
     runDurationMs,
+    combatDurationMs,
+    floorDurationsMs,
     hpByFloor,
     deathCause: resolveDeathCause(floorReached, player, branchChoice),
     rarityCounts,
@@ -976,6 +993,7 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
   let totalSkillUses = 0;
   let totalSkillDamage = 0;
   let totalAutoAttackDamage = 0;
+  let totalCombatDurationMs = 0;
   let totalAcceptedPowerSpikes = 0;
   let totalMajorPowerSpikes = 0;
   const pairSatisfiedCounts: Record<string, number> = {
@@ -992,6 +1010,7 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
     totalSkillUses += run.skillUses;
     totalSkillDamage += run.skillDamage;
     totalAutoAttackDamage += run.autoAttackDamage;
+    totalCombatDurationMs += run.combatDurationMs;
     totalAcceptedPowerSpikes += run.powerSpikeBudget.acceptedSpikeCount;
     totalMajorPowerSpikes += run.powerSpikeBudget.majorSpikeCount;
     const pair12Satisfied = run.powerSpikeBudget.pairStates["1-2"].satisfied;
@@ -1004,15 +1023,24 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
 
   const hpCurveP50: number[] = [];
   const hpCurveP90: number[] = [];
+  const floorDurationP50Ms: number[] = [];
+  const floorDurationP90Ms: number[] = [];
   for (let floor = 0; floor < floors; floor += 1) {
     const values = runs.map((run) => run.hpByFloor[floor] ?? 0);
+    const durationSlice = runs
+      .map((run) => run.floorDurationsMs[floor] ?? 0)
+      .filter((value) => value > 0);
     hpCurveP50.push(percentile(values, 0.5));
     hpCurveP90.push(percentile(values, 0.9));
+    floorDurationP50Ms.push(Math.round(percentile(durationSlice, 0.5)));
+    floorDurationP90Ms.push(Math.round(percentile(durationSlice, 0.9)));
   }
 
   const rarityDenominator = Math.max(1, totalRarity.common + totalRarity.magic + totalRarity.rare);
   const avgSkillUsesPerRun = totalSkillUses / sampleSize;
   const avgSkillCastsPer30s =
+    totalSkillUses / Math.max(1, totalCombatDurationMs / 30_000);
+  const avgSkillCastsPer30sRunClock =
     totalSkillUses / Math.max(1, runs.reduce((sum, run) => sum + run.runDurationMs / 30_000, 0));
   const totalPlayerDamage = totalSkillDamage + totalAutoAttackDamage;
   return {
@@ -1027,9 +1055,16 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
       magic: Number((totalRarity.magic / rarityDenominator).toFixed(4)),
       rare: Number((totalRarity.rare / rarityDenominator).toFixed(4))
     },
+    pacing: {
+      runDurationP50Ms: Math.round(percentile(runs.map((run) => run.runDurationMs), 0.5)),
+      runDurationP90Ms: Math.round(percentile(runs.map((run) => run.runDurationMs), 0.9)),
+      floorDurationP50Ms,
+      floorDurationP90Ms
+    },
     combatRhythm: {
       avgSkillUsesPerRun: Number(avgSkillUsesPerRun.toFixed(3)),
       avgSkillCastsPer30s: Number(avgSkillCastsPer30s.toFixed(3)),
+      avgSkillCastsPer30sRunClock: Number(avgSkillCastsPer30sRunClock.toFixed(3)),
       avgSkillDamageShare: Number((totalSkillDamage / Math.max(1, totalPlayerDamage)).toFixed(4)),
       avgAutoAttackDamageShare: Number((totalAutoAttackDamage / Math.max(1, totalPlayerDamage)).toFixed(4))
     },
