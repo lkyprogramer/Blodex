@@ -1,7 +1,10 @@
 import type { ItemInstance } from "@blodex/core";
 import { describe, expect, it } from "vitest";
 import { buildEquipmentDeltaSummary } from "../EquipmentDeltaPresenter";
-import { isMerchantHighValueCompareCandidate } from "../EquipmentCompareViewPresenter";
+import {
+  buildEquipmentCompareView,
+  isMerchantHighValueCompareCandidate
+} from "../EquipmentCompareViewPresenter";
 
 function makeItem(partial: Partial<ItemInstance>): ItemInstance {
   return {
@@ -56,6 +59,33 @@ describe("EquipmentDeltaPresenter", () => {
     const candidate = makeItem({});
     const summary = buildEquipmentDeltaSummary(candidate, undefined);
     expect(summary.every((entry) => entry.direction === "equal")).toBe(true);
+  });
+
+  it("preserves intrinsic downsides when presenting an item without a compare target", () => {
+    const candidate = makeItem({
+      rolledAffixes: {
+        attackPower: 14,
+        moveSpeed: -8
+      }
+    });
+
+    const summary = buildEquipmentDeltaSummary(candidate, undefined);
+    const compareView = buildEquipmentCompareView(candidate, undefined);
+
+    expect(summary).toEqual([
+      expect.objectContaining({ key: "offense", direction: "up" }),
+      expect.objectContaining({ key: "defense", direction: "equal" }),
+      expect.objectContaining({ key: "utility", direction: "down" })
+    ]);
+    expect(compareView.affixLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "moveSpeed",
+          value: -8,
+          direction: "down"
+        })
+      ])
+    );
   });
 
   it("treats only materially better merchant upgrades as high-value compare candidates", () => {

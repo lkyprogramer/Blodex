@@ -66,7 +66,7 @@ describe("stats unit contract", () => {
           lifesteal: 6,
           critDamage: 22,
           aoeRadius: 18,
-          damageOverTime: 7,
+          skillBonusDamage: 7,
           thorns: 9,
           healthRegen: 6,
           dodgeChance: 9,
@@ -80,7 +80,7 @@ describe("stats unit contract", () => {
     expect(totals.lifesteal).toBeCloseTo(0.06);
     expect(totals.critDamage).toBeCloseTo(0.22);
     expect(totals.aoeRadius).toBeCloseTo(0.18);
-    expect(totals.damageOverTime).toBeCloseTo(7);
+    expect(totals.skillBonusDamage).toBeCloseTo(7);
     expect(totals.thorns).toBeCloseTo(0.09);
     expect(totals.healthRegen).toBeCloseTo(6);
     expect(totals.dodgeChance).toBeCloseTo(0.09);

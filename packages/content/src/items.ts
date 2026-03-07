@@ -73,6 +73,9 @@ export const ITEM_DEFS: ItemDef[] = [
     iconId: "item_weapon_03",
     minAffixes: 3,
     maxAffixes: 3,
+    fixedAffixes: {
+      moveSpeed: -8
+    },
     affixPool: [
       { key: "attackPower", min: 10, max: 16 },
       { key: "critChance", min: 2, max: 4 },
@@ -85,7 +88,7 @@ export const ITEM_DEFS: ItemDef[] = [
       { key: "lifesteal", min: 2, max: 5 },
       { key: "critDamage", min: 8, max: 15 },
       { key: "aoeRadius", min: 6, max: 12 },
-      { key: "damageOverTime", min: 4, max: 9 }
+      { key: "skillBonusDamage", min: 4, max: 9 }
     ]
   },
   {
@@ -191,6 +194,9 @@ export const ITEM_DEFS: ItemDef[] = [
     iconId: "item_chest_02",
     minAffixes: 3,
     maxAffixes: 3,
+    fixedAffixes: {
+      moveSpeed: -10
+    },
     affixPool: [
       { key: "armor", min: 7, max: 14 },
       { key: "maxHealth", min: 12, max: 24 },
@@ -243,6 +249,9 @@ export const ITEM_DEFS: ItemDef[] = [
     iconId: "item_boots_02",
     minAffixes: 2,
     maxAffixes: 3,
+    fixedAffixes: {
+      armor: -4
+    },
     affixPool: [
       { key: "moveSpeed", min: 5, max: 10 },
       { key: "armor", min: 3, max: 7 },
@@ -322,7 +331,8 @@ export const ITEM_DEFS: ItemDef[] = [
     fixedAffixes: {
       attackPower: 22,
       critChance: 4,
-      attackSpeed: 4
+      attackSpeed: 4,
+      moveSpeed: -10
     },
     fixedSpecialAffixes: {
       lifesteal: 6,
@@ -363,7 +373,8 @@ export const ITEM_DEFS: ItemDef[] = [
     fixedAffixes: {
       armor: 16,
       maxHealth: 32,
-      maxMana: 18
+      maxMana: 18,
+      moveSpeed: -14
     },
     fixedSpecialAffixes: {
       thorns: 9,
@@ -383,7 +394,8 @@ export const ITEM_DEFS: ItemDef[] = [
     affixPool: [],
     fixedAffixes: {
       moveSpeed: 16,
-      maxHealth: 14
+      maxHealth: 14,
+      armor: -8
     },
     fixedSpecialAffixes: {
       dodgeChance: 9,

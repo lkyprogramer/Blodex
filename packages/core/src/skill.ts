@@ -153,7 +153,7 @@ export function resolveSkill(
         const critMultiplier = crit ? 1.5 * (1 + specialAffixTotals.critDamage) : 1;
         const rawAmount = Math.max(
           1,
-          Math.floor(resolved * skillDamageMultiplier * critMultiplier + specialAffixTotals.damageOverTime)
+          Math.floor(resolved * skillDamageMultiplier * critMultiplier + specialAffixTotals.skillBonusDamage)
         );
         const amount = resolveMonsterTakenDamage(rawAmount, updatedMonsters[idx]!, skillDef.damageType);
         const nextHealth = Math.max(0, updatedMonsters[idx]!.health - amount);

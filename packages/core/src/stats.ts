@@ -5,6 +5,7 @@ import type {
   ItemInstance,
   PermanentUpgrade
 } from "./contracts/types";
+import { normalizeDerivedAffixValue } from "./itemAffix";
 import type { TalentEffectTotals } from "./talent";
 
 function cloneDerived(stats: DerivedStats): DerivedStats {
@@ -19,14 +20,6 @@ function cloneDerived(stats: DerivedStats): DerivedStats {
   };
 }
 
-function normalizeEquipmentAffixValue(key: keyof DerivedStats, value: number): number {
-  if (key === "critChance") {
-    // Backward compatibility: legacy saves may still store percent points (e.g. 2 => 2%).
-    return value >= 1 ? value / 100 : value;
-  }
-  return value;
-}
-
 export function deriveStats(
   base: BaseStats,
   equippedItems: ItemInstance[],
@@ -38,11 +31,11 @@ export function deriveStats(
   const baseDerived: DerivedStats = {
     maxHealth: 100 + base.vitality * 18 + (upgrade?.startingHealth ?? 0),
     maxMana: 40 + base.intelligence * 10,
-    armor: base.vitality * 0.9 + base.dexterity * 0.7 + (upgrade?.startingArmor ?? 0),
+    armor: base.vitality * 1.35 + base.dexterity * 0.15 + (upgrade?.startingArmor ?? 0),
     attackPower: 8 + base.strength * 2.2,
     critChance: 0.03 + base.dexterity * 0.0011 + base.intelligence * 0.0002 + (upgrade?.luckBonus ?? 0),
     attackSpeed: 1 + base.dexterity * 0.0013 + base.strength * 0.0004,
-    moveSpeed: 140 + base.dexterity * 0.22 + base.vitality * 0.08
+    moveSpeed: 140 + base.dexterity * 0.28
   };
 
   const next = cloneDerived(baseDerived);
@@ -52,7 +45,7 @@ export function deriveStats(
       if (value === undefined) {
         continue;
       }
-      next[key] += normalizeEquipmentAffixValue(key, value);
+      next[key] += normalizeDerivedAffixValue(key, value);
     }
   }
 

@@ -4,7 +4,7 @@ export interface SpecialAffixTotals {
   lifesteal: number;
   critDamage: number;
   aoeRadius: number;
-  damageOverTime: number;
+  skillBonusDamage: number;
   thorns: number;
   healthRegen: number;
   dodgeChance: number;
@@ -17,7 +17,7 @@ const SPECIAL_AFFIX_KEYS: readonly ItemSpecialAffixKey[] = [
   "lifesteal",
   "critDamage",
   "aoeRadius",
-  "damageOverTime",
+  "skillBonusDamage",
   "thorns",
   "healthRegen",
   "dodgeChance",
@@ -70,7 +70,7 @@ export function createEmptySpecialAffixTotals(): SpecialAffixTotals {
     lifesteal: 0,
     critDamage: 0,
     aoeRadius: 0,
-    damageOverTime: 0,
+    skillBonusDamage: 0,
     thorns: 0,
     healthRegen: 0,
     dodgeChance: 0,
@@ -88,7 +88,9 @@ export function clampSpecialAffixTotals(
     lifesteal: round(clamp(normalizeSpecialAffixValue("lifesteal", source.lifesteal ?? 0), 0, 0.8)),
     critDamage: round(clamp(normalizeSpecialAffixValue("critDamage", source.critDamage ?? 0), 0, 3)),
     aoeRadius: round(clamp(normalizeSpecialAffixValue("aoeRadius", source.aoeRadius ?? 0), 0, 2)),
-    damageOverTime: round(clamp(normalizeSpecialAffixValue("damageOverTime", source.damageOverTime ?? 0), 0, 500)),
+    skillBonusDamage: round(
+      clamp(normalizeSpecialAffixValue("skillBonusDamage", source.skillBonusDamage ?? 0), 0, 500)
+    ),
     thorns: round(clamp(normalizeSpecialAffixValue("thorns", source.thorns ?? 0), 0, 1)),
     healthRegen: round(clamp(normalizeSpecialAffixValue("healthRegen", source.healthRegen ?? 0), 0, 500)),
     dodgeChance: round(clamp(normalizeSpecialAffixValue("dodgeChance", source.dodgeChance ?? 0), 0, 0.75)),

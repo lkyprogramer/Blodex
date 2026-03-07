@@ -1,4 +1,8 @@
-import type { ItemInstance } from "@blodex/core";
+import {
+  calculateItemPowerScore,
+  collectItemAffixMap,
+  type ItemInstance
+} from "@blodex/core";
 import {
   buildEquipmentDeltaSummary,
   resolveDeltaDirection,
@@ -20,41 +24,8 @@ export interface EquipmentCompareView {
   powerDirection: DeltaDirection;
 }
 
-const MERCHANT_COMPARE_MIN_POWER_DELTA = 6;
+const MERCHANT_COMPARE_MIN_POWER_DELTA = 10;
 const MERCHANT_COMPARE_MIN_POSITIVE_SUMMARIES = 2;
-
-function collectItemAffixMap(item: ItemInstance | undefined): Map<string, number> {
-  const map = new Map<string, number>();
-  if (item === undefined) {
-    return map;
-  }
-  for (const [key, value] of Object.entries(item.rolledAffixes)) {
-    if (value !== undefined) {
-      map.set(key, value);
-    }
-  }
-  for (const [key, value] of Object.entries(item.rolledSpecialAffixes ?? {})) {
-    if (value !== undefined) {
-      map.set(key, value);
-    }
-  }
-  return map;
-}
-
-function calculateItemPowerScore(item: ItemInstance): number {
-  let score = 0;
-  for (const value of Object.values(item.rolledAffixes)) {
-    if (value !== undefined) {
-      score += value;
-    }
-  }
-  for (const value of Object.values(item.rolledSpecialAffixes ?? {})) {
-    if (value !== undefined) {
-      score += value;
-    }
-  }
-  return score;
-}
 
 export function buildEquipmentCompareView(
   item: ItemInstance,
@@ -73,7 +44,7 @@ export function buildEquipmentCompareView(
         key,
         value,
         ...(delta === undefined ? {} : { delta }),
-        direction: resolveDeltaDirection(delta ?? 0)
+        direction: resolveDeltaDirection(compareItem === undefined ? value : value - compareValue)
       };
     });
   const powerDelta =

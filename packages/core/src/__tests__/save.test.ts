@@ -341,6 +341,67 @@ describe("save", () => {
     expect("selectedMutations" in (loaded ?? {})).toBe(false);
   });
 
+  it("migrates legacy damageOverTime affixes into skillBonusDamage", () => {
+    const save = makeSave() as unknown as Record<string, unknown>;
+    const player = save.player as Record<string, unknown>;
+    player.inventory = [
+      {
+        id: "legacy-ring",
+        defId: "legacy-ring",
+        name: "Legacy Ring",
+        slot: "ring",
+        rarity: "rare",
+        requiredLevel: 1,
+        iconId: "item_ring_01",
+        seed: "legacy-seed",
+        rolledAffixes: {},
+        rolledSpecialAffixes: {
+          damageOverTime: 9
+        }
+      }
+    ];
+
+    const loaded = deserializeRunState(JSON.stringify(save));
+    const special = loaded?.player.inventory[0]?.rolledSpecialAffixes;
+
+    expect(special?.skillBonusDamage).toBe(9);
+    expect(special && "damageOverTime" in special).toBe(false);
+  });
+
+  it("normalizes legacy v2 fields before validateSave returns true", () => {
+    const save = makeSave() as unknown as Record<string, unknown>;
+    const player = save.player as Record<string, unknown>;
+    player.inventory = [
+      {
+        id: "legacy-ring",
+        defId: "legacy-ring",
+        name: "Legacy Ring",
+        slot: "ring",
+        rarity: "rare",
+        requiredLevel: 1,
+        iconId: "item_ring_01",
+        seed: "legacy-seed",
+        rolledAffixes: {},
+        rolledSpecialAffixes: {
+          damageOverTime: 9
+        }
+      }
+    ];
+    const telemetry = save.phase6TelemetryState as Record<string, unknown>;
+    const story = telemetry.story as Record<string, unknown>;
+    delete story.majorPowerSpikes;
+
+    expect(validateSave(save)).toBe(true);
+    expect(
+      ((save.player as PlayerState).inventory[0]?.rolledSpecialAffixes as Record<string, unknown>)?.skillBonusDamage
+    ).toBe(9);
+    expect(
+      "damageOverTime" in
+        (((save.player as PlayerState).inventory[0]?.rolledSpecialAffixes as Record<string, unknown>) ?? {})
+    ).toBe(false);
+    expect(((save.phase6TelemetryState as NonNullable<RunSaveDataV2["phase6TelemetryState"]>).story.majorPowerSpikes)).toBe(0);
+  });
+
   it("migrates v1 payload into v2 shape", () => {
     const saveV1 = toV1(makeSave());
     const migratedByDeserializer = deserializeRunState(JSON.stringify(saveV1));

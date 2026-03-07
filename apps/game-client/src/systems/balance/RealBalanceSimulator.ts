@@ -1,6 +1,7 @@
 import {
   addRunObols,
   applyDamageToBoss,
+  calculateItemPowerScore,
   applyXpGain,
   applyLevelUpChoice,
   canUseSkill,
@@ -147,23 +148,6 @@ function makeSpriteStub<T>(): T {
   } as T;
 }
 
-function itemScore(item: ItemInstance): number {
-  const special = item.rolledSpecialAffixes ?? {};
-  return (
-    (item.rolledAffixes.attackPower ?? 0) * 2.2 +
-    (item.rolledAffixes.armor ?? 0) * 1.4 +
-    (item.rolledAffixes.maxHealth ?? 0) * 0.12 +
-    (item.rolledAffixes.critChance ?? 0) * 160 +
-    (item.rolledAffixes.attackSpeed ?? 0) * 32 +
-    (item.rolledAffixes.moveSpeed ?? 0) * 0.08 +
-    (special.critDamage ?? 0) * 120 +
-    (special.lifesteal ?? 0) * 160 +
-    (special.healthRegen ?? 0) * 3 +
-    (special.thorns ?? 0) * 70 +
-    (special.dodgeChance ?? 0) * 120
-  );
-}
-
 function shouldEquipItem(
   current: ItemInstance | undefined,
   candidate: ItemInstance,
@@ -172,7 +156,7 @@ function shouldEquipItem(
   if (current === undefined) {
     return true;
   }
-  const scoreGap = itemScore(candidate) - itemScore(current);
+  const scoreGap = calculateItemPowerScore(candidate) - calculateItemPowerScore(current);
   const threshold = behavior === "optimal" ? -2 : behavior === "average" ? 6 : 12;
   return scoreGap >= threshold;
 }

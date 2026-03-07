@@ -100,7 +100,7 @@ describe("combat contract", () => {
     expect(lowHpThornsEvent?.amount).toBe(4);
   });
 
-  it("consumes aoeRadius, damageOverTime and lifesteal on skill resolution", () => {
+  it("consumes aoeRadius, skillBonusDamage and lifesteal on skill resolution", () => {
     const player = {
       ...makePlayer(),
       health: 70
@@ -128,7 +128,7 @@ describe("combat contract", () => {
     const resolution = resolveSkill(player, monsters, skill, fixedRng(1), 3000, {
       specialAffixTotals: {
         aoeRadius: 0.5,
-        damageOverTime: 5,
+        skillBonusDamage: 5,
         lifesteal: 0.2
       }
     });
