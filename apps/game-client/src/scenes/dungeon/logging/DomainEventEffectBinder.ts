@@ -1,5 +1,6 @@
 import { BIOME_MAP } from "@blodex/content";
 import {
+  type BiomeId,
   resolveEquippedWeaponType,
   type BossAttack,
   type CombatEvent,
@@ -12,6 +13,8 @@ import {
 } from "@blodex/core";
 import { t } from "../../../i18n";
 import { LEVEL_UP_FEEDBACK_PROFILE } from "../../../systems/feedback/LevelUpFeedbackProfile";
+import type { FeedbackRouterInput } from "../../../systems/feedbackEventRouter";
+import type { LogLevel } from "../../../ui/Hud";
 import {
   consumableFailureReasonLabel,
   difficultyLabel,
@@ -22,8 +25,8 @@ import {
 const ITEM_NEWLY_ACQUIRED_TTL_MS = 2_000;
 
 interface DomainEventRunLog {
-  append(message: string, level: string, timestampMs: number): void;
-  appendKey(key: string, params: Record<string, unknown> | undefined, level: string, timestampMs: number): void;
+  append(message: string, level: LogLevel, timestampMs: number): void;
+  appendKey(key: string, params: Record<string, unknown> | undefined, level: LogLevel, timestampMs: number): void;
 }
 
 interface DomainEventContentLocalizer {
@@ -43,7 +46,7 @@ interface DomainEventUiPersistence {
 export interface DomainEventEffectHost extends DomainEventUiPersistence {
   eventBus: TypedEventBus<GameEventMap>;
   player: PlayerState;
-  routeFeedback(input: { type: string; [key: string]: unknown }): void;
+  routeFeedback(input: FeedbackRouterInput): void;
   hudDirty: boolean;
   resolveEntityLabel(entityId: string): string;
   runLog: DomainEventRunLog;
@@ -55,7 +58,7 @@ export interface DomainEventEffectHost extends DomainEventUiPersistence {
   levelUpPulseLevel: number | null;
   time: DomainEventHostTime;
   currentBiome: {
-    id: string;
+    id: BiomeId;
   };
 }
 
@@ -288,7 +291,7 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
       if (sourceKind !== "drop_spawn" && sourceKind !== "boss_reward" && sourceKind !== "build_threshold") {
         host.routeFeedback({
           type: "power_spike",
-          major
+          major: major === true
         });
       }
       host.runLog.append(
