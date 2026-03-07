@@ -9,12 +9,6 @@ DEFAULT_MAX_CLASS_METHODS=60
 
 resolve_debt_ceiling_lines() {
   case "$1" in
-    "apps/game-client/src/scenes/DungeonScene.ts")
-      echo 4286
-      ;;
-    "apps/game-client/src/ui/hud/HudContainer.ts")
-      echo 1186
-      ;;
     *)
       echo ""
       ;;
@@ -23,9 +17,6 @@ resolve_debt_ceiling_lines() {
 
 resolve_debt_ceiling_methods() {
   case "$1" in
-    "apps/game-client/src/scenes/DungeonScene.ts")
-      echo 92
-      ;;
     *)
       echo ""
       ;;
@@ -35,16 +26,16 @@ resolve_debt_ceiling_methods() {
 resolve_max_lines() {
   case "$1" in
     "apps/game-client/src/scenes/DungeonScene.ts")
-      echo 2600
+      echo 1500
       ;;
     "apps/game-client/src/scenes/MetaMenuScene.ts")
-      echo 1200
+      echo 650
       ;;
     "apps/game-client/src/ui/Hud.ts")
       echo 300
       ;;
     "apps/game-client/src/ui/hud/HudContainer.ts")
-      echo 1100
+      echo 450
       ;;
     *)
       echo "$DEFAULT_MAX_CLASS_FILE_LINES"
@@ -55,7 +46,7 @@ resolve_max_lines() {
 resolve_max_methods() {
   case "$1" in
     "apps/game-client/src/scenes/DungeonScene.ts")
-      echo 90
+      echo 60
       ;;
     "apps/game-client/src/scenes/MetaMenuScene.ts")
       echo 85
@@ -64,7 +55,7 @@ resolve_max_methods() {
       echo 25
       ;;
     "apps/game-client/src/ui/hud/HudContainer.ts")
-      echo 60
+      echo 25
       ;;
     *)
       echo "$DEFAULT_MAX_CLASS_METHODS"
