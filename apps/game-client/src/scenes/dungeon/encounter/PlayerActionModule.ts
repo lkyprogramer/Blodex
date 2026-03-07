@@ -25,11 +25,13 @@ import {
 } from "@blodex/core";
 import { BLUEPRINT_DEF_MAP, SKILL_DEFS, WEAPON_TYPE_DEF_MAP } from "@blodex/content";
 import type { MonsterRuntime } from "../../../systems/EntityManager";
+import type { MessageParams } from "../../../i18n/types";
+import type { LogLevel } from "../../../ui/Hud";
 
 const PASSIVE_MANA_REGEN_PER_SECOND = 2;
 
 interface PlayerActionRunLog {
-  appendKey(key: string, params: Record<string, unknown> | undefined, level: string, timestampMs: number): void;
+  appendKey(key: string, params?: MessageParams, level?: LogLevel, timestampMs?: number): void;
 }
 
 interface PlayerActionEntityManager {
@@ -53,6 +55,7 @@ export interface PlayerActionHost {
   run: RunState;
   runEnded: boolean;
   eventPanelOpen: boolean;
+  comparePromptOpen: boolean;
   time: { now: number };
   resolveRuntimeSkillDef(skillDef: SkillDef): SkillDef;
   entityManager: PlayerActionEntityManager;
@@ -161,7 +164,7 @@ export class PlayerActionModule {
 
   tryUseSkill(slotIndex: number): boolean {
     const host = this.options.host;
-    if (host.player.skills === undefined || host.runEnded || host.eventPanelOpen) {
+    if (host.player.skills === undefined || host.runEnded || host.eventPanelOpen || host.comparePromptOpen) {
       return false;
     }
     const nowMs = host.time.now;
@@ -282,7 +285,7 @@ export class PlayerActionModule {
 
   tryUseConsumable(consumableId: ConsumableId): boolean {
     const host = this.options.host;
-    if (host.runEnded || host.eventPanelOpen) {
+    if (host.runEnded || host.eventPanelOpen || host.comparePromptOpen) {
       return false;
     }
     const nowMs = host.time.now;

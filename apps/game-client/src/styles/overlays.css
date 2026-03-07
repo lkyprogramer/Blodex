@@ -12,6 +12,77 @@
   display: none;
 }
 
+#heartbeat-toast-layer {
+  position: fixed;
+  inset: 24px 0 auto 0;
+  z-index: var(--z-overlay-heartbeat);
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+#heartbeat-toast-layer.hidden {
+  display: none;
+}
+
+.heartbeat-toast-card {
+  min-width: min(340px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  border: 1px solid rgba(208, 168, 111, 0.38);
+  border-radius: 12px;
+  background: rgba(11, 16, 22, 0.94);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
+  padding: 10px 14px;
+  text-align: center;
+}
+
+.heartbeat-toast-card.rare {
+  border-color: rgba(240, 204, 116, 0.68);
+}
+
+.heartbeat-toast-card.build {
+  border-color: rgba(167, 215, 148, 0.64);
+}
+
+.heartbeat-toast-card.boss {
+  border-color: rgba(242, 210, 132, 0.72);
+}
+
+.heartbeat-toast-card.synergy {
+  border-color: rgba(153, 210, 255, 0.64);
+}
+
+.heartbeat-toast-card.spike {
+  border-color: rgba(240, 192, 122, 0.62);
+}
+
+.heartbeat-toast-title {
+  font-family: "Cinzel", serif;
+  font-size: 16px;
+  color: var(--text-main);
+}
+
+.heartbeat-toast-detail {
+  margin-top: 4px;
+  color: #e6dac3;
+  font-size: 13px;
+}
+
+#equipment-compare-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay-compare);
+  background: rgba(6, 8, 12, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+#equipment-compare-overlay.hidden {
+  display: none;
+}
+
 #run-summary-overlay {
   position: fixed;
   inset: 0;
@@ -116,6 +187,79 @@
   font-family: "Cinzel", serif;
   font-size: 22px;
   color: var(--accent);
+}
+
+.equipment-compare-card {
+  width: min(520px, calc(100vw - 30px));
+}
+
+.equipment-compare-kicker {
+  color: var(--text-subtle);
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.equipment-compare-meta {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-subtle);
+  font-size: 12px;
+}
+
+.equipment-compare-power.positive,
+.equipment-compare-summary-value.positive,
+.equipment-compare-affix-value.positive {
+  color: var(--ok);
+}
+
+.equipment-compare-power.negative,
+.equipment-compare-summary-value.negative,
+.equipment-compare-affix-value.negative {
+  color: #ff9a86;
+}
+
+.equipment-compare-power.neutral,
+.equipment-compare-summary-value.neutral,
+.equipment-compare-affix-value.neutral {
+  color: var(--text-subtle);
+}
+
+.equipment-compare-headline {
+  margin-top: 12px;
+}
+
+.equipment-compare-name {
+  font-size: 16px;
+  color: var(--text-main);
+}
+
+.equipment-compare-current {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.equipment-compare-summary,
+.equipment-compare-affixes {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.equipment-compare-summary-line,
+.equipment-compare-affix-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.equipment-compare-actions {
+  margin-top: 14px;
 }
 
 .dialog-card p,
@@ -541,6 +685,7 @@
 }
 
 #event-panel:not(.hidden),
+#equipment-compare-overlay:not(.hidden),
 #run-summary-overlay:not(.hidden),
 #death-overlay:not(.hidden),
 #meta-menu:not(.hidden),
@@ -550,6 +695,7 @@
 
 #event-panel:not(.hidden) .dialog-card,
 #event-panel:not(.hidden) .event-card,
+#equipment-compare-overlay:not(.hidden) .equipment-compare-card,
 #run-summary-overlay:not(.hidden) .run-summary-card,
 #death-overlay:not(.hidden) .death-card {
   animation: fadeScaleIn var(--motion-base) var(--ease-standard) both;

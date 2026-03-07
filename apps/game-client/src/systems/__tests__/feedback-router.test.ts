@@ -67,6 +67,55 @@ describe("feedbackEventRouter", () => {
     ]);
   });
 
+  it("maps heartbeat cues to dedicated channels", () => {
+    expect(
+      deriveFeedbackActions({
+        type: "loot:rare_drop",
+        rarity: "rare"
+      })
+    ).toEqual([
+      {
+        channel: "sfx",
+        cue: "rare_drop",
+        rarity: "rare"
+      },
+      {
+        channel: "vfx",
+        cue: "rare_drop",
+        rarity: "rare"
+      }
+    ]);
+
+    expect(
+      deriveFeedbackActions({
+        type: "loot:rare_drop",
+        rarity: "unique"
+      })
+    ).toEqual([
+      {
+        channel: "sfx",
+        cue: "rare_drop",
+        rarity: "unique"
+      },
+      {
+        channel: "vfx",
+        cue: "rare_drop",
+        rarity: "unique"
+      }
+    ]);
+
+    expect(
+      deriveFeedbackActions({
+        type: "equipment:compare"
+      })
+    ).toEqual([
+      {
+        channel: "sfx",
+        cue: "equipment_compare"
+      }
+    ]);
+  });
+
   it("deduplicates equivalent feedback actions", () => {
     const duplicateAction: FeedbackAction = {
       channel: "sfx",

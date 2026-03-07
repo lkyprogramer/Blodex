@@ -438,5 +438,49 @@
     "attribution": "",
     "outputPath": "apps/game-client/public/audio/ui_biome_enter_01.ogg",
     "revision": 1
+  },
+  {
+    "id": "ui_loot_rare_drop_01",
+    "category": "ui",
+    "eventKey": "loot:rare_drop",
+    "sourceType": "external",
+    "sourceRef": "ui_loot_rare_drop_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/ui_loot_rare_drop_01.ogg",
+    "revision": 1
+  },
+  {
+    "id": "ui_build_formed_01",
+    "category": "ui",
+    "eventKey": "build:formed",
+    "sourceType": "external",
+    "sourceRef": "ui_build_formed_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/ui_build_formed_01.ogg",
+    "revision": 1
+  },
+  {
+    "id": "ui_boss_reward_open_01",
+    "category": "ui",
+    "eventKey": "boss:reward",
+    "sourceType": "external",
+    "sourceRef": "ui_boss_reward_open_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/ui_boss_reward_open_01.ogg",
+    "revision": 1
+  },
+  {
+    "id": "ui_equipment_compare_open_01",
+    "category": "ui",
+    "eventKey": "equipment:compare",
+    "sourceType": "external",
+    "sourceRef": "ui_equipment_compare_open_01.ogg",
+    "license": "allowed",
+    "attribution": "",
+    "outputPath": "apps/game-client/public/audio/ui_equipment_compare_open_01.ogg",
+    "revision": 1
   }
 ]

@@ -114,7 +114,7 @@ export interface GameEventMap {
     source: string;
     timestampMs: number;
     itemDefId: string;
-    rarity: ItemRarity;
+    rarity: "rare" | "unique";
   };
   "boss_reward_closed": {
     floor: number;
@@ -133,6 +133,12 @@ export interface GameEventMap {
     floor: number;
     synergyId: string;
     timestampMs: number;
+  };
+  "pressure_peak": {
+    floor: number;
+    kind: "elite_kill" | "near_death_reversal";
+    timestampMs: number;
+    label?: string;
   };
   "monster:stateChange": {
     monsterId: string;

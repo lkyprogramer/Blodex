@@ -233,6 +233,109 @@ export class VFXSystem {
     });
   }
 
+  playRareDrop(rarity: "rare" | "unique"): void {
+    if (!this.enabled) {
+      return;
+    }
+
+    this.scene.cameras.main.flash(rarity === "unique" ? 180 : 130, 234, 197, 117, false);
+    this.scene.cameras.main.shake(rarity === "unique" ? 140 : 90, rarity === "unique" ? 0.0032 : 0.0022);
+    this.spawnFloatingText(
+      this.scene.cameras.main.midPoint.x,
+      this.scene.cameras.main.midPoint.y - 24,
+      rarity === "unique" ? "UNIQUE" : "RARE",
+      {
+        color: rarity === "unique" ? "#ffe7a0" : "#f1d48b",
+        size: rarity === "unique" ? 18 : 16,
+        durationMs: 820,
+        rise: 22
+      },
+      "high"
+    );
+  }
+
+  playBuildFormed(): void {
+    if (!this.enabled) {
+      return;
+    }
+
+    this.scene.cameras.main.flash(120, 179, 215, 146, false);
+    this.spawnFloatingText(
+      this.scene.cameras.main.midPoint.x,
+      this.scene.cameras.main.midPoint.y - 18,
+      "BUILD FORMED",
+      {
+        color: "#b7df92",
+        size: 16,
+        durationMs: 760,
+        rise: 18
+      },
+      "high"
+    );
+  }
+
+  playBossReward(): void {
+    if (!this.enabled) {
+      return;
+    }
+
+    this.scene.cameras.main.flash(140, 242, 210, 132, false);
+    this.spawnFloatingText(
+      this.scene.cameras.main.midPoint.x,
+      this.scene.cameras.main.midPoint.y - 18,
+      "BOSS REWARD",
+      {
+        color: "#f2d284",
+        size: 16,
+        durationMs: 760,
+        rise: 18
+      },
+      "high"
+    );
+  }
+
+  playSynergyActivated(): void {
+    if (!this.enabled) {
+      return;
+    }
+
+    this.spawnFloatingText(
+      this.scene.cameras.main.midPoint.x,
+      this.scene.cameras.main.midPoint.y - 18,
+      "SYNERGY",
+      {
+        color: "#99d2ff",
+        size: 15,
+        durationMs: 720,
+        rise: 16
+      },
+      "high"
+    );
+  }
+
+  playPowerSpike(major: boolean): void {
+    if (!this.enabled) {
+      return;
+    }
+
+    this.scene.cameras.main.flash(major ? 150 : 110, 236, 182, 92, false);
+    if (major) {
+      this.scene.cameras.main.shake(120, 0.0026);
+    }
+    this.spawnFloatingText(
+      this.scene.cameras.main.midPoint.x,
+      this.scene.cameras.main.midPoint.y - 18,
+      major ? "MAJOR SPIKE" : "SPIKE",
+      {
+        color: major ? "#ffdc96" : "#f0c07a",
+        size: major ? 16 : 14,
+        durationMs: 700,
+        rise: 16
+      },
+      "high"
+    );
+  }
+
   playHazardTrigger(worldX: number, worldY: number, hazardType: HazardType): void {
     if (!this.enabled) {
       return;

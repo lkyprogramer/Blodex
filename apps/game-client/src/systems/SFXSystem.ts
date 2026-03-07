@@ -44,7 +44,11 @@ const AUDIO_KEYS = [
   "sfx_consumable_mana_potion_01",
   "sfx_consumable_scroll_mapping_01",
   "ui_floor_enter_01",
-  "ui_biome_enter_01"
+  "ui_biome_enter_01",
+  "ui_loot_rare_drop_01",
+  "ui_build_formed_01",
+  "ui_boss_reward_open_01",
+  "ui_equipment_compare_open_01"
 ] as const;
 
 type AudioKey = (typeof AUDIO_KEYS)[number];
@@ -209,6 +213,24 @@ export class SFXSystem {
       case "level_up":
         this.playLevelUp(action.level);
         return;
+      case "rare_drop":
+        this.playRareDrop(action.rarity);
+        return;
+      case "build_formed":
+        this.playBuildFormed();
+        return;
+      case "boss_reward":
+        this.playBossReward();
+        return;
+      case "equipment_compare":
+        this.playEquipmentCompare();
+        return;
+      case "synergy_activated":
+        this.playBuildFormed();
+        return;
+      case "power_spike":
+        this.playPowerSpike(action.major);
+        return;
       default:
         return;
     }
@@ -278,6 +300,30 @@ export class SFXSystem {
     this.play("ui_biome_enter_01", VOLUME.ui * profile.sfxVolumeMultiplier, {
       rate: profile.sfxRate,
       detune
+    });
+  }
+
+  playRareDrop(rarity: "rare" | "unique"): void {
+    this.play("ui_loot_rare_drop_01", rarity === "unique" ? 0.42 : 0.36, {
+      rate: rarity === "unique" ? 0.94 : 1
+    });
+  }
+
+  playBuildFormed(): void {
+    this.play("ui_build_formed_01", 0.34);
+  }
+
+  playBossReward(): void {
+    this.play("ui_boss_reward_open_01", 0.38);
+  }
+
+  playEquipmentCompare(): void {
+    this.play("ui_equipment_compare_open_01", 0.34);
+  }
+
+  playPowerSpike(major: boolean): void {
+    this.play("ui_loot_rare_drop_01", major ? 0.38 : 0.28, {
+      rate: major ? 0.96 : 1.06
     });
   }
 

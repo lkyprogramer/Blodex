@@ -261,7 +261,7 @@ export class PowerSpikeRuntimeModule {
         source,
         timestampMs: nowMs,
         itemDefId: item.defId,
-        rarity: item.rarity
+        rarity: item.kind === "unique" ? "unique" : "rare"
       });
     }
     const amplitude = scorePowerSpikeFromItem(baselinePlayer, item);
