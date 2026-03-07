@@ -281,7 +281,13 @@ export class TasteRuntimePortHub implements BuildIdentityPort, HeartbeatEventPor
       if (value === undefined || value <= 0) {
         continue;
       }
-      if (key === "attackPower" || key === "critChance" || key === "critDamage" || key === "attackSpeed") {
+      if (
+        key === "attackPower" ||
+        key === "critChance" ||
+        key === "critDamage" ||
+        key === "attackSpeed" ||
+        key === "skillBonusDamage"
+      ) {
         this.tags.add("build:offense");
       }
       if (key === "maxHealth" || key === "armor" || key === "healthRegen" || key === "thorns") {

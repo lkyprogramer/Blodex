@@ -461,10 +461,33 @@ function isRunStateV2(value: unknown): value is RunState {
   );
 }
 
+function normalizeLegacySpecialAffixKeys(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => normalizeLegacySpecialAffixKeys(entry));
+  }
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  const normalized: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    normalized[key] = normalizeLegacySpecialAffixKeys(entry);
+  }
+
+  if (isRecord(normalized.rolledSpecialAffixes)) {
+    const specialAffixes = { ...normalized.rolledSpecialAffixes };
+    if (specialAffixes.skillBonusDamage === undefined && specialAffixes.damageOverTime !== undefined) {
+      specialAffixes.skillBonusDamage = specialAffixes.damageOverTime;
+    }
+    delete specialAffixes.damageOverTime;
+    normalized.rolledSpecialAffixes = specialAffixes;
+  }
+
+  return normalized;
+}
+
 function normalizeLegacyDraftFields(input: Record<string, unknown>): Record<string, unknown> {
-  const normalized: Record<string, unknown> = {
-    ...input
-  };
+  const normalized = normalizeLegacySpecialAffixKeys(input) as Record<string, unknown>;
 
   if (normalized.blueprintFoundIdsInRun === undefined && isStringArray(input.blueprintsFoundThisRun)) {
     normalized.blueprintFoundIdsInRun = [...input.blueprintsFoundThisRun];
@@ -642,7 +665,19 @@ export function validateSaveV2(raw: unknown): raw is RunSaveEnvelope {
 }
 
 export function validateSave(raw: unknown): raw is RunSaveEnvelope {
-  return validateSaveV2(raw);
+  if (!isRecord(raw)) {
+    return false;
+  }
+  const normalized = normalizeLegacyDraftFields(raw);
+  if (!validateSaveV2(normalized)) {
+    return false;
+  }
+
+  for (const key of Object.keys(raw)) {
+    delete raw[key];
+  }
+  Object.assign(raw, normalized);
+  return true;
 }
 
 function deserializeRunStateWithMigration(raw: string): DeserializeRunStateResult {

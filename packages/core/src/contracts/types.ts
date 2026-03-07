@@ -41,7 +41,7 @@ export type ItemSpecialAffixKey =
   | "lifesteal"
   | "critDamage"
   | "aoeRadius"
-  | "damageOverTime"
+  | "skillBonusDamage"
   | "thorns"
   | "healthRegen"
   | "dodgeChance"

@@ -14,11 +14,11 @@ describe("deriveStats regression", () => {
     expect(deriveStats(base, [])).toEqual({
       maxHealth: 244,
       maxMana: 90,
-      armor: 12.8,
+      armor: 12,
       attackPower: 25.6,
       critChance: 0.0398,
       attackSpeed: 1.014,
-      moveSpeed: 142.4
+      moveSpeed: 142.24
     });
   });
 

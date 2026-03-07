@@ -7,6 +7,7 @@ import type {
   LootTableDef,
   RngLike
 } from "./contracts/types";
+import { normalizeDerivedAffixValue } from "./itemAffix";
 import { normalizeSpecialAffixValue } from "./specialAffix";
 
 export interface RollItemDropOptions {
@@ -30,14 +31,6 @@ function resolveSlotWeightMultiplier(
     return 1;
   }
   return Math.max(0, raw);
-}
-
-function normalizeDerivedAffixValue(key: keyof ItemInstance["rolledAffixes"], value: number): number {
-  if (key === "critChance") {
-    // Legacy data stores percent points (e.g. 2 => 2%) while runtime uses ratio (0.02).
-    return value >= 1 ? value / 100 : value;
-  }
-  return value;
 }
 
 function applyDerivedAffixValue(

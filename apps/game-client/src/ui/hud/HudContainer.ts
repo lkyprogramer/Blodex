@@ -8,7 +8,7 @@ import type {
   RandomEventDef,
   RunSummary
 } from "@blodex/core";
-import { canEquip } from "@blodex/core";
+import { calculateItemPowerScore as calculateTradeoffItemPowerScore, canEquip } from "@blodex/core";
 import {
   detectPreferredImageFormat,
   resolveGeneratedAssetUrl,
@@ -129,7 +129,7 @@ const AFFIX_LABEL_KEYS: Readonly<Record<string, string>> = {
   lifesteal: "ui.hud.affix.lifesteal",
   critDamage: "ui.hud.affix.critDamage",
   aoeRadius: "ui.hud.affix.aoeRadius",
-  damageOverTime: "ui.hud.affix.damageOverTime",
+  skillBonusDamage: "ui.hud.affix.skillBonusDamage",
   thorns: "ui.hud.affix.thorns",
   healthRegen: "ui.hud.affix.healthRegen",
   dodgeChance: "ui.hud.affix.dodgeChance",
@@ -216,8 +216,10 @@ function localizeWeaponType(weaponType: string): string {
 }
 
 function formatAffixValue(key: string, value: number): string {
-  const normalized = Number.isInteger(value) ? value.toString() : value.toFixed(1);
-  const percentValue = `${(value * 100).toFixed(1)}%`;
+  const absolute = Math.abs(value);
+  const normalized = Number.isInteger(absolute) ? absolute.toString() : absolute.toFixed(1);
+  const prefix = value > 0 ? "+" : value < 0 ? "-" : "";
+  const percentValue = `${(absolute * 100).toFixed(1)}%`;
   if (
     key === "critChance" ||
     key === "lifesteal" ||
@@ -228,12 +230,12 @@ function formatAffixValue(key: string, value: number): string {
     key === "soulShardBonus" ||
     key === "cooldownReduction"
   ) {
-    return `+${percentValue}`;
+    return `${prefix}${percentValue}`;
   }
   if (key === "healthRegen") {
-    return `+${normalized}/s`;
+    return `${prefix}${normalized}/s`;
   }
-  return `+${normalized}`;
+  return `${prefix}${normalized}`;
 }
 
 function formatSignedValue(value: number): string {
@@ -286,36 +288,6 @@ function summaryLabel(key: EquipmentDeltaSummaryKey): string {
     case "utility":
       return t("ui.hud.tooltip.summary.utility");
   }
-}
-
-function collectItemAffixMap(item: ItemInstance): Map<string, number> {
-  const map = new Map<string, number>();
-  for (const [key, value] of Object.entries(item.rolledAffixes)) {
-    if (value !== undefined) {
-      map.set(key, value);
-    }
-  }
-  for (const [key, value] of Object.entries(item.rolledSpecialAffixes ?? {})) {
-    if (value !== undefined) {
-      map.set(key, value);
-    }
-  }
-  return map;
-}
-
-function calculateItemPowerScore(item: ItemInstance): number {
-  let score = 0;
-  for (const value of Object.values(item.rolledAffixes)) {
-    if (value !== undefined) {
-      score += value;
-    }
-  }
-  for (const value of Object.values(item.rolledSpecialAffixes ?? {})) {
-    if (value !== undefined) {
-      score += value;
-    }
-  }
-  return score;
 }
 
 function escapeHtml(raw: string): string {
@@ -689,7 +661,7 @@ export class HudContainer {
         const powerDelta =
           compareItem === undefined
             ? 0
-            : calculateItemPowerScore(item) - calculateItemPowerScore(compareItem);
+            : calculateTradeoffItemPowerScore(item) - calculateTradeoffItemPowerScore(compareItem);
         const isDowngrade = equipable && compareItem !== undefined && powerDelta < 0;
         const newlyAcquiredClass = newlyAcquiredSet.has(item.id) ? "newly-acquired" : "";
         const equipActionTitle = equipable
