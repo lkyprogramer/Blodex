@@ -67,6 +67,7 @@ function createHost(): BossRuntimeHost {
       finishRun: vi.fn()
     },
     grantStoryBossReward: vi.fn(() => [createReward("sovereign_requiem"), createReward("voidsigil_band")]),
+    flushBossRewardComparePrompts: vi.fn(() => false),
     describeItem: vi.fn((item: ItemInstance) => item.defId),
     recordBossRewardClosed: vi.fn(),
     time: {
@@ -117,5 +118,34 @@ describe("BossRuntimeModule", () => {
     expect(host.recordBossRewardClosed).toHaveBeenCalledWith("enter_abyss", 800);
     expect(host.runCompletionModule.enterAbyss).toHaveBeenCalledWith(800);
     expect(host.runCompletionModule.finishRun).not.toHaveBeenCalled();
+  });
+
+  it("defers run resolution until boss reward compare prompts drain", () => {
+    const host = createHost();
+    let onDrained: (() => void) | undefined;
+    const flushBossRewardComparePrompts = host.flushBossRewardComparePrompts;
+    expect(flushBossRewardComparePrompts).toBeDefined();
+    vi.mocked(flushBossRewardComparePrompts!).mockImplementation((callback) => {
+      onDrained = callback;
+      return true;
+    });
+    const module = new BossRuntimeModule({
+      host,
+      combatService: { updateCombat: vi.fn() } as never,
+      spawnService: { spawnBoss: vi.fn() } as never
+    });
+
+    module.openVictoryChoice(700);
+
+    const [, , onSelect] = vi.mocked(host.uiManager.showEventDialog).mock.calls[0] ?? [];
+    onSelect?.("claim_victory");
+
+    expect(host.recordBossRewardClosed).toHaveBeenCalledWith("claim_victory", 800);
+    expect(host.runCompletionModule.finishRun).not.toHaveBeenCalled();
+
+    expect(onDrained).toBeTypeOf("function");
+    onDrained?.();
+
+    expect(host.runCompletionModule.finishRun).toHaveBeenCalledWith(true);
   });
 });

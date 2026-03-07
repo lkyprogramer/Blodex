@@ -24,6 +24,7 @@ export * from "./difficulty";
 export * from "./balance";
 export * from "./balanceReport";
 export * from "./itemAffix";
+export * from "./pacingModel";
 export * from "./stats";
 export * from "./xp";
 export * from "./specialAffix";

@@ -151,6 +151,7 @@ export interface RuntimeEventHost {
   refreshPlayerStatsFromEquipment(player: PlayerState): PlayerState;
   handleLevelUpGain(levelsGained: number, nowMs: number, source: string): void;
   lastDeathReason: string;
+  flushQueuedComparePrompts?(): boolean;
   recordAcquiredItemTelemetry?(item: ItemInstance, source: string, nowMs: number, baselinePlayer?: PlayerState): void;
 }
 

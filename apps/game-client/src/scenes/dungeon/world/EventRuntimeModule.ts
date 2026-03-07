@@ -254,6 +254,7 @@ export class EventRuntimeModule {
     this.destroyEventNode();
     host.uiManager.hideEventPanel();
     host.eventPanelOpen = false;
+    host.flushQueuedComparePrompts?.();
     host.hudDirty = true;
   }
 

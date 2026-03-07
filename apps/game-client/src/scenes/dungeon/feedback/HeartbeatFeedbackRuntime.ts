@@ -41,6 +41,7 @@ export interface HeartbeatFeedbackRuntimeHost {
     equipment: Record<string, ItemInstance | undefined>;
   };
   routeFeedback(input: FeedbackRouterInput): void;
+  eventPanelOpen: boolean;
   comparePromptOpen: boolean;
   hudDirty: boolean;
 }
@@ -112,6 +113,8 @@ export class HeartbeatFeedbackRuntime {
   private readonly lastToastAtByKey = new Map<string, number>();
   private readonly compareQueue: QueuedComparePrompt[] = [];
   private readonly deferredCompareQueue: QueuedComparePrompt[] = [];
+  private readonly immediateDrainCallbacks: Array<() => void> = [];
+  private compareDrainMode: "all" | "immediate" = "all";
 
   constructor(private readonly host: HeartbeatFeedbackRuntimeHost) {}
 
@@ -143,6 +146,8 @@ export class HeartbeatFeedbackRuntime {
     this.lastToastAtByKey.clear();
     this.compareQueue.length = 0;
     this.deferredCompareQueue.length = 0;
+    this.immediateDrainCallbacks.length = 0;
+    this.compareDrainMode = "all";
     this.host.comparePromptOpen = false;
     this.host.uiManager.hideHeartbeatToast();
     this.host.uiManager.hideEquipmentComparePrompt();
@@ -156,15 +161,32 @@ export class HeartbeatFeedbackRuntime {
       return;
     }
     this.compareQueue.push({ item, source });
-    this.drainCompareQueue(true);
+    if (this.host.eventPanelOpen) {
+      return;
+    }
+    this.compareDrainMode = "all";
+    this.drainCompareQueue();
   }
 
-  private drainCompareQueue(allowDeferred: boolean): void {
-    if (this.host.comparePromptOpen) {
+  flushImmediateComparePrompts(onDrained?: () => void): boolean {
+    if (onDrained !== undefined) {
+      this.immediateDrainCallbacks.push(onDrained);
+    }
+    this.compareDrainMode = "immediate";
+    if (this.host.eventPanelOpen || this.host.comparePromptOpen) {
+      return false;
+    }
+    this.drainCompareQueue(false);
+    return this.host.comparePromptOpen;
+  }
+
+  private drainCompareQueue(allowDeferred = this.compareDrainMode === "all"): void {
+    if (this.host.comparePromptOpen || this.host.eventPanelOpen) {
       return;
     }
     const next = this.compareQueue.shift() ?? (allowDeferred ? this.deferredCompareQueue.shift() : undefined);
     if (next === undefined) {
+      this.finishImmediateDrainIfIdle();
       return;
     }
     const compareItem = this.host.player.equipment[next.item.slot];
@@ -181,10 +203,14 @@ export class HeartbeatFeedbackRuntime {
         this.host.hudDirty = true;
         if (action === "later") {
           this.deferredCompareQueue.push(next);
-          this.drainCompareQueue(false);
+          if (this.compareQueue.length > 0) {
+            this.drainCompareQueue(false);
+            return;
+          }
+          this.finishImmediateDrainIfIdle();
           return;
         }
-        this.drainCompareQueue(true);
+        this.drainCompareQueue();
       }
     });
   }
@@ -207,6 +233,17 @@ export class HeartbeatFeedbackRuntime {
       this.compareQueue.some((entry) => entry.item.id === itemId) ||
       this.deferredCompareQueue.some((entry) => entry.item.id === itemId)
     );
+  }
+
+  private finishImmediateDrainIfIdle(): void {
+    if (this.compareDrainMode !== "immediate") {
+      return;
+    }
+    this.compareDrainMode = "all";
+    const callbacks = this.immediateDrainCallbacks.splice(0);
+    for (const callback of callbacks) {
+      callback();
+    }
   }
 
   private showRareDropToast(itemDefId: string, rarity: "rare" | "unique", nowMs: number): void {

@@ -1,5 +1,6 @@
 import type { DifficultyMode } from "./contracts/types";
 import { getDifficultyModifier } from "./difficulty";
+import { estimateStoryFloorPacingOverheadMs } from "./pacingModel";
 import { SeededRng } from "./rng";
 
 const DEFAULT_FLOORS = 5;
@@ -32,9 +33,16 @@ export interface RunSimulation {
   hpCurveP90: number[];
   deathCauseDistribution: Record<string, number>;
   itemRarityDistribution: Record<string, number>;
+  pacing?: {
+    runDurationP50Ms: number;
+    runDurationP90Ms: number;
+    floorDurationP50Ms: number[];
+    floorDurationP90Ms: number[];
+  };
   combatRhythm?: {
     avgSkillUsesPerRun: number;
     avgSkillCastsPer30s: number;
+    avgSkillCastsPer30sRunClock?: number;
     avgSkillDamageShare: number;
     avgAutoAttackDamageShare: number;
   };
@@ -49,6 +57,7 @@ interface SimulatedRun {
   cleared: boolean;
   floorReached: number;
   runDurationMs: number;
+  floorDurationsMs: number[];
   hpByFloor: number[];
   deathCause: string;
   rarityCounts: Record<"common" | "magic" | "rare", number>;
@@ -100,6 +109,7 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
   let cleared = true;
   let floorReached = 0;
   let runDurationMs = 0;
+  const floorDurationsMs = new Array<number>(floors).fill(0);
   const hpByFloor = new Array<number>(floors).fill(0);
   const rarityCounts: Record<"common" | "magic" | "rare", number> = {
     common: 0,
@@ -139,7 +149,16 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
         (1.2 - behaviorPower) * 5_400 +
         rng.nextInt(0, 2_400)
     );
-    runDurationMs += floorDurationMs;
+    const pacedFloorDurationMs =
+      floorDurationMs +
+      estimateStoryFloorPacingOverheadMs({
+        floor,
+        difficulty: config.difficulty,
+        playerBehavior: config.playerBehavior,
+        isBossFloor: floor === floors
+      });
+    runDurationMs += pacedFloorDurationMs;
+    floorDurationsMs[floor - 1] = pacedFloorDurationMs;
     floorReached = floor;
     hpByFloor[floor - 1] = Number(hp.toFixed(4));
 
@@ -163,6 +182,7 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
     cleared: cleared && floorReached >= floors && hp > 0,
     floorReached,
     runDurationMs,
+    floorDurationsMs,
     hpByFloor,
     deathCause: cleared && floorReached >= floors && hp > 0 ? "none" : resolveDeathCause(floorReached, hp, rng),
     rarityCounts
@@ -209,10 +229,17 @@ export function simulateRun(config: BalanceConfig): RunSimulation {
 
   const hpCurveP50: number[] = [];
   const hpCurveP90: number[] = [];
+  const floorDurationP50Ms: number[] = [];
+  const floorDurationP90Ms: number[] = [];
   for (let floor = 0; floor < floors; floor += 1) {
     const hpSlice = runs.map((run) => run.hpByFloor[floor] ?? 0);
+    const durationSlice = runs
+      .map((run) => run.floorDurationsMs[floor] ?? 0)
+      .filter((value) => value > 0);
     hpCurveP50.push(percentile(hpSlice, 0.5));
     hpCurveP90.push(percentile(hpSlice, 0.9));
+    floorDurationP50Ms.push(Math.round(percentile(durationSlice, 0.5)));
+    floorDurationP90Ms.push(Math.round(percentile(durationSlice, 0.9)));
   }
 
   return {
@@ -222,6 +249,12 @@ export function simulateRun(config: BalanceConfig): RunSimulation {
     hpCurveP50,
     hpCurveP90,
     deathCauseDistribution,
-    itemRarityDistribution
+    itemRarityDistribution,
+    pacing: {
+      runDurationP50Ms: Math.round(percentile(runs.map((run) => run.runDurationMs), 0.5)),
+      runDurationP90Ms: Math.round(percentile(runs.map((run) => run.runDurationMs), 0.9)),
+      floorDurationP50Ms,
+      floorDurationP90Ms
+    }
   };
 }
