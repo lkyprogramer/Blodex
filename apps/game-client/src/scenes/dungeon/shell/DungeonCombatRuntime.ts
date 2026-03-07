@@ -12,6 +12,7 @@ import {
 } from "@blodex/core";
 import { ITEM_DEF_MAP, LOOT_TABLE_MAP, MONSTER_ARCHETYPES, WEAPON_TYPE_DEF_MAP } from "@blodex/content";
 import type { MonsterAiUpdateResult } from "../../../systems/AISystem";
+import type { CombatSystem } from "../../../systems/CombatSystem";
 import type { EntityManager, MonsterRuntime } from "../../../systems/EntityManager";
 import type { RunLogService } from "../logging/RunLogService";
 import type { DungeonScene } from "../../DungeonScene";
@@ -28,48 +29,7 @@ const LOOT_PICKUP_RADIUS_TILES = 1.15;
 
 export interface DungeonCombatSource {
   floorConfig: { isBossFloor: boolean };
-  combatSystem: {
-    updatePlayerAttack(args: {
-      player: PlayerState;
-      run: DungeonScene["run"];
-      monsters: MonsterRuntime[];
-      attackTargetId: string | null;
-      nextPlayerAttackAt: number;
-      nowMs: number;
-      combatRng: DungeonScene["combatRng"];
-      lootRng: DungeonScene["lootRng"];
-      itemDefs: typeof ITEM_DEF_MAP;
-      lootTables: typeof LOOT_TABLE_MAP;
-      attackSpeedMultiplier: number;
-      weaponTypeDefs: typeof WEAPON_TYPE_DEF_MAP;
-      canDropItemDef: (itemDef: ItemDef) => boolean;
-      slotWeightMultiplier?: RollItemDropOptions["slotWeightMultiplier"];
-    }): {
-      player: PlayerState;
-      run: DungeonScene["run"];
-      attackTargetId: string | null;
-      nextPlayerAttackAt: number;
-      requestPathTarget?: { x: number; y: number };
-      combatEvents: CombatEvent[];
-      leveledUp: boolean;
-      levelsGained: number;
-      killedMonsterId?: string;
-      droppedItem?: {
-        item: ItemInstance;
-        position: { x: number; y: number };
-        sourceId: string;
-      };
-    };
-    updateMonsterAttacks(
-      monsters: MonsterRuntime[],
-      player: PlayerState,
-      nowMs: number,
-      combatRng: DungeonScene["combatRng"]
-    ): {
-      player: PlayerState;
-      combatEvents: CombatEvent[];
-    };
-  };
+  combatSystem: Pick<CombatSystem, "updatePlayerAttack" | "updateMonsterAttacks">;
   aiSystem: {
     updateMonsters(
       monsters: MonsterRuntime[],

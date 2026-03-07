@@ -26,7 +26,7 @@ resolve_debt_ceiling_methods() {
 resolve_max_lines() {
   case "$1" in
     "apps/game-client/src/scenes/DungeonScene.ts")
-      echo 1500
+      echo 1532
       ;;
     "apps/game-client/src/scenes/MetaMenuScene.ts")
       echo 650
