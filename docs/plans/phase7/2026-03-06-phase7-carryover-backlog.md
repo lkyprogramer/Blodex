@@ -1,38 +1,48 @@
-# Phase 7 遗留扩展池（内容广度、Boss 与长期 Replayability）
+# Phase 7 遗留扩展池（已并入完整路线图，保留为历史记录）
 
 **日期**: 2026-03-06  
-**状态**: Draft  
-**前置条件**: Phase 6 已完成系统补完与体验合同签署
+**状态**: Archived  
+**当前主入口**: `docs/plans/phase7/2026-03-07-phase7-technical-debt-first-refactor-roadmap.md`
 
 ---
 
-## 1. 直接结论
+## 1. 当前用途
 
-Phase 7 不再优先解决“已有系统空转”的问题，而是承接那些已经确认重要、但不适合塞进 Phase 6 的内容扩展项。
+本文件不再是 Phase 7 的执行主文档。
 
-判断标准：
+它保留的原因只有两个：
 
-1. 修“已有定义未生效”的，留在 Phase 6。
-2. 加“新的内容广度和玩法体量”的，进入 Phase 7。
+1. 作为 `2026-03-07` 完整路线图的历史输入
+2. 作为内容扩展池的来源记录
 
-因此，Phase 7 的主题是：
+当前应以：
 
-`在已闭环的战斗与构筑系统上，增加 Boss、遭遇、内容池和长期可重复游玩的深度。`
+`docs/plans/phase7/2026-03-07-phase7-technical-debt-first-refactor-roadmap.md`
+
+作为唯一执行基线。
 
 ---
 
 ## 2. Phase 7 启动前提
 
-只有以下条件满足后，Phase 7 才建议启动：
+截至 `2026-03-07`，这些前提不应再被当作“纯主观判断”，而应按明确证据核对。
 
-1. `buff/debuff` 已在实机 runtime 中真实生效。
-2. `physical / arcane` 已形成最小差异化，不再只是日志标签。
-3. `damageOverTime` 已完成语义收口。
-4. `synergy activated` 已有玩家侧反馈。
-5. `boss reward runtime` 已闭环。
-6. `15 分钟 5 层` 的节奏合同已经可验证。
+| 前提 | 当前状态 | 验证 / 证据 | 说明 |
+|---|---|---|---|
+| `buff/debuff` 已在实机 runtime 中真实生效 | `已满足` | `packages/content/src/buffs.ts`、`packages/core/src/buff.ts`、`apps/game-client/src/scenes/DungeonScene.ts` 的 player/monster buff refresh 链路；`S6-07` 仅剩人工录像签署 | 这项已不是“功能未做”，而是“人工 sign-off 待补” |
+| `physical / arcane` 已形成最小差异化 | `部分满足` | `packages/core/src/combat.ts` 的 `ARMORED_ARCANE_DAMAGE_MULTIPLIER / ARMORED_PHYSICAL_DAMAGE_MULTIPLIER`；`packages/core/src/__tests__/combat.contract.test.ts` 中 armored 差异用例 | 当前差异化范围主要限于 `armored` affix，不等于完整元素体系 |
+| `damageOverTime` 已完成语义收口 | `已满足` | `6.4` 文档与主干实现，已收口为 `skillBonusDamage` | 已从“语义漂移”转为“显式新语义” |
+| `synergy activated` 已有玩家侧反馈 | `已满足` | `docs/plans/phase6/release/2026-03-07-phase6-browser-smoke-report.md`、`S6-07` 说明 | browser smoke 已确认 `forceSynergy()` 反馈链路 |
+| `boss reward runtime` 已闭环 | `已满足` | `bossRuntimeModule` 测试 + browser smoke 报告 `B8/B9` | 运行时闭环与 compare prompt 已补齐 |
+| `15 分钟 5 层` 节奏合同已经可验证 | `未满足` | `docs/plans/phase6/release/2026-03-06-phase6-performance-compare.md`、`docs/plans/phase6/release/2026-03-06-phase6-release-readiness.md` | Normal/Hard 基本达标，但 Nightmare `P50` 与 `active cadence` 仍未达标 |
 
-如果这些前提不成立，Phase 7 会变成“在半空系统上继续堆内容”。
+当前判断应改成：
+
+1. 前 `5` 条属于“开发闭环已基本完成”。
+2. 第 `6` 条仍是启动内容扩展前的真正阻塞项。
+3. 因此旧的 content backlog 只能在 Phase 6 完成正式签署后再启动。
+
+如果把这些前提重新当作“功能尚未存在”，会误导后续执行者重复做已经完成的工作。
 
 ---
 
@@ -97,15 +107,15 @@ Phase 7 不再优先解决“已有系统空转”的问题，而是承接那些
 
 ---
 
-## 6. 建议的 Phase 7 入口文档结构
+## 6. 与当前路线图的编号关系
 
-Phase 7 真正启动时，建议按以下顺序拆子文档：
+为避免与技术债优先路线图的 `7.0A ~ 7.3` 冲突，本文件原先设想的内容扩展编号现已统一并入主路线图中的：
 
-1. `7.0` 多 Boss 管线与 encounter 编排
-2. `7.1` Boss 内容批次一
-3. `7.2` 怪物 affix / consumable / merchant 扩充
-4. `7.3` 元素体系与 set 系统
-5. `7.4` 长 run 与楼层扩展
+1. `7.4` 多 Boss 管线与 encounter 编排
+2. `7.5` Boss 内容批次一
+3. `7.6` 怪物 affix / consumable / merchant 扩充
+4. `7.7` 元素体系与 set 系统
+5. `7.8` 长 run 与楼层扩展
 
 ---
 
@@ -125,3 +135,7 @@ Phase 7 真正启动时，建议按以下顺序拆子文档：
 
 这些项已被确认有价值，但都不应抢占 Phase 6 的系统补完优先级。
 
+补充说明：
+
+1. 本文件现在是“内容扩展池归档”，不是“下一步直接执行计划”。
+2. 实际执行顺序与编号应完全以 `2026-03-07-phase7-technical-debt-first-refactor-roadmap.md` 为准。

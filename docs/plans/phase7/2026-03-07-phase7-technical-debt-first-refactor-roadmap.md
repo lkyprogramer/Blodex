@@ -1,4 +1,4 @@
-# Phase 7 技术债优先改造路线图（Phase 6 收口 + 核心架构重构）
+# Phase 7 完整开发路线图（技术债优先 + Phase 6 收口 + 内容扩展后置）
 
 **日期**: `2026-03-07`  
 **状态**: `Proposed`  
@@ -8,6 +8,7 @@
 2. `docs/plans/phase6/2026-03-06-phase6-roadmap.md`
 3. `docs/architecture.md`
 4. `docs/plans/phase7/2026-03-06-phase7-carryover-backlog.md`
+5. `docs/art-style-bible.md`
 
 ---
 
@@ -130,6 +131,22 @@ Phase 6 的 evidence pack 已有，但最终签署仍卡在：
 2. `S6-05`、`S6-07` 补齐。
 3. Phase 6 完成正式 sign-off。
 4. 只有在上述全部完成后，才允许进入 Boss / content expansion。
+
+### 3.5 资源治理目标
+
+1. `7.0A ~ 7.2` 期间默认不新增核心美术/音频资产，避免“重构 + 资源重做”双重变更混在同一阶段。
+2. `7.4 ~ 7.8` 如涉及新增资源，必须统一遵循：
+   - 视觉：`docs/art-style-bible.md` + `assets/source-prompts/asset-plan.yaml` + `assets/generated/manifest.json` + `pnpm assets:validate`
+   - 音频：`assets/source-prompts/audio-plan.yaml` + `assets/generated/audio-manifest.json` + `pnpm assets:audio:validate`
+3. 所有新增资源必须先定义“最小上线集”和“可选增强集”，不允许直接放大 scope。
+4. 任何新增美术资源的**实际生成**都必须以“用户已提供可用 Gemini Key”为硬前置。
+5. 在 Gemini Key 未提供前，只允许完成：
+   - 风格对齐
+   - prompt 编写
+   - `asset-plan.yaml` 冻结
+   - `manifest` 占位与命名约定
+6. 在 Gemini Key 未提供前，禁止直接运行任何美术资源生成步骤；不得把“待生成”写成“已生成”。
+7. 上述 Gemini Key 约束只针对美术资源生成，不限制音频清单、命名规范与接线方案文档化。
 
 ---
 
@@ -402,6 +419,25 @@ graph TD
 4. `MetaMenuPanel.ts <= 450`
 5. `check:architecture-budget` 不再对这些文件使用 debt ceiling
 
+**中间检查点**
+
+为避免 `4301 -> 1500`、`1158 -> 450` 这种一次性大跳跃失控，必须增加阶段内硬检查点：
+
+1. `PR-7.0A-01` 合并前：
+   - `DungeonScene.ts <= 2800`
+   - `HudContainer.ts` 不得高于 Phase 7 启动基线（只允许 `no-growth`，不要求本 PR 同时承担 UI 体量削减）
+   - 禁止新增 compare / reward / feedback 逻辑回流 Scene
+2. `PR-7.0A-02` 合并前：
+   - `DungeonScene.ts <= 1500`
+   - `HudContainer.ts <= 650`
+   - compare / overlay / toast 业务语义必须全部迁出 `HudContainer`
+3. `PR-7.0A-03` 合并前：
+   - `MetaMenuScene.ts <= 650`
+   - `MetaMenuPanel.ts <= 450`
+   - `HudContainer.ts <= 450`
+
+如果任一中间检查点未达成，则必须暂停后续 PR，先继续拆边界，不允许用转发代码掩盖结构债。
+
 ### 7.0B Save / Resume 体系重构（P0）
 
 **目标**
@@ -417,6 +453,14 @@ graph TD
 5. timeline rebasing 统一化
 6. compare queue / reward queue / prompt state 纳入同一瞬态恢复模型
 7. 所有 runtime local 时间字段显式标注
+8. 若检测到旧 save key 存在但 `RunSaveV3` 不存在，显示一次性提示：
+   - `存档格式已重置，旧进度不可继续`
+   - 随后清理旧 key
+
+说明：
+
+1. 这不是兼容策略，只是避免静默清档带来的玩测困惑。
+2. 不要求迁移任何旧数据，也不要求保留旧格式读取能力。
 
 **硬门禁**
 
@@ -424,6 +468,7 @@ graph TD
 2. no direct Scene mutation during deserialize
 3. 不允许保留 `legacy normalize / fallback deserialize`
 4. save/restore 只对 `RunSaveV3` 做严格契约测试
+5. 不允许对旧 save key 做 silent wipe，必须留下显式一次性提示或 release note 记录
 
 ### 7.0C Evidence / Release 基建重构（P0）
 
@@ -487,6 +532,70 @@ graph TD
 3. 完整元素体系
 4. set / 长 run / 更多楼层
 
+### 7.4 多 Boss 管线与 encounter 编排（P2）
+
+**目标**
+
+在 Phase 6 完成正式签署且核心结构债被消化后，扩展 Boss 广度，但不再回流 `DungeonScene`。
+
+**主要工作**
+
+1. 将 Boss 选择从单一 `bone_sovereign` 扩展为可配置 Boss 池。
+2. 为 Boss encounter 建立独立注册表、调度器与 drop/reward 绑定。
+3. 确保 story boss、branch boss、challenge boss 共享统一 runtime 接口。
+
+### 7.5 Boss 内容批次一（P2）
+
+**目标**
+
+新增 `2~3` 个 Boss，每个 Boss 都具备独立阶段、攻击模式、反馈语义与奖励身份。
+
+**主要工作**
+
+1. 新 Boss 的 `BossDef`
+2. 独立攻击模式与 phase transition
+3. 独立的 reward / drop / compare / cue 语义
+4. 对应资源、日志与 telemetry 接线
+
+### 7.6 怪物 affix / consumable / merchant 扩充（P2）
+
+**目标**
+
+提升中层内容密度与 run 差异性，但建立在已稳定的 runtime 与 UI 边界上。
+
+**主要工作**
+
+1. monster affix 从当前基础集扩到 `8+`
+2. 激活或扩充 consumable 内容池
+3. 把 merchant 从随机事件增强为更稳定的遭遇节点或房间
+4. talent 从“开/关两态”扩展到更有投入感的 rank 模型
+
+### 7.7 元素体系与 set 系统（P3）
+
+**目标**
+
+把当前最小 `physical / arcane` 差异化扩展为完整的策略维度。
+
+**主要工作**
+
+1. 完整元素体系：
+   - `physical / arcane / fire / cold / lightning`
+   - 抗性、弱点、敌人画像
+2. set / 套装系统
+3. 开局 archetype 选择与更强职业分界
+
+### 7.8 长 run 与楼层扩展（P3）
+
+**目标**
+
+从 `5` 层短 run 扩展到 `8~10` 层，并加入中期节点与更长线构筑演化。
+
+**主要工作**
+
+1. 地牢层数从 `5` 扩展到 `8~10`
+2. 插入中期节点、锻造/抉择/挑战房
+3. 调整 pacing model、reward curve、save snapshot 边界
+
 ---
 
 ## 7. 推荐 PR 拆分
@@ -539,6 +648,37 @@ graph TD
 1. parity/buff/damageType 录像
 2. regression matrix 归档
 3. final sign-off
+
+### PR-7.4-01 Boss pipeline
+
+1. Boss registry / pool
+2. encounter dispatcher
+3. reward binding
+
+### PR-7.5-01 Boss batch one
+
+1. Boss content `A`
+2. Boss content `B`
+3. 可选 Boss content `C`
+
+### PR-7.6-01 mid-layer content expansion
+
+1. affix batch one
+2. consumable enablement
+3. merchant stabilization
+4. talent rank expansion
+
+### PR-7.7-01 elemental / set foundations
+
+1. element table
+2. resistance/weakness rules
+3. set system skeleton
+
+### PR-7.8-01 long-run expansion
+
+1. floor count expansion
+2. mid-run node insertion
+3. pacing / reward rebalance
 
 ---
 
@@ -626,10 +766,12 @@ pnpm phase6:evidence:report
 
 ## 11. 当前建议
 
-在这个新方向下，原 `2026-03-06-phase7-carryover-backlog.md` 不应被直接执行。  
-正确顺序应改为：
+本文件现在就是 **Phase 7 的唯一主路线图**。
 
-1. 先执行本文件的 `7.0A ~ 7.1`
-2. 再回到旧的 `phase7 carryover backlog`
+执行顺序固定为：
 
-否则，Phase 7 只是在不稳定地基上继续加层。
+1. 先执行 `7.0A ~ 7.1`
+2. 确认 Phase 6 正式签署完成
+3. 再进入 `7.4 ~ 7.8` 的内容扩展阶段
+
+旧的 `2026-03-06-phase7-carryover-backlog.md` 仅保留为历史来源与内容扩展池归档，不再作为执行主文档。

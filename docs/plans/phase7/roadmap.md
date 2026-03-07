@@ -18,11 +18,22 @@
 ## 2. 文档索引
 
 1. `docs/plans/phase7/2026-03-07-phase7-technical-debt-first-refactor-roadmap.md`
-2. `docs/plans/phase7/2026-03-06-phase7-carryover-backlog.md`
+2. `docs/plans/phase7/2026-03-06-phase7-carryover-backlog.md`（历史归档）
+3. `docs/plans/phase7/2026-03-07-phase7-7.0a-scene-shell-ui-shell-and-meta-shell-reconstruction.md`
+4. `docs/plans/phase7/2026-03-07-phase7-7.0b-runsavev3-and-restore-pipeline-rebuild.md`
+5. `docs/plans/phase7/2026-03-07-phase7-7.0c-evidence-registry-and-release-closure-infrastructure.md`
+6. `docs/plans/phase7/2026-03-07-phase7-7.1-phase6-final-signoff-closure.md`
+7. `docs/plans/phase7/2026-03-07-phase7-7.2-scorer-simulator-and-calibration-governance.md`
+8. `docs/plans/phase7/2026-03-07-phase7-7.3-content-expansion-entry-gate.md`
+9. `docs/plans/phase7/2026-03-07-phase7-7.4-boss-pipeline-and-encounter-orchestration.md`
+10. `docs/plans/phase7/2026-03-07-phase7-7.5-boss-content-batch-one.md`
+11. `docs/plans/phase7/2026-03-07-phase7-7.6-affix-consumable-merchant-and-talent-expansion.md`
+12. `docs/plans/phase7/2026-03-07-phase7-7.7-elemental-system-and-set-foundations.md`
+13. `docs/plans/phase7/2026-03-07-phase7-7.8-long-run-and-floor-expansion.md`
 
 ---
 
 ## 3. 执行顺序约束
 
-1. 未完成 `7.0A ~ 7.1` 前，不允许启动旧 backlog 中的多 Boss / content expansion。
-2. 旧 backlog 现在是“后续内容池”，不是“下一步直接执行计划”。
+1. 未完成 `7.0A ~ 7.1` 前，不允许启动 `7.4 ~ 7.8` 的内容扩展阶段。
+2. `2026-03-06-phase7-carryover-backlog.md` 仅作历史归档，不再承担主路线图职责。
