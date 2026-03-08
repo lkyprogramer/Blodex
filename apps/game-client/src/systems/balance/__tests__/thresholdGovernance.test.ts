@@ -47,8 +47,10 @@ describe("threshold governance", () => {
     const unmatchedSampleSize = resolveEffectivePhase6DriftThresholds("hard-average", 24);
 
     expect(hardAverage.calibration?.id).toBe("phase6-6.5-hard-average-v2");
-    expect(hardAverage.thresholds.clearRate).toBe(0.82);
+    expect(hardAverage.policyThresholds.clearRate).toBe(0.62);
+    expect(hardAverage.overrideThresholds?.clearRate).toBe(0.82);
     expect(unmatchedSampleSize.calibration).toBeUndefined();
-    expect(unmatchedSampleSize.thresholds.clearRate).toBe(0.62);
+    expect(unmatchedSampleSize.policyThresholds.clearRate).toBe(0.62);
+    expect(unmatchedSampleSize.overrideThresholds).toBeUndefined();
   });
 });

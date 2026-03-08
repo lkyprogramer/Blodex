@@ -35,7 +35,8 @@ export interface Phase6BalanceCalibrationOverride extends BalanceDriftCalibratio
 }
 
 export interface EffectiveBalanceThresholdResolution {
-  thresholds: BalanceDriftThresholds;
+  policyThresholds: BalanceDriftThresholds;
+  overrideThresholds?: Partial<BalanceDriftThresholds>;
   calibration?: Phase6BalanceCalibrationOverride;
 }
 
@@ -94,15 +95,13 @@ export function resolveEffectivePhase6DriftThresholds(
     override.sourceSampleSize !== normalizedSampleSize
   ) {
     return {
-      thresholds: { ...policy.metricThresholds }
+      policyThresholds: { ...policy.metricThresholds }
     };
   }
 
   return {
-    thresholds: {
-      ...policy.metricThresholds,
-      ...override.thresholds
-    },
+    policyThresholds: { ...policy.metricThresholds },
+    overrideThresholds: { ...override.thresholds },
     calibration: override
   };
 }

@@ -51,8 +51,9 @@ export function createBalanceDriftRow(
 ): BalanceDriftRow {
   const governance = resolveEffectivePhase6DriftThresholds(scenario.name, sampleSize);
   const effectiveThresholds: BalanceDriftThresholds = {
+    ...governance.policyThresholds,
     ...thresholds,
-    ...governance.thresholds
+    ...(governance.overrideThresholds ?? {})
   };
   const seedBase = `phase5-real-${scenario.name}`;
   const heuristic = simulateRun({
