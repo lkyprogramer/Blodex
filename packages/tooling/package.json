@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
     "assets:plan": "node dist/compileAssetPlan.js",
+    "phase7:content-gate:check": "node dist/checkPhase7ContentEntryGate.js",
     "assets:validate": "node dist/validateManifest.js",
     "assets:images:optimize": "node dist/optimizeImageAssets.js",
     "assets:images:report": "node dist/reportImageAssetSizes.js",
