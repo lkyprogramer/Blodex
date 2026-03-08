@@ -4,7 +4,7 @@ import {
   defaultBaseStats,
   deriveStats,
   getDifficultyModifier,
-  type RunSaveDataV2
+  type RunSaveDataV3
 } from "@blodex/core";
 
 vi.mock("phaser", () => ({
@@ -18,213 +18,223 @@ vi.mock("phaser", () => ({
     }
   }
 }));
+
 import { RunStateRestorer } from "../RunStateRestorer";
 import type { RunStateRestoreHost } from "../savePorts";
 
-function createSave(): RunSaveDataV2 {
+function createSave(): RunSaveDataV3 {
   const baseStats = defaultBaseStats();
   const derivedStats = deriveStats(baseStats, []);
   return {
-    schemaVersion: 2,
-    runtimeNowMs: 500,
+    schemaVersion: 3,
     savedAtMs: 123,
     appVersion: "test",
     runId: "seed-1:10",
     runSeed: "seed-1",
-    run: {
-      startedAtMs: 10,
-      runSeed: "seed-1",
-      difficulty: "normal",
-      difficultyModifier: getDifficultyModifier("normal"),
-      currentFloor: 2,
-      currentBiomeId: "forgotten_catacombs",
-      floor: 2,
-      floorsCleared: 1,
-      kills: 0,
-      totalKills: 0,
-      lootCollected: 0,
-      challengeSuccessCount: 0,
-      inEndless: false,
-      endlessFloor: 0,
-      endlessKills: 0,
-      mutatorActiveIds: [],
-      mutatorState: {},
-      deferredShardBonus: 0,
-      runMode: "normal",
-      runEconomy: {
-        obols: 0,
-        spentObols: 0
-      }
-    },
-    player: {
-      id: "player-1",
-      position: { x: 1, y: 1 },
-      level: 1,
-      xp: 0,
-      xpToNextLevel: 10,
-      pendingLevelUpChoices: 0,
-      pendingSkillChoices: 1,
-      health: 100,
-      mana: 40,
-      baseStats,
-      derivedStats,
-      inventory: [],
-      equipment: {},
-      gold: 0,
-      skills: {
-        skillSlots: [null, null],
-        cooldowns: {}
-      },
-      activeBuffs: [
-        {
-          defId: "war_cry",
-          sourceId: "player-1",
-          targetId: "player-1",
-          appliedAtMs: 100,
-          expiresAtMs: 1000
+    domain: {
+      run: {
+        startedAtMs: 10,
+        runSeed: "seed-1",
+        difficulty: "normal",
+        difficultyModifier: getDifficultyModifier("normal"),
+        currentFloor: 2,
+        currentBiomeId: "forgotten_catacombs",
+        floor: 2,
+        floorsCleared: 1,
+        kills: 0,
+        totalKills: 0,
+        lootCollected: 0,
+        challengeSuccessCount: 0,
+        inEndless: false,
+        endlessFloor: 0,
+        mutatorActiveIds: [],
+        mutatorState: {},
+        deferredShardBonus: 0,
+        runMode: "normal",
+        runEconomy: {
+          obols: 0,
+          spentObols: 0
         }
-      ]
-    },
-    consumables: createInitialConsumableState(0),
-    dungeon: {
-      width: 4,
-      height: 4,
-      walkable: Array.from({ length: 4 }, () => Array.from({ length: 4 }, () => true)),
-      rooms: [],
-      corridors: [],
-      spawnPoints: [{ x: 1, y: 1 }],
-      playerSpawn: { x: 1, y: 1 },
-      layoutHash: "layout-1"
-    },
-    staircase: {
-      position: { x: 3, y: 3 },
-      visible: false
-    },
-    hazards: [],
-    boss: null,
-    monsters: [
-      {
-        state: {
-          id: "monster-1",
-          archetypeId: "melee_grunt",
-          level: 2,
-          health: 30,
-          maxHealth: 30,
-          damage: 8,
-          attackRange: 1.5,
-          moveSpeed: 64,
-          xpValue: 4,
-          dropTableId: "starter_floor",
-          position: { x: 2, y: 2 },
-          aiState: "attack",
-          aiBehavior: "chase",
-          activeBuffs: [
-            {
-              defId: "frost_slow",
-              sourceId: "player-1",
-              targetId: "monster-1",
-              appliedAtMs: 100,
-              expiresAtMs: 1000
-            }
-          ]
+      },
+      player: {
+        id: "player-1",
+        position: { x: 1, y: 1 },
+        level: 1,
+        xp: 0,
+        xpToNextLevel: 10,
+        pendingLevelUpChoices: 0,
+        pendingSkillChoices: 1,
+        health: 100,
+        mana: 40,
+        baseStats,
+        derivedStats,
+        inventory: [],
+        equipment: {},
+        gold: 0,
+        skills: {
+          skillSlots: [null, null],
+          cooldowns: {}
         },
-        baseMoveSpeed: 128,
-        nextAttackAt: 250,
-        nextSupportAt: 0
+        activeBuffs: [
+          {
+            defId: "war_cry",
+            sourceId: "player-1",
+            targetId: "player-1",
+            remainingMs: 500
+          }
+        ]
+      },
+      consumables: createInitialConsumableState(0),
+      blueprintFoundIdsInRun: [],
+      selectedMutationIds: []
+    },
+    runtime: {
+      dungeon: {
+        width: 4,
+        height: 4,
+        walkable: Array.from({ length: 4 }, () => Array.from({ length: 4 }, () => true)),
+        rooms: [],
+        corridors: [],
+        spawnPoints: [{ x: 1, y: 1 }],
+        playerSpawn: { x: 1, y: 1 },
+        layoutHash: "layout-1"
+      },
+      staircase: {
+        position: { x: 3, y: 3 },
+        visible: false
+      },
+      hazards: [],
+      boss: null,
+      monsters: [
+        {
+          state: {
+            id: "monster-1",
+            archetypeId: "melee_grunt",
+            level: 2,
+            health: 30,
+            maxHealth: 30,
+            damage: 8,
+            attackRange: 1.5,
+            moveSpeed: 64,
+            xpValue: 4,
+            dropTableId: "starter_floor",
+            position: { x: 2, y: 2 },
+            aiState: "attack",
+            aiBehavior: "chase",
+            activeBuffs: [
+              {
+                defId: "frost_slow",
+                sourceId: "player-1",
+                targetId: "monster-1",
+                remainingMs: 500
+              }
+            ]
+          },
+          baseMoveSpeed: 128,
+          nextAttackAt: 250,
+          nextSupportAt: 0
+        }
+      ],
+      lootOnGround: [],
+      eventNode: null,
+      minimap: {
+        layoutHash: "layout-1",
+        exploredKeys: []
+      },
+      mapRevealActive: false,
+      deferredOutcomes: [],
+      powerSpikeBudgetState: {
+        pairStates: {
+          "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
+          "3-4": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
+          "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+        },
+        acceptedSpikeCount: 1,
+        majorSpikeCount: 0
+      },
+      phase6TelemetryState: {
+        startedAtMs: 10,
+        buildFormedState: false,
+        inputTimestampsMs: [],
+        story: {
+          playerFacingChoices: 0,
+          choiceCountByFloor: {},
+          powerSpikes: 0,
+          majorPowerSpikes: 0,
+          buildFormed: 0,
+          rareDropsPresented: 0,
+          bossRewardClosed: 0
+        },
+        combat: {
+          skillUses: 0,
+          skillCastsPer30s: 0,
+          skillDamage: 0,
+          autoAttackDamage: 0,
+          skillDamageShare: 0,
+          autoAttackDamageShare: 0,
+          manaDryWindowMs: 0,
+          averageNoInputGapMs: 0,
+          maxNoInputGapMs: 0
+        },
+        runtimeEffects: {
+          buffApplyCountById: {},
+          buffUptimeMsById: {},
+          damageDealtByType: {},
+          damageTakenByType: {},
+          resolvedHitCountByType: {},
+          synergyActivationCountById: {},
+          synergyFirstActivatedFloorById: {}
+        }
+      },
+      rngCursor: {
+        procgen: 0,
+        spawn: 0,
+        combat: 0,
+        loot: 0,
+        skill: 0,
+        boss: 0,
+        biome: 0,
+        hazard: 0,
+        event: 0,
+        merchant: 0
       }
-    ],
-    lootOnGround: [],
-    eventNode: null,
-    minimap: {
-      layoutHash: "layout-1",
-      exploredKeys: []
     },
-    mapRevealActive: false,
-    rngCursor: {
-      procgen: 0,
-      spawn: 0,
-      combat: 0,
-      loot: 0,
-      skill: 0,
-      boss: 0,
-      biome: 0,
-      hazard: 0,
-      event: 0,
-      merchant: 0
-    },
-    selectedMutationIds: [],
-    blueprintFoundIdsInRun: [],
-    deferredOutcomes: [],
-    progressionPromptState: {
-      nextPromptDelayMs: 2_100,
-      pendingLevelUpSkillOfferIds: ["chain_lightning"]
-    },
-    powerSpikeBudgetState: {
-      pairStates: {
-        "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
-        "3-4": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
-        "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+    session: {
+      progressionPromptState: {
+        nextPromptDelayMs: 2_100,
+        pendingLevelUpSkillOfferIds: ["chain_lightning"]
       },
-      acceptedSpikeCount: 1,
-      majorSpikeCount: 0
-    },
-    phase6TelemetryState: {
-      startedAtMs: 10,
-      buildFormedState: false,
-      inputTimestampsMs: [],
-      story: {
-        playerFacingChoices: 0,
-        choiceCountByFloor: {},
-        powerSpikes: 0,
-        majorPowerSpikes: 0,
-        buildFormed: 0,
-        rareDropsPresented: 0,
-        bossRewardClosed: 0
-      },
-      combat: {
-        skillUses: 0,
-        skillCastsPer30s: 0,
-        skillDamage: 0,
-        autoAttackDamage: 0,
-        skillDamageShare: 0,
-        autoAttackDamageShare: 0,
-        manaDryWindowMs: 0,
-        averageNoInputGapMs: 0,
-        maxNoInputGapMs: 0
-      },
-      runtimeEffects: {
-        buffApplyCountById: {},
-        buffUptimeMsById: {},
-        damageDealtByType: {},
-        damageTakenByType: {},
-        resolvedHitCountByType: {},
-        synergyActivationCountById: {},
-        synergyFirstActivatedFloorById: {}
+      comparePromptState: {
+        active: { itemId: "loot-1", source: "boss_reward" },
+        immediate: [{ itemId: "loot-2", source: "event_reward" }],
+        deferred: [],
+        drainMode: "all"
       }
     }
   };
 }
 
-function createExpiredMonsterSlowSave(): RunSaveDataV2 {
+function createExpiredMonsterSlowSave(): RunSaveDataV3 {
   const save = createSave();
   return {
     ...save,
-    runtimeNowMs: 1_200,
-    monsters: save.monsters.map((monster) => ({
-      ...monster,
-      state: {
-        ...monster.state,
-        activeBuffs: [
-          {
-            defId: "frost_slow",
-            sourceId: "player-1",
-            targetId: monster.state.id,
-            appliedAtMs: 100,
-            expiresAtMs: 1_000
-          }
-        ]
-      }
-    }))
+    runtime: {
+      ...save.runtime,
+      monsters: save.runtime.monsters.map((monster) => ({
+        ...monster,
+        state: {
+          ...monster.state,
+          activeBuffs: [
+            {
+              defId: "frost_slow",
+              sourceId: "player-1",
+              targetId: monster.state.id,
+              remainingMs: 0
+            }
+          ]
+        }
+      }))
+    }
   };
 }
 
@@ -260,6 +270,7 @@ function createHost(): RunStateRestoreHost {
     entityManager: {
       clear: vi.fn(),
       setMonsters: vi.fn(),
+      addLoot: vi.fn(),
       setBoss: vi.fn()
     },
     hazardRuntimeModule: {
@@ -298,6 +309,8 @@ function createHost(): RunStateRestoreHost {
         nextAttackAt: 0,
         nextSupportAt: 0
       })),
+      spawnLootSprite: vi.fn(() => ({})),
+      spawnBoss: vi.fn(() => ({})),
       configureCamera: vi.fn()
     },
     cameras: {
@@ -307,7 +320,9 @@ function createHost(): RunStateRestoreHost {
     },
     refreshPlayerStatsFromEquipment: vi.fn((player) => player),
     eventRuntimeModule: {
-      destroyEventNode: vi.fn()
+      destroyEventNode: vi.fn(),
+      createEventNode: vi.fn(),
+      consumeCurrentEvent: vi.fn()
     },
     restorePhase6TelemetryState: vi.fn(),
     sfxSystem: {
@@ -318,6 +333,7 @@ function createHost(): RunStateRestoreHost {
     refreshSynergyRuntime: vi.fn(),
     restorePowerSpikeBudgetState: vi.fn(),
     restoreProgressionPromptState: vi.fn(),
+    restoreComparePromptState: vi.fn(),
     resetFloorChoiceBudget: vi.fn(),
     floorConfig: null,
     currentBiome: null
@@ -345,6 +361,12 @@ describe("RunStateRestorer", () => {
       },
       600
     );
+    expect(host.restoreComparePromptState).toHaveBeenCalledWith({
+      active: { itemId: "loot-1", source: "boss_reward" },
+      immediate: [{ itemId: "loot-2", source: "event_reward" }],
+      deferred: [],
+      drainMode: "all"
+    });
     expect(host.restorePowerSpikeBudgetState).toHaveBeenCalledWith({
       pairStates: {
         "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
@@ -368,9 +390,9 @@ describe("RunStateRestorer", () => {
     const restoredMonsters = vi.mocked(host.entityManager.setMonsters).mock.calls[0]?.[0] ?? [];
     expect(restoredMonsters[0]?.baseMoveSpeed).toBe(128);
     expect(restoredMonsters[0]?.state.moveSpeed).toBe(64);
-    expect(restoredMonsters[0]?.state.activeBuffs?.[0]?.appliedAtMs).toBe(200);
+    expect(restoredMonsters[0]?.state.activeBuffs?.[0]?.appliedAtMs).toBe(600);
     expect(restoredMonsters[0]?.state.activeBuffs?.[0]?.expiresAtMs).toBe(1100);
-    expect(host.player.activeBuffs?.[0]?.appliedAtMs).toBe(200);
+    expect(host.player.activeBuffs?.[0]?.appliedAtMs).toBe(600);
     expect(host.player.activeBuffs?.[0]?.expiresAtMs).toBe(1100);
   });
 

@@ -1,4 +1,4 @@
-import type { GameEventMap, ItemInstance, TypedEventBus } from "@blodex/core";
+import type { ComparePromptRuntimeState, GameEventMap, ItemInstance, TypedEventBus } from "@blodex/core";
 import { t } from "../../../i18n";
 import type { FeedbackRouterInput } from "../../../systems/feedbackEventRouter";
 import type { HeartbeatToastView } from "../../../ui/components/HeartbeatToast";
@@ -38,6 +38,7 @@ export interface HeartbeatFeedbackRuntimeHost {
   uiManager: HeartbeatUiPort;
   contentLocalizer: HeartbeatContentLocalizer;
   player: {
+    inventory: ItemInstance[];
     equipment: Record<string, ItemInstance | undefined>;
   };
   routeFeedback(input: FeedbackRouterInput): void;
@@ -114,6 +115,7 @@ export class HeartbeatFeedbackRuntime {
   private readonly compareQueue: QueuedComparePrompt[] = [];
   private readonly deferredCompareQueue: QueuedComparePrompt[] = [];
   private readonly immediateDrainCallbacks: Array<() => void> = [];
+  private activeComparePrompt: QueuedComparePrompt | null = null;
   private compareDrainMode: "all" | "immediate" = "all";
 
   constructor(private readonly host: HeartbeatFeedbackRuntimeHost) {}
@@ -147,6 +149,7 @@ export class HeartbeatFeedbackRuntime {
     this.compareQueue.length = 0;
     this.deferredCompareQueue.length = 0;
     this.immediateDrainCallbacks.length = 0;
+    this.activeComparePrompt = null;
     this.compareDrainMode = "all";
     this.host.comparePromptOpen = false;
     this.host.uiManager.hideHeartbeatToast();
@@ -190,6 +193,7 @@ export class HeartbeatFeedbackRuntime {
       return;
     }
     const compareItem = this.host.player.equipment[next.item.slot];
+    this.activeComparePrompt = next;
     this.host.comparePromptOpen = true;
     this.host.routeFeedback({
       type: "equipment:compare"
@@ -199,10 +203,12 @@ export class HeartbeatFeedbackRuntime {
       subtitle: t("ui.feedback.compare.subtitle"),
       sourceLabel: t(SOURCE_LABEL_KEYS[next.source]),
       onAction: (action) => {
+        const activePrompt = this.activeComparePrompt ?? next;
+        this.activeComparePrompt = null;
         this.host.comparePromptOpen = false;
         this.host.hudDirty = true;
         if (action === "later") {
-          this.deferredCompareQueue.push(next);
+          this.deferredCompareQueue.push(activePrompt);
           if (this.compareQueue.length > 0) {
             this.drainCompareQueue(false);
             return;
@@ -230,6 +236,7 @@ export class HeartbeatFeedbackRuntime {
 
   private isQueued(itemId: string): boolean {
     return (
+      this.activeComparePrompt?.item.id === itemId ||
       this.compareQueue.some((entry) => entry.item.id === itemId) ||
       this.deferredCompareQueue.some((entry) => entry.item.id === itemId)
     );
@@ -346,5 +353,88 @@ export class HeartbeatFeedbackRuntime {
     }
     this.lastToastAtByKey.set(key, nowMs);
     return true;
+  }
+
+  captureComparePromptState(): ComparePromptRuntimeState | undefined {
+    if (this.activeComparePrompt === null && this.compareQueue.length === 0 && this.deferredCompareQueue.length === 0) {
+      return undefined;
+    }
+    const state: ComparePromptRuntimeState = {
+      immediate: this.compareQueue.map((entry) => ({
+        itemId: entry.item.id,
+        source: entry.source
+      })),
+      deferred: this.deferredCompareQueue.map((entry) => ({
+        itemId: entry.item.id,
+        source: entry.source
+      })),
+      drainMode: this.compareDrainMode
+    };
+    if (this.activeComparePrompt !== null) {
+      state.active = this.toComparePromptEntryState(this.activeComparePrompt);
+    }
+    return state;
+  }
+
+  restoreComparePromptState(state: ComparePromptRuntimeState | null | undefined): void {
+    this.compareQueue.length = 0;
+    this.deferredCompareQueue.length = 0;
+    this.immediateDrainCallbacks.length = 0;
+    this.activeComparePrompt = null;
+    this.compareDrainMode = state?.drainMode ?? "all";
+    this.host.comparePromptOpen = false;
+    if (state === null || state === undefined) {
+      return;
+    }
+    if (state.active !== undefined) {
+      const item = this.resolveQueuedItem(state.active.itemId);
+      if (item !== null) {
+        this.compareQueue.push({
+          item,
+          source: state.active.source
+        });
+      }
+    }
+    for (const entry of state.immediate) {
+      const item = this.resolveQueuedItem(entry.itemId);
+      if (item !== null) {
+        this.compareQueue.push({
+          item,
+          source: entry.source
+        });
+      }
+    }
+    for (const entry of state.deferred) {
+      const item = this.resolveQueuedItem(entry.itemId);
+      if (item !== null) {
+        this.deferredCompareQueue.push({
+          item,
+          source: entry.source
+        });
+      }
+    }
+    if (!this.host.eventPanelOpen && !this.host.comparePromptOpen) {
+      this.drainCompareQueue();
+    }
+  }
+
+  private toComparePromptEntryState(entry: QueuedComparePrompt): NonNullable<ComparePromptRuntimeState["active"]> {
+    return {
+      itemId: entry.item.id,
+      source: entry.source
+    };
+  }
+
+  private resolveQueuedItem(itemId: string): ItemInstance | null {
+    const inventoryItem = this.host.player.inventory.find((item) => item.id === itemId);
+    if (inventoryItem !== undefined) {
+      return inventoryItem;
+    }
+    for (const equipped of Object.values(this.host.player.equipment)) {
+      if (equipped?.id === itemId) {
+        return equipped;
+      }
+    }
+    return null;
   }
 }

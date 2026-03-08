@@ -256,6 +256,18 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
         </section>
       `;
 
+  const saveResetNoticeHtml =
+    view.saveResetNoticeText === null
+      ? ""
+      : `
+        <section class="meta-menu-section">
+          <div class="meta-resume-card blocked">
+            <div class="meta-resume-status">${escapeHtml(t("ui.meta.save.reset_notice_title"))}</div>
+            <div class="meta-resume-detail">${escapeHtml(view.saveResetNoticeText)}</div>
+          </div>
+        </section>
+      `;
+
   const difficultyHtml = view.difficulties
     .map((entry) => {
       const status = entry.selected
@@ -313,6 +325,7 @@ export function renderMetaMenuPanel(view: MetaMenuPanelView): string {
         <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-mutations">${t("ui.meta.nav.mutations")}</button>
         <button class="meta-nav-chip" data-action="jump-section" data-target="meta-section-unlocks">${t("ui.meta.nav.legacy")}</button>
       </nav>
+      ${saveResetNoticeHtml}
       ${resumeHtml}
       <section class="meta-menu-section" id="meta-section-difficulty">
         <h2>${t("ui.meta.section.difficulty")}</h2>

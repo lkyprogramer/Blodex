@@ -1,4 +1,4 @@
-import type { RunSaveDataV2 } from "@blodex/core";
+import type { RunSaveDataV3 } from "@blodex/core";
 import { describe, expect, it, vi } from "vitest";
 import type { SaveManager } from "../../../../systems/SaveManager";
 import { SaveCoordinator } from "../SaveCoordinator";
@@ -27,7 +27,7 @@ describe("SaveCoordinator", () => {
   it("wires page lifecycle callback to flush", () => {
     const manager = createMockSaveManager();
 
-    const snapshot = {} as RunSaveDataV2;
+    const snapshot = { schemaVersion: 3 } as RunSaveDataV3;
     const buildSnapshot = vi.fn(() => snapshot);
     const coordinator = new SaveCoordinator({
       saveManager: manager as unknown as SaveManager,
@@ -41,7 +41,7 @@ describe("SaveCoordinator", () => {
 
     expect(manager.bindPageLifecycle).toHaveBeenCalledOnce();
     expect(manager.flushSave).toHaveBeenCalledOnce();
-    const flushBuilder = manager.flushSave.mock.calls[0]?.[0] as (() => RunSaveDataV2 | null) | undefined;
+    const flushBuilder = manager.flushSave.mock.calls[0]?.[0] as (() => RunSaveDataV3 | null) | undefined;
     expect(flushBuilder?.()).toBe(snapshot);
     expect(buildSnapshot).toHaveBeenCalledOnce();
   });
@@ -63,7 +63,7 @@ describe("SaveCoordinator", () => {
 
   it("delegates heartbeat lifecycle and dispose", () => {
     const manager = createMockSaveManager();
-    const snapshot = { schemaVersion: 2 } as RunSaveDataV2;
+    const snapshot = { schemaVersion: 3 } as RunSaveDataV3;
     const buildSnapshot = vi.fn(() => snapshot);
     const coordinator = new SaveCoordinator({
       saveManager: manager as unknown as SaveManager,
@@ -76,7 +76,7 @@ describe("SaveCoordinator", () => {
     coordinator.dispose();
 
     expect(manager.startLeaseHeartbeat).toHaveBeenCalledOnce();
-    const heartbeatBuilder = manager.startLeaseHeartbeat.mock.calls[0]?.[0] as (() => RunSaveDataV2 | null) | undefined;
+    const heartbeatBuilder = manager.startLeaseHeartbeat.mock.calls[0]?.[0] as (() => RunSaveDataV3 | null) | undefined;
     expect(heartbeatBuilder?.()).toBe(snapshot);
     expect(buildSnapshot).toHaveBeenCalledOnce();
     expect(manager.stopLeaseHeartbeat).toHaveBeenCalledOnce();

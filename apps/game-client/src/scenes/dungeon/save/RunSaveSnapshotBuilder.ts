@@ -1,7 +1,9 @@
 import { SAVE_LEASE_TTL_MS } from "../../../systems/SaveManager";
 import type {
+  BuffInstance,
+  PersistedBuffState,
   RunRngStreamName,
-  RunSaveDataV2,
+  RunSaveDataV3,
   RuntimeEventNodeState,
   StaircaseState
 } from "@blodex/core";
@@ -15,14 +17,13 @@ export interface RunSaveSnapshotBuilderOptions {
 export class RunSaveSnapshotBuilder {
   constructor(private readonly options: RunSaveSnapshotBuilderOptions) {}
 
-  build(nowMs: number): RunSaveDataV2 | null {
+  build(nowMs: number): RunSaveDataV3 | null {
     const host = this.options.host;
     const run = host.run;
     const player = host.player;
     if (host.runEnded || run === undefined || player === undefined) {
       return null;
     }
-    const elapsedMs = Math.max(0, nowMs - run.startedAtMs);
     const minimapSnapshot = host.uiManager.getMinimapSnapshot() ?? {
       layoutHash: host.dungeon.layoutHash,
       exploredKeys: []
@@ -54,123 +55,163 @@ export class RunSaveSnapshotBuilder {
       typeof host.captureFloorChoiceBudgetSnapshot === "function" ? host.captureFloorChoiceBudgetSnapshot() : undefined;
     const progressionPromptState =
       typeof host.captureProgressionPromptState === "function" ? host.captureProgressionPromptState(nowMs) : undefined;
+    const comparePromptState =
+      typeof host.captureComparePromptState === "function" ? host.captureComparePromptState() : undefined;
     const powerSpikeBudgetState =
       typeof host.capturePowerSpikeBudgetState === "function" ? host.capturePowerSpikeBudgetState() : undefined;
     const phase6TelemetryState =
       typeof host.capturePhase6TelemetryState === "function"
-        ? host.capturePhase6TelemetryState(elapsedMs)
+        ? host.capturePhase6TelemetryState(Math.max(0, nowMs - run.startedAtMs))
         : undefined;
 
     return {
-      schemaVersion: 2,
-      runtimeNowMs: nowMs,
+      schemaVersion: 3,
       savedAtMs: wallNowMs,
       appVersion: this.options.appVersion,
       runId: `${host.runSeed}:${run.startedAtMs}`,
       runSeed: host.runSeed,
-      run: {
-        ...run
+      domain: {
+        run: {
+          ...run
+        },
+        player: this.snapshotPlayer(player, nowMs),
+        consumables: {
+          charges: { ...host.consumables.charges },
+          cooldowns: { ...host.consumables.cooldowns }
+        },
+        blueprintFoundIdsInRun: [...host.blueprintFoundIdsInRun],
+        selectedMutationIds: [...host.mutationRuntime.activeIds]
       },
-      player: {
-        ...player,
-        position: { ...player.position }
-      },
-      consumables: {
-        charges: { ...host.consumables.charges },
-        cooldowns: { ...host.consumables.cooldowns }
-      },
-      dungeon: {
-        ...host.dungeon,
-        walkable: host.dungeon.walkable.map((row: boolean[]) => [...row]),
-        rooms: host.dungeon.rooms.map((room) => ({ ...room })),
-        corridors: host.dungeon.corridors.map((corridor) => ({
-          ...corridor,
-          path: corridor.path.map((point) => ({ ...point }))
-        })),
-        spawnPoints: host.dungeon.spawnPoints.map((point) => ({ ...point })),
-        playerSpawn: { ...host.dungeon.playerSpawn },
-        hiddenRooms: (host.dungeon.hiddenRooms ?? []).map((room) => ({
+      runtime: {
+        dungeon: {
+          ...host.dungeon,
+          walkable: host.dungeon.walkable.map((row: boolean[]) => [...row]),
+          rooms: host.dungeon.rooms.map((room) => ({ ...room })),
+          corridors: host.dungeon.corridors.map((corridor) => ({
+            ...corridor,
+            path: corridor.path.map((point) => ({ ...point }))
+          })),
+          spawnPoints: host.dungeon.spawnPoints.map((point) => ({ ...point })),
+          playerSpawn: { ...host.dungeon.playerSpawn },
+          hiddenRooms: (host.dungeon.hiddenRooms ?? []).map((room) => ({
             roomId: room.roomId,
             entrance: { ...room.entrance },
             revealed: room.revealed,
             rewardsClaimed: room.rewardsClaimed
           }))
-      },
-      staircase: staircaseSnapshot,
-      hazards: host.hazards.map((hazard) => ({
-        ...hazard,
-        position: { ...hazard.position }
-      })),
-      boss:
-        host.bossState === null
-          ? null
-          : {
-              ...host.bossState,
-              position: { ...host.bossState.position },
-              attackCooldowns: { ...host.bossState.attackCooldowns }
-            },
-      monsters: host.entityManager.listMonsters().map((monster: RunSaveDataV2["monsters"][number]) => ({
-        state: {
-          ...monster.state,
-          position: { ...monster.state.position },
-          ...(monster.state.affixes === undefined ? {} : { affixes: [...monster.state.affixes] })
         },
-        ...(monster.baseMoveSpeed === undefined ? {} : { baseMoveSpeed: monster.baseMoveSpeed }),
-        nextAttackAt: monster.nextAttackAt,
-        nextSupportAt: monster.nextSupportAt
-      })),
-      lootOnGround: host.entityManager.listLoot().map((drop: RunSaveDataV2["lootOnGround"][number]) => ({
-        item: {
-          ...drop.item,
-          rolledAffixes: { ...drop.item.rolledAffixes },
-          ...(drop.item.rolledSpecialAffixes === undefined
-            ? {}
-            : { rolledSpecialAffixes: { ...drop.item.rolledSpecialAffixes } })
+        staircase: staircaseSnapshot,
+        hazards: host.hazards.map((hazard) => ({
+          ...hazard,
+          position: { ...hazard.position }
+        })),
+        boss:
+          host.bossState === null
+            ? null
+            : {
+                ...host.bossState,
+                position: { ...host.bossState.position },
+                attackCooldowns: { ...host.bossState.attackCooldowns }
+              },
+        monsters: host.entityManager.listMonsters().map((monster) => this.snapshotMonster(monster, nowMs)),
+        lootOnGround: host.entityManager.listLoot().map((drop) => ({
+          item: {
+            ...drop.item,
+            rolledAffixes: { ...drop.item.rolledAffixes },
+            ...(drop.item.rolledSpecialAffixes === undefined
+              ? {}
+              : { rolledSpecialAffixes: { ...drop.item.rolledSpecialAffixes } })
+          },
+          position: { ...drop.position }
+        })),
+        eventNode: this.currentEventNodeSnapshot(),
+        minimap: {
+          layoutHash: minimapSnapshot.layoutHash,
+          exploredKeys: [...minimapSnapshot.exploredKeys]
         },
-        position: { ...drop.position }
-      })),
-      eventNode: this.currentEventNodeSnapshot(),
-      minimap: {
-        layoutHash: minimapSnapshot.layoutHash,
-        exploredKeys: [...minimapSnapshot.exploredKeys]
-      },
-      mapRevealActive: host.mapRevealActive,
-      ...(floorChoiceBudget === undefined ? {} : { floorChoiceBudget }),
-      ...(progressionPromptState === undefined ? {} : { progressionPromptState }),
-      ...(powerSpikeBudgetState === undefined ? {} : { powerSpikeBudgetState }),
-      ...(phase6TelemetryState === undefined ? {} : { phase6TelemetryState }),
-      rngCursor: this.collectRngCursor(),
-      blueprintFoundIdsInRun: [...host.blueprintFoundIdsInRun],
-      selectedMutationIds: [...host.mutationRuntime.activeIds],
-      deferredOutcomes: host.deferredOutcomes.map((outcome: NonNullable<RunSaveDataV2["deferredOutcomes"]>[number]) => ({
-        outcomeId: outcome.outcomeId,
-        source: outcome.source,
-        trigger:
-          outcome.trigger?.type === "floor_reached"
-            ? {
-                type: "floor_reached",
-                value: Math.max(1, Math.floor(outcome.trigger.value ?? run.currentFloor))
-              }
-            : outcome.trigger?.type === "boss_kill"
+        mapRevealActive: host.mapRevealActive,
+        deferredOutcomes: host.deferredOutcomes.map((outcome) => ({
+          outcomeId: outcome.outcomeId,
+          source: outcome.source,
+          trigger:
+            outcome.trigger?.type === "floor_reached"
               ? {
-                  type: "boss_kill"
+                  type: "floor_reached",
+                  value: Math.max(1, Math.floor(outcome.trigger.value ?? run.currentFloor))
                 }
-              : {
-                  type: "run_end"
-                },
-        reward: {
-          ...(outcome.reward?.obol === undefined ? {} : { obol: outcome.reward.obol }),
-          ...(outcome.reward?.shard === undefined ? {} : { shard: outcome.reward.shard }),
-          ...(outcome.reward?.itemDefId === undefined ? {} : { itemDefId: outcome.reward.itemDefId })
-        },
-        status: outcome.status
-      })),
-      lease: {
-        tabId: host.saveManager.getTabId(),
-        renewedAtMs: wallNowMs,
-        leaseUntilMs: wallNowMs + SAVE_LEASE_TTL_MS
+              : outcome.trigger?.type === "boss_kill"
+                ? {
+                    type: "boss_kill"
+                  }
+                : {
+                    type: "run_end"
+                  },
+          reward: {
+            ...(outcome.reward?.obol === undefined ? {} : { obol: outcome.reward.obol }),
+            ...(outcome.reward?.shard === undefined ? {} : { shard: outcome.reward.shard }),
+            ...(outcome.reward?.itemDefId === undefined ? {} : { itemDefId: outcome.reward.itemDefId })
+          },
+          status: outcome.status
+        })),
+        ...(floorChoiceBudget === undefined ? {} : { floorChoiceBudget }),
+        ...(powerSpikeBudgetState === undefined ? {} : { powerSpikeBudgetState }),
+        ...(phase6TelemetryState === undefined ? {} : { phase6TelemetryState }),
+        rngCursor: this.collectRngCursor()
+      },
+      session: {
+        ...(progressionPromptState === undefined ? {} : { progressionPromptState }),
+        ...(comparePromptState === undefined ? {} : { comparePromptState }),
+        lease: {
+          tabId: host.saveManager.getTabId(),
+          renewedAtMs: wallNowMs,
+          leaseUntilMs: wallNowMs + SAVE_LEASE_TTL_MS
+        }
       }
     };
+  }
+
+  private snapshotPlayer(player: RunSaveSnapshotHost["player"] & NonNullable<unknown>, nowMs: number) {
+    const { activeBuffs, ...stablePlayer } = player;
+    return {
+      ...stablePlayer,
+      position: { ...player.position },
+      ...(activeBuffs === undefined ? {} : { activeBuffs: this.snapshotBuffs(activeBuffs, nowMs) })
+    };
+  }
+
+  private snapshotMonster(
+    monster: ReturnType<RunSaveSnapshotHost["entityManager"]["listMonsters"]>[number],
+    nowMs: number
+  ) {
+    const { activeBuffs, ...stableState } = monster.state;
+    return {
+      state: {
+        ...stableState,
+        position: { ...monster.state.position },
+        ...(monster.state.affixes === undefined ? {} : { affixes: [...monster.state.affixes] }),
+        ...(activeBuffs === undefined ? {} : { activeBuffs: this.snapshotBuffs(activeBuffs, nowMs) })
+      },
+      ...(monster.baseMoveSpeed === undefined ? {} : { baseMoveSpeed: monster.baseMoveSpeed }),
+      nextAttackAt: monster.nextAttackAt,
+      nextSupportAt: monster.nextSupportAt
+    };
+  }
+
+  private snapshotBuffs(buffs: BuffInstance[], nowMs: number): PersistedBuffState[] {
+    return buffs.flatMap((buff) => {
+      const remainingMs = Math.max(0, Math.floor(buff.expiresAtMs - nowMs));
+      if (remainingMs <= 0) {
+        return [];
+      }
+      return [
+        {
+          defId: buff.defId,
+          sourceId: buff.sourceId,
+          targetId: buff.targetId,
+          remainingMs
+        }
+      ];
+    });
   }
 
   private collectRngCursor(): Record<RunRngStreamName, number> {

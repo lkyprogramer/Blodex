@@ -105,6 +105,7 @@ import {
   type CombatEvent,
   type BossDef,
   type BossRuntimeState,
+  type ComparePromptRuntimeState,
   type ChallengeRoomState,
   type ConsumableId,
   type ConsumableState,
@@ -129,7 +130,7 @@ import {
   type RandomEventDef,
   type RunMode,
   type RunRngStreamName,
-  type RunSaveDataV2,
+  type RunSaveDataV3,
   type RollItemDropOptions,
   type RuntimeEventNodeState,
   type RunState,
@@ -332,7 +333,7 @@ const DAILY_MUTATION_COUNT = 2;
 
 interface DungeonSceneInitData {
   difficulty?: DifficultyMode;
-  resumeSave?: RunSaveDataV2;
+  resumeSave?: RunSaveDataV3;
   resumedFromSave?: boolean;
   runMode?: RunMode;
   dailyDate?: string;
@@ -538,6 +539,7 @@ export class DungeonScene extends Phaser.Scene {
       routeFeedback: (input) => scene.frameRuntime.routeFeedback(input),
       captureFloorChoiceBudgetSnapshot: () => scene.captureFloorChoiceBudgetSnapshot(),
       captureProgressionPromptState: (nowMs) => scene.captureProgressionPromptState(nowMs),
+      captureComparePromptState: () => scene.captureComparePromptState(),
       capturePowerSpikeBudgetState: () => scene.capturePowerSpikeBudgetState(),
       capturePhase6TelemetryState: (elapsedMs) => scene.capturePhase6TelemetryState(elapsedMs),
       syncEndlessMutators: (nowMs) => scene.syncEndlessMutators(nowMs),
@@ -563,6 +565,7 @@ export class DungeonScene extends Phaser.Scene {
       ) => scene.refreshSynergyRuntime(persistDiscovery, options),
       restoreFloorChoiceBudgetSnapshot: (snapshot, nowMs) => scene.restoreFloorChoiceBudgetSnapshot(snapshot, nowMs),
       restoreProgressionPromptState: (snapshot, nowMs) => scene.restoreProgressionPromptState(snapshot, nowMs),
+      restoreComparePromptState: (snapshot) => scene.restoreComparePromptState(snapshot),
       restorePowerSpikeBudgetState: (snapshot) => scene.restorePowerSpikeBudgetState(snapshot),
       resetFloorChoiceBudget: (floor, nowMs) => scene.resetFloorChoiceBudget(floor, nowMs),
       applyOnKillMutationEffects: (nowMs) => scene.applyOnKillMutationEffects(nowMs),
@@ -665,7 +668,7 @@ export class DungeonScene extends Phaser.Scene {
   private runSeed = "";
   private selectedDifficulty: DifficultyMode = "normal";
   private pendingDifficulty: DifficultyMode | null = null;
-  private pendingResumeSave: RunSaveDataV2 | null = null;
+  private pendingResumeSave: RunSaveDataV3 | null = null;
   private pendingRunMode: RunMode = "normal";
   private pendingDailyDate: string | undefined;
   private pendingDailyPractice = false;
@@ -1021,15 +1024,12 @@ export class DungeonScene extends Phaser.Scene {
   private resolveLocalePreference(): void {
     this.sessionFacade.resolveLocalePreference();
   }
-
   private resetMutationRuntimeState(selectedMutationIds: string[]): void {
     this.sessionFacade.resetMutationRuntimeState(selectedMutationIds);
   }
-
   private applySynergyDerivedStatPercents(player: PlayerState): PlayerState {
     return this.sessionFacade.applySynergyDerivedStatPercents(player);
   }
-
   private refreshSynergyRuntime(
     persistDiscovery = true,
     options: {
@@ -1043,11 +1043,9 @@ export class DungeonScene extends Phaser.Scene {
   private collectKnownBlueprintIds(): string[] {
     return this.sessionFacade.collectKnownBlueprintIds();
   }
-
   private addRunBlueprintDiscoveries(blueprintIds: string[], nowMs: number, sourceLabel: string): void {
     this.sessionFacade.addRunBlueprintDiscoveries(blueprintIds, nowMs, sourceLabel);
   }
-
   private tryDiscoverBlueprints(
     sourceType:
       | "monster_affix"
@@ -1066,37 +1064,29 @@ export class DungeonScene extends Phaser.Scene {
   private isItemDefUnlocked(itemDef: ItemDef): boolean {
     return this.sessionFacade.isItemDefUnlocked(itemDef);
   }
-
   private collectMutationEffects<T extends MutationEffect["type"]>(
     type: T
   ): Array<Extract<MutationEffect, { type: T }>> {
     return this.sessionFacade.collectMutationEffects(type);
   }
-
   private resolveMutationMoveSpeedMultiplier(): number {
     return this.sessionFacade.resolveMutationMoveSpeedMultiplier();
   }
-
   private resolveMutationAttackSpeedMultiplier(nowMs: number): number {
     return this.sessionFacade.resolveMutationAttackSpeedMultiplier(nowMs);
   }
-
   private resolveMutationDropBonus(): { obolMultiplier: number; soulShardMultiplier: number } {
     return this.sessionFacade.resolveMutationDropBonus();
   }
-
   private syncEndlessMutators(nowMs: number): void {
     this.sessionFacade.syncEndlessMutators(nowMs);
   }
-
   private resolveHiddenRoomRevealRadius(): number {
     return this.sessionFacade.resolveHiddenRoomRevealRadius();
   }
-
   private applyOnKillMutationEffects(nowMs: number): void {
     this.sessionFacade.applyOnKillMutationEffects(nowMs);
   }
-
   private configureRngStreams(
     floor: number,
     cursor?: Partial<Record<RunRngStreamName, number>>
@@ -1156,6 +1146,10 @@ export class DungeonScene extends Phaser.Scene {
     return this.progressionChoiceRuntime.capturePromptState(nowMs);
   }
 
+  captureComparePromptState(): ComparePromptRuntimeState | undefined {
+    return this.heartbeatFeedbackRuntime.captureComparePromptState();
+  }
+
   capturePowerSpikeBudgetState(): PowerSpikeBudgetRuntimeState {
     return this.powerSpikeRuntimeModule.captureBudgetState();
   }
@@ -1169,6 +1163,10 @@ export class DungeonScene extends Phaser.Scene {
     nowMs: number
   ): void {
     this.progressionChoiceRuntime.restorePromptState(snapshot, nowMs);
+  }
+
+  restoreComparePromptState(snapshot: ComparePromptRuntimeState | null | undefined): void {
+    this.heartbeatFeedbackRuntime.restoreComparePromptState(snapshot);
   }
 
   restorePowerSpikeBudgetState(snapshot: PowerSpikeBudgetRuntimeState | null | undefined): void {

@@ -110,6 +110,7 @@ export interface MetaMenuPanelView {
   echoes: number;
   unlockedCount: number;
   totalUnlocks: number;
+  saveResetNoticeText: string | null;
   difficulties: MetaMenuDifficultyView[];
   runSave: MetaMenuRunSaveView | null;
   daily: MetaMenuDailyView;

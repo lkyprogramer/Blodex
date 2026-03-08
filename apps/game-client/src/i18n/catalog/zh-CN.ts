@@ -404,6 +404,8 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "ui.meta.save.active_in_another_tab": "该存档正在其他标签页运行。",
   "ui.meta.save.ready_to_continue": "检测到可继续的存档。",
   "ui.meta.save.detail": "第 {floor} 层 • {difficulty} • {when}",
+  "ui.meta.save.reset_notice_title": "存档格式已重置",
+  "ui.meta.save.reset_notice_body": "检测到旧版存档格式，旧进度不可继续，已按新格式重置。",
 
   "ui.meta.effect.permanent": "永久效果：{key} +{value}",
   "ui.meta.effect.skill_unlock": "解锁技能：{skillId}",

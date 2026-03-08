@@ -16,7 +16,7 @@ import {
   validateMutationSelection,
   type DifficultyMode,
   type MetaProgression,
-  type RunSaveDataV2,
+  type RunSaveDataV3,
   type TalentNodeDef
 } from "@blodex/core";
 import {
@@ -36,15 +36,15 @@ const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
 export interface MetaFlowControllerHost {
   getMeta(): MetaProgression;
   setMeta(meta: MetaProgression): void;
-  getRunSave(): RunSaveDataV2 | null;
+  getRunSave(): RunSaveDataV3 | null;
   getLanguageGateActive(): boolean;
   saveMeta(meta: MetaProgression): boolean;
   hideDomMenu(): void;
   restartScene(): void;
   startDungeonScene(data: Record<string, unknown>): void;
-  readSave(): RunSaveDataV2 | null;
-  acquireLease(save: RunSaveDataV2): { ok: boolean; save: RunSaveDataV2 | null };
-  hasForeignLease(save: RunSaveDataV2): boolean;
+  readSave(): RunSaveDataV3 | null;
+  acquireLease(save: RunSaveDataV3): { ok: boolean; save: RunSaveDataV3 | null };
+  hasForeignLease(save: RunSaveDataV3): boolean;
   isRunSettled(runId: string): boolean;
   markRunSettled(runId: string): void;
   deleteSave(): void;
@@ -54,15 +54,15 @@ export interface MetaFlowControllerHost {
 export class MetaFlowController {
   constructor(private readonly host: MetaFlowControllerHost) {}
 
-  private estimateAbandonNowMs(save: RunSaveDataV2): number {
-    const inputs = save.run.replay?.inputs ?? [];
+  private estimateAbandonNowMs(save: RunSaveDataV3): number {
+    const inputs = save.domain.run.replay?.inputs ?? [];
     let elapsedMs = 0;
     for (const input of inputs) {
       if (Number.isFinite(input.atMs) && input.atMs > elapsedMs) {
         elapsedMs = input.atMs;
       }
     }
-    return save.run.startedAtMs + elapsedMs;
+    return save.domain.run.startedAtMs + elapsedMs;
   }
 
   switchLocale(locale: LocaleCode): void {
@@ -267,15 +267,15 @@ export class MetaFlowController {
     playSceneTransition({
       title: t("ui.transition.resume.title"),
       subtitle: t("ui.transition.resume.subtitle", {
-        floor: lease.save.run.currentFloor,
-        difficulty: difficultyLabel(lease.save.run.difficulty)
+        floor: lease.save.domain.run.currentFloor,
+        difficulty: difficultyLabel(lease.save.domain.run.difficulty)
       }),
       mode: "scene",
       durationMs: 620
     });
     this.host.hideDomMenu();
     this.host.startDungeonScene({
-      difficulty: lease.save.run.difficulty,
+      difficulty: lease.save.domain.run.difficulty,
       resumeSave: lease.save,
       resumedFromSave: true
     });
@@ -300,13 +300,17 @@ export class MetaFlowController {
       return;
     }
     const failedRun = {
-      ...save.run,
+      ...save.domain.run,
       isVictory: false
+    };
+    const playerForSummary = {
+      ...save.domain.player,
+      activeBuffs: []
     };
     const meta = this.host.getMeta();
     const { summary: baseSummary, meta: nextMeta } = endRun(
       failedRun,
-      save.player,
+      playerForSummary,
       this.estimateAbandonNowMs(save),
       meta
     );
@@ -317,7 +321,7 @@ export class MetaFlowController {
       soulShardsEarned: soulShards,
       obolsEarned: failedRun.runEconomy.obols
     };
-    const mergedMeta = mergeFoundBlueprints(nextMeta, save.blueprintFoundIdsInRun ?? []);
+    const mergedMeta = mergeFoundBlueprints(nextMeta, save.domain.blueprintFoundIdsInRun ?? []);
     const normalized = normalizeMutationMetaState(
       applyRunSummaryToMeta(mergedMeta, summary),
       MUTATION_DEFS

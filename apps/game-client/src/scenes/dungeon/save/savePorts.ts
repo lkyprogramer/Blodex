@@ -1,6 +1,7 @@
 import type Phaser from "phaser";
 import type {
   BossRuntimeState,
+  ComparePromptRuntimeState,
   ConsumableState,
   DeferredOutcomeState,
   DifficultyMode,
@@ -14,7 +15,7 @@ import type {
   Phase6TelemetryRuntimeState,
   PlayerState,
   RunRngStreamName,
-  RunSaveDataV2,
+  RunSaveDataV3,
   RunState,
   StaircaseState,
   WeaponType
@@ -69,6 +70,7 @@ export interface RunSaveSnapshotServicePort {
 export interface RunSaveSnapshotHookPort {
   captureFloorChoiceBudgetSnapshot?(): FloorChoiceBudgetState | undefined;
   captureProgressionPromptState?(nowMs: number): ProgressionPromptState | undefined;
+  captureComparePromptState?(): ComparePromptRuntimeState | undefined;
   capturePowerSpikeBudgetState?(): PowerSpikeBudgetRuntimeState | undefined;
   capturePhase6TelemetryState?(elapsedMs?: number): Phase6TelemetryRuntimeState | undefined;
 }
@@ -92,7 +94,7 @@ export interface RunSaveSnapshotHost
     RunSaveSnapshotRngCollectionPort {}
 
 export interface RunStateRestoreMutableStatePort {
-  pendingResumeSave: RunSaveDataV2 | null;
+  pendingResumeSave: RunSaveDataV3 | null;
   runSeed: string;
   run: RunState;
   dailyPracticeMode: boolean;
@@ -207,6 +209,7 @@ export interface RunStateRestoreBehaviorPort {
   ): void;
   restoreFloorChoiceBudgetSnapshot?(snapshot: FloorChoiceBudgetState | null | undefined, nowMs: number): void;
   restoreProgressionPromptState?(snapshot: ProgressionPromptState | null | undefined, nowMs: number): void;
+  restoreComparePromptState?(snapshot: ComparePromptRuntimeState | null | undefined): void;
   restorePowerSpikeBudgetState?(snapshot: PowerSpikeBudgetRuntimeState | null | undefined): void;
   resetFloorChoiceBudget(floor: number, nowMs: number): void;
 }

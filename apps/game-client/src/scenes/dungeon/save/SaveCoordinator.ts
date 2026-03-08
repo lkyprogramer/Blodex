@@ -1,10 +1,10 @@
-import type { RunSaveDataV2 } from "@blodex/core";
+import type { RunSaveDataV3 } from "@blodex/core";
 import { SaveManager } from "../../../systems/SaveManager";
 
 export interface SaveCoordinatorOptions {
   saveManager: SaveManager;
   isRunEnded: () => boolean;
-  buildSnapshot: () => RunSaveDataV2 | null;
+  buildSnapshot: () => RunSaveDataV3 | null;
 }
 
 export class SaveCoordinator {

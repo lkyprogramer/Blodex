@@ -1,4 +1,4 @@
-import type { RunSaveDataV2 } from "@blodex/core";
+import type { RunSaveDataV3 } from "@blodex/core";
 import { SaveCoordinator } from "./SaveCoordinator";
 import { RunSaveSnapshotBuilder } from "./RunSaveSnapshotBuilder";
 import { RunStateRestorer } from "./RunStateRestorer";
@@ -23,11 +23,11 @@ export class RunPersistenceModule {
     this.options.saveCoordinator.schedule();
   }
 
-  buildSnapshot(nowMs: number): RunSaveDataV2 | null {
+  buildSnapshot(nowMs: number): RunSaveDataV3 | null {
     return this.options.snapshotBuilder.build(nowMs);
   }
 
-  restore(save: RunSaveDataV2): boolean {
+  restore(save: RunSaveDataV3): boolean {
     return this.options.stateRestorer.restore(save);
   }
 }

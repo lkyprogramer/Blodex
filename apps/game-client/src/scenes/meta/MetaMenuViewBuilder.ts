@@ -10,7 +10,7 @@ import {
   type MetaProgression,
   type MutationDef,
   type MutationEffect,
-  type RunSaveDataV2,
+  type RunSaveDataV3,
   type TalentNodeDef
 } from "@blodex/core";
 import {
@@ -44,7 +44,8 @@ const MUTATION_EFFECT_LABEL_KEY: Record<MutationEffect["type"], string> = {
 
 export interface MetaMenuViewBuilderArgs {
   meta: MetaProgression;
-  runSave: RunSaveDataV2 | null;
+  runSave: RunSaveDataV3 | null;
+  showSaveResetNotice: boolean;
   saveManager: Pick<SaveManager, "hasForeignLease">;
   currentLocale: LocaleCode;
   contentLocalizer: {
@@ -174,7 +175,7 @@ function describeDailyChallenge(meta: MetaProgression): MetaMenuPanelView["daily
 }
 
 function describeRunSave(
-  runSave: RunSaveDataV2 | null,
+  runSave: RunSaveDataV3 | null,
   saveManager: Pick<SaveManager, "hasForeignLease">
 ): MetaMenuPanelView["runSave"] {
   if (runSave === null) {
@@ -188,8 +189,8 @@ function describeRunSave(
     canAbandon: !leaseBlocked,
     statusText: leaseBlocked ? t("ui.meta.save.active_in_another_tab") : t("ui.meta.save.ready_to_continue"),
     detailText: t("ui.meta.save.detail", {
-      floor: runSave.run.currentFloor,
-      difficulty: difficultyLabel(runSave.run.difficulty ?? "normal"),
+      floor: runSave.domain.run.currentFloor,
+      difficulty: difficultyLabel(runSave.domain.run.difficulty ?? "normal"),
       when
     })
   };
@@ -287,7 +288,7 @@ function describeEffect(unlock: (typeof UNLOCK_DEFS)[number]): string {
 }
 
 export function buildMetaMenuView(args: MetaMenuViewBuilderArgs): MetaMenuPanelView {
-  const { meta, runSave, saveManager, currentLocale, contentLocalizer } = args;
+  const { meta, runSave, showSaveResetNotice, saveManager, currentLocale, contentLocalizer } = args;
   const unlockGroups = new Map<number, MetaMenuPanelView["unlockGroups"][number]>();
 
   UNLOCK_DEFS.forEach((unlock, index) => {
@@ -478,6 +479,7 @@ export function buildMetaMenuView(args: MetaMenuViewBuilderArgs): MetaMenuPanelV
     echoes: meta.echoes,
     unlockedCount: meta.unlocks.length,
     totalUnlocks: UNLOCK_DEFS.length,
+    saveResetNoticeText: showSaveResetNotice ? t("ui.meta.save.reset_notice_body") : null,
     difficulties,
     runSave: describeRunSave(runSave, saveManager),
     daily: describeDailyChallenge(meta),
