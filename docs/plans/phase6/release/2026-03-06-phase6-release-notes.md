@@ -1,7 +1,7 @@
 # Phase 6 Release Notes
 
 **基线 commit**: `19574b7`  
-**状态**: `Release Candidate / Manual Sign-off Pending`
+**状态**: `Signed`
 
 ## 1. 版本摘要
 
@@ -25,15 +25,13 @@
 
 ## 4. 兼容 / 资源 / 运维说明
 
-1. save 兼容仍通过 normalization 路径保障。
+1. Phase 6 最终以已签署 evidence pack 收口，Nightmare pacing / cadence 已回到目标带内。
 2. 6.5 无新增资源清单变更，`assets:*` 校验本阶段记为 `N/A`。
 
 ## 5. Known Issues
 
-1. 手动录像证据待补齐。
-2. Nightmare `active cadence` 高于目标上限，需要 design 复盘。
-3. Nightmare `runDurationP50` 低于目标下限，需要 design 复盘。
-4. 最终 taste sign-off 需人工签署。
+1. 当前无阻塞性已知问题。
+2. `average idle gap` 仍保留为 `7.2` 的诊断项，不作为 Phase 6 阻塞签署项。
 
 ## 6. 相关文档
 

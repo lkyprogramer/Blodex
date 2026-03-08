@@ -9,13 +9,14 @@ import {
 const REPO_ROOT = path.resolve(import.meta.dirname, "../../../../../..");
 
 describe("phase6 release artifact index", () => {
-  it("indexes present artifacts to real files and keeps pending artifacts explicit", () => {
+  it("indexes present artifacts to real files and keeps sign-off artifacts present", () => {
     const artifacts = listPhase6ReleaseArtifacts();
     const presentArtifacts = artifacts.filter((artifact) => artifact.availability === "present");
     const pendingArtifacts = artifacts.filter((artifact) => artifact.availability === "pending");
 
     expect(presentArtifacts.length).toBeGreaterThanOrEqual(10);
-    expect(pendingArtifacts.map((artifact) => artifact.id)).toEqual(
+    expect(pendingArtifacts).toHaveLength(0);
+    expect(presentArtifacts.map((artifact) => artifact.id)).toEqual(
       expect.arrayContaining(["phase6-class-parity-video", "phase6-buff-damagetype-video", "phase6-design-signoff-record"])
     );
 

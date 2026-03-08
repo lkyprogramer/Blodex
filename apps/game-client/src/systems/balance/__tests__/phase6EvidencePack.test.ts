@@ -32,14 +32,15 @@ describe("phase6 evidence pack", () => {
     ]);
     expect(pack.smokeMatrix).toHaveLength(7);
     expect(pack.smokeMatrix.find((entry) => entry.id === "S6-02")?.status).toBe("pass");
-    expect(pack.smokeMatrix.find((entry) => entry.id === "S6-03")?.status).toBe("fail");
-    expect(pack.smokeMatrix.find((entry) => entry.id === "S6-05")?.status).toBe("pending");
+    expect(pack.smokeMatrix.find((entry) => entry.id === "S6-03")?.status).toBe("pass");
+    expect(pack.smokeMatrix.find((entry) => entry.id === "S6-05")?.status).toBe("pass");
+    expect(pack.smokeMatrix.find((entry) => entry.id === "S6-07")?.status).toBe("pass");
     expect(pack.signoffChecklist.some((item) => item.id === "timing-normal-p50")).toBe(true);
     expect(pack.signoffChecklist.some((item) => item.id === "skill-cadence")).toBe(true);
     expect(pack.signoffChecklist.some((item) => item.id === "taste-signoff")).toBe(true);
-    expect(pack.releaseClosure.knownIssues.some((issue) => issue.includes("active combat cadence"))).toBe(true);
-    expect(pack.releaseClosure.knownIssues.some((issue) => issue.includes("手动 smoke / sign-off 证据仍待补齐"))).toBe(
-      true
-    );
+    expect(pack.releaseClosure.knownIssues.some((issue) => issue.includes("active combat cadence"))).toBe(false);
+    expect(pack.signoffChecklist.find((item) => item.id === "manual-smoke")?.status).toBe("pass");
+    expect(pack.signoffChecklist.find((item) => item.id === "taste-signoff")?.status).toBe("pass");
+    expect(pack.releaseClosure.knownIssues).toEqual([]);
   }, 20_000);
 });

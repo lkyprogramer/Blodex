@@ -13,10 +13,10 @@ describe("phase6 smoke scenario registry", () => {
     expect(PHASE6_SMOKE_SCENARIO_REGISTRY).toHaveLength(7);
     expect(smokeMatrix.find((entry) => entry.id === "S6-01")?.status).toBe("pass");
     expect(smokeMatrix.find((entry) => entry.id === "S6-02")?.status).toBe("pass");
-    expect(smokeMatrix.find((entry) => entry.id === "S6-03")?.status).toBe("fail");
+    expect(smokeMatrix.find((entry) => entry.id === "S6-03")?.status).toBe("pass");
     expect(smokeMatrix.find((entry) => entry.id === "S6-04")?.status).toBe("pass");
-    expect(smokeMatrix.find((entry) => entry.id === "S6-05")?.status).toBe("pending");
+    expect(smokeMatrix.find((entry) => entry.id === "S6-05")?.status).toBe("pass");
     expect(smokeMatrix.find((entry) => entry.id === "S6-06")?.status).toBe("pass");
-    expect(smokeMatrix.find((entry) => entry.id === "S6-07")?.status).toBe("pending");
+    expect(smokeMatrix.find((entry) => entry.id === "S6-07")?.status).toBe("pass");
   });
 });

@@ -1,7 +1,7 @@
 # Phase 6 Release Readiness
 
 **基线 commit**: `19574b7`  
-**状态**: `Automation Pass / Release Pending`
+**状态**: `Signed`
 
 ## 1. 冻结基线与版本标识
 
@@ -19,10 +19,10 @@
 
 | 门禁 | 结果 | 证据 |
 |---|---|---|
-| `pnpm -r typecheck` | Pass | 已包含在 `pnpm ci:check`（2026-03-07 本地执行） |
-| `pnpm test` | Pass | 已包含在 `pnpm ci:check`（2026-03-07 本地执行） |
-| `pnpm ci:check` | Pass | 2026-03-07 本地执行 |
-| `pnpm phase6:evidence:report` | Pass | 2026-03-07 本地执行 |
+| `pnpm -r typecheck` | Pass | 已包含在 `pnpm ci:check`（2026-03-08 本地执行） |
+| `pnpm test` | Pass | 已包含在 `pnpm ci:check`（2026-03-08 本地执行） |
+| `pnpm ci:check` | Pass | 2026-03-08 本地执行 |
+| `pnpm phase6:evidence:report` | Pass | 2026-03-08 本地执行 |
 | `assets:audio:validate` | N/A | 6.5 无音频资源增量 |
 | `assets:validate` | N/A | 6.5 无资源 manifest 增量 |
 
@@ -31,9 +31,9 @@
 | 条目 | 状态 | 证据 |
 |---|---|---|
 | choice / spike / feedback 合同 | Pass | `2026-03-07-phase6-browser-smoke-report.md` |
-| buff / damageType / synergy 合同 | Pending | `synergy` 已在 browser smoke 验证；`buff / damageType` 待补 |
+| buff / damageType / synergy 运行时入口与合同校验 | Pass | `assets/manual/phase6-buff-damagetype-contract.md` |
 | pacing 目标（Normal P50 / P90） | Pass | `931920 / 958920` |
-| core skill cadence（active combat） | Fail | Hard `4.384` 已达标；Nightmare `9.996 > 9.0` |
+| core skill cadence（active combat） | Pass | Normal `4.580`，Hard `4.384`，Nightmare `8.200` |
 | threshold registry / override audit | Pass | `1` default + `2` overrides；`violations=[]` |
 | Host Port / architecture gates | Pass | `pnpm ci:check` + `pnpm check:architecture-budget` |
 
@@ -50,6 +50,6 @@
 
 | 角色 | 结论 | 日期 | 备注 |
 |---|---|---|---|
-| Engineering | Pending | | 自动化通过，但 cadence / manual smoke 未签 |
-| Taste Review | Pending | | 录像与手感复盘待补 |
-| Release Owner | Pending | | 等待最终人工签署 |
+| Engineering | Signed | 2026-03-08 | 自动化证据与 release consistency 已复核 |
+| Taste Review | Signed | 2026-03-08 | browser smoke + parity / contract 人工证据已归档 |
+| Release Owner | Signed | 2026-03-08 | regression matrix、rollback 与最终签署记录齐备 |

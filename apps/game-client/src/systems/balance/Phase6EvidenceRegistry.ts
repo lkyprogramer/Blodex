@@ -211,13 +211,13 @@ export const PHASE6_SMOKE_SCENARIO_REGISTRY: readonly Phase6SmokeScenarioRegistr
     ],
     completionPolicy: "all_present"
   },
-  {
-    id: "S6-05",
-    title: "三职业起步深度 run",
-    evidenceType: "manual",
-    requiredArtifactIds: ["phase6-class-parity-video"],
-    completionPolicy: "all_present"
-  },
+    {
+      id: "S6-05",
+      title: "三职业起步深度入口白盒样本",
+      evidenceType: "manual",
+      requiredArtifactIds: ["phase6-class-parity-video"],
+      completionPolicy: "all_present"
+    },
   {
     id: "S6-06",
     title: "trade-off item run",
@@ -228,13 +228,13 @@ export const PHASE6_SMOKE_SCENARIO_REGISTRY: readonly Phase6SmokeScenarioRegistr
     ],
     completionPolicy: "all_present"
   },
-  {
-    id: "S6-07",
-    title: "buff / damageType / synergy 合同 run",
-    evidenceType: "manual",
-    requiredArtifactIds: ["phase6-buff-damagetype-video"],
-    completionPolicy: "all_present"
-  }
+    {
+      id: "S6-07",
+      title: "buff / damageType / synergy 运行时入口与合同校验",
+      evidenceType: "manual",
+      requiredArtifactIds: ["phase6-buff-damagetype-video"],
+      completionPolicy: "all_present"
+    }
 ] as const;
 
 export const PHASE6_SIGNOFF_CHECKLIST_REGISTRY: readonly Phase6SignoffRegistryEntry[] = [
@@ -268,13 +268,13 @@ export const PHASE6_SIGNOFF_CHECKLIST_REGISTRY: readonly Phase6SignoffRegistryEn
     derivation: "threshold-audit",
     evidenceArtifactIds: ["phase6-performance-compare-doc", "phase6-release-readiness-doc"]
   },
-  {
-    id: "manual-smoke",
-    title: "manual smoke matrix 与录像证据归档",
-    derivation: "manual-smoke",
-    smokeScenarioIds: ["S6-04", "S6-05", "S6-06", "S6-07"],
-    evidenceArtifactIds: ["phase6-regression-matrix-doc", "phase6-browser-smoke-report-doc"]
-  },
+    {
+      id: "manual-smoke",
+      title: "manual smoke matrix 与手工证据归档",
+      derivation: "manual-smoke",
+      smokeScenarioIds: ["S6-04", "S6-05", "S6-06", "S6-07"],
+      evidenceArtifactIds: ["phase6-regression-matrix-doc", "phase6-browser-smoke-report-doc"]
+    },
   {
     id: "taste-signoff",
     title: "Taste sign-off 由人工签署",

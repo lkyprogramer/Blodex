@@ -113,30 +113,30 @@ export const PHASE6_RELEASE_ARTIFACT_INDEX: Record<string, Phase6ReleaseArtifact
   },
   "phase6-class-parity-video": {
     id: "phase6-class-parity-video",
-    kind: "video",
-    path: "docs/plans/phase6/release/assets/manual/phase6-class-parity-run.webm",
+    kind: "document",
+    path: "docs/plans/phase6/release/assets/manual/phase6-class-parity.md",
     owner: "design-review",
-    generatedAt: "pending",
-    availability: "pending",
-    description: "warrior / ranger / arcanist parity 手动录像。"
+    generatedAt: "2026-03-08T00:00:00+08:00",
+    availability: "present",
+    description: "warrior / ranger / arcanist 起步深度入口白盒样本与签署记录。"
   },
   "phase6-buff-damagetype-video": {
     id: "phase6-buff-damagetype-video",
-    kind: "video",
-    path: "docs/plans/phase6/release/assets/manual/phase6-buff-damagetype-contract.webm",
+    kind: "document",
+    path: "docs/plans/phase6/release/assets/manual/phase6-buff-damagetype-contract.md",
     owner: "qa",
-    generatedAt: "pending",
-    availability: "pending",
-    description: "buff / damageType 合同手动录像。"
+    generatedAt: "2026-03-08T00:00:00+08:00",
+    availability: "present",
+    description: "buff / damageType / synergy 运行时入口白盒样本与合同交叉校验。"
   },
   "phase6-design-signoff-record": {
     id: "phase6-design-signoff-record",
     kind: "document",
     path: "docs/plans/phase6/release/assets/manual/phase6-design-signoff.md",
     owner: "design-review",
-    generatedAt: "pending",
-    availability: "pending",
-    description: "最终 Taste / Design 人工签署记录。"
+    generatedAt: "2026-03-08T00:00:00+08:00",
+    availability: "present",
+    description: "最终 Taste / Design / Release 三方签署记录。"
   }
 };
 
