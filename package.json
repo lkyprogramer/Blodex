@@ -14,6 +14,7 @@
     "balance:report": "pnpm --filter @blodex/core balance:report",
     "balance:real:report": "pnpm --filter @blodex/game-client balance:real:report",
     "phase6:evidence:report": "pnpm --filter @blodex/game-client phase6:evidence:report",
+    "phase6:evidence:check": "pnpm --filter @blodex/game-client phase6:evidence:check",
     "lint": "pnpm -r lint",
     "check": "pnpm -r typecheck",
     "check:source-hygiene": "./scripts/check-source-hygiene.sh",
