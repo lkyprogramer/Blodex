@@ -51,6 +51,20 @@ describe("RunSaveSnapshotBuilder", () => {
       acceptedSpikeCount: 1,
       majorSpikeCount: 0
     }));
+    const captureComparePromptState = vi.fn(() => ({
+      active: {
+        itemId: "loot-1",
+        source: "boss_reward" as const
+      },
+      immediate: [],
+      deferred: [
+        {
+          itemId: "loot-2",
+          source: "event_reward" as const
+        }
+      ],
+      drainMode: "all" as const
+    }));
     const host = {
       runEnded: false,
       runSeed: "seed-1",
@@ -102,6 +116,7 @@ describe("RunSaveSnapshotBuilder", () => {
       eventNode: null,
       merchantOffers: [],
       captureProgressionPromptState,
+      captureComparePromptState,
       capturePowerSpikeBudgetState,
       capturePhase6TelemetryState,
       deferredOutcomes: [],
@@ -124,13 +139,26 @@ describe("RunSaveSnapshotBuilder", () => {
     expect(capturePhase6TelemetryState).toHaveBeenCalledWith(160);
     expect(captureProgressionPromptState).toHaveBeenCalledWith(260);
     expect(capturePowerSpikeBudgetState).toHaveBeenCalledTimes(1);
-    expect(snapshot?.runtimeNowMs).toBe(260);
-    expect(snapshot?.phase6TelemetryState).toBeDefined();
-    expect(snapshot?.powerSpikeBudgetState?.pairStates["1-2"]?.hitCount).toBe(1);
-    expect(snapshot?.progressionPromptState).toEqual({
+    expect(snapshot?.runtime.phase6TelemetryState).toBeDefined();
+    expect(snapshot?.runtime.powerSpikeBudgetState?.pairStates["1-2"]?.hitCount).toBe(1);
+    expect(snapshot?.session.progressionPromptState).toEqual({
       nextPromptDelayMs: 2_100,
       pendingLevelUpSkillOfferIds: ["chain_lightning"]
     });
-    expect(snapshot?.monsters[0]?.baseMoveSpeed).toBe(128);
+    expect(snapshot?.session.comparePromptState).toEqual({
+      active: {
+        itemId: "loot-1",
+        source: "boss_reward"
+      },
+      immediate: [],
+      deferred: [
+        {
+          itemId: "loot-2",
+          source: "event_reward"
+        }
+      ],
+      drainMode: "all"
+    });
+    expect(snapshot?.runtime.monsters[0]?.baseMoveSpeed).toBe(128);
   });
 });

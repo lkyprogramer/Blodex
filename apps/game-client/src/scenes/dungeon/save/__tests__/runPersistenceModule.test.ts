@@ -30,7 +30,7 @@ describe("RunPersistenceModule", () => {
       flush: vi.fn(),
       schedule: vi.fn()
     };
-    const snapshot = { schemaVersion: 2 };
+    const snapshot = { schemaVersion: 3 };
     const snapshotBuilder = {
       build: vi.fn(() => snapshot)
     };
@@ -47,7 +47,7 @@ describe("RunPersistenceModule", () => {
 
     module.schedule();
     const built = module.buildSnapshot(321);
-    const restored = module.restore({ schemaVersion: 2 } as never);
+    const restored = module.restore({ schemaVersion: 3 } as never);
 
     expect(saveCoordinator.schedule).toHaveBeenCalledOnce();
     expect(snapshotBuilder.build).toHaveBeenCalledWith(321);

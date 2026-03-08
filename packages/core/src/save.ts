@@ -12,13 +12,11 @@ import type {
   RunRngStreamName,
   StaircaseState
 } from "./contracts/types";
-import { createBranchStairOptions } from "./pathSelection";
 import type { RunState } from "./run";
 
-export const RUN_SAVE_STORAGE_KEY_V1 = "blodex_run_save_v1";
-export const RUN_SAVE_STORAGE_KEY_V2 = "blodex_run_save_v2";
-export const RUN_SAVE_STORAGE_KEY = RUN_SAVE_STORAGE_KEY_V2;
-export const RUN_SAVE_STORAGE_KEYS = [RUN_SAVE_STORAGE_KEY_V2, RUN_SAVE_STORAGE_KEY_V1] as const;
+export const RUN_SAVE_STORAGE_KEY_V3 = "blodex_run_save_v3";
+export const RUN_SAVE_STORAGE_KEY = RUN_SAVE_STORAGE_KEY_V3;
+export const RUN_SAVE_STORAGE_KEYS = [RUN_SAVE_STORAGE_KEY_V3] as const;
 
 const RUN_RNG_STREAM_NAMES: RunRngStreamName[] = [
   "procgen",
@@ -33,34 +31,31 @@ const RUN_RNG_STREAM_NAMES: RunRngStreamName[] = [
   "merchant"
 ];
 
-type RunStateV1 = Omit<
-  RunState,
-  | "challengeSuccessCount"
-  | "inEndless"
-  | "endlessFloor"
-  | "endlessKills"
-  | "runMode"
-  | "mutatorActiveIds"
-  | "mutatorState"
-  | "deferredShardBonus"
-> &
-  Partial<
-    Pick<
-      RunState,
-      | "challengeSuccessCount"
-      | "inEndless"
-      | "endlessFloor"
-      | "endlessKills"
-      | "runMode"
-      | "dailyDate"
-      | "mutatorActiveIds"
-      | "mutatorState"
-      | "deferredShardBonus"
-    >
-  >;
+const EQUIPMENT_SLOTS = ["weapon", "helm", "chest", "boots", "ring"] as const;
+const ITEM_RARITIES = ["common", "magic", "rare"] as const;
+const ITEM_KINDS = ["equipment", "consumable", "unique"] as const;
+const WEAPON_TYPES = ["sword", "axe", "dagger", "staff", "hammer", "sword_master"] as const;
+const MONSTER_AI_STATES = ["idle", "chase", "kite", "ambush", "swarm", "shield", "support", "attack", "dead"] as const;
+const MONSTER_AI_BEHAVIORS = ["chase", "kite", "ambush", "swarm", "shield", "support"] as const;
+const MONSTER_AFFIX_IDS = ["frenzied", "armored", "vampiric", "splitting"] as const;
+
+export interface PersistedBuffState {
+  defId: string;
+  sourceId: string;
+  targetId: string;
+  remainingMs: number;
+}
+
+export interface PersistentPlayerState extends Omit<PlayerState, "activeBuffs"> {
+  activeBuffs?: PersistedBuffState[];
+}
+
+export interface PersistentMonsterState extends Omit<MonsterState, "activeBuffs"> {
+  activeBuffs?: PersistedBuffState[];
+}
 
 export interface RuntimeMonsterState {
-  state: MonsterState;
+  state: PersistentMonsterState;
   baseMoveSpeed?: number;
   nextAttackAt: number;
   nextSupportAt: number;
@@ -110,15 +105,36 @@ export interface PowerSpikeBudgetRuntimeState {
   majorSpikeCount: number;
 }
 
-export interface RunSaveDataV1 {
-  schemaVersion: 1;
-  savedAtMs: number;
-  appVersion: string;
-  runId: string;
-  runSeed: string;
-  run: RunStateV1;
-  player: PlayerState;
+export type ComparePromptSource =
+  | "auto_pickup"
+  | "merchant_purchase"
+  | "event_reward"
+  | "boss_reward"
+  | "challenge_reward"
+  | "hidden_room_reward"
+  | "pair_fallback";
+
+export interface ComparePromptEntryState {
+  itemId: string;
+  source: ComparePromptSource;
+}
+
+export interface ComparePromptRuntimeState {
+  active?: ComparePromptEntryState;
+  immediate: ComparePromptEntryState[];
+  deferred: ComparePromptEntryState[];
+  drainMode: "all" | "immediate";
+}
+
+export interface RunSaveDomainState {
+  run: RunState;
+  player: PersistentPlayerState;
   consumables: ConsumableState;
+  blueprintFoundIdsInRun: string[];
+  selectedMutationIds: string[];
+}
+
+export interface RunSaveRuntimeState {
   dungeon: DungeonLayout;
   staircase: StaircaseState;
   hazards: HazardRuntimeState[];
@@ -128,30 +144,35 @@ export interface RunSaveDataV1 {
   eventNode: RuntimeEventNodeState | null;
   minimap: MinimapSnapshot;
   mapRevealActive: boolean;
+  deferredOutcomes: DeferredOutcomeState[];
+  floorChoiceBudget?: FloorChoiceBudgetState;
+  powerSpikeBudgetState?: PowerSpikeBudgetRuntimeState;
+  phase6TelemetryState?: Phase6TelemetryRuntimeState;
   rngCursor: Record<RunRngStreamName, number>;
-  blueprintFoundIdsInRun?: string[];
-  selectedMutationIds?: string[];
+}
+
+export interface RunSaveSessionState {
+  progressionPromptState?: ProgressionPromptState;
+  comparePromptState?: ComparePromptRuntimeState;
   lease?: SaveLease;
 }
 
-export interface RunSaveDataV2 extends Omit<RunSaveDataV1, "schemaVersion" | "run"> {
-  schemaVersion: 2;
-  runtimeNowMs?: number;
-  run: RunState;
-  staircase: StaircaseState;
-  deferredOutcomes?: DeferredOutcomeState[];
-  floorChoiceBudget?: FloorChoiceBudgetState;
-  progressionPromptState?: ProgressionPromptState;
-  powerSpikeBudgetState?: PowerSpikeBudgetRuntimeState;
-  phase6TelemetryState?: Phase6TelemetryRuntimeState;
+export interface RunSaveDataV3 {
+  schemaVersion: 3;
+  savedAtMs: number;
+  appVersion: string;
+  runId: string;
+  runSeed: string;
+  domain: RunSaveDomainState;
+  runtime: RunSaveRuntimeState;
+  session: RunSaveSessionState;
 }
 
-export type RunSaveEnvelope = RunSaveDataV2 & Record<string, unknown>;
+export type RunSaveEnvelope = RunSaveDataV3 & Record<string, unknown>;
 
 export interface DeserializeRunStateResult {
   save: RunSaveEnvelope | null;
-  sourceVersion: 1 | 2 | null;
-  migratedFromV1: boolean;
+  sourceVersion: 3 | null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -235,6 +256,73 @@ function isStringNumberRecord(value: unknown): value is Record<string, number> {
   return isRecord(value) && Object.values(value).every((entry) => isFiniteNumber(entry));
 }
 
+function isKnownStringLiteral<T extends readonly string[]>(value: unknown, allowed: T): value is T[number] {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value);
+}
+
+function isBaseStats(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.strength) &&
+    isFiniteNumber(value.dexterity) &&
+    isFiniteNumber(value.vitality) &&
+    isFiniteNumber(value.intelligence)
+  );
+}
+
+function isDerivedStats(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.maxHealth) &&
+    isFiniteNumber(value.maxMana) &&
+    isFiniteNumber(value.armor) &&
+    isFiniteNumber(value.attackPower) &&
+    isFiniteNumber(value.critChance) &&
+    isFiniteNumber(value.attackSpeed) &&
+    isFiniteNumber(value.moveSpeed)
+  );
+}
+
+function isItemInstance(value: unknown): value is ItemInstance {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.defId === "string" &&
+    typeof value.name === "string" &&
+    isKnownStringLiteral(value.slot, EQUIPMENT_SLOTS) &&
+    (value.kind === undefined || isKnownStringLiteral(value.kind, ITEM_KINDS)) &&
+    (value.weaponType === undefined || isKnownStringLiteral(value.weaponType, WEAPON_TYPES)) &&
+    isKnownStringLiteral(value.rarity, ITEM_RARITIES) &&
+    isFiniteNumber(value.requiredLevel) &&
+    typeof value.iconId === "string" &&
+    typeof value.seed === "string" &&
+    isStringNumberRecord(value.rolledAffixes) &&
+    (value.rolledSpecialAffixes === undefined || isStringNumberRecord(value.rolledSpecialAffixes))
+  );
+}
+
+function isEquipmentRecord(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return Object.entries(value).every(
+    ([key, entry]) => isKnownStringLiteral(key, EQUIPMENT_SLOTS) && (entry === undefined || isItemInstance(entry))
+  );
+}
+
+function isSkillInstance(value: unknown): boolean {
+  return isRecord(value) && typeof value.defId === "string" && isFiniteNumber(value.level);
+}
+
+function isPlayerSkillState(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.skillSlots) &&
+    value.skillSlots.every((entry) => entry === null || isSkillInstance(entry)) &&
+    isStringNumberRecord(value.cooldowns)
+  );
+}
+
 function isPhase6TelemetryRuntimeState(value: unknown): value is Phase6TelemetryRuntimeState {
   if (!isRecord(value)) {
     return false;
@@ -275,10 +363,71 @@ function isPhase6TelemetryRuntimeState(value: unknown): value is Phase6Telemetry
   );
 }
 
+function isPersistedBuffState(value: unknown): value is PersistedBuffState {
+  return (
+    isRecord(value) &&
+    typeof value.defId === "string" &&
+    typeof value.sourceId === "string" &&
+    typeof value.targetId === "string" &&
+    isFiniteNumber(value.remainingMs) &&
+    value.remainingMs >= 0
+  );
+}
+
+function isPersistedBuffStateArray(value: unknown): value is PersistedBuffState[] {
+  return Array.isArray(value) && value.every((entry) => isPersistedBuffState(entry));
+}
+
+function isPersistentPlayerState(value: unknown): value is PersistentPlayerState {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    isPoint(value.position) &&
+    isFiniteNumber(value.level) &&
+    isFiniteNumber(value.xp) &&
+    isFiniteNumber(value.xpToNextLevel) &&
+    (value.pendingLevelUpChoices === undefined || isFiniteNumber(value.pendingLevelUpChoices)) &&
+    (value.pendingSkillChoices === undefined || isFiniteNumber(value.pendingSkillChoices)) &&
+    isFiniteNumber(value.health) &&
+    isFiniteNumber(value.mana) &&
+    isBaseStats(value.baseStats) &&
+    isDerivedStats(value.derivedStats) &&
+    Array.isArray(value.inventory) &&
+    value.inventory.every((entry) => isItemInstance(entry)) &&
+    isEquipmentRecord(value.equipment) &&
+    isFiniteNumber(value.gold) &&
+    (value.skills === undefined || isPlayerSkillState(value.skills)) &&
+    (value.activeBuffs === undefined || isPersistedBuffStateArray(value.activeBuffs))
+  );
+}
+
+function isPersistentMonsterState(value: unknown): value is PersistentMonsterState {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.archetypeId === "string" &&
+    isFiniteNumber(value.level) &&
+    isFiniteNumber(value.health) &&
+    isFiniteNumber(value.maxHealth) &&
+    isFiniteNumber(value.damage) &&
+    isFiniteNumber(value.attackRange) &&
+    isFiniteNumber(value.moveSpeed) &&
+    isFiniteNumber(value.xpValue) &&
+    typeof value.dropTableId === "string" &&
+    isPoint(value.position) &&
+    isKnownStringLiteral(value.aiState, MONSTER_AI_STATES) &&
+    (value.aiBehavior === undefined || isKnownStringLiteral(value.aiBehavior, MONSTER_AI_BEHAVIORS)) &&
+    (value.affixes === undefined ||
+      (Array.isArray(value.affixes) && value.affixes.every((entry) => isKnownStringLiteral(entry, MONSTER_AFFIX_IDS)))) &&
+    (value.isBoss === undefined || typeof value.isBoss === "boolean") &&
+    (value.activeBuffs === undefined || isPersistedBuffStateArray(value.activeBuffs))
+  );
+}
+
 function isRuntimeMonsterState(value: unknown): value is RuntimeMonsterState {
   return (
     isRecord(value) &&
-    isRecord(value.state) &&
+    isPersistentMonsterState(value.state) &&
     isFiniteNumber(value.nextAttackAt) &&
     isFiniteNumber(value.nextSupportAt) &&
     (value.baseMoveSpeed === undefined || isFiniteNumber(value.baseMoveSpeed))
@@ -351,12 +500,8 @@ function isBranchStairOption(value: unknown): boolean {
   );
 }
 
-function isStaircaseStateV1(value: unknown): value is StaircaseState {
-  return isRecord(value) && isPoint(value.position) && typeof value.visible === "boolean";
-}
-
-function isStaircaseStateV2(value: unknown): value is StaircaseState {
-  if (!isStaircaseStateV1(value)) {
+function isStaircaseState(value: unknown): value is StaircaseState {
+  if (!isRecord(value) || !isPoint(value.position) || typeof value.visible !== "boolean") {
     return false;
   }
   if (value.kind === undefined || value.kind === "single") {
@@ -370,24 +515,6 @@ function isStaircaseStateV2(value: unknown): value is StaircaseState {
   }
   if (value.selected !== undefined && value.selected !== "left" && value.selected !== "right") {
     return false;
-  }
-  return true;
-}
-
-function isMutatorState(value: unknown): value is Record<string, { activatedAtFloor: number; stacks?: number }> {
-  if (!isRecord(value)) {
-    return false;
-  }
-  for (const entry of Object.values(value)) {
-    if (!isRecord(entry)) {
-      return false;
-    }
-    if (!isFiniteNumber(entry.activatedAtFloor)) {
-      return false;
-    }
-    if (entry.stacks !== undefined && !isFiniteNumber(entry.stacks)) {
-      return false;
-    }
   }
   return true;
 }
@@ -429,7 +556,7 @@ function isDeferredOutcomeState(value: unknown): value is DeferredOutcomeState {
   );
 }
 
-function isRunStateV1(value: unknown): value is RunStateV1 {
+function isRunState(value: unknown): value is RunState {
   return (
     isRecord(value) &&
     isFiniteNumber(value.startedAtMs) &&
@@ -443,304 +570,166 @@ function isRunStateV1(value: unknown): value is RunStateV1 {
     isFiniteNumber(value.kills) &&
     isFiniteNumber(value.totalKills) &&
     isFiniteNumber(value.lootCollected) &&
-    isRecord(value.runEconomy)
-  );
-}
-
-function isRunStateV2(value: unknown): value is RunState {
-  return (
-    isRunStateV1(value) &&
     isFiniteNumber(value.challengeSuccessCount) &&
     typeof value.inEndless === "boolean" &&
     isFiniteNumber(value.endlessFloor) &&
     (value.endlessKills === undefined || isFiniteNumber(value.endlessKills)) &&
     (value.mutatorActiveIds === undefined || isStringArray(value.mutatorActiveIds)) &&
-    (value.mutatorState === undefined || isMutatorState(value.mutatorState)) &&
+    (value.mutatorState === undefined || isRecord(value.mutatorState)) &&
     (value.deferredShardBonus === undefined || isFiniteNumber(value.deferredShardBonus)) &&
-    (value.runMode === "normal" || value.runMode === "daily")
+    (value.runMode === "normal" || value.runMode === "daily") &&
+    isRecord(value.runEconomy)
   );
 }
 
-function normalizeLegacySpecialAffixKeys(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map((entry) => normalizeLegacySpecialAffixKeys(entry));
-  }
-  if (!isRecord(value)) {
-    return value;
-  }
-
-  const normalized: Record<string, unknown> = {};
-  for (const [key, entry] of Object.entries(value)) {
-    normalized[key] = normalizeLegacySpecialAffixKeys(entry);
-  }
-
-  if (isRecord(normalized.rolledSpecialAffixes)) {
-    const specialAffixes = { ...normalized.rolledSpecialAffixes };
-    if (specialAffixes.skillBonusDamage === undefined && specialAffixes.damageOverTime !== undefined) {
-      specialAffixes.skillBonusDamage = specialAffixes.damageOverTime;
-    }
-    delete specialAffixes.damageOverTime;
-    normalized.rolledSpecialAffixes = specialAffixes;
-  }
-
-  return normalized;
+function isComparePromptEntryState(value: unknown): value is ComparePromptEntryState {
+  return (
+    isRecord(value) &&
+    typeof value.itemId === "string" &&
+    (
+      value.source === "auto_pickup" ||
+      value.source === "merchant_purchase" ||
+      value.source === "event_reward" ||
+      value.source === "boss_reward" ||
+      value.source === "challenge_reward" ||
+      value.source === "hidden_room_reward" ||
+      value.source === "pair_fallback"
+    )
+  );
 }
 
-function normalizeLegacyDraftFields(input: Record<string, unknown>): Record<string, unknown> {
-  const normalized = normalizeLegacySpecialAffixKeys(input) as Record<string, unknown>;
-
-  if (normalized.blueprintFoundIdsInRun === undefined && isStringArray(input.blueprintsFoundThisRun)) {
-    normalized.blueprintFoundIdsInRun = [...input.blueprintsFoundThisRun];
-  }
-
-  if (normalized.selectedMutationIds === undefined && isStringArray(input.selectedMutations)) {
-    normalized.selectedMutationIds = [...input.selectedMutations];
-  }
-
-  if (isRecord(normalized.phase6TelemetryState) && isRecord(normalized.phase6TelemetryState.story)) {
-    normalized.phase6TelemetryState = {
-      ...normalized.phase6TelemetryState,
-      story: {
-        ...normalized.phase6TelemetryState.story,
-        majorPowerSpikes: normalized.phase6TelemetryState.story.majorPowerSpikes ?? 0
-      }
-    };
-  }
-
-  delete normalized.blueprintsFoundThisRun;
-  delete normalized.selectedMutations;
-  return normalized;
+function isComparePromptRuntimeState(value: unknown): value is ComparePromptRuntimeState {
+  return (
+    isRecord(value) &&
+    (value.active === undefined || isComparePromptEntryState(value.active)) &&
+    Array.isArray(value.immediate) &&
+    value.immediate.every((entry) => isComparePromptEntryState(entry)) &&
+    Array.isArray(value.deferred) &&
+    value.deferred.every((entry) => isComparePromptEntryState(entry)) &&
+    (value.drainMode === "all" || value.drainMode === "immediate")
+  );
 }
 
-function validateSaveCommon(save: Record<string, unknown>): boolean {
-  if (!isFiniteNumber(save.savedAtMs)) {
+function validateRuntimeState(runtime: Record<string, unknown>): boolean {
+  if (!isDungeonLayoutSnapshot(runtime.dungeon) || !isStaircaseState(runtime.staircase)) {
     return false;
   }
-  if (typeof save.appVersion !== "string") {
+  if (!Array.isArray(runtime.hazards) || !runtime.hazards.every((entry) => isRecord(entry))) {
     return false;
   }
-  if (typeof save.runId !== "string" || save.runId.length === 0) {
+  if (!(runtime.boss === null || isRecord(runtime.boss))) {
     return false;
   }
-  if (typeof save.runSeed !== "string" || save.runSeed.length === 0) {
+  if (!Array.isArray(runtime.monsters) || !runtime.monsters.every((entry) => isRuntimeMonsterState(entry))) {
     return false;
   }
-  if (save.runtimeNowMs !== undefined && !isFiniteNumber(save.runtimeNowMs)) {
+  if (!Array.isArray(runtime.lootOnGround) || !runtime.lootOnGround.every((entry) => isLootEntry(entry))) {
     return false;
   }
-  if (!isRecord(save.player) || !isRecord(save.consumables)) {
+  if (!(runtime.eventNode === null || isRuntimeEventNodeState(runtime.eventNode))) {
     return false;
   }
-  if (!isDungeonLayoutSnapshot(save.dungeon) || !isRecord(save.staircase)) {
+  if (!isMinimapSnapshot(runtime.minimap)) {
     return false;
   }
-  if (!Array.isArray(save.hazards) || !save.hazards.every((entry) => isRecord(entry))) {
-    return false;
-  }
-  if (!(save.boss === null || isRecord(save.boss))) {
-    return false;
-  }
-  if (!Array.isArray(save.monsters) || !save.monsters.every((entry) => isRuntimeMonsterState(entry))) {
-    return false;
-  }
-  if (!Array.isArray(save.lootOnGround) || !save.lootOnGround.every((entry) => isLootEntry(entry))) {
-    return false;
-  }
-  if (!(save.eventNode === null || isRuntimeEventNodeState(save.eventNode))) {
-    return false;
-  }
-  if (!isMinimapSnapshot(save.minimap)) {
-    return false;
-  }
-  if (typeof save.mapRevealActive !== "boolean") {
-    return false;
-  }
-  if (!isRunRngCursor(save.rngCursor)) {
-    return false;
-  }
-  if (save.blueprintFoundIdsInRun !== undefined && !isStringArray(save.blueprintFoundIdsInRun)) {
-    return false;
-  }
-  if (save.selectedMutationIds !== undefined && !isStringArray(save.selectedMutationIds)) {
-    return false;
-  }
-  if (save.lease !== undefined && !isSaveLease(save.lease)) {
-    return false;
-  }
-  if (save.floorChoiceBudget !== undefined && !isFloorChoiceBudgetState(save.floorChoiceBudget)) {
-    return false;
-  }
-  if (save.progressionPromptState !== undefined && !isProgressionPromptState(save.progressionPromptState)) {
+  if (typeof runtime.mapRevealActive !== "boolean") {
     return false;
   }
   if (
-    save.powerSpikeBudgetState !== undefined &&
-    !isPowerSpikeBudgetRuntimeState(save.powerSpikeBudgetState)
+    !Array.isArray(runtime.deferredOutcomes) ||
+    !runtime.deferredOutcomes.every((entry) => isDeferredOutcomeState(entry))
   ) {
     return false;
   }
-  if (
-    save.deferredOutcomes !== undefined &&
-    (!Array.isArray(save.deferredOutcomes) || !save.deferredOutcomes.every((entry) => isDeferredOutcomeState(entry)))
-  ) {
+  if (runtime.floorChoiceBudget !== undefined && !isFloorChoiceBudgetState(runtime.floorChoiceBudget)) {
     return false;
   }
-  if (
-    save.phase6TelemetryState !== undefined &&
-    !isPhase6TelemetryRuntimeState(save.phase6TelemetryState)
-  ) {
+  if (runtime.powerSpikeBudgetState !== undefined && !isPowerSpikeBudgetRuntimeState(runtime.powerSpikeBudgetState)) {
+    return false;
+  }
+  if (runtime.phase6TelemetryState !== undefined && !isPhase6TelemetryRuntimeState(runtime.phase6TelemetryState)) {
+    return false;
+  }
+  if (!isRunRngCursor(runtime.rngCursor)) {
     return false;
   }
   return true;
 }
 
-function normalizeRunStateFromV1(input: RunStateV1): RunState {
-  return {
-    ...input,
-    challengeSuccessCount: Math.max(0, Math.floor(input.challengeSuccessCount ?? 0)),
-    inEndless: input.inEndless === true,
-    endlessFloor: Math.max(0, Math.floor(input.endlessFloor ?? 0)),
-    endlessKills: Math.max(0, Math.floor(input.endlessKills ?? 0)),
-    mutatorActiveIds: isStringArray(input.mutatorActiveIds) ? [...input.mutatorActiveIds] : [],
-    mutatorState: isMutatorState(input.mutatorState) ? { ...input.mutatorState } : {},
-    deferredShardBonus: Math.max(0, Math.floor(input.deferredShardBonus ?? 0)),
-    runMode: input.runMode === "daily" ? "daily" : "normal",
-    ...(input.dailyDate === undefined ? {} : { dailyDate: input.dailyDate })
-  };
+function validateDomainState(domain: Record<string, unknown>): boolean {
+  return (
+    isRunState(domain.run) &&
+    isPersistentPlayerState(domain.player) &&
+    isRecord(domain.consumables) &&
+    isStringArray(domain.blueprintFoundIdsInRun) &&
+    isStringArray(domain.selectedMutationIds)
+  );
 }
 
-function normalizeStaircaseFromV1(save: RunSaveDataV1): StaircaseState {
-  const floor = Math.floor(save.run.currentFloor);
-  if (floor === 2) {
-    return {
-      kind: "branch",
-      visible: save.staircase.visible,
-      position: { ...save.staircase.position },
-      options: createBranchStairOptions(save.dungeon, save.dungeon.playerSpawn)
-    };
-  }
-  return {
-    kind: "single",
-    visible: save.staircase.visible,
-    position: { ...save.staircase.position }
-  };
-}
-
-export function migrateRunSaveV1ToV2(save: RunSaveDataV1): RunSaveDataV2 {
-  return {
-    ...save,
-    schemaVersion: 2,
-    run: normalizeRunStateFromV1(save.run),
-    staircase: normalizeStaircaseFromV1(save),
-    deferredOutcomes: []
-  };
-}
-
-export function validateSaveV1(raw: unknown): raw is RunSaveDataV1 {
-  if (!isRecord(raw)) {
-    return false;
-  }
-
-  const save = normalizeLegacyDraftFields(raw);
-  if (save.schemaVersion !== 1) {
-    return false;
-  }
-  if (!isRunStateV1(save.run) || !isStaircaseStateV1(save.staircase)) {
-    return false;
-  }
-  return validateSaveCommon(save);
-}
-
-export function validateSaveV2(raw: unknown): raw is RunSaveEnvelope {
-  if (!isRecord(raw)) {
-    return false;
-  }
-  if (raw.schemaVersion !== 2) {
-    return false;
-  }
-  if (!isRunStateV2(raw.run) || !isStaircaseStateV2(raw.staircase)) {
-    return false;
-  }
-  return validateSaveCommon(raw);
+function validateSessionState(session: Record<string, unknown>): boolean {
+  return (
+    (session.progressionPromptState === undefined || isProgressionPromptState(session.progressionPromptState)) &&
+    (session.comparePromptState === undefined || isComparePromptRuntimeState(session.comparePromptState)) &&
+    (session.lease === undefined || isSaveLease(session.lease))
+  );
 }
 
 export function validateSave(raw: unknown): raw is RunSaveEnvelope {
   if (!isRecord(raw)) {
     return false;
   }
-  const normalized = normalizeLegacyDraftFields(raw);
-  if (!validateSaveV2(normalized)) {
+  if (raw.schemaVersion !== 3) {
     return false;
   }
-
-  for (const key of Object.keys(raw)) {
-    delete raw[key];
+  if (!isFiniteNumber(raw.savedAtMs) || typeof raw.appVersion !== "string") {
+    return false;
   }
-  Object.assign(raw, normalized);
+  if (typeof raw.runId !== "string" || raw.runId.length === 0) {
+    return false;
+  }
+  if (typeof raw.runSeed !== "string" || raw.runSeed.length === 0) {
+    return false;
+  }
+  if (!isRecord(raw.domain) || !validateDomainState(raw.domain)) {
+    return false;
+  }
+  if (!isRecord(raw.runtime) || !validateRuntimeState(raw.runtime)) {
+    return false;
+  }
+  if (!isRecord(raw.session) || !validateSessionState(raw.session)) {
+    return false;
+  }
   return true;
 }
 
-function deserializeRunStateWithMigration(raw: string): DeserializeRunStateResult {
+export function deserializeRunStateResult(raw: string): DeserializeRunStateResult {
   try {
     const parsed = JSON.parse(raw) as unknown;
-    if (!isRecord(parsed)) {
+    if (!validateSave(parsed)) {
       return {
         save: null,
-        sourceVersion: null,
-        migratedFromV1: false
+        sourceVersion: null
       };
     }
-
-    const normalized = normalizeLegacyDraftFields(parsed);
-    if (validateSaveV2(normalized)) {
-      return {
-        save: normalized,
-        sourceVersion: 2,
-        migratedFromV1: false
-      };
-    }
-
-    if (validateSaveV1(normalized)) {
-      const migrated = migrateRunSaveV1ToV2(normalized);
-      if (!validateSaveV2(migrated)) {
-        return {
-          save: null,
-          sourceVersion: 1,
-          migratedFromV1: false
-        };
-      }
-      return {
-        save: migrated,
-        sourceVersion: 1,
-        migratedFromV1: true
-      };
-    }
-
     return {
-      save: null,
-      sourceVersion: null,
-      migratedFromV1: false
+      save: parsed,
+      sourceVersion: 3
     };
   } catch {
     return {
       save: null,
-      sourceVersion: null,
-      migratedFromV1: false
+      sourceVersion: null
     };
   }
 }
 
-export function deserializeRunStateResult(raw: string): DeserializeRunStateResult {
-  return deserializeRunStateWithMigration(raw);
-}
-
-export function serializeRunState(snapshot: RunSaveDataV2): string {
-  if (!validateSaveV2(snapshot)) {
+export function serializeRunState(snapshot: RunSaveDataV3): string {
+  if (!validateSave(snapshot)) {
     throw new Error("Invalid run save snapshot.");
   }
   return JSON.stringify(snapshot);
 }
 
 export function deserializeRunState(raw: string): RunSaveEnvelope | null {
-  return deserializeRunStateWithMigration(raw).save;
+  return deserializeRunStateResult(raw).save;
 }

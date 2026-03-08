@@ -1,12 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createInitialConsumableState,
+  defaultBaseStats,
+  deriveStats,
   getDifficultyModifier,
   validateSave,
-  type RunRngStreamName
+  type RunRngStreamName,
+  type RunSaveDataV3
 } from "@blodex/core";
-import type { RunSaveDataV2 } from "@blodex/core";
-import { SAVE_LEASE_TTL_MS, SaveManager } from "../SaveManager";
+import { RUN_SAVE_STORAGE_KEY_V3 } from "@blodex/core";
+import { RUN_SAVE_RESET_NOTICE_KEY, SAVE_LEASE_TTL_MS, SaveManager } from "../SaveManager";
 
 class MemoryStorage implements Storage {
   private readonly map = new Map<string, string>();
@@ -63,88 +66,89 @@ function makeCursor(): Record<RunRngStreamName, number> {
   };
 }
 
-function makeSnapshot(nowMs = 100): RunSaveDataV2 {
+function makeSnapshot(nowMs = 100): RunSaveDataV3 {
+  const baseStats = defaultBaseStats();
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     savedAtMs: nowMs,
     appVersion: "test",
     runId: "seed:100",
     runSeed: "seed",
-    run: {
-      startedAtMs: 100,
-      runSeed: "seed",
-      difficulty: "normal",
-      difficultyModifier: getDifficultyModifier("normal"),
-      currentFloor: 1,
-      currentBiomeId: "forgotten_catacombs",
-      floor: 1,
-      floorsCleared: 0,
-      kills: 0,
-      totalKills: 0,
-      lootCollected: 0,
-      challengeSuccessCount: 0,
-      inEndless: false,
-      endlessFloor: 0,
-      runMode: "normal",
-      runEconomy: { obols: 0, spentObols: 0 }
-    },
-    player: {
-      id: "player",
-      position: { x: 1, y: 1 },
-      level: 1,
-      xp: 0,
-      xpToNextLevel: 10,
-      health: 100,
-      mana: 40,
-      baseStats: { strength: 8, dexterity: 8, vitality: 8, intelligence: 5 },
-      derivedStats: {
-        maxHealth: 100,
-        maxMana: 40,
-        armor: 0,
-        attackPower: 10,
-        critChance: 0.03,
-        attackSpeed: 1,
-        moveSpeed: 140
+    domain: {
+      run: {
+        startedAtMs: 100,
+        runSeed: "seed",
+        difficulty: "normal",
+        difficultyModifier: getDifficultyModifier("normal"),
+        currentFloor: 1,
+        currentBiomeId: "forgotten_catacombs",
+        floor: 1,
+        floorsCleared: 0,
+        kills: 0,
+        totalKills: 0,
+        lootCollected: 0,
+        challengeSuccessCount: 0,
+        inEndless: false,
+        endlessFloor: 0,
+        runMode: "normal",
+        runEconomy: { obols: 0, spentObols: 0 }
       },
-      inventory: [],
-      equipment: {},
-      gold: 0,
-      skills: {
-        skillSlots: [null, null],
-        cooldowns: {}
+      player: {
+        id: "player",
+        position: { x: 1, y: 1 },
+        level: 1,
+        xp: 0,
+        xpToNextLevel: 10,
+        health: 100,
+        mana: 40,
+        baseStats,
+        derivedStats: deriveStats(baseStats, []),
+        inventory: [],
+        equipment: {},
+        gold: 0,
+        skills: {
+          skillSlots: [null, null],
+          cooldowns: {}
+        },
+        activeBuffs: []
       },
-      activeBuffs: []
+      consumables: createInitialConsumableState(0),
+      blueprintFoundIdsInRun: [],
+      selectedMutationIds: []
     },
-    consumables: createInitialConsumableState(0),
-    dungeon: {
-      width: 2,
-      height: 2,
-      walkable: [
-        [true, true],
-        [true, true]
-      ],
-      rooms: [],
-      corridors: [],
-      spawnPoints: [{ x: 1, y: 1 }],
-      playerSpawn: { x: 1, y: 1 },
-      layoutHash: "layout"
+    runtime: {
+      dungeon: {
+        width: 2,
+        height: 2,
+        walkable: [
+          [true, true],
+          [true, true]
+        ],
+        rooms: [],
+        corridors: [],
+        spawnPoints: [{ x: 1, y: 1 }],
+        playerSpawn: { x: 1, y: 1 },
+        layoutHash: "layout"
+      },
+      staircase: {
+        kind: "single",
+        position: { x: 1, y: 1 },
+        visible: false
+      },
+      hazards: [],
+      boss: null,
+      monsters: [],
+      lootOnGround: [],
+      eventNode: null,
+      minimap: {
+        layoutHash: "layout",
+        exploredKeys: [0]
+      },
+      mapRevealActive: false,
+      deferredOutcomes: [],
+      rngCursor: makeCursor()
     },
-    staircase: {
-      kind: "single",
-      position: { x: 1, y: 1 },
-      visible: false
-    },
-    hazards: [],
-    boss: null,
-    monsters: [],
-    lootOnGround: [],
-    eventNode: null,
-    minimap: {
-      layoutHash: "layout",
-      exploredKeys: [0]
-    },
-    mapRevealActive: false,
-    rngCursor: makeCursor()
+    session: {}
   };
 }
 
@@ -223,5 +227,20 @@ describe("SaveManager", () => {
     });
 
     expect(manager.getTabId().length).toBeGreaterThan(0);
+  });
+
+  it("wipes legacy save keys and raises one-time reset notice", () => {
+    const storage = new MemoryStorage();
+    const session = new MemoryStorage();
+    storage.setItem("blodex_run_save_v2", JSON.stringify({ schemaVersion: 2 }));
+
+    const manager = new SaveManager({ storage, sessionStorage: session });
+
+    expect(manager.readSave()).toBeNull();
+    expect(storage.getItem("blodex_run_save_v2")).toBeNull();
+    expect(storage.getItem(RUN_SAVE_STORAGE_KEY_V3)).toBeNull();
+    expect(session.getItem(RUN_SAVE_RESET_NOTICE_KEY)).toBe("1");
+    expect(manager.consumeResetNotice()).toBe(true);
+    expect(manager.consumeResetNotice()).toBe(false);
   });
 });

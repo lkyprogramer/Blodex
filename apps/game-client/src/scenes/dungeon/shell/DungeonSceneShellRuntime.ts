@@ -4,7 +4,7 @@ import {
   equipItem,
   normalizeDifficultyMode,
   type MetaProgression,
-  type RunSaveDataV2,
+  type RunSaveDataV3,
   type ConsumableId,
   type DifficultyMode,
   type EquipmentSlot,
@@ -62,7 +62,7 @@ export interface DungeonSceneShellSource {
   preserveSceneTransitionOnCleanup: boolean;
   debugCheatsEnabled: boolean;
   diagnosticsEnabled: boolean;
-  pendingResumeSave: RunSaveDataV2 | null;
+  pendingResumeSave: RunSaveDataV3 | null;
   selectedDifficulty: DifficultyMode;
   player: PlayerState;
   uiManager: Pick<UIManager, "appendLog" | "reset" | "clearLogs" | "hideEventPanel" | "hideDeathOverlay">;
@@ -265,7 +265,7 @@ export function initializeDungeonSceneShell(scene: DungeonScene): void {
   source.selectedDifficulty =
     source.pendingResumeSave === null
       ? source.metaRuntime.resolveSelectedDifficultyForRun()
-      : normalizeDifficultyMode(source.pendingResumeSave.run.difficulty, "normal");
+      : normalizeDifficultyMode(source.pendingResumeSave.domain.run.difficulty, "normal");
 
   source.uiManager = createUiManager(scene, source);
   source.runLog.setSink({

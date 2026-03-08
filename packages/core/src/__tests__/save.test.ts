@@ -9,17 +9,15 @@ import type {
 } from "../contracts/types";
 import { createInitialConsumableState } from "../consumable";
 import { getDifficultyModifier } from "../difficulty";
-import { defaultBaseStats, deriveStats } from "../stats";
 import type { RunState } from "../run";
 import {
   deserializeRunState,
   deserializeRunStateResult,
-  migrateRunSaveV1ToV2,
   serializeRunState,
   validateSave,
-  type RunSaveDataV1,
-  type RunSaveDataV2
+  type RunSaveDataV3
 } from "../save";
+import { defaultBaseStats, deriveStats } from "../stats";
 
 function makeRunState(): RunState {
   return {
@@ -57,6 +55,8 @@ function makePlayer(): PlayerState {
     level: 2,
     xp: 20,
     xpToNextLevel: 80,
+    pendingLevelUpChoices: 0,
+    pendingSkillChoices: 1,
     health: derived.maxHealth,
     mana: derived.maxMana,
     baseStats,
@@ -154,411 +154,278 @@ function makeRngCursor(): Record<RunRngStreamName, number> {
   };
 }
 
-function makeSave(): RunSaveDataV2 {
+function makeSave(): RunSaveDataV3 {
   return {
-    schemaVersion: 2,
-    runtimeNowMs: 260,
+    schemaVersion: 3,
     savedAtMs: 123,
     appVersion: "test",
     runId: "seed-1:100",
     runSeed: "seed-1",
-    run: makeRunState(),
-    player: makePlayer(),
-    consumables: createInitialConsumableState(0),
-    dungeon: makeDungeon(),
-    staircase: {
-      kind: "single",
-      position: { x: 7, y: 7 },
-      visible: false
-    },
-    hazards: [makeHazard()],
-    boss: makeBossState(),
-    monsters: [
-      {
-        state: makeMonsterState(),
-        nextAttackAt: 300,
-        nextSupportAt: 0
-      }
-    ],
-    lootOnGround: [
-      {
-        item: {
-          id: "loot-1",
-          defId: "item_weapon_01",
-          name: "Rust Blade",
-          slot: "weapon",
-          rarity: "common",
-          requiredLevel: 1,
-          iconId: "item_weapon_01",
-          seed: "loot-seed",
-          rolledAffixes: {
-            attackPower: 2
+    domain: {
+      run: makeRunState(),
+      player: {
+        ...makePlayer(),
+        activeBuffs: [
+          {
+            defId: "war_cry",
+            sourceId: "player",
+            targetId: "player",
+            remainingMs: 700
           }
-        },
-        position: { x: 2, y: 2 }
-      }
-    ],
-    eventNode: {
-      eventId: "wandering_merchant",
-      position: { x: 4, y: 4 },
-      resolved: false,
-      merchantOffers: []
-    },
-    minimap: {
-      layoutHash: "layout-1",
-      exploredKeys: [1, 2, 3]
-    },
-    mapRevealActive: false,
-    rngCursor: makeRngCursor(),
-    blueprintFoundIdsInRun: ["bp_1"],
-    selectedMutationIds: ["mut_1"],
-    progressionPromptState: {
-      nextPromptDelayMs: 2_100,
-      pendingLevelUpSkillOfferIds: ["chain_lightning"]
-    },
-    powerSpikeBudgetState: {
-      pairStates: {
-        "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
-        "3-4": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
-        "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+        ]
       },
-      acceptedSpikeCount: 1,
-      majorSpikeCount: 0
+      consumables: createInitialConsumableState(0),
+      blueprintFoundIdsInRun: ["bp_1"],
+      selectedMutationIds: ["mut_1"]
     },
-    deferredOutcomes: [
-      {
-        outcomeId: "event-1",
-        source: "event",
-        trigger: {
-          type: "floor_reached",
-          value: 4
-        },
-        reward: {
-          obol: 15
-        },
-        status: "pending"
-      }
-    ],
-    phase6TelemetryState: {
-      startedAtMs: 100,
-      buildFormedState: true,
-      inputTimestampsMs: [120, 150, 190],
-      story: {
-        playerFacingChoices: 4,
-        choiceCountByFloor: {
-          "1": 1,
-          "2": 2
-        },
-        powerSpikes: 2,
-        majorPowerSpikes: 1,
-        buildFormed: 1,
-        rareDropsPresented: 1,
-        bossRewardClosed: 0
+    runtime: {
+      dungeon: makeDungeon(),
+      staircase: {
+        kind: "single",
+        position: { x: 7, y: 7 },
+        visible: false
       },
-      combat: {
-        skillUses: 7,
-        skillCastsPer30s: 3.5,
-        skillDamage: 120,
-        autoAttackDamage: 180,
-        skillDamageShare: 0.4,
-        autoAttackDamageShare: 0.6,
-        manaDryWindowMs: 800,
-        averageNoInputGapMs: 950,
-        maxNoInputGapMs: 2100
+      hazards: [makeHazard()],
+      boss: makeBossState(),
+      monsters: [
+        {
+          state: {
+            ...makeMonsterState(),
+            activeBuffs: [
+              {
+                defId: "frost_slow",
+                sourceId: "player",
+                targetId: "m-1",
+                remainingMs: 500
+              }
+            ]
+          },
+          baseMoveSpeed: 3.2,
+          nextAttackAt: 300,
+          nextSupportAt: 0
+        }
+      ],
+      lootOnGround: [
+        {
+          item: {
+            id: "loot-1",
+            defId: "item_weapon_01",
+            name: "Rust Blade",
+            slot: "weapon",
+            rarity: "common",
+            requiredLevel: 1,
+            iconId: "item_weapon_01",
+            seed: "loot-seed",
+            rolledAffixes: {
+              attackPower: 2
+            }
+          },
+          position: { x: 2, y: 2 }
+        }
+      ],
+      eventNode: {
+        eventId: "wandering_merchant",
+        position: { x: 4, y: 4 },
+        resolved: false,
+        merchantOffers: []
       },
-      runtimeEffects: {
-        buffApplyCountById: { war_cry: 2 },
-        buffUptimeMsById: { war_cry: 6_000 },
-        damageDealtByType: { physical: 180, arcane: 120 },
-        damageTakenByType: { physical: 25 },
-        resolvedHitCountByType: { physical: 14, arcane: 6 },
-        synergyActivationCountById: { crit_chain: 1 },
-        synergyFirstActivatedFloorById: { crit_chain: 3 }
-      }
+      minimap: {
+        layoutHash: "layout-1",
+        exploredKeys: [1, 2, 3]
+      },
+      mapRevealActive: false,
+      deferredOutcomes: [
+        {
+          outcomeId: "event-1",
+          source: "event",
+          trigger: {
+            type: "floor_reached",
+            value: 4
+          },
+          reward: {
+            obol: 15
+          },
+          status: "pending"
+        }
+      ],
+      floorChoiceBudget: {
+        floor: 3,
+        satisfied: true,
+        source: "event"
+      },
+      powerSpikeBudgetState: {
+        pairStates: {
+          "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
+          "3-4": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
+          "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+        },
+        acceptedSpikeCount: 1,
+        majorSpikeCount: 0
+      },
+      phase6TelemetryState: {
+        startedAtMs: 100,
+        buildFormedState: true,
+        inputTimestampsMs: [120, 150, 190],
+        story: {
+          playerFacingChoices: 4,
+          choiceCountByFloor: {
+            "1": 1,
+            "2": 2
+          },
+          powerSpikes: 2,
+          majorPowerSpikes: 1,
+          buildFormed: 1,
+          rareDropsPresented: 1,
+          bossRewardClosed: 0
+        },
+        combat: {
+          skillUses: 7,
+          skillCastsPer30s: 3.5,
+          skillDamage: 120,
+          autoAttackDamage: 180,
+          skillDamageShare: 0.4,
+          autoAttackDamageShare: 0.6,
+          manaDryWindowMs: 800,
+          averageNoInputGapMs: 950,
+          maxNoInputGapMs: 2100
+        },
+        runtimeEffects: {
+          buffApplyCountById: { war_cry: 2 },
+          buffUptimeMsById: { war_cry: 6_000 },
+          damageDealtByType: { physical: 180, arcane: 120 },
+          damageTakenByType: { physical: 25 },
+          resolvedHitCountByType: { physical: 14, arcane: 6 },
+          synergyActivationCountById: { crit_chain: 1 },
+          synergyFirstActivatedFloorById: { crit_chain: 3 }
+        }
+      },
+      rngCursor: makeRngCursor()
     },
-    lease: {
-      tabId: "tab-a",
-      leaseUntilMs: 1000,
-      renewedAtMs: 900
-    }
-  };
-}
-
-function toV1(save: RunSaveDataV2): RunSaveDataV1 {
-  const {
-    challengeSuccessCount,
-    inEndless,
-    endlessFloor,
-    runMode,
-    mutatorActiveIds,
-    mutatorState,
-    deferredShardBonus,
-    ...legacyRun
-  } = save.run;
-  void challengeSuccessCount;
-  void inEndless;
-  void endlessFloor;
-  void runMode;
-  void mutatorActiveIds;
-  void mutatorState;
-  void deferredShardBonus;
-  return {
-    ...save,
-    schemaVersion: 1,
-    run: legacyRun,
-    staircase: {
-      position: { ...save.staircase.position },
-      visible: save.staircase.visible
+    session: {
+      progressionPromptState: {
+        nextPromptDelayMs: 2_100,
+        pendingLevelUpSkillOfferIds: ["chain_lightning"]
+      },
+      comparePromptState: {
+        active: { itemId: "loot-0", source: "boss_reward" },
+        immediate: [{ itemId: "loot-1", source: "auto_pickup" }],
+        deferred: [{ itemId: "loot-2", source: "boss_reward" }],
+        drainMode: "all"
+      },
+      lease: {
+        tabId: "tab-a",
+        leaseUntilMs: 1_000,
+        renewedAtMs: 900
+      }
     }
   };
 }
 
 describe("save", () => {
-  it("round-trips a valid run save", () => {
+  it("round-trips a valid v3 run save", () => {
     const save = makeSave();
     const raw = serializeRunState(save);
     const loaded = deserializeRunState(raw);
 
     expect(loaded).not.toBeNull();
     expect(loaded?.runId).toBe(save.runId);
-    expect(loaded?.runtimeNowMs).toBe(260);
-    expect(loaded?.monsters[0]?.nextAttackAt).toBe(300);
-    expect(loaded?.rngCursor.event).toBe(6);
+    expect(loaded?.runtime.monsters[0]?.nextAttackAt).toBe(300);
+    expect(loaded?.runtime.rngCursor.event).toBe(6);
+    expect(loaded?.session.comparePromptState).toEqual(save.session.comparePromptState);
   });
 
-  it("normalizes legacy draft fields on deserialize", () => {
-    const save = toV1(makeSave()) as unknown as Record<string, unknown>;
-    delete save.blueprintFoundIdsInRun;
-    delete save.selectedMutationIds;
-    save.blueprintsFoundThisRun = ["bp_legacy"];
-    save.selectedMutations = ["mut_legacy"];
+  it("returns source version metadata for valid v3 payload", () => {
+    const result = deserializeRunStateResult(JSON.stringify(makeSave()));
 
-    const loaded = deserializeRunState(JSON.stringify(save));
-
-    expect(loaded?.blueprintFoundIdsInRun).toEqual(["bp_legacy"]);
-    expect(loaded?.selectedMutationIds).toEqual(["mut_legacy"]);
-    expect("blueprintsFoundThisRun" in (loaded ?? {})).toBe(false);
-    expect("selectedMutations" in (loaded ?? {})).toBe(false);
-  });
-
-  it("migrates legacy damageOverTime affixes into skillBonusDamage", () => {
-    const save = makeSave() as unknown as Record<string, unknown>;
-    const player = save.player as Record<string, unknown>;
-    player.inventory = [
-      {
-        id: "legacy-ring",
-        defId: "legacy-ring",
-        name: "Legacy Ring",
-        slot: "ring",
-        rarity: "rare",
-        requiredLevel: 1,
-        iconId: "item_ring_01",
-        seed: "legacy-seed",
-        rolledAffixes: {},
-        rolledSpecialAffixes: {
-          damageOverTime: 9
-        }
-      }
-    ];
-
-    const loaded = deserializeRunState(JSON.stringify(save));
-    const special = loaded?.player.inventory[0]?.rolledSpecialAffixes;
-
-    expect(special?.skillBonusDamage).toBe(9);
-    expect(special && "damageOverTime" in special).toBe(false);
-  });
-
-  it("normalizes legacy v2 fields before validateSave returns true", () => {
-    const save = makeSave() as unknown as Record<string, unknown>;
-    const player = save.player as Record<string, unknown>;
-    player.inventory = [
-      {
-        id: "legacy-ring",
-        defId: "legacy-ring",
-        name: "Legacy Ring",
-        slot: "ring",
-        rarity: "rare",
-        requiredLevel: 1,
-        iconId: "item_ring_01",
-        seed: "legacy-seed",
-        rolledAffixes: {},
-        rolledSpecialAffixes: {
-          damageOverTime: 9
-        }
-      }
-    ];
-    const telemetry = save.phase6TelemetryState as Record<string, unknown>;
-    const story = telemetry.story as Record<string, unknown>;
-    delete story.majorPowerSpikes;
-
-    expect(validateSave(save)).toBe(true);
-    expect(
-      ((save.player as PlayerState).inventory[0]?.rolledSpecialAffixes as Record<string, unknown>)?.skillBonusDamage
-    ).toBe(9);
-    expect(
-      "damageOverTime" in
-        (((save.player as PlayerState).inventory[0]?.rolledSpecialAffixes as Record<string, unknown>) ?? {})
-    ).toBe(false);
-    expect(((save.phase6TelemetryState as NonNullable<RunSaveDataV2["phase6TelemetryState"]>).story.majorPowerSpikes)).toBe(0);
-  });
-
-  it("migrates v1 payload into v2 shape", () => {
-    const saveV1 = toV1(makeSave());
-    const migratedByDeserializer = deserializeRunState(JSON.stringify(saveV1));
-    const migratedByHelper = migrateRunSaveV1ToV2(saveV1);
-
-    expect(migratedByDeserializer?.schemaVersion).toBe(2);
-    expect(migratedByDeserializer?.run.runMode).toBe("normal");
-    expect(migratedByDeserializer?.run.inEndless).toBe(false);
-    expect(migratedByDeserializer?.deferredOutcomes).toEqual([]);
-    expect(migratedByDeserializer).toEqual(migratedByHelper);
-  });
-
-  it("returns source version metadata for v1 migration", () => {
-    const saveV1 = toV1(makeSave());
-    const result = deserializeRunStateResult(JSON.stringify(saveV1));
-    expect(result.sourceVersion).toBe(1);
-    expect(result.migratedFromV1).toBe(true);
-    expect(result.save?.schemaVersion).toBe(2);
+    expect(result.sourceVersion).toBe(3);
+    expect(result.save?.schemaVersion).toBe(3);
   });
 
   it("rejects invalid save payload", () => {
     const broken = makeSave() as unknown as Record<string, unknown>;
-    delete broken.run;
+    delete broken.domain;
 
     expect(validateSave(broken)).toBe(false);
     expect(deserializeRunState(JSON.stringify(broken))).toBeNull();
   });
 
-  it("rejects invalid hidden room snapshot shape", () => {
+  it("rejects invalid runtime nested state", () => {
     const broken = makeSave() as unknown as Record<string, unknown>;
-    const dungeon = broken.dungeon as Record<string, unknown>;
-    dungeon.hiddenRooms = [
-      {
-        roomId: "hidden-1",
-        entrance: { x: 2, y: 2 },
-        revealed: "nope"
-      }
-    ];
-
-    expect(validateSave(broken)).toBe(false);
-  });
-
-  it("round-trips optional floor choice budget snapshot", () => {
-    const save = makeSave();
-    save.floorChoiceBudget = {
-      floor: 3,
-      satisfied: true,
-      source: "event"
-    };
-    const loaded = deserializeRunState(serializeRunState(save));
-
-    expect(loaded).not.toBeNull();
-    expect(loaded?.floorChoiceBudget).toEqual({
-      floor: 3,
-      satisfied: true,
-      source: "event"
-    });
-  });
-
-  it("round-trips progression prompt state", () => {
-    const save = makeSave();
-    const loaded = deserializeRunState(serializeRunState(save));
-
-    expect(loaded?.progressionPromptState).toEqual(save.progressionPromptState);
-  });
-
-  it("round-trips phase6 telemetry runtime state", () => {
-    const save = makeSave();
-    const loaded = deserializeRunState(serializeRunState(save));
-
-    expect(loaded?.phase6TelemetryState).toEqual(save.phase6TelemetryState);
-  });
-
-  it("round-trips power spike budget runtime state", () => {
-    const save = makeSave();
-    const loaded = deserializeRunState(serializeRunState(save));
-
-    expect(loaded?.powerSpikeBudgetState).toEqual(save.powerSpikeBudgetState);
-  });
-
-  it("defaults missing legacy major power spikes during v2 deserialize", () => {
-    const save = makeSave();
-    const legacyTelemetrySave = {
-      ...save,
-      phase6TelemetryState: {
-        ...save.phase6TelemetryState!,
-        story: {
-          ...save.phase6TelemetryState!.story
-        }
+    broken.runtime = {
+      ...(broken.runtime as Record<string, unknown>),
+      powerSpikeBudgetState: {
+        pairStates: {
+          "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
+          "3-4": { hitCount: "0", majorHitCount: 0, satisfied: false, fallbackGranted: false },
+          "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+        },
+        acceptedSpikeCount: 1,
+        majorSpikeCount: 0
       }
     };
-    delete (legacyTelemetrySave.phase6TelemetryState.story as { majorPowerSpikes?: number }).majorPowerSpikes;
 
-    const result = deserializeRunStateResult(JSON.stringify(legacyTelemetrySave));
-
-    expect(result.sourceVersion).toBe(2);
-    expect(result.migratedFromV1).toBe(false);
-    expect(result.save?.phase6TelemetryState?.story.majorPowerSpikes).toBe(0);
+    expect(validateSave(broken)).toBe(false);
   });
 
-  it("rejects invalid floor choice budget snapshot shape", () => {
+  it("rejects runtime state when deferred outcomes are missing", () => {
     const broken = makeSave() as unknown as Record<string, unknown>;
-    broken.floorChoiceBudget = {
-      floor: "3",
-      satisfied: true
+    broken.runtime = {
+      ...(broken.runtime as Record<string, unknown>),
+      deferredOutcomes: undefined
+    };
+
+    expect(validateSave(broken)).toBe(false);
+    expect(deserializeRunState(JSON.stringify(broken))).toBeNull();
+  });
+
+  it("rejects invalid persistent player shape", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    broken.domain = {
+      ...(broken.domain as Record<string, unknown>),
+      player: {
+        ...((broken.domain as Record<string, unknown>).player as Record<string, unknown>),
+        position: undefined
+      }
+    };
+
+    expect(validateSave(broken)).toBe(false);
+    expect(deserializeRunState(JSON.stringify(broken))).toBeNull();
+  });
+
+  it("rejects invalid runtime monster shape", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    const runtime = broken.runtime as Record<string, unknown>;
+    const monsters = [...(runtime.monsters as Array<Record<string, unknown>>)];
+    monsters[0] = {
+      ...monsters[0],
+      state: {
+        ...((monsters[0]?.state as Record<string, unknown>) ?? {}),
+        moveSpeed: undefined
+      }
+    };
+    broken.runtime = {
+      ...runtime,
+      monsters
+    };
+
+    expect(validateSave(broken)).toBe(false);
+    expect(deserializeRunState(JSON.stringify(broken))).toBeNull();
+  });
+
+  it("rejects invalid session nested state", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    broken.session = {
+      ...(broken.session as Record<string, unknown>),
+      progressionPromptState: {
+        nextPromptDelayMs: "soon",
+        pendingLevelUpSkillOfferIds: ["chain_lightning"]
+      }
     };
 
     expect(validateSave(broken)).toBe(false);
   });
 
-  it("rejects invalid phase6 telemetry runtime state shape", () => {
-    const broken = makeSave() as unknown as Record<string, unknown>;
-    broken.phase6TelemetryState = {
-      startedAtMs: 100,
-      buildFormedState: "yes",
-      inputTimestampsMs: [],
-      story: {},
-      combat: {},
-      runtimeEffects: {}
-    };
-
-    expect(validateSave(broken)).toBe(false);
-  });
-
-  it("rejects invalid progression prompt state shape", () => {
-    const broken = makeSave() as unknown as Record<string, unknown>;
-    broken.progressionPromptState = {
-      nextPromptDelayMs: "soon",
-      pendingLevelUpSkillOfferIds: ["chain_lightning"]
-    };
-
-    expect(validateSave(broken)).toBe(false);
-  });
-
-  it("rejects invalid power spike budget runtime state shape", () => {
-    const broken = makeSave() as unknown as Record<string, unknown>;
-    broken.powerSpikeBudgetState = {
-      pairStates: {
-        "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
-        "3-4": { hitCount: "0", majorHitCount: 0, satisfied: false, fallbackGranted: false },
-        "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
-      },
-      acceptedSpikeCount: 1,
-      majorSpikeCount: 0
-    };
-
-    expect(validateSave(broken)).toBe(false);
-  });
-
-  it("rejects invalid runtime clock shape", () => {
-    const broken = makeSave() as unknown as Record<string, unknown>;
-    broken.runtimeNowMs = "260";
-
-    expect(validateSave(broken)).toBe(false);
-  });
-
-  it("keeps unknown fields for forward compatibility", () => {
+  it("preserves unknown top-level fields for forward compatibility", () => {
     const save = makeSave() as unknown as Record<string, unknown>;
     save.futureFeature = {
       foo: 1,

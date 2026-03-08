@@ -3,7 +3,7 @@ import { resolveBiomeForFloorBySeed } from "../biome";
 import { createInitialConsumableState } from "../consumable";
 import { createStaircaseState } from "../floor";
 import { resolveBranchChoiceFromSide, resolveBranchSideAtPosition } from "../pathSelection";
-import { migrateRunSaveV1ToV2, type RunSaveDataV1 } from "../save";
+import { deserializeRunState, serializeRunState, type RunSaveDataV3 } from "../save";
 import { createRunState } from "../run";
 import { defaultBaseStats, deriveStats } from "../stats";
 
@@ -41,81 +41,109 @@ describe("phase4c integration", () => {
     expect(resolveBiomeForFloorBySeed(5, "run-seed-x", choice)).toBe("bone_throne");
   });
 
-  it("migrates run save v1 into v2 with branch staircase at floor 2", () => {
+  it("round-trips v3 branch staircase state at floor 2", () => {
     const baseStats = defaultBaseStats();
     const run = createRunState("seed-a", 1000, "normal");
-    const saveV1: RunSaveDataV1 = {
-      schemaVersion: 1,
+    const save: RunSaveDataV3 = {
+      schemaVersion: 3,
       savedAtMs: 1000,
       appVersion: "test",
       runId: "seed-a:1000",
       runSeed: "seed-a",
-      run: {
-        ...run,
-        currentFloor: 2,
-        floor: 2,
-        currentBiomeId: "forgotten_catacombs"
+      domain: {
+        run: {
+          ...run,
+          currentFloor: 2,
+          floor: 2,
+          currentBiomeId: "forgotten_catacombs"
+        },
+        player: {
+          id: "p1",
+          position: { x: 4, y: 4 },
+          level: 1,
+          xp: 0,
+          xpToNextLevel: 100,
+          pendingLevelUpChoices: 0,
+          pendingSkillChoices: 0,
+          health: 100,
+          mana: 40,
+          baseStats,
+          derivedStats: deriveStats(baseStats, []),
+          inventory: [],
+          equipment: {},
+          gold: 0,
+          skills: {
+            skillSlots: [null, null],
+            cooldowns: {}
+          },
+          activeBuffs: []
+        },
+        consumables: createInitialConsumableState(0),
+        blueprintFoundIdsInRun: [],
+        selectedMutationIds: []
       },
-      player: {
-        id: "p1",
-        position: { x: 4, y: 4 },
-        level: 1,
-        xp: 0,
-        xpToNextLevel: 100,
-        health: 100,
-        mana: 40,
-        baseStats,
-        derivedStats: deriveStats(baseStats, []),
-        inventory: [],
-        equipment: {},
-        gold: 0
+      runtime: {
+        dungeon: {
+          width: 16,
+          height: 16,
+          walkable: Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => true)),
+          rooms: [
+            { id: "r0", x: 2, y: 2, width: 4, height: 4 },
+            { id: "r1", x: 10, y: 10, width: 4, height: 4 }
+          ],
+          corridors: [],
+          spawnPoints: [{ x: 11, y: 11 }],
+          playerSpawn: { x: 3, y: 3 },
+          layoutHash: "layout-v1"
+        },
+        staircase: {
+          ...createStaircaseState(
+            {
+              width: 16,
+              height: 16,
+              walkable: Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => true)),
+              rooms: [
+                { id: "r0", x: 2, y: 2, width: 4, height: 4 },
+                { id: "r1", x: 10, y: 10, width: 4, height: 4 }
+              ],
+              corridors: [],
+              spawnPoints: [{ x: 11, y: 11 }],
+              playerSpawn: { x: 3, y: 3 },
+              layoutHash: "layout-v1"
+            },
+            { x: 3, y: 3 },
+            2
+          ),
+          visible: true
+        },
+        hazards: [],
+        boss: null,
+        monsters: [],
+        lootOnGround: [],
+        eventNode: null,
+        minimap: {
+          layoutHash: "layout-v1",
+          exploredKeys: []
+        },
+        mapRevealActive: false,
+        deferredOutcomes: [],
+        rngCursor: {
+          procgen: 0,
+          spawn: 0,
+          combat: 0,
+          loot: 0,
+          skill: 0,
+          boss: 0,
+          biome: 0,
+          hazard: 0,
+          event: 0,
+          merchant: 0
+        }
       },
-      consumables: createInitialConsumableState(0),
-      dungeon: {
-        width: 16,
-        height: 16,
-        walkable: Array.from({ length: 16 }, () => Array.from({ length: 16 }, () => true)),
-        rooms: [
-          { id: "r0", x: 2, y: 2, width: 4, height: 4 },
-          { id: "r1", x: 10, y: 10, width: 4, height: 4 }
-        ],
-        corridors: [],
-        spawnPoints: [{ x: 11, y: 11 }],
-        playerSpawn: { x: 3, y: 3 },
-        layoutHash: "layout-v1"
-      },
-      staircase: {
-        position: { x: 11, y: 11 },
-        visible: true
-      },
-      hazards: [],
-      boss: null,
-      monsters: [],
-      lootOnGround: [],
-      eventNode: null,
-      minimap: {
-        layoutHash: "layout-v1",
-        exploredKeys: []
-      },
-      mapRevealActive: false,
-      rngCursor: {
-        procgen: 0,
-        spawn: 0,
-        combat: 0,
-        loot: 0,
-        skill: 0,
-        boss: 0,
-        biome: 0,
-        hazard: 0,
-        event: 0,
-        merchant: 0
-      }
+      session: {}
     };
 
-    const migrated = migrateRunSaveV1ToV2(saveV1);
-    expect(migrated.schemaVersion).toBe(2);
-    expect(migrated.run.runMode).toBe("normal");
-    expect(migrated.run.inEndless).toBe(false);
-    expect(migrated.staircase.kind).toBe("branch");
+    const loaded = deserializeRunState(serializeRunState(save));
+    expect(loaded?.runtime.staircase.kind).toBe("branch");
   });
 });

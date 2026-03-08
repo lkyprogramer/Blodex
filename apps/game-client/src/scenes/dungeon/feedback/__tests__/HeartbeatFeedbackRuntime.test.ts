@@ -30,6 +30,7 @@ function createHost(): {
   routeFeedback: ReturnType<typeof vi.fn>;
 } {
   const player = {
+    inventory: [] as ItemInstance[],
     equipment: {
       weapon: makeItem("rusted_sabre", {
         rolledAffixes: {
@@ -156,6 +157,102 @@ describe("HeartbeatFeedbackRuntime", () => {
 
     expect(showEquipmentComparePrompt).toHaveBeenCalledTimes(3);
     expect(showEquipmentComparePrompt.mock.calls[2]![0]).toMatchObject({
+      id: first.id
+    });
+  });
+
+  it("captures the active compare prompt in session state while the prompt is open", () => {
+    const { runtime } = createHost();
+    const first = makeItem("sanctified_greatsword", {
+      rolledAffixes: {
+        attackPower: 16
+      }
+    });
+
+    runtime.maybeQueueEquipmentCompare(first, "boss_reward");
+
+    expect(runtime.captureComparePromptState()).toEqual({
+      active: {
+        itemId: first.id,
+        source: "boss_reward"
+      },
+      immediate: [],
+      deferred: [],
+      drainMode: "all"
+    });
+  });
+
+  it("reopens the restored active compare prompt immediately when the UI is unblocked", () => {
+    const { host, runtime, showEquipmentComparePrompt } = createHost();
+    const first = makeItem("sanctified_greatsword", {
+      rolledAffixes: {
+        attackPower: 16
+      }
+    });
+    host.player.inventory.push(first);
+
+    runtime.restoreComparePromptState({
+      active: {
+        itemId: first.id,
+        source: "boss_reward"
+      },
+      immediate: [],
+      deferred: [],
+      drainMode: "all"
+    });
+
+    expect(showEquipmentComparePrompt).toHaveBeenCalledTimes(1);
+    expect(showEquipmentComparePrompt.mock.calls[0]![0]).toMatchObject({
+      id: first.id
+    });
+    expect(runtime.captureComparePromptState()).toEqual({
+      active: {
+        itemId: first.id,
+        source: "boss_reward"
+      },
+      immediate: [],
+      deferred: [],
+      drainMode: "all"
+    });
+  });
+
+  it("keeps restored compare prompts pending while blocked and shows them after an explicit flush", () => {
+    const { host, runtime, showEquipmentComparePrompt } = createHost();
+    const first = makeItem("sanctified_greatsword", {
+      rolledAffixes: {
+        attackPower: 16
+      }
+    });
+    host.player.inventory.push(first);
+    host.eventPanelOpen = true;
+
+    runtime.restoreComparePromptState({
+      active: {
+        itemId: first.id,
+        source: "boss_reward"
+      },
+      immediate: [],
+      deferred: [],
+      drainMode: "immediate"
+    });
+
+    expect(showEquipmentComparePrompt).not.toHaveBeenCalled();
+    expect(runtime.captureComparePromptState()).toEqual({
+      immediate: [
+        {
+          itemId: first.id,
+          source: "boss_reward"
+        }
+      ],
+      deferred: [],
+      drainMode: "immediate"
+    });
+
+    host.eventPanelOpen = false;
+    runtime.flushImmediateComparePrompts();
+
+    expect(showEquipmentComparePrompt).toHaveBeenCalledTimes(1);
+    expect(showEquipmentComparePrompt.mock.calls[0]![0]).toMatchObject({
       id: first.id
     });
   });

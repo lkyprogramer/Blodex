@@ -6,7 +6,7 @@ import {
   resolveSelectedDifficulty,
   resolveDailyDate,
   isDifficultyUnlocked,
-  type RunSaveDataV2,
+  type RunSaveDataV3,
   type DifficultyMode,
   type MetaProgression
 } from "@blodex/core";
@@ -89,7 +89,7 @@ function describeLegacyUnlockEffect(unlock: (typeof UNLOCK_DEFS)[number]): strin
 export class MetaMenuScene extends Phaser.Scene {
   private readonly contentLocalizer = getContentLocalizer();
   private meta: MetaProgression = createInitialMeta();
-  private runSave: RunSaveDataV2 | null = null;
+  private runSave: RunSaveDataV3 | null = null;
   private readonly saveManager = new SaveManager();
   private readonly unbindDomActions: Array<() => void> = [];
   private readonly unbindLanguageGateActions: Array<() => void> = [];
@@ -98,6 +98,7 @@ export class MetaMenuScene extends Phaser.Scene {
   private languageGateRoot: HTMLDivElement | null = null;
   private languageGateActive = false;
   private pendingLocaleSelection: LocaleCode = "en-US";
+  private saveResetNoticeActive = false;
   private readonly metaFlowController = new MetaFlowController(this.createMetaFlowHost());
 
   constructor() {
@@ -109,6 +110,7 @@ export class MetaMenuScene extends Phaser.Scene {
     this.resolveLocalePreference();
     this.normalizeMetaForPhase4B();
     this.runSave = this.saveManager.readSave();
+    this.saveResetNoticeActive = this.saveManager.consumeResetNotice();
     const resolvedDifficulty = resolveSelectedDifficulty(this.meta);
     if (resolvedDifficulty !== this.meta.selectedDifficulty) {
       this.meta = {
@@ -168,10 +170,10 @@ export class MetaMenuScene extends Phaser.Scene {
       readSave() {
         return scene.saveManager.readSave();
       },
-      acquireLease(save: RunSaveDataV2) {
+      acquireLease(save: RunSaveDataV3) {
         return scene.saveManager.acquireLease(save);
       },
-      hasForeignLease(save: RunSaveDataV2) {
+      hasForeignLease(save: RunSaveDataV3) {
         return scene.saveManager.hasForeignLease(save);
       },
       isRunSettled(runId: string) {
@@ -199,6 +201,7 @@ export class MetaMenuScene extends Phaser.Scene {
       buildMetaMenuView({
         meta: this.meta,
         runSave: this.runSave,
+        showSaveResetNotice: this.saveResetNoticeActive,
         saveManager: this.saveManager,
         currentLocale: getLocale(),
         contentLocalizer: this.contentLocalizer

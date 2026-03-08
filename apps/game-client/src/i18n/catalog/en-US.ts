@@ -437,6 +437,8 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.meta.save.active_in_another_tab": "Run is active in another tab.",
   "ui.meta.save.ready_to_continue": "Saved run ready to continue.",
   "ui.meta.save.detail": "Floor {floor} • {difficulty} • {when}",
+  "ui.meta.save.reset_notice_title": "Save format reset",
+  "ui.meta.save.reset_notice_body": "A legacy run save was detected. Old progress cannot continue and has been reset to the new format.",
 
   "ui.meta.effect.permanent": "Permanent: {key} +{value}",
   "ui.meta.effect.skill_unlock": "Skill unlock: {skillId}",

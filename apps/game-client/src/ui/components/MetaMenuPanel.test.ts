@@ -13,6 +13,7 @@ describe("renderMetaMenuPanel", () => {
       echoes: 5,
       unlockedCount: 2,
       totalUnlocks: 6,
+      saveResetNoticeText: null,
       runSave: {
         canContinue: true,
         canAbandon: true,
@@ -196,6 +197,7 @@ describe("renderMetaMenuPanel", () => {
       echoes: 0,
       unlockedCount: 0,
       totalUnlocks: 0,
+      saveResetNoticeText: null,
       runSave: null,
       daily: {
         date: "2026-03-03",

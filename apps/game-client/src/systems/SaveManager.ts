@@ -1,16 +1,16 @@
 import {
-  deserializeRunStateResult,
+  deserializeRunState,
   RUN_SAVE_STORAGE_KEY,
-  RUN_SAVE_STORAGE_KEY_V1,
-  RUN_SAVE_STORAGE_KEY_V2,
   serializeRunState,
-  type RunSaveDataV2
+  type RunSaveDataV3
 } from "@blodex/core";
 
 export const RUN_SETTLED_STORAGE_KEY = "blodex_run_settled_v1";
+export const RUN_SAVE_RESET_NOTICE_KEY = "blodex_run_save_reset_notice_v1";
 export const SAVE_LEASE_TTL_MS = 15_000;
 export const SAVE_LEASE_HEARTBEAT_MS = 5_000;
 export const SAVE_DEBOUNCE_MS = 300;
+const LEGACY_RUN_SAVE_STORAGE_KEYS = ["blodex_run_save_v2", "blodex_run_save_v1"] as const;
 
 export interface SaveManagerOptions {
   storage?: Storage;
@@ -26,7 +26,7 @@ export interface SaveManagerOptions {
 
 export interface LeaseAcquireResult {
   ok: boolean;
-  save: RunSaveDataV2 | null;
+  save: RunSaveDataV3 | null;
   reason?: "missing_save" | "lease_held" | "write_failed";
   holderTabId?: string;
 }
@@ -56,7 +56,6 @@ export class SaveManager {
   private readonly sessionStorage: Storage | undefined;
   private readonly now: () => number;
   private readonly storageKey: string;
-  private readonly legacyStorageKey: string;
   private readonly settledKey: string;
   private readonly leaseTtlMs: number;
   private readonly leaseHeartbeatMs: number;
@@ -73,8 +72,7 @@ export class SaveManager {
     this.storage = options.storage ?? safeGetWindowStorage("localStorage");
     this.sessionStorage = options.sessionStorage ?? safeGetWindowStorage("sessionStorage");
     this.now = options.now ?? (() => Date.now());
-    this.storageKey = options.storageKey ?? RUN_SAVE_STORAGE_KEY_V2 ?? RUN_SAVE_STORAGE_KEY;
-    this.legacyStorageKey = options.legacyStorageKey ?? RUN_SAVE_STORAGE_KEY_V1;
+    this.storageKey = options.storageKey ?? RUN_SAVE_STORAGE_KEY;
     this.settledKey = options.settledKey ?? RUN_SETTLED_STORAGE_KEY;
     this.leaseTtlMs = options.leaseTtlMs ?? SAVE_LEASE_TTL_MS;
     this.leaseHeartbeatMs = options.leaseHeartbeatMs ?? SAVE_LEASE_HEARTBEAT_MS;
@@ -86,55 +84,30 @@ export class SaveManager {
     return this.tabId;
   }
 
-  readSave(): RunSaveDataV2 | null {
+  readSave(): RunSaveDataV3 | null {
     if (this.storage === undefined) {
       return null;
     }
 
-    let rawV2: string | null = null;
+    let rawV3: string | null = null;
     try {
-      rawV2 = this.storage.getItem(this.storageKey);
+      rawV3 = this.storage.getItem(this.storageKey);
     } catch {
       return null;
     }
 
-    if (rawV2 !== null) {
-      const parsed = deserializeRunStateResult(rawV2);
-      if (parsed.save !== null) {
-        return parsed.save;
+    if (rawV3 !== null) {
+      const parsed = deserializeRunState(rawV3);
+      if (parsed !== null) {
+        return parsed;
       }
     }
 
-    let rawV1: string | null = null;
-    try {
-      rawV1 = this.storage.getItem(this.legacyStorageKey);
-    } catch {
-      return null;
-    }
-    if (rawV1 === null) {
-      return null;
-    }
-
-    const migrated = deserializeRunStateResult(rawV1);
-    if (migrated.save === null) {
-      return null;
-    }
-
-    if (migrated.sourceVersion === 1) {
-      const wrote = this.writeSave(migrated.save);
-      if (wrote) {
-        try {
-          this.storage.removeItem(this.legacyStorageKey);
-        } catch {
-          // Keep legacy copy when cleanup fails; v2 still takes precedence.
-        }
-      }
-    }
-
-    return migrated.save;
+    this.resetLegacySavesIfPresent();
+    return null;
   }
 
-  writeSave(snapshot: RunSaveDataV2): boolean {
+  writeSave(snapshot: RunSaveDataV3): boolean {
     if (this.storage === undefined) {
       return false;
     }
@@ -153,13 +126,15 @@ export class SaveManager {
     }
     try {
       this.storage.removeItem(this.storageKey);
-      this.storage.removeItem(this.legacyStorageKey);
+      for (const legacyKey of LEGACY_RUN_SAVE_STORAGE_KEYS) {
+        this.storage.removeItem(legacyKey);
+      }
     } catch {
       // Best effort cleanup; keep runtime alive when storage is unavailable.
     }
   }
 
-  scheduleSave(snapshotBuilder: () => RunSaveDataV2 | null): void {
+  scheduleSave(snapshotBuilder: () => RunSaveDataV3 | null): void {
     if (this.debounceTimer !== null) {
       clearTimeout(this.debounceTimer);
     }
@@ -170,7 +145,7 @@ export class SaveManager {
     }, this.debounceMs);
   }
 
-  flushSave(snapshotBuilder: () => RunSaveDataV2 | null): boolean {
+  flushSave(snapshotBuilder: () => RunSaveDataV3 | null): boolean {
     if (this.debounceTimer !== null) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
@@ -183,17 +158,17 @@ export class SaveManager {
     return this.writeSave(snapshot);
   }
 
-  hasForeignLease(save: RunSaveDataV2 | null, nowMs = this.now()): boolean {
-    if (save?.lease === undefined) {
+  hasForeignLease(save: RunSaveDataV3 | null, nowMs = this.now()): boolean {
+    if (save?.session.lease === undefined) {
       return false;
     }
-    if (save.lease.leaseUntilMs <= nowMs) {
+    if (save.session.lease.leaseUntilMs <= nowMs) {
       return false;
     }
-    return save.lease.tabId !== this.tabId;
+    return save.session.lease.tabId !== this.tabId;
   }
 
-  acquireLease(save: RunSaveDataV2 | null = this.readSave(), nowMs = this.now()): LeaseAcquireResult {
+  acquireLease(save: RunSaveDataV3 | null = this.readSave(), nowMs = this.now()): LeaseAcquireResult {
     if (save === null) {
       return {
         ok: false,
@@ -207,16 +182,19 @@ export class SaveManager {
         ok: false,
         save,
         reason: "lease_held",
-        ...(save.lease?.tabId === undefined ? {} : { holderTabId: save.lease.tabId })
+        ...(save.session.lease?.tabId === undefined ? {} : { holderTabId: save.session.lease.tabId })
       };
     }
 
-    const leased: RunSaveDataV2 = {
+    const leased: RunSaveDataV3 = {
       ...save,
-      lease: {
-        tabId: this.tabId,
-        renewedAtMs: nowMs,
-        leaseUntilMs: nowMs + this.leaseTtlMs
+      session: {
+        ...save.session,
+        lease: {
+          tabId: this.tabId,
+          renewedAtMs: nowMs,
+          leaseUntilMs: nowMs + this.leaseTtlMs
+        }
       }
     };
 
@@ -234,7 +212,7 @@ export class SaveManager {
     };
   }
 
-  renewLease(snapshotBuilder?: () => RunSaveDataV2 | null): boolean {
+  renewLease(snapshotBuilder?: () => RunSaveDataV3 | null): boolean {
     const nowMs = this.now();
     const save = this.readSave();
     if (save === null) {
@@ -251,15 +229,18 @@ export class SaveManager {
 
     return this.writeSave({
       ...snapshot,
-      lease: {
-        tabId: this.tabId,
-        renewedAtMs: nowMs,
-        leaseUntilMs: nowMs + this.leaseTtlMs
+      session: {
+        ...snapshot.session,
+        lease: {
+          tabId: this.tabId,
+          renewedAtMs: nowMs,
+          leaseUntilMs: nowMs + this.leaseTtlMs
+        }
       }
     });
   }
 
-  startLeaseHeartbeat(snapshotBuilder?: () => RunSaveDataV2 | null): void {
+  startLeaseHeartbeat(snapshotBuilder?: () => RunSaveDataV3 | null): void {
     this.stopLeaseHeartbeat();
     this.heartbeatTimer = globalThis.setInterval(() => {
       this.renewLease(snapshotBuilder);
@@ -388,6 +369,50 @@ export class SaveManager {
       return new Set(parsed.filter((entry): entry is string => typeof entry === "string"));
     } catch {
       return new Set<string>();
+    }
+  }
+
+  consumeResetNotice(): boolean {
+    const storage = this.sessionStorage ?? this.storage;
+    if (storage === undefined) {
+      return false;
+    }
+    try {
+      const value = storage.getItem(RUN_SAVE_RESET_NOTICE_KEY);
+      if (value !== "1") {
+        return false;
+      }
+      storage.removeItem(RUN_SAVE_RESET_NOTICE_KEY);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private resetLegacySavesIfPresent(): void {
+    if (this.storage === undefined) {
+      return;
+    }
+    let foundLegacy = false;
+    for (const legacyKey of LEGACY_RUN_SAVE_STORAGE_KEYS) {
+      try {
+        if (this.storage.getItem(legacyKey) !== null) {
+          foundLegacy = true;
+        }
+      } catch {
+        return;
+      }
+    }
+    if (!foundLegacy) {
+      return;
+    }
+    try {
+      for (const legacyKey of LEGACY_RUN_SAVE_STORAGE_KEYS) {
+        this.storage.removeItem(legacyKey);
+      }
+      (this.sessionStorage ?? this.storage)?.setItem(RUN_SAVE_RESET_NOTICE_KEY, "1");
+    } catch {
+      // Best effort cleanup.
     }
   }
 }
