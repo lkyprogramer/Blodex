@@ -392,10 +392,7 @@ export class DungeonScene extends Phaser.Scene {
       recommendations: this.tasteRuntime.buildRecommendations()
     })
   });
-  private readonly bossEncounterDispatcher = (() => {
-    const scene = this;
-    return new BossEncounterDispatcher({ get run() { return scene.run; }, get bossDef() { return scene.bossDef; }, set bossDef(value) { scene.bossDef = value; }, get currentBossEncounterId() { return scene.currentBossEncounterId; }, set currentBossEncounterId(value) { scene.currentBossEncounterId = value; } });
-  })();
+  private readonly bossEncounterDispatcher = (() => { const scene = this; return new BossEncounterDispatcher({ get run() { return scene.run; }, get bossDef() { return scene.bossDef; }, set bossDef(value) { scene.bossDef = value; }, get currentBossEncounterId() { return scene.currentBossEncounterId; }, set currentBossEncounterId(value) { scene.currentBossEncounterId = value; }, get challengeRoomState() { return scene.challengeRoomState; } }); })();
   private readonly metaRuntime = new DungeonMetaRuntime(() => this.dungeonSceneHostBridge);
   private readonly sessionFacade = new DungeonSessionFacade(() => this.dungeonSceneHostBridge);
   private readonly dungeonSceneHostBridge: DungeonSceneHostBridge = (() => {
