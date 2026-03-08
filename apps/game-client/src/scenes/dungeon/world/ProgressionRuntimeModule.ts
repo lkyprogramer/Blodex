@@ -31,8 +31,8 @@ import {
   GAME_CONFIG,
   getFloorConfig,
   ITEM_DEF_MAP,
+  listChallengeEncounterIdsForFloor,
   MONSTER_ARCHETYPES,
-  resolveChallengeEncounterIdForFloor,
   SKILL_DEFS
 } from "@blodex/content";
 import { t } from "../../../i18n";
@@ -411,14 +411,18 @@ export class ProgressionRuntimeModule {
     if (selected === undefined && shouldSpawnChallengeRoom(host.run.currentFloor, host.eventRng)) {
       const chosen = chooseChallengeRoom(host.dungeon, host.eventRng);
       if (chosen !== null) {
-        host.dungeon = markRoomAsChallenge(host.dungeon, chosen.id);
+        host.dungeon = this.assignChallengeRoom(host.dungeon, chosen.id, this.selectChallengeEncounterIdForCurrentFloor());
         selected = host.dungeon.rooms.find((room: { id: string }) => room.id === chosen.id);
       }
     }
     if (selected === undefined) {
       return;
     }
-    host.challengeRoomState = createChallengeRoomState(selected.id, this.resolveChallengeEncounterId());
+    if (selected.challengeId === undefined) {
+      host.dungeon = this.assignChallengeRoom(host.dungeon, selected.id, this.selectChallengeEncounterIdForCurrentFloor());
+      selected = host.dungeon.rooms.find((room: { id: string }) => room.id === selected?.id) ?? selected;
+    }
+    host.challengeRoomState = createChallengeRoomState(selected.id, selected.challengeId);
     host.challengeWaveTotal = this.resolveChallengeWaveTotal(selected.id);
     const center = this.challengeRoomCenter(selected.id);
     if (center === null) {
@@ -589,11 +593,15 @@ export class ProgressionRuntimeModule {
     if (host.floorConfig.isBossFloor || host.run.currentFloor < 2) {
       return;
     }
-    const challengeRoom = host.dungeon.rooms.find((room) => room.roomType === "challenge");
+    let challengeRoom = host.dungeon.rooms.find((room) => room.roomType === "challenge");
     if (challengeRoom === undefined) {
       return;
     }
-    host.challengeRoomState = createChallengeRoomState(challengeRoom.id, this.resolveChallengeEncounterId());
+    if (challengeRoom.challengeId === undefined) {
+      host.dungeon = this.assignChallengeRoom(host.dungeon, challengeRoom.id, this.selectChallengeEncounterIdForCurrentFloor());
+      challengeRoom = host.dungeon.rooms.find((room) => room.id === challengeRoom?.id) ?? challengeRoom;
+    }
+    host.challengeRoomState = createChallengeRoomState(challengeRoom.id, challengeRoom.challengeId);
     host.challengeWaveTotal = this.resolveChallengeWaveTotal(challengeRoom.id);
     const center = this.challengeRoomCenter(challengeRoom.id);
     if (center !== null) {
@@ -706,8 +714,23 @@ export class ProgressionRuntimeModule {
     return host.dungeon.rooms.find((room) => room.id === roomId);
   }
 
-  private resolveChallengeEncounterId(): string | undefined {
-    return resolveChallengeEncounterIdForFloor(this.options.host.run.currentFloor) ?? undefined;
+  private assignChallengeRoom(
+    layout: typeof this.options.host.dungeon,
+    roomId: string,
+    challengeId?: string
+  ): typeof this.options.host.dungeon {
+    return markRoomAsChallenge(layout, roomId, challengeId);
+  }
+
+  private selectChallengeEncounterIdForCurrentFloor(): string | undefined {
+    const ids = listChallengeEncounterIdsForFloor(this.options.host.run.currentFloor);
+    if (ids.length === 0) {
+      return undefined;
+    }
+    if (ids.length === 1) {
+      return ids[0];
+    }
+    return this.options.host.eventRng.pick(ids);
   }
 
   private grantChallengeRoomRewards(roomId: string, nowMs: number): void {

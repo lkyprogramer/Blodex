@@ -118,12 +118,14 @@ export const BOSS_ENCOUNTER_MAP = Object.fromEntries(BOSS_ENCOUNTERS.map((entry)
   BossEncounterDef
 >;
 
-export function resolveChallengeEncounterIdForFloor(floor: number): string | null {
-  const encounter = BOSS_ENCOUNTERS.find(
-    (entry) => entry.selector.kind === "challenge" && (entry.selector.floor === undefined || entry.selector.floor === floor)
-  );
-  if (encounter === undefined || encounter.selector.kind !== "challenge") {
-    return null;
-  }
-  return encounter.selector.challengeId;
+export function listChallengeEncounterIdsForFloor(floor: number): string[] {
+  return BOSS_ENCOUNTERS.flatMap((entry) => {
+    if (entry.selector.kind !== "challenge") {
+      return [];
+    }
+    if (entry.selector.floor !== undefined && entry.selector.floor !== floor) {
+      return [];
+    }
+    return [entry.selector.challengeId];
+  });
 }

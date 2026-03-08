@@ -59,8 +59,9 @@ describe("challengeRoom", () => {
     const layout = makeLayout();
     const room = chooseChallengeRoom(layout, makeRng([0.6]));
     expect(room).not.toBeNull();
-    const marked = markRoomAsChallenge(layout, room!.id);
+    const marked = markRoomAsChallenge(layout, room!.id, "trial-a");
     expect(marked.rooms.some((entry) => entry.id === room!.id && entry.roomType === "challenge")).toBe(true);
+    expect(marked.rooms.find((entry) => entry.id === room!.id)?.challengeId).toBe("trial-a");
   });
 
   it("resolves success/fail flow", () => {

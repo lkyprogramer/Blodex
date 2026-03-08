@@ -16,7 +16,7 @@ import {
   type ItemInstance,
   type RandomEventDef
 } from "@blodex/core";
-import { GAME_CONFIG, ITEM_DEF_MAP, LOOT_TABLE_MAP, RANDOM_EVENT_DEFS, resolveChallengeEncounterIdForFloor } from "@blodex/content";
+import { GAME_CONFIG, ITEM_DEF_MAP, LOOT_TABLE_MAP, RANDOM_EVENT_DEFS, listChallengeEncounterIdsForFloor } from "@blodex/content";
 import { t } from "../../../i18n";
 import type { MessageParams } from "../../../i18n/types";
 import { describeDebugCommands, type DebugLogLevel } from "./types";
@@ -171,7 +171,7 @@ export class DebugCommandRegistry {
         this.debugLogKey("log.debug.challenge_room_unavailable", undefined, "warn");
         return false;
       }
-      this.host.dungeon = markRoomAsChallenge(this.host.dungeon, picked.id);
+      this.host.dungeon = markRoomAsChallenge(this.host.dungeon, picked.id, this.selectChallengeEncounterId());
       challengeRoom = this.host.dungeon.rooms.find((room) => room.id === picked.id);
     }
     if (challengeRoom === undefined) {
@@ -179,12 +179,14 @@ export class DebugCommandRegistry {
       return false;
     }
 
+    if (challengeRoom.challengeId === undefined) {
+      this.host.dungeon = markRoomAsChallenge(this.host.dungeon, challengeRoom.id, this.selectChallengeEncounterId());
+      challengeRoom = this.host.dungeon.rooms.find((room) => room.id === challengeRoom?.id) ?? challengeRoom;
+    }
+
     this.host.progressionRuntimeModule.removeChallengeMonsters();
     this.host.progressionRuntimeModule.clearChallengeState();
-    this.host.challengeRoomState = createChallengeRoomState(
-      challengeRoom.id,
-      resolveChallengeEncounterIdForFloor(this.host.run.currentFloor) ?? undefined
-    );
+    this.host.challengeRoomState = createChallengeRoomState(challengeRoom.id, challengeRoom.challengeId);
     this.host.challengeWaveTotal = this.host.progressionRuntimeModule.resolveChallengeWaveTotal(challengeRoom.id);
     const center = this.host.progressionRuntimeModule.challengeRoomCenter(challengeRoom.id);
     if (center !== null) {
@@ -198,6 +200,17 @@ export class DebugCommandRegistry {
     this.host.scheduleRunSave();
     this.debugLogKey("log.debug.challenge_ready", { waves: this.host.challengeWaveTotal }, "success");
     return true;
+  }
+
+  private selectChallengeEncounterId(): string | undefined {
+    const ids = listChallengeEncounterIdsForFloor(this.host.run.currentFloor);
+    if (ids.length === 0) {
+      return undefined;
+    }
+    if (ids.length === 1) {
+      return ids[0];
+    }
+    return this.host.eventRng.pick(ids);
   }
 
   startChallenge(): boolean {

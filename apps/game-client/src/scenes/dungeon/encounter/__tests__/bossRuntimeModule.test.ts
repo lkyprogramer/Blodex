@@ -196,4 +196,65 @@ describe("BossRuntimeModule", () => {
 
     expect(host.runCompletionModule.finishRun).toHaveBeenCalledWith(true);
   });
+
+  it("passes deferred compare binding through the boss reward settlement path", () => {
+    const host = createHost();
+    host.flushBossRewardComparePrompts = vi.fn(() => true);
+    const dispatcher = {
+      resolveEncounter: vi.fn(() => ({
+        encounter: {
+          id: "challenge_ossuary_trial",
+          encounterType: "challenge",
+          selector: {
+            kind: "challenge",
+            challengeId: "ossuary_trial",
+            floor: 5
+          },
+          rewardPolicyId: "challenge_boss_default",
+          telegraphProfileId: "challenge_default",
+          summaryKey: "boss.challenge.ossuary_trial",
+          bossId: "bone_sovereign"
+        },
+        bossDef: BONE_SOVEREIGN,
+        rewardPolicy: {
+          id: "challenge_boss_default",
+          flow: "resume_run",
+          rewardSource: "challenge_reward",
+          compareBinding: "deferred"
+        },
+        telegraphProfile: {
+          id: "challenge_default",
+          tintColor: 0x5aa0d6,
+          alpha: 0.46,
+          pulseDurationMs: 180,
+          radiusScale: 1
+        }
+      })),
+      resolveRewardBinding: vi.fn(() => ({
+        encounterId: "challenge_ossuary_trial",
+        rewardSource: "challenge_reward",
+        compareBinding: "deferred" as const,
+        flow: "resume_run" as const,
+        rareDropTableId: "boss_bone_sovereign_rare"
+      })),
+      allowsEnterAbyss: vi.fn(() => false),
+      resolveChoiceAction: vi.fn(() => "resume_run" as const)
+    } as unknown as BossEncounterDispatcher;
+    const module = new BossRuntimeModule({
+      host,
+      combatService: { updateCombat: vi.fn() } as never,
+      spawnService: { spawnBoss: vi.fn() } as never,
+      dispatcher
+    });
+
+    module.openVictoryChoice(700, {
+      challengeId: "ossuary_trial"
+    });
+
+    const [, , onSelect] = vi.mocked(host.uiManager.showEventDialog).mock.calls[0] ?? [];
+    onSelect?.("claim_victory");
+
+    expect(host.flushBossRewardComparePrompts).toHaveBeenCalledWith(expect.any(Function), "deferred");
+    expect(host.runCompletionModule.finishRun).not.toHaveBeenCalled();
+  });
 });

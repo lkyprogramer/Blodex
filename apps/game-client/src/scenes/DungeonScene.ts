@@ -591,7 +591,8 @@ export class DungeonScene extends Phaser.Scene {
       grantBossEncounterReward: (binding, nowMs) => scene.powerSpikeRuntimeModule.grantBossEncounterReward(binding, nowMs),
       queueBossEncounterCompare: (item, binding) =>
         scene.heartbeatFeedbackRuntime.maybeQueueEquipmentCompare(item, binding.rewardSource, binding.compareBinding),
-      flushBossRewardComparePrompts: (onDrained) => scene.heartbeatFeedbackRuntime.flushImmediateComparePrompts(onDrained),
+      flushBossRewardComparePrompts: (onDrained, mode) =>
+        scene.heartbeatFeedbackRuntime.flushComparePrompts(mode ?? "immediate", onDrained),
       describeItem: (item) => scene.powerSpikeRuntimeModule.describeItem(item),
       recordBossRewardClosed: (choiceId, nowMs) => scene.recordBossRewardClosed(choiceId, nowMs),
       replaceBossDef: (bossDef) => { scene.bossDef = bossDef; },
