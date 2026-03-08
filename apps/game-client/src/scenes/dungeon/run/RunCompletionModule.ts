@@ -27,6 +27,7 @@ import {
   type RunSummary,
   type TypedEventBus
 } from "@blodex/core";
+import type { LogLevel } from "../../../ui/Hud";
 import { resolveInitialRunSeed } from "./resolveInitialRunSeed";
 import { analyzeRunOutcome, type RunOutcomeAnalysis } from "../taste/RunOutcomeAnalyzer";
 import type {
@@ -36,8 +37,8 @@ import type {
 } from "../taste/TasteRuntimePorts";
 
 interface RunCompletionRunLog {
-  append(message: string, level: string, timestampMs: number): void;
-  appendKey(key: string, params: Record<string, unknown> | undefined, level: string, timestampMs: number): void;
+  append(message: string, level: LogLevel, timestampMs: number): void;
+  appendKey(key: string, params: Record<string, unknown> | undefined, level: LogLevel, timestampMs: number): void;
 }
 
 interface RunCompletionUiManager {

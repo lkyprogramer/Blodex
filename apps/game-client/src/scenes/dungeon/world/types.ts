@@ -26,12 +26,14 @@ import type {
 import type { BiomeDef, FloorConfig, MonsterArchetypeDef } from "@blodex/content";
 import type { MonsterRuntime } from "../../../systems/EntityManager";
 import type { WorldBoundsConfig } from "../../../systems/RenderSystem";
+import type { FeedbackRouterInput } from "../../../systems/feedbackEventRouter";
+import type { LogLevel } from "../../../ui/Hud";
 import type { RunLogService } from "../logging/RunLogService";
 
 export interface RuntimeEventNodeState {
   eventDef: RandomEventDef;
   position: { x: number; y: number };
-  marker: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
+  marker: Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
   resolved: boolean;
 }
 
@@ -42,8 +44,8 @@ interface RuntimeEventContentLocalizer {
 }
 
 interface RuntimeEventRunLog {
-  append(message: string, level: string, timestampMs: number): void;
-  appendKey(key: string, params: Record<string, unknown> | undefined, level: string, timestampMs: number): void;
+  append(message: string, level: LogLevel, timestampMs: number): void;
+  appendKey(key: string, params: Record<string, unknown> | undefined, level: LogLevel, timestampMs: number): void;
 }
 
 interface RuntimeEventUiManager {
@@ -58,7 +60,7 @@ interface RuntimeEventUiManager {
     onClose: () => void
   ): void;
   showMerchantDialog(
-    view: Array<Record<string, unknown>>,
+    view: Parameters<import("../../../ui/UIManager").UIManager["showMerchantDialog"]>[0],
     onSelect: (offerId: string) => void,
     onClose: () => void
   ): void;
@@ -75,7 +77,7 @@ interface RuntimeEventRenderSystem {
     position: { x: number; y: number },
     radius: number,
     origin: { x: number; y: number }
-  ): Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
+  ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
 }
 
 interface RuntimeRngPort {
@@ -135,7 +137,7 @@ export interface RuntimeEventHost {
   time: { now: number };
   hudDirty: boolean;
   tryDiscoverBlueprints(sourceType: "random_event", nowMs: number, sourceId?: string): void;
-  routeFeedback(input: { type: string; [key: string]: unknown }): void;
+  routeFeedback(input: FeedbackRouterInput): void;
   flushRunSave(): void;
   runCompletionModule: {
     finishRun(isVictory: boolean): void;

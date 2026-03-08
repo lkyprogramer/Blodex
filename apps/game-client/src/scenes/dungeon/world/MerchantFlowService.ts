@@ -4,7 +4,8 @@ import {
   resolveEndlessMutatorModifiers,
   rollItemDrop,
   spendRunObols,
-  type ItemDef
+  type ItemDef,
+  type MerchantOffer
 } from "@blodex/core";
 import { ITEM_DEF_MAP, LOOT_TABLE_MAP } from "@blodex/content";
 import type { MerchantPurchaseResult, RuntimeEventHost } from "./types";
@@ -57,9 +58,9 @@ export class MerchantFlowService {
     return true;
   }
 
-  buildView(): Array<Record<string, unknown>> {
+  buildView(): Array<MerchantOffer & { itemName: string; rarity: string }> {
     const host = this.options.host;
-    return host.merchantOffers.map((offer: { itemDefId: string }) => {
+    return host.merchantOffers.map((offer) => {
       const itemDef = ITEM_DEF_MAP[offer.itemDefId];
       return {
         ...offer,

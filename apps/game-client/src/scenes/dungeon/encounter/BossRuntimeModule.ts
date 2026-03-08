@@ -1,5 +1,6 @@
 import type { ItemInstance, RandomEventDef, RunState } from "@blodex/core";
 import { t } from "../../../i18n";
+import type { LogLevel } from "../../../ui/Hud";
 import { gridToIso } from "../../../systems/iso";
 import { BossCombatService } from "./BossCombatService";
 import { BossSpawnService } from "./BossSpawnService";
@@ -18,7 +19,7 @@ interface BossRuntimeUiManager {
 }
 
 interface BossRuntimeRunLog {
-  appendKey(key: string, params: Record<string, unknown> | undefined, level: string, timestampMs: number): void;
+  appendKey(key: string, params: Record<string, unknown> | undefined, level: LogLevel, timestampMs: number): void;
 }
 
 export interface BossRuntimeHost {
