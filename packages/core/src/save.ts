@@ -138,6 +138,7 @@ export interface RunSaveRuntimeState {
   dungeon: DungeonLayout;
   staircase: StaircaseState;
   hazards: HazardRuntimeState[];
+  bossEncounterId?: string | null;
   boss: BossRuntimeState | null;
   monsters: RuntimeMonsterState[];
   lootOnGround: Array<{ item: ItemInstance; position: { x: number; y: number } }>;
@@ -618,6 +619,9 @@ function validateRuntimeState(runtime: Record<string, unknown>): boolean {
     return false;
   }
   if (!(runtime.boss === null || isRecord(runtime.boss))) {
+    return false;
+  }
+  if (!(runtime.bossEncounterId === undefined || runtime.bossEncounterId === null || typeof runtime.bossEncounterId === "string")) {
     return false;
   }
   if (!Array.isArray(runtime.monsters) || !runtime.monsters.every((entry) => isRuntimeMonsterState(entry))) {

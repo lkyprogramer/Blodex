@@ -15,6 +15,7 @@ import { t } from "../../../i18n";
 import type { MessageParams } from "../../../i18n/types";
 import { playSceneTransition } from "../../../ui/SceneTransitionOverlay";
 import { UIManager } from "../../../ui/UIManager";
+import { BossEncounterDispatcher } from "../encounter/BossEncounterDispatcher";
 import { BossRuntimeModule } from "../encounter/BossRuntimeModule";
 import { BossCombatService } from "../encounter/BossCombatService";
 import { BossSpawnService } from "../encounter/BossSpawnService";
@@ -69,6 +70,7 @@ export interface DungeonSceneShellSource {
   saveCoordinator: SaveCoordinator;
   runPersistenceModule: RunPersistenceModule;
   eventRuntimeModule: EventRuntimeModule;
+  bossEncounterDispatcher: BossEncounterDispatcher;
   bossRuntimeModule: BossRuntimeModule;
   runCompletionModule: RunCompletionModule;
   hazardRuntimeModule: HazardRuntimeModule;
@@ -309,12 +311,14 @@ export function initializeDungeonSceneShell(scene: DungeonScene): void {
   const bossCombatService = new BossCombatService({
     host: createBossCombatHost(source.dungeonSceneHostBridge),
     spawnService: bossSpawnService,
-    telegraphPresenter: bossTelegraphPresenter
+    telegraphPresenter: bossTelegraphPresenter,
+    dispatcher: source.bossEncounterDispatcher
   });
   source.bossRuntimeModule = new BossRuntimeModule({
     host: createBossRuntimeHost(source.dungeonSceneHostBridge),
     combatService: bossCombatService,
-    spawnService: bossSpawnService
+    spawnService: bossSpawnService,
+    dispatcher: source.bossEncounterDispatcher
   });
   source.runCompletionModule = new RunCompletionModule({
     host: createRunCompletionHost(source.dungeonSceneHostBridge)

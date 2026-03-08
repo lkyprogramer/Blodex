@@ -1,5 +1,6 @@
 import type Phaser from "phaser";
 import type {
+  BossDef,
   BossRuntimeState,
   ComparePromptRuntimeState,
   ConsumableState,
@@ -44,6 +45,7 @@ export interface RunSaveSnapshotSceneStatePort {
   dungeon: DungeonLayout;
   staircaseState: StaircaseState;
   hazards: HazardRuntimeState[];
+  currentBossEncounterId: string | null;
   bossState: BossRuntimeState | null;
   eventNode:
     | {
@@ -131,6 +133,7 @@ export interface RunStateRestoreMutableStatePort {
   worldBounds: WorldBoundsConfig["worldBounds"];
   playerSprite: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
   playerYOffset: number;
+  currentBossEncounterId: string | null;
   bossDef: {
     id: string;
     name: string;
@@ -188,6 +191,15 @@ export interface RunStateRestoreRuntimePort {
   eventRuntimeModule: Pick<EventRuntimeModule, "destroyEventNode" | "createEventNode" | "consumeCurrentEvent">;
   sfxSystem: {
     playAmbientForBiome(biomeId: string): void;
+  };
+  replaceBossDef(bossDef: BossDef): void;
+  resolveBossEncounterById(encounterId: string | null | undefined): {
+    encounter: { id: string };
+    bossDef: BossDef;
+  };
+  resolveBossEncounterByBossId(bossId: string | null | undefined): {
+    encounter: { id: string };
+    bossDef: BossDef;
   };
 }
 

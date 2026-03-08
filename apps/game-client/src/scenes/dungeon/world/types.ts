@@ -305,6 +305,12 @@ export interface ProgressionRuntimeHost {
   playerYOffset: number;
   bossRuntimeModule: {
     spawn(): void;
+    openVictoryChoice(
+      nowMs: number,
+      context?: {
+        challengeId?: string | null;
+      }
+    ): void;
   };
   spawnMonsters(): void;
   resetFloorChoiceBudget(floor: number, nowMs: number): void;

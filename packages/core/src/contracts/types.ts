@@ -420,6 +420,7 @@ export interface StaircaseState {
 
 export interface ChallengeRoomState {
   roomId: string;
+  challengeId?: string;
   started: boolean;
   finished: boolean;
   success: boolean;

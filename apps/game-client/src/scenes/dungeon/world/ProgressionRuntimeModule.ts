@@ -32,6 +32,7 @@ import {
   getFloorConfig,
   ITEM_DEF_MAP,
   MONSTER_ARCHETYPES,
+  resolveChallengeEncounterIdForFloor,
   SKILL_DEFS
 } from "@blodex/content";
 import { t } from "../../../i18n";
@@ -417,7 +418,7 @@ export class ProgressionRuntimeModule {
     if (selected === undefined) {
       return;
     }
-    host.challengeRoomState = createChallengeRoomState(selected.id);
+    host.challengeRoomState = createChallengeRoomState(selected.id, this.resolveChallengeEncounterId());
     host.challengeWaveTotal = this.resolveChallengeWaveTotal(selected.id);
     const center = this.challengeRoomCenter(selected.id);
     if (center === null) {
@@ -518,30 +519,22 @@ export class ProgressionRuntimeModule {
         },
         12
       );
-      const rewardTable = host.resolveProgressionLootTable(host.run.currentFloor + 1);
-      const reward =
-        rewardTable === undefined
-          ? null
-          : rollItemDrop(
-              rewardTable,
-              ITEM_DEF_MAP,
-              Math.max(3, host.run.currentFloor),
-              host.lootRng,
-              `challenge-reward-${host.run.currentFloor}-${Math.floor(nowMs)}`,
-              host.resolveLootRollOptions({
-                isItemEligible: (itemDef: ItemDef) => host.isItemDefUnlocked(itemDef)
-              })
-            );
-      const center = this.challengeRoomCenter(host.challengeRoomState.roomId);
-      if (reward !== null && center !== null) {
-        host.spawnLootDrop(reward, center, "challenge_reward");
-      }
       host.tryDiscoverBlueprints("challenge_room", nowMs, host.challengeRoomState.roomId);
-      host.runLog.appendKey("log.challenge.cleared_rewards", undefined, "success", nowMs);
       if (host.challengeMarker instanceof Phaser.GameObjects.Image) {
         host.challengeMarker.setTint(0x5abf8a);
       }
       host.challengeMarker?.setAlpha(0.12);
+      const challengeId = host.challengeRoomState.challengeId;
+      if (challengeId !== undefined) {
+        host.scheduleRunSave();
+        host.hudDirty = true;
+        host.bossRuntimeModule.openVictoryChoice(nowMs, {
+          challengeId
+        });
+        return;
+      }
+      this.grantChallengeRoomRewards(host.challengeRoomState.roomId, nowMs);
+      return;
     } else {
       const hpPenalty = Math.max(1, Math.floor(host.player.derivedStats.maxHealth * 0.2));
       host.player = {
@@ -600,7 +593,7 @@ export class ProgressionRuntimeModule {
     if (challengeRoom === undefined) {
       return;
     }
-    host.challengeRoomState = createChallengeRoomState(challengeRoom.id);
+    host.challengeRoomState = createChallengeRoomState(challengeRoom.id, this.resolveChallengeEncounterId());
     host.challengeWaveTotal = this.resolveChallengeWaveTotal(challengeRoom.id);
     const center = this.challengeRoomCenter(challengeRoom.id);
     if (center !== null) {
@@ -711,6 +704,40 @@ export class ProgressionRuntimeModule {
   private findChallengeRoomById(roomId: string) {
     const host = this.options.host;
     return host.dungeon.rooms.find((room) => room.id === roomId);
+  }
+
+  private resolveChallengeEncounterId(): string | undefined {
+    return resolveChallengeEncounterIdForFloor(this.options.host.run.currentFloor) ?? undefined;
+  }
+
+  private grantChallengeRoomRewards(roomId: string, nowMs: number): void {
+    const host = this.options.host;
+    const center = this.challengeRoomCenter(roomId);
+    if (center === null) {
+      host.runLog.appendKey("log.challenge.cleared_rewards", undefined, "success", nowMs);
+      host.scheduleRunSave();
+      host.hudDirty = true;
+      return;
+    }
+    const rewardTable = host.resolveProgressionLootTable(host.run.currentFloor + 1);
+    if (rewardTable !== undefined) {
+      const reward = rollItemDrop(
+        rewardTable,
+        ITEM_DEF_MAP,
+        host.run.currentFloor + 1,
+        host.lootRng,
+        `challenge-room-${roomId}-${Math.floor(nowMs)}`,
+        host.resolveLootRollOptions({
+          isItemEligible: (itemDef: ItemDef) => host.isItemDefUnlocked(itemDef)
+        })
+      );
+      if (reward !== null) {
+        host.spawnLootDrop(reward, center, "challenge_reward");
+      }
+    }
+    host.runLog.appendKey("log.challenge.cleared_rewards", undefined, "success", nowMs);
+    host.scheduleRunSave();
+    host.hudDirty = true;
   }
 
   private spawnChallengeWave(nowMs: number): void {

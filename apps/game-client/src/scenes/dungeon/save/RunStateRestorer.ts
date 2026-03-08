@@ -289,19 +289,30 @@ export class RunStateRestorer {
     }
 
     if (runtime.boss !== null) {
+      const resolvedEncounter =
+        runtime.bossEncounterId !== undefined
+          ? host.resolveBossEncounterById(runtime.bossEncounterId)
+          : host.resolveBossEncounterByBossId(runtime.boss.bossId);
+      host.currentBossEncounterId = resolvedEncounter.encounter.id;
+      host.replaceBossDef(resolvedEncounter.bossDef);
       const bossState = {
         ...runtime.boss,
         position: { ...runtime.boss.position },
         attackCooldowns: { ...runtime.boss.attackCooldowns }
       };
       host.bossState = bossState;
-      host.entityLabelById.set(host.bossDef.id, host.bossDef.name);
-      host.bossSprite = host.renderSystem.spawnBoss(bossState.position, host.origin, host.bossDef.spriteKey);
+      host.entityLabelById.set(resolvedEncounter.bossDef.id, resolvedEncounter.bossDef.name);
+      host.bossSprite = host.renderSystem.spawnBoss(
+        bossState.position,
+        host.origin,
+        resolvedEncounter.bossDef.spriteKey
+      );
       host.entityManager.setBoss({
         state: bossState,
         sprite: host.bossSprite
       });
     } else {
+      host.currentBossEncounterId = null;
       host.bossState = null;
       host.bossSprite = null;
       host.entityManager.setBoss(null);

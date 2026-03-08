@@ -60,9 +60,10 @@ export function markRoomAsChallenge(layout: DungeonLayout, roomId: string): Dung
   };
 }
 
-export function createChallengeRoomState(roomId: string): ChallengeRoomState {
+export function createChallengeRoomState(roomId: string, challengeId?: string): ChallengeRoomState {
   return {
     roomId,
+    ...(challengeId === undefined ? {} : { challengeId }),
     started: false,
     finished: false,
     success: false,

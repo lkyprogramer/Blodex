@@ -10,6 +10,7 @@ import {
   selectBossAttack
 } from "@blodex/core";
 import { WEAPON_TYPE_DEF_MAP } from "@blodex/content";
+import { BossEncounterDispatcher } from "./BossEncounterDispatcher";
 import { BossSpawnService } from "./BossSpawnService";
 import { BossTelegraphPresenter } from "./BossTelegraphPresenter";
 import type { BossCombatHost } from "./ports";
@@ -18,6 +19,7 @@ export interface BossCombatServiceOptions {
   host: BossCombatHost;
   spawnService: BossSpawnService;
   telegraphPresenter: BossTelegraphPresenter;
+  dispatcher: BossEncounterDispatcher;
 }
 
 export class BossCombatService {
@@ -176,7 +178,7 @@ export class BossCombatService {
         ...(target === undefined ? {} : { target }),
         timestampMs: nowMs
       });
-      this.options.telegraphPresenter.show(host.bossState, attack);
+      this.options.telegraphPresenter.show(host.bossState, attack, this.options.dispatcher.resolveActiveEncounter().telegraphProfile);
       host.hudDirty = true;
       return;
     }

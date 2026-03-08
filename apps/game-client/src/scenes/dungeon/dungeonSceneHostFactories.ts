@@ -62,6 +62,7 @@ export const DUNGEON_SCENE_HOST_MUTABLE_KEYS = [
   "runSeed",
   "run",
   "player",
+  "currentBossEncounterId",
   "staircaseState",
   "origin",
   "hudDirty",
@@ -242,10 +243,14 @@ export const DUNGEON_SCENE_HOST_METHOD_KEYS = [
   "getRunRelativeNowMs",
   "resolveMinimumActiveSkillManaCost",
   "handleLevelUpGain"
-  ,"grantStoryBossReward"
+  ,"grantBossEncounterReward"
+  ,"queueBossEncounterCompare"
   ,"flushBossRewardComparePrompts"
   ,"describeItem"
   ,"recordBossRewardClosed"
+  ,"replaceBossDef"
+  ,"resolveBossEncounterById"
+  ,"resolveBossEncounterByBossId"
   ,"saveMeta"
   ,"renderHud"
   ,"capturePhase6TelemetrySummary"

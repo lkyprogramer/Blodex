@@ -52,6 +52,8 @@ interface QueuedComparePrompt {
   source: ComparePromptSource;
 }
 
+type ComparePromptMode = "immediate" | "deferred";
+
 const TOAST_THROTTLE_MS = {
   rare: 1_400,
   buildFamily: 2_200,
@@ -156,11 +158,15 @@ export class HeartbeatFeedbackRuntime {
     this.host.uiManager.hideEquipmentComparePrompt();
   }
 
-  maybeQueueEquipmentCompare(item: ItemInstance, source: ComparePromptSource): void {
+  maybeQueueEquipmentCompare(item: ItemInstance, source: ComparePromptSource, mode: ComparePromptMode = "immediate"): void {
     if (!this.shouldPromptForItem(item, source)) {
       return;
     }
     if (this.isQueued(item.id)) {
+      return;
+    }
+    if (mode === "deferred") {
+      this.deferredCompareQueue.push({ item, source });
       return;
     }
     this.compareQueue.push({ item, source });

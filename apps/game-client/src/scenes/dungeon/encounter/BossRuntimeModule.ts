@@ -3,6 +3,12 @@ import { t } from "../../../i18n";
 import type { LogLevel } from "../../../ui/Hud";
 import { gridToIso } from "../../../systems/iso";
 import { BossCombatService } from "./BossCombatService";
+import {
+  BossEncounterDispatcher,
+  type BossEncounterResolveContext,
+  type BossEncounterRewardBinding,
+  type ResolvedBossEncounter
+} from "./BossEncounterDispatcher";
 import { BossSpawnService } from "./BossSpawnService";
 
 interface BossRuntimeUiManager {
@@ -39,7 +45,8 @@ export interface BossRuntimeHost {
     enterAbyss(nowMs: number): void;
     finishRun(isVictory: boolean): void;
   };
-  grantStoryBossReward(nowMs: number): ItemInstance[];
+  grantBossEncounterReward(binding: BossEncounterRewardBinding, nowMs: number): ItemInstance[];
+  queueBossEncounterCompare(item: ItemInstance, binding: BossEncounterRewardBinding): void;
   flushBossRewardComparePrompts?(onDrained: () => void): boolean;
   describeItem(item: ItemInstance): string;
   recordBossRewardClosed?(choiceId: string, nowMs: number): void;
@@ -55,6 +62,7 @@ export interface BossRuntimeModuleOptions {
   host: BossRuntimeHost;
   combatService: BossCombatService;
   spawnService: BossSpawnService;
+  dispatcher: BossEncounterDispatcher;
 }
 
 export class BossRuntimeModule {
@@ -65,6 +73,7 @@ export class BossRuntimeModule {
   }
 
   spawn(): void {
+    this.options.dispatcher.prepareEncounter();
     this.options.spawnService.spawnBoss();
   }
 
@@ -87,46 +96,24 @@ export class BossRuntimeModule {
     host.bossSprite.setVisible(host.bossState.health > 0);
   }
 
-  openVictoryChoice(nowMs: number): void {
+  openVictoryChoice(nowMs: number, context?: BossEncounterResolveContext): void {
     const host = this.options.host;
     if (host.eventPanelOpen || host.runEnded) {
       return;
     }
 
     host.eventPanelOpen = true;
-    const rewards = host.grantStoryBossReward(nowMs);
-    const canEnterAbyss = host.run.runMode !== "daily";
+    const encounter =
+      context === undefined ? this.options.dispatcher.resolveActiveEncounter() : this.options.dispatcher.resolveEncounter(context);
+    const rewardBinding = this.options.dispatcher.resolveRewardBinding(encounter);
+    const rewards = host.grantBossEncounterReward(rewardBinding, nowMs);
+    for (const item of rewards) {
+      host.queueBossEncounterCompare(item, rewardBinding);
+    }
+    const canEnterAbyss = this.options.dispatcher.allowsEnterAbyss(encounter, host.run.runMode);
     const rewardSummary =
       rewards.length === 0 ? "" : ` ${rewards.map((item) => host.describeItem(item)).join(" / ")}.`;
-    const eventDef: RandomEventDef = {
-      id: ABYSS_VICTORY_EVENT_ID,
-      name: t("ui.boss.victory.title"),
-      description: canEnterAbyss
-        ? `${t("ui.boss.victory.description.normal")}${rewardSummary}`
-        : `${t("ui.boss.victory.description.daily")}${rewardSummary}`,
-      floorRange: { min: host.run.currentFloor, max: host.run.currentFloor },
-      spawnWeight: 1,
-      choices: [
-        {
-          id: "claim_victory",
-          name: t("ui.boss.victory.choice.claim.name"),
-          description:
-            rewards.length === 0
-              ? t("ui.boss.victory.choice.claim.description")
-              : `${t("ui.boss.victory.choice.claim.description")} ${rewardSummary.trim()}`,
-          rewards: []
-        },
-        {
-          id: "enter_abyss",
-          name: t("ui.boss.victory.choice.enter_abyss.name"),
-          description:
-            rewards.length === 0
-              ? t("ui.boss.victory.choice.enter_abyss.description")
-              : `${t("ui.boss.victory.choice.enter_abyss.description")} ${rewardSummary.trim()}`,
-          rewards: []
-        }
-      ]
-    };
+    const eventDef = this.buildVictoryEvent(encounter, rewardSummary, canEnterAbyss, host.run.currentFloor, rewards);
 
     const choices = eventDef.choices.map((choice) => {
       if (choice.id === "enter_abyss" && !canEnterAbyss) {
@@ -152,8 +139,12 @@ export class BossRuntimeModule {
           host.recordBossRewardClosed(choiceId, host.time.now);
         }
         const resolveChoice = () => {
-          if (choiceId === "enter_abyss" && canEnterAbyss) {
+          const action = this.options.dispatcher.resolveChoiceAction(choiceId, encounter, host.run.runMode);
+          if (action === "enter_abyss") {
             host.runCompletionModule.enterAbyss(host.time.now);
+            return;
+          }
+          if (action === "resume_run") {
             return;
           }
           host.runCompletionModule.finishRun(true);
@@ -169,6 +160,10 @@ export class BossRuntimeModule {
           host.recordBossRewardClosed("dismiss", host.time.now);
         }
         const resolveChoice = () => {
+          const action = this.options.dispatcher.resolveChoiceAction("dismiss", encounter, host.run.runMode);
+          if (action === "resume_run") {
+            return;
+          }
           host.runCompletionModule.finishRun(true);
         };
         if (host.flushBossRewardComparePrompts?.(resolveChoice) === true) {
@@ -177,6 +172,64 @@ export class BossRuntimeModule {
         resolveChoice();
       }
     );
-    host.runLog.appendKey("log.boss.bone_sovereign_defeated", undefined, "success", nowMs);
+    host.runLog.appendKey(this.resolveEncounterLogKey(encounter), undefined, "success", nowMs);
+  }
+
+  private buildVictoryEvent(
+    encounter: ResolvedBossEncounter,
+    rewardSummary: string,
+    canEnterAbyss: boolean,
+    currentFloor: number,
+    rewards: ItemInstance[]
+  ): RandomEventDef {
+    const description = `${t(this.resolveEncounterDescriptionKey(encounter, canEnterAbyss))}${rewardSummary}`;
+    const choices: RandomEventDef["choices"] = [
+      {
+        id: "claim_victory",
+        name: t("ui.boss.victory.choice.claim.name"),
+        description:
+          rewards.length === 0
+            ? t("ui.boss.victory.choice.claim.description")
+            : `${t("ui.boss.victory.choice.claim.description")} ${rewardSummary.trim()}`,
+        rewards: []
+      }
+    ];
+    if (encounter.rewardPolicy.flow === "enter_abyss_or_finish_run") {
+      choices.push({
+        id: "enter_abyss",
+        name: t("ui.boss.victory.choice.enter_abyss.name"),
+        description:
+          rewards.length === 0
+            ? t("ui.boss.victory.choice.enter_abyss.description")
+            : `${t("ui.boss.victory.choice.enter_abyss.description")} ${rewardSummary.trim()}`,
+        rewards: []
+      });
+    }
+    return {
+      id: ABYSS_VICTORY_EVENT_ID,
+      name: t(this.resolveEncounterTitleKey(encounter)),
+      description,
+      floorRange: { min: currentFloor, max: currentFloor },
+      spawnWeight: 1,
+      choices
+    };
+  }
+
+  private resolveEncounterTitleKey(encounter: ResolvedBossEncounter): string {
+    return `${encounter.encounter.summaryKey}.title`;
+  }
+
+  private resolveEncounterDescriptionKey(encounter: ResolvedBossEncounter, canEnterAbyss: boolean): string {
+    if (canEnterAbyss) {
+      return `${encounter.encounter.summaryKey}.description_abyss`;
+    }
+    if (this.options.host.run.runMode === "daily") {
+      return `${encounter.encounter.summaryKey}.description_daily`;
+    }
+    return `${encounter.encounter.summaryKey}.description`;
+  }
+
+  private resolveEncounterLogKey(encounter: ResolvedBossEncounter): string {
+    return `${encounter.encounter.summaryKey}.log_defeated`;
   }
 }

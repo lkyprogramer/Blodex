@@ -41,7 +41,12 @@ export interface DungeonFrameSource {
   origin: { x: number; y: number };
   bossRuntimeModule: {
     syncSprite(): void;
-    openVictoryChoice(nowMs: number): void;
+    openVictoryChoice(
+      nowMs: number,
+      context?: {
+        challengeId?: string | null;
+      }
+    ): void;
   };
   floorConfig: { isBossFloor: boolean };
   bossState: { health: number; currentPhaseIndex: number; maxHealth: number } | null;
