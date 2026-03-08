@@ -367,6 +367,17 @@ describe("save", () => {
     expect(validateSave(broken)).toBe(false);
   });
 
+  it("rejects runtime state when deferred outcomes are missing", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    broken.runtime = {
+      ...(broken.runtime as Record<string, unknown>),
+      deferredOutcomes: undefined
+    };
+
+    expect(validateSave(broken)).toBe(false);
+    expect(deserializeRunState(JSON.stringify(broken))).toBeNull();
+  });
+
   it("rejects invalid persistent player shape", () => {
     const broken = makeSave() as unknown as Record<string, unknown>;
     broken.domain = {

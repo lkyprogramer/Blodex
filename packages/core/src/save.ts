@@ -636,8 +636,8 @@ function validateRuntimeState(runtime: Record<string, unknown>): boolean {
     return false;
   }
   if (
-    runtime.deferredOutcomes !== undefined &&
-    (!Array.isArray(runtime.deferredOutcomes) || !runtime.deferredOutcomes.every((entry) => isDeferredOutcomeState(entry)))
+    !Array.isArray(runtime.deferredOutcomes) ||
+    !runtime.deferredOutcomes.every((entry) => isDeferredOutcomeState(entry))
   ) {
     return false;
   }
