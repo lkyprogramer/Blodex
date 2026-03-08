@@ -401,7 +401,7 @@ export class DungeonScene extends Phaser.Scene {
       player: mutableHostField(() => scene.player, (value) => { scene.player = value; }),
       bossDef: readonlyHostField(() => scene.bossDef),
       staircaseState: mutableHostField(() => scene.staircaseState, (value) => { scene.staircaseState = value; }),
-      lootRng: readonlyHostField(() => scene.lootRng),
+      lootRng: mutableHostField(() => scene.lootRng, (value) => { scene.lootRng = value; }),
       origin: mutableHostField(() => scene.origin, (value) => { scene.origin = value; }),
       eventBus: readonlyHostField(() => scene.eventBus),
       renderSystem: readonlyHostField(() => scene.renderSystem),
@@ -419,22 +419,22 @@ export class DungeonScene extends Phaser.Scene {
       dungeon: mutableHostField(() => scene.dungeon, (value) => { scene.dungeon = value; }),
       hazards: mutableHostField(() => scene.hazards, (value) => { scene.hazards = value; }),
       bossState: mutableHostField(() => scene.bossState, (value) => { scene.bossState = value; }),
-      eventNode: readonlyHostField(() => scene.eventNode),
+      eventNode: mutableHostField(() => scene.eventNode, (value) => { scene.eventNode = value; }),
       merchantOffers: mutableHostField(() => scene.merchantOffers, (value) => { scene.merchantOffers = value; }),
       mapRevealActive: mutableHostField(() => scene.mapRevealActive, (value) => { scene.mapRevealActive = value; }),
       blueprintFoundIdsInRun: mutableHostField(() => scene.blueprintFoundIdsInRun, (value) => { scene.blueprintFoundIdsInRun = value; }),
-      mutationRuntime: readonlyHostField(() => scene.mutationRuntime),
+      mutationRuntime: mutableHostField(() => scene.mutationRuntime, (value) => { scene.mutationRuntime = value; }),
       deferredOutcomes: mutableHostField(() => scene.deferredOutcomes, (value) => { scene.deferredOutcomes = value; }),
       saveManager: readonlyHostField(() => scene.saveManager),
       saveCoordinator: readonlyHostField(() => scene.saveCoordinator),
-      spawnRng: readonlyHostField(() => scene.spawnRng),
-      combatRng: readonlyHostField(() => scene.combatRng),
-      skillRng: readonlyHostField(() => scene.skillRng),
-      bossRng: readonlyHostField(() => scene.bossRng),
-      biomeRng: readonlyHostField(() => scene.biomeRng),
-      hazardRng: readonlyHostField(() => scene.hazardRng),
-      eventRng: readonlyHostField(() => scene.eventRng),
-      merchantRng: readonlyHostField(() => scene.merchantRng),
+      spawnRng: mutableHostField(() => scene.spawnRng, (value) => { scene.spawnRng = value; }),
+      combatRng: mutableHostField(() => scene.combatRng, (value) => { scene.combatRng = value; }),
+      skillRng: mutableHostField(() => scene.skillRng, (value) => { scene.skillRng = value; }),
+      bossRng: mutableHostField(() => scene.bossRng, (value) => { scene.bossRng = value; }),
+      biomeRng: mutableHostField(() => scene.biomeRng, (value) => { scene.biomeRng = value; }),
+      hazardRng: mutableHostField(() => scene.hazardRng, (value) => { scene.hazardRng = value; }),
+      eventRng: mutableHostField(() => scene.eventRng, (value) => { scene.eventRng = value; }),
+      merchantRng: mutableHostField(() => scene.merchantRng, (value) => { scene.merchantRng = value; }),
       pendingResumeSave: mutableHostField(() => scene.pendingResumeSave, (value) => { scene.pendingResumeSave = value; }),
       dailyPracticeMode: mutableHostField(() => scene.dailyPracticeMode, (value) => { scene.dailyPracticeMode = value; }),
       pendingRunMode: mutableHostField(() => scene.pendingRunMode, (value) => { scene.pendingRunMode = value; }),
@@ -483,7 +483,7 @@ export class DungeonScene extends Phaser.Scene {
       previousSkillCooldownLeftById: readonlyHostField(() => scene.previousSkillCooldownLeftById),
       skillReadyFlashUntilMsById: readonlyHostField(() => scene.skillReadyFlashUntilMsById),
       time: readonlyHostField(() => scene.time),
-      meta: readonlyHostField(() => scene.meta),
+      meta: mutableHostField(() => scene.meta, (value) => { scene.meta = value; }),
       hudPresenter: readonlyHostField(() => scene.hudPresenter),
       children: readonlyHostField(() => scene.children),
       cameras: readonlyHostField(() => scene.cameras),
@@ -507,17 +507,17 @@ export class DungeonScene extends Phaser.Scene {
       keyboardBindings: readonlyHostField(() => scene.keyboardBindings),
       hazardVisuals: mutableHostField(() => scene.hazardVisuals, (value) => { scene.hazardVisuals = value; }),
       playerHazardContact: readonlyHostField(() => scene.playerHazardContact),
-      unlockedBiomeIds: readonlyHostField(() => scene.unlockedBiomeIds),
-      unlockedWeaponTypes: readonlyHostField(() => scene.unlockedWeaponTypes),
-      unlockedEventIds: readonlyHostField(() => scene.unlockedEventIds),
+      unlockedBiomeIds: mutableHostField(() => scene.unlockedBiomeIds, (value) => { scene.unlockedBiomeIds = value; }),
+      unlockedWeaponTypes: mutableHostField(() => scene.unlockedWeaponTypes, (value) => { scene.unlockedWeaponTypes = value; }),
+      unlockedEventIds: mutableHostField(() => scene.unlockedEventIds, (value) => { scene.unlockedEventIds = value; }),
       debugCheatsEnabled: readonlyHostField(() => scene.debugCheatsEnabled),
       debugLockedEquipQuery: readonlyHostField(() => scene.debugLockedEquipQuery),
       debugLockedEquipIconId: readonlyHostField(() => scene.debugLockedEquipIconId),
       bossRuntimeModule: readonlyHostField(() => scene.bossRuntimeModule),
       debugRuntimeModule: readonlyHostField(() => scene.debugRuntimeModule),
       metaRuntime: readonlyHostField(() => scene.metaRuntime),
-      talentEffects: readonlyHostField(() => scene.talentEffects),
-      unlockedAffixIds: readonlyHostField(() => scene.unlockedAffixIds),
+      talentEffects: mutableHostField(() => scene.talentEffects, (value) => { scene.talentEffects = value; }),
+      unlockedAffixIds: mutableHostField(() => scene.unlockedAffixIds, (value) => { scene.unlockedAffixIds = value; }),
       hiddenEntranceMarkers: readonlyHostField(() => scene.hiddenEntranceMarkers),
       challengeMarker: mutableHostField(() => scene.challengeMarker, (value) => { scene.challengeMarker = value; }),
       challengeRoomState: mutableHostField(() => scene.challengeRoomState, (value) => { scene.challengeRoomState = value; }),
@@ -530,7 +530,7 @@ export class DungeonScene extends Phaser.Scene {
       tweens: readonlyHostField(() => scene.tweens),
       runCompletionModule: readonlyHostField(() => scene.runCompletionModule),
       deferredOutcomeRuntime: readonlyHostField(() => scene.deferredOutcomeRuntime),
-      synergyRuntime: readonlyHostField(() => scene.synergyRuntime),
+      synergyRuntime: mutableHostField(() => scene.synergyRuntime, (value) => { scene.synergyRuntime = value; }),
       markHighValueChoice: (source, nowMs) => scene.markHighValueChoice(source, nowMs),
       resolveProgressionLootTable: (floor) => scene.resolveProgressionLootTable(floor),
       resolveLootRollOptions: (options) => scene.resolveLootRollOptions(options),
@@ -543,11 +543,16 @@ export class DungeonScene extends Phaser.Scene {
       syncEndlessMutators: (nowMs) => scene.syncEndlessMutators(nowMs),
       resolveDailyWeaponType: (runSeed) => scene.metaRuntime.resolveDailyWeaponType(runSeed),
       refreshUnlockSnapshots: () => scene.refreshUnlockSnapshots(),
-      configureRngStreams: (floor: number, cursor?: Partial<Record<RunRngStreamName, number>>) =>
-        scene.configureRngStreams(floor, cursor),
+      replaceMeta: (meta: MetaProgression) => { scene.meta = meta; },
+      isBlockingOverlayOpen: () => scene.isBlockingOverlayOpen(),
+      configureRngStreams: (floor: number, cursor?: Partial<Record<RunRngStreamName, number>>) => scene.configureRngStreams(floor, cursor),
       refreshPlayerStatsFromEquipment: (player) => scene.refreshPlayerStatsFromEquipment(player),
+      resolveMutationMoveSpeedMultiplier: () => scene.resolveMutationMoveSpeedMultiplier(),
       restorePhase6TelemetryState: (state) => scene.restorePhase6TelemetryState(state),
       updateMinimap: (nowMs) => scene.frameRuntime.updateMinimap(nowMs),
+      updateKeyboardMoveIntent: (nowMs) => scene.updateKeyboardMoveIntent(nowMs),
+      updatePlayerMovement: (dt, nowMs) => scene.updatePlayerMovement(dt, nowMs),
+      updateRuntimeBuffs: (nowMs) => scene.updateRuntimeBuffs(nowMs),
       resetMutationRuntimeState: (selectedIds) => scene.resetMutationRuntimeState(selectedIds),
       refreshSynergyRuntime: (
         persistDiscovery?: boolean,
@@ -574,7 +579,9 @@ export class DungeonScene extends Phaser.Scene {
       bootstrapRun: (runSeed, difficulty) => scene.bootstrapRun(runSeed, difficulty),
       pickFloorEventPosition: () => scene.pickFloorEventPosition(),
       flushRunSave: () => scene.flushRunSave(),
+      renderDiagnosticsPanel: (nowMs) => scene.diagnosticsRuntime.render(nowMs),
       getRunRelativeNowMs: () => scene.getRunRelativeNowMs(),
+      resolveMinimumActiveSkillManaCost: () => scene.resolveMinimumActiveSkillManaCost(),
       handleLevelUpGain: (levelsGained, nowMs, source) => scene.handleLevelUpGain(levelsGained, nowMs, source),
       grantStoryBossReward: (nowMs) => scene.grantStoryBossReward(nowMs),
       flushBossRewardComparePrompts: (onDrained) => scene.flushBossRewardComparePrompts(onDrained),
@@ -594,6 +601,9 @@ export class DungeonScene extends Phaser.Scene {
       applyResolvedBuffs: (buffs, nowMs) => scene.applyResolvedBuffs(buffs, nowMs),
       resolveEntityLabel: (entityId) => scene.resolveEntityLabel(entityId),
       flushQueuedComparePrompts: () => scene.heartbeatFeedbackRuntime.flushImmediateComparePrompts(),
+      computePathTo: (target) => scene.computePathTo(target),
+      tryUseSkill: (slotIndex) => scene.tryUseSkill(slotIndex),
+      tryUseConsumable: (consumableId: ConsumableId) => scene.tryUseConsumable(consumableId),
       recordAcquiredItemTelemetry: (item, source, nowMs, baselinePlayer) =>
         scene.recordAcquiredItemTelemetry(item, source, nowMs, baselinePlayer)
     });
@@ -866,7 +876,6 @@ export class DungeonScene extends Phaser.Scene {
     }
     this.sfxSystem.preload();
   }
-
   private handleImageLoadError(file: Phaser.Loader.File): void {
     if (this.preferredImageFormat !== "webp") {
       return;
@@ -888,7 +897,6 @@ export class DungeonScene extends Phaser.Scene {
       this.load.start();
     }
   }
-
   private applyRuntimeBackgroundRemoval(): void {
     for (const textureKey of ENTITY_ASSET_KEYS_FOR_BACKGROUND_REMOVAL) {
       removeConnectedBackgroundFromTexture(this, textureKey);
@@ -950,6 +958,7 @@ export class DungeonScene extends Phaser.Scene {
       get debugApiBinder() { return scene.debugApiBinder; },
       get debugCommandRegistry() { return scene.debugCommandRegistry; },
       resolveLocalePreference: () => scene.resolveLocalePreference(),
+      replaceMeta: (meta: MetaProgression) => { scene.meta = meta; },
       normalizeMetaForPhase4B: () => scene.normalizeMetaForPhase4B(),
       registerStatDeltaHighlights: (
         beforeStats: PlayerState["derivedStats"],
@@ -1257,19 +1266,15 @@ export class DungeonScene extends Phaser.Scene {
       detail: source
     });
   }
-
   ensureFloorChoiceBudget(nowMs: number): void {
     this.progressionChoiceRuntime.ensureFloorChoiceBudget(nowMs);
   }
-
   resolveProgressionLootTable(floor: number): LootTableDef | undefined {
     return this.progressionChoiceRuntime.resolveProgressionLootTable(floor);
   }
-
   resolveLootRollOptions(options: RollItemDropOptions = {}): RollItemDropOptions {
     return this.progressionChoiceRuntime.resolveLootRollOptions(options);
   }
-
   private resolveMinimumActiveSkillManaCost(): number | null {
     const activeSlots =
       this.player.skills?.skillSlots.filter((slot): slot is NonNullable<typeof slot> => slot !== null) ?? [];
@@ -1287,7 +1292,6 @@ export class DungeonScene extends Phaser.Scene {
     }
     return minimum;
   }
-
   recordAcquiredItemTelemetry(
     item: ItemInstance,
     source: string,
@@ -1306,7 +1310,6 @@ export class DungeonScene extends Phaser.Scene {
       this.heartbeatFeedbackRuntime.maybeQueueEquipmentCompare(item, source);
     }
   }
-
   private resolveRuntimeSkillDef(skillDef: SkillDef): SkillDef {
     const blueprintAugmentedSkillDef = applyForgedSkillBlueprintAugments(skillDef, this.meta.blueprintForgedIds);
     const damagePercent = this.synergyRuntime.skillDamagePercent[skillDef.id] ?? 0;
@@ -1357,7 +1360,6 @@ export class DungeonScene extends Phaser.Scene {
       })
     };
   }
-
   private emitCombatEvents(events: CombatEvent[]): void {
     for (const combat of events) {
       if (combat.kind === "dodge") {
@@ -1371,7 +1373,6 @@ export class DungeonScene extends Phaser.Scene {
       this.eventBus.emit("combat:hit", { combat });
     }
   }
-
   private resolveEntityLabel(entityId: string): string {
     return entityLabel({
       entityId,
@@ -1382,7 +1383,6 @@ export class DungeonScene extends Phaser.Scene {
       findMonsterById: (targetId) => this.entityManager.findMonsterById(targetId)
     });
   }
-
   private computePathTo(target: { x: number; y: number }): GridNode[] {
     return this.movementSystem.computePathTo(
       this.dungeon.walkable,

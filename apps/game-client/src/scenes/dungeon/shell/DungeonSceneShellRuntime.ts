@@ -62,7 +62,6 @@ export interface DungeonSceneShellSource {
   preserveSceneTransitionOnCleanup: boolean;
   debugCheatsEnabled: boolean;
   diagnosticsEnabled: boolean;
-  meta: MetaProgression;
   pendingResumeSave: RunSaveDataV2 | null;
   selectedDifficulty: DifficultyMode;
   player: PlayerState;
@@ -119,6 +118,7 @@ export interface DungeonSceneShellSource {
   contentLocalizer: {
     itemName(id: string, fallback: string): string;
   };
+  replaceMeta(meta: MetaProgression): void;
   resolveLocalePreference(): void;
   normalizeMetaForPhase4B(): void;
   refreshPlayerStatsFromEquipment(player: PlayerState): PlayerState;
@@ -258,7 +258,7 @@ export function initializeDungeonSceneShell(scene: DungeonScene): void {
   source.cleanupStarted = false;
   source.preserveSceneTransitionOnCleanup = false;
   scene.cameras.main.setBackgroundColor("#11161d");
-  source.meta = source.metaRuntime.loadMeta();
+  source.replaceMeta(source.metaRuntime.loadMeta());
   source.resolveLocalePreference();
   source.normalizeMetaForPhase4B();
   source.metaRuntime.refreshTalentEffects();

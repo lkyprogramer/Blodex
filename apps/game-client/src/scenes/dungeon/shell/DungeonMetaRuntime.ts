@@ -28,6 +28,7 @@ export interface DungeonMetaSource {
   dailyFixedWeaponType: DungeonScene["dailyFixedWeaponType"];
   runSeed: string;
   runLog: Pick<RunLogService, "appendKey">;
+  replaceMeta(meta: MetaProgression): void;
   refreshPlayerStatsFromEquipment(player: PlayerState): PlayerState;
 }
 
@@ -90,11 +91,12 @@ export class DungeonMetaRuntime {
       : resolveSelectedDifficulty(source.meta);
     source.pendingDifficulty = null;
     if (resolved !== source.meta.selectedDifficulty) {
-      source.meta = {
+      const nextMeta = {
         ...source.meta,
         selectedDifficulty: resolved
       };
-      this.saveMeta(source.meta);
+      source.replaceMeta(nextMeta);
+      this.saveMeta(nextMeta);
     }
     return resolved;
   }

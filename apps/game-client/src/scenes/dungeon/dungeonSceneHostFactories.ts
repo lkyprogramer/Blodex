@@ -58,7 +58,7 @@ export function mutableHostField<T>(read: () => T, write: (value: T) => void): M
   return { read, write };
 }
 
-const MUTABLE_KEYS = [
+export const DUNGEON_SCENE_HOST_MUTABLE_KEYS = [
   "runSeed",
   "run",
   "player",
@@ -72,6 +72,7 @@ const MUTABLE_KEYS = [
   "dungeon",
   "hazards",
   "bossState",
+  "eventNode",
   "merchantOffers",
   "mapRevealActive",
   "blueprintFoundIdsInRun",
@@ -116,12 +117,28 @@ const MUTABLE_KEYS = [
   "hazardVisuals",
   "challengeMarker",
   "challengeRoomState",
-  "challengeWaveTotal"
+  "challengeWaveTotal",
+  "meta",
+  "talentEffects",
+  "mutationRuntime",
+  "spawnRng",
+  "combatRng",
+  "lootRng",
+  "skillRng",
+  "bossRng",
+  "biomeRng",
+  "hazardRng",
+  "eventRng",
+  "merchantRng",
+  "unlockedBiomeIds",
+  "unlockedAffixIds",
+  "unlockedEventIds",
+  "unlockedWeaponTypes",
+  "synergyRuntime"
 ] as const satisfies ReadonlyArray<keyof DungeonSceneHostBridge>;
 
-const READONLY_KEYS = [
+export const DUNGEON_SCENE_HOST_READONLY_KEYS = [
   "bossDef",
-  "lootRng",
   "eventBus",
   "renderSystem",
   "entityManager",
@@ -131,23 +148,12 @@ const READONLY_KEYS = [
   "runLog",
   "uiManager",
   "hudPresenter",
-  "eventNode",
-  "mutationRuntime",
   "saveManager",
-  "spawnRng",
-  "combatRng",
-  "skillRng",
-  "bossRng",
-  "biomeRng",
-  "hazardRng",
-  "eventRng",
-  "merchantRng",
   "entityLabelById",
   "newlyAcquiredItemUntilMs",
   "previousSkillCooldownLeftById",
   "skillReadyFlashUntilMsById",
   "time",
-  "meta",
   "children",
   "cameras",
   "hazardRuntimeModule",
@@ -169,16 +175,12 @@ const READONLY_KEYS = [
   "input",
   "keyboardBindings",
   "playerHazardContact",
-  "unlockedBiomeIds",
-  "unlockedWeaponTypes",
   "debugCheatsEnabled",
   "debugLockedEquipQuery",
   "debugLockedEquipIconId",
   "bossRuntimeModule",
   "debugRuntimeModule",
   "metaRuntime",
-  "talentEffects",
-  "unlockedAffixIds",
   "hiddenEntranceMarkers",
   "challengeMonsterIds",
   "add",
@@ -188,12 +190,10 @@ const READONLY_KEYS = [
   "tweens",
   "runCompletionModule",
   "deferredOutcomeRuntime",
-  "synergyRuntime",
-  "unlockedEventIds",
   "saveCoordinator"
 ] as const satisfies ReadonlyArray<keyof DungeonSceneHostBridge>;
 
-const METHOD_KEYS = [
+export const DUNGEON_SCENE_HOST_METHOD_KEYS = [
   "markHighValueChoice",
   "resolveProgressionLootTable",
   "resolveLootRollOptions",
@@ -206,10 +206,16 @@ const METHOD_KEYS = [
   "syncEndlessMutators",
   "resolveDailyWeaponType",
   "refreshUnlockSnapshots",
+  "replaceMeta",
+  "isBlockingOverlayOpen",
   "configureRngStreams",
   "refreshPlayerStatsFromEquipment",
+  "resolveMutationMoveSpeedMultiplier",
   "restorePhase6TelemetryState",
   "updateMinimap",
+  "updateKeyboardMoveIntent",
+  "updatePlayerMovement",
+  "updateRuntimeBuffs",
   "resetMutationRuntimeState",
   "refreshSynergyRuntime",
   "restoreFloorChoiceBudgetSnapshot",
@@ -230,7 +236,9 @@ const METHOD_KEYS = [
   "bootstrapRun",
   "pickFloorEventPosition",
   "flushRunSave",
+  "renderDiagnosticsPanel",
   "getRunRelativeNowMs",
+  "resolveMinimumActiveSkillManaCost",
   "handleLevelUpGain"
   ,"grantStoryBossReward"
   ,"flushBossRewardComparePrompts"
@@ -251,11 +259,14 @@ const METHOD_KEYS = [
   ,"resolveEntityLabel"
   ,"flushQueuedComparePrompts"
   ,"recordAcquiredItemTelemetry"
+  ,"computePathTo"
+  ,"tryUseSkill"
+  ,"tryUseConsumable"
 ] as const satisfies ReadonlyArray<keyof DungeonSceneHostBridge>;
 
-type MutableKey = (typeof MUTABLE_KEYS)[number];
-type ReadonlyKey = (typeof READONLY_KEYS)[number];
-type MethodKey = (typeof METHOD_KEYS)[number];
+type MutableKey = (typeof DUNGEON_SCENE_HOST_MUTABLE_KEYS)[number];
+type ReadonlyKey = (typeof DUNGEON_SCENE_HOST_READONLY_KEYS)[number];
+type MethodKey = (typeof DUNGEON_SCENE_HOST_METHOD_KEYS)[number];
 
 export type DungeonSceneHostBridgeSource =
   & { [K in MutableKey]: MutableHostField<DungeonSceneHostBridge[K]> }
@@ -303,13 +314,13 @@ function bindMethod<K extends MethodKey>(
 
 export function createDungeonSceneHostBridge(source: DungeonSceneHostBridgeSource): DungeonSceneHostBridge {
   const bridge: Partial<DungeonSceneHostBridge> = {};
-  for (const key of READONLY_KEYS) {
+  for (const key of DUNGEON_SCENE_HOST_READONLY_KEYS) {
     bindReadonly(bridge, key, source[key]);
   }
-  for (const key of MUTABLE_KEYS) {
+  for (const key of DUNGEON_SCENE_HOST_MUTABLE_KEYS) {
     bindMutable(bridge, key, source[key]);
   }
-  for (const key of METHOD_KEYS) {
+  for (const key of DUNGEON_SCENE_HOST_METHOD_KEYS) {
     bindMethod(bridge, key, source[key]);
   }
   return bridge as DungeonSceneHostBridge;
@@ -319,8 +330,9 @@ export function createHostOverlay<TBase extends object, TExtras extends object>(
   base: TBase,
   extras: TExtras
 ): TBase & TExtras {
-  Object.setPrototypeOf(extras, base);
-  return extras as TBase & TExtras;
+  const overlay = Object.create(base) as TBase & TExtras;
+  Object.defineProperties(overlay, Object.getOwnPropertyDescriptors(extras));
+  return overlay;
 }
 
 export function createPowerSpikeRuntimeHost(bridge: DungeonSceneHostBridge): PowerSpikeRuntimeHost {

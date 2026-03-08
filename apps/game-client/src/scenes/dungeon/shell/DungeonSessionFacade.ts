@@ -155,6 +155,7 @@ export interface DungeonSessionSource {
     resolveDailyMutationIds(runSeed: string): string[];
     saveMeta(meta: MetaProgression): boolean;
   };
+  replaceMeta(meta: MetaProgression): void;
   scheduleRunSave(): void;
 }
 
@@ -262,11 +263,11 @@ export class DungeonSessionFacade {
     const source = this.source;
     const normalized = normalizeMutationMetaState(source.meta, MUTATION_DEFS);
     if (JSON.stringify(normalized) !== JSON.stringify(source.meta)) {
-      source.meta = normalized;
+      source.replaceMeta(normalized);
       source.metaRuntime.saveMeta(normalized);
       return;
     }
-    source.meta = normalized;
+    source.replaceMeta(normalized);
   }
 
   resolveLocalePreference(): void {
@@ -277,10 +278,10 @@ export class DungeonSessionFacade {
     });
     setLocale(locale, { persist: source.meta.preferredLocale !== null });
     if (source.meta.preferredLocale !== null && source.meta.preferredLocale !== locale) {
-      source.meta = {
+      source.replaceMeta({
         ...source.meta,
         preferredLocale: locale
-      };
+      });
       source.metaRuntime.saveMeta(source.meta);
     }
   }
@@ -366,7 +367,7 @@ export class DungeonSessionFacade {
 
     const discoveredMeta = mergeSynergyDiscoveries(source.meta, source.synergyRuntime.activeSynergyIds);
     if (discoveredMeta !== source.meta) {
-      source.meta = discoveredMeta;
+      source.replaceMeta(discoveredMeta);
       if (persistDiscovery) {
         source.metaRuntime.saveMeta(discoveredMeta);
       }
