@@ -23,6 +23,15 @@ function readArtifactFile(repoRoot: string, artifactId: string): string {
   return fs.readFileSync(absolutePath, "utf8");
 }
 
+function tryReadArtifactFile(repoRoot: string, artifactId: string): string | undefined {
+  const artifact = getPhase6ReleaseArtifact(artifactId);
+  if (artifact === undefined) {
+    throw new Error(`Unknown phase6 release artifact: ${artifactId}`);
+  }
+  const absolutePath = path.join(repoRoot, artifact.path);
+  return fs.existsSync(absolutePath) ? fs.readFileSync(absolutePath, "utf8") : undefined;
+}
+
 function documentIncludesArtifactReference(content: string, artifactPath: string): boolean {
   return content.includes(artifactPath) || content.includes(path.basename(artifactPath));
 }
@@ -60,54 +69,62 @@ export function checkPhase6ReleaseConsistency(
     }
   }
 
-  const releaseReadiness = readArtifactFile(repoRoot, "phase6-release-readiness-doc");
-  for (const artifactId of [
-    "phase6-browser-smoke-report-doc",
-    "phase6-regression-matrix-doc",
-    "phase6-taste-signoff-doc"
-  ]) {
-    const artifact = getPhase6ReleaseArtifact(artifactId);
-    if (artifact !== undefined && !documentIncludesArtifactReference(releaseReadiness, artifact.path)) {
-      violations.push(`release_readiness_missing_ref:${artifactId}`);
+  const releaseReadiness = tryReadArtifactFile(repoRoot, "phase6-release-readiness-doc");
+  if (releaseReadiness !== undefined) {
+    for (const artifactId of [
+      "phase6-browser-smoke-report-doc",
+      "phase6-regression-matrix-doc",
+      "phase6-taste-signoff-doc"
+    ]) {
+      const artifact = getPhase6ReleaseArtifact(artifactId);
+      if (artifact !== undefined && !documentIncludesArtifactReference(releaseReadiness, artifact.path)) {
+        violations.push(`release_readiness_missing_ref:${artifactId}`);
+      }
     }
   }
 
-  const regressionMatrix = readArtifactFile(repoRoot, "phase6-regression-matrix-doc");
-  for (const row of pack.smokeMatrix) {
-    const status = row.status === "pass" ? "Pass" : row.status === "fail" ? "Fail" : "Pending";
-    const matrixRow = extractMarkdownTableRowById(regressionMatrix, row.id);
-    if (matrixRow === undefined) {
-      violations.push(`regression_matrix_missing_row:${row.id}`);
-      continue;
-    }
-    if (matrixRow[3] !== status) {
-      violations.push(`regression_matrix_status_mismatch:${row.id}:${matrixRow[3] ?? "unknown"}!=${status}`);
-    }
-  }
-
-  const tasteSignoff = readArtifactFile(repoRoot, "phase6-taste-signoff-doc");
-  for (const artifactId of [
-    "phase6-browser-smoke-report-doc",
-    "phase6-regression-matrix-doc"
-  ]) {
-    const artifact = getPhase6ReleaseArtifact(artifactId);
-    if (artifact !== undefined && !documentIncludesArtifactReference(tasteSignoff, artifact.path)) {
-      violations.push(`taste_signoff_missing_ref:${artifactId}`);
+  const regressionMatrix = tryReadArtifactFile(repoRoot, "phase6-regression-matrix-doc");
+  if (regressionMatrix !== undefined) {
+    for (const row of pack.smokeMatrix) {
+      const status = row.status === "pass" ? "Pass" : row.status === "fail" ? "Fail" : "Pending";
+      const matrixRow = extractMarkdownTableRowById(regressionMatrix, row.id);
+      if (matrixRow === undefined) {
+        violations.push(`regression_matrix_missing_row:${row.id}`);
+        continue;
+      }
+      if (matrixRow[3] !== status) {
+        violations.push(`regression_matrix_status_mismatch:${row.id}:${matrixRow[3] ?? "unknown"}!=${status}`);
+      }
     }
   }
 
-  const browserSmoke = readArtifactFile(repoRoot, "phase6-browser-smoke-report-doc");
-  for (const artifactId of [
-    "phase6-browser-smoke-skill-choice-shot",
-    "phase6-browser-smoke-build-formed-shot",
-    "phase6-browser-smoke-compare-prompt-shot",
-    "phase6-browser-smoke-boss-reward-compare-shot"
-  ]) {
-    const artifact = getPhase6ReleaseArtifact(artifactId);
-    if (artifact !== undefined) {
-      const relativePath = `./assets/browser-smoke/${path.basename(artifact.path)}`;
-      if (!browserSmoke.includes(relativePath)) {
-        violations.push(`browser_smoke_missing_asset_ref:${artifactId}`);
+  const tasteSignoff = tryReadArtifactFile(repoRoot, "phase6-taste-signoff-doc");
+  if (tasteSignoff !== undefined) {
+    for (const artifactId of [
+      "phase6-browser-smoke-report-doc",
+      "phase6-regression-matrix-doc"
+    ]) {
+      const artifact = getPhase6ReleaseArtifact(artifactId);
+      if (artifact !== undefined && !documentIncludesArtifactReference(tasteSignoff, artifact.path)) {
+        violations.push(`taste_signoff_missing_ref:${artifactId}`);
+      }
+    }
+  }
+
+  const browserSmoke = tryReadArtifactFile(repoRoot, "phase6-browser-smoke-report-doc");
+  if (browserSmoke !== undefined) {
+    for (const artifactId of [
+      "phase6-browser-smoke-skill-choice-shot",
+      "phase6-browser-smoke-build-formed-shot",
+      "phase6-browser-smoke-compare-prompt-shot",
+      "phase6-browser-smoke-boss-reward-compare-shot"
+    ]) {
+      const artifact = getPhase6ReleaseArtifact(artifactId);
+      if (artifact !== undefined) {
+        const relativePath = `./assets/browser-smoke/${path.basename(artifact.path)}`;
+        if (!browserSmoke.includes(relativePath)) {
+          violations.push(`browser_smoke_missing_asset_ref:${artifactId}`);
+        }
       }
     }
   }

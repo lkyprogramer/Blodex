@@ -28,4 +28,18 @@ describe("phase6 release artifact index", () => {
     const ids = listPhase6ReleaseArtifacts().map((artifact: Phase6ReleaseArtifactEntry) => artifact.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it("returns cloned artifact entries from accessors", () => {
+    const [first] = listPhase6ReleaseArtifacts();
+    expect(first).toBeDefined();
+    if (first === undefined) {
+      throw new Error("Expected at least one release artifact");
+    }
+    const originalPath = first.path;
+
+    first.path = "mutated/path.md";
+
+    const afterList = listPhase6ReleaseArtifacts().find((artifact) => artifact.id === first.id);
+    expect(afterList?.path).toBe(originalPath);
+  });
 });

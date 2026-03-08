@@ -141,11 +141,12 @@ export const PHASE6_RELEASE_ARTIFACT_INDEX: Record<string, Phase6ReleaseArtifact
 };
 
 export function listPhase6ReleaseArtifacts(): Phase6ReleaseArtifactEntry[] {
-  return Object.values(PHASE6_RELEASE_ARTIFACT_INDEX);
+  return Object.values(PHASE6_RELEASE_ARTIFACT_INDEX).map((artifact) => ({ ...artifact }));
 }
 
 export function getPhase6ReleaseArtifact(
   artifactId: string
 ): Phase6ReleaseArtifactEntry | undefined {
-  return PHASE6_RELEASE_ARTIFACT_INDEX[artifactId];
+  const artifact = PHASE6_RELEASE_ARTIFACT_INDEX[artifactId];
+  return artifact === undefined ? undefined : { ...artifact };
 }

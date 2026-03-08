@@ -88,4 +88,20 @@ describe("phase6 release consistency", () => {
       ])
     );
   });
+
+  it("reports missing present artifacts without throwing", () => {
+    const pack = createPhase6EvidencePack(18);
+    const tempRepoRoot = copyPresentArtifactsToTempRepo();
+    const releaseReadinessPath = getPhase6ReleaseArtifact("phase6-release-readiness-doc")?.path;
+    expect(releaseReadinessPath).toBeDefined();
+
+    fs.rmSync(path.join(tempRepoRoot, releaseReadinessPath!), { force: true });
+
+    const result = checkPhase6ReleaseConsistency(pack, tempRepoRoot);
+
+    expect(result.passed).toBe(false);
+    expect(result.violations).toEqual(
+      expect.arrayContaining(["artifact_missing:phase6-release-readiness-doc"])
+    );
+  });
 });
