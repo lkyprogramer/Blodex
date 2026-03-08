@@ -161,6 +161,41 @@ describe("HeartbeatFeedbackRuntime", () => {
     });
   });
 
+  it("supports deferred compare binding without opening the prompt immediately", () => {
+    const { runtime, showEquipmentComparePrompt } = createHost();
+    const deferred = makeItem("oathbound_cuirass", {
+      rolledAffixes: {
+        armor: 14
+      }
+    });
+    const immediate = makeItem("sanctified_greatsword", {
+      rolledAffixes: {
+        attackPower: 16
+      }
+    });
+
+    runtime.maybeQueueEquipmentCompare(deferred, "boss_reward", "deferred");
+
+    expect(showEquipmentComparePrompt).not.toHaveBeenCalled();
+    expect(runtime.captureComparePromptState()).toEqual({
+      immediate: [],
+      deferred: [
+        {
+          itemId: deferred.id,
+          source: "boss_reward"
+        }
+      ],
+      drainMode: "all"
+    });
+
+    runtime.maybeQueueEquipmentCompare(immediate, "boss_reward");
+
+    expect(showEquipmentComparePrompt).toHaveBeenCalledTimes(1);
+    expect(showEquipmentComparePrompt.mock.calls[0]![0]).toMatchObject({
+      id: immediate.id
+    });
+  });
+
   it("captures the active compare prompt in session state while the prompt is open", () => {
     const { runtime } = createHost();
     const first = makeItem("sanctified_greatsword", {

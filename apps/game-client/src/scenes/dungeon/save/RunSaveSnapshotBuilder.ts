@@ -105,6 +105,7 @@ export class RunSaveSnapshotBuilder {
           ...hazard,
           position: { ...hazard.position }
         })),
+        bossEncounterId: host.currentBossEncounterId,
         boss:
           host.bossState === null
             ? null

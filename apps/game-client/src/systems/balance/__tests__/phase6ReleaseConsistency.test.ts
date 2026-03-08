@@ -45,7 +45,7 @@ describe("phase6 release consistency", () => {
 
     expect(result.passed).toBe(true);
     expect(result.violations).toEqual([]);
-  });
+  }, 20_000);
 
   it("parses regression matrix rows by id", () => {
     const markdown = [

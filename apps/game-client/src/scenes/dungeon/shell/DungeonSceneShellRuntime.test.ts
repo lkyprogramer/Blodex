@@ -236,6 +236,7 @@ describe("initializeDungeonSceneShell", () => {
       saveCoordinator: null as unknown as DungeonSceneShellSource["saveCoordinator"],
       runPersistenceModule: null as unknown as DungeonSceneShellSource["runPersistenceModule"],
       eventRuntimeModule: null as unknown as DungeonSceneShellSource["eventRuntimeModule"],
+      bossEncounterDispatcher: null as unknown as DungeonSceneShellSource["bossEncounterDispatcher"],
       bossRuntimeModule: null as unknown as DungeonSceneShellSource["bossRuntimeModule"],
       runCompletionModule: null as unknown as DungeonSceneShellSource["runCompletionModule"],
       hazardRuntimeModule: null as unknown as DungeonSceneShellSource["hazardRuntimeModule"],

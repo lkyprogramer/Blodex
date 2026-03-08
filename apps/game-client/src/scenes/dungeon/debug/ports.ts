@@ -67,7 +67,12 @@ export interface DebugCommandHost {
   flushRunSave(): void;
   bossState: { health: number } | null;
   bossRuntimeModule: {
-    openVictoryChoice(nowMs: number): void;
+    openVictoryChoice(
+      nowMs: number,
+      context?: {
+        challengeId?: string | null;
+      }
+    ): void;
   };
   runCompletionModule: {
     enterAbyss(nowMs: number): void;

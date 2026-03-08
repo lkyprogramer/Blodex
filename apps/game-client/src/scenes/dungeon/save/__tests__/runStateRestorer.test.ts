@@ -104,6 +104,7 @@ function createSave(): RunSaveDataV3 {
         visible: false
       },
       hazards: [],
+      bossEncounterId: null,
       boss: null,
       monsters: [
         {
@@ -335,6 +336,32 @@ function createHost(): RunStateRestoreHost {
     restoreProgressionPromptState: vi.fn(),
     restoreComparePromptState: vi.fn(),
     resetFloorChoiceBudget: vi.fn(),
+    replaceBossDef: vi.fn(),
+    resolveBossEncounterById: vi.fn((encounterId) => ({
+      encounter: { id: encounterId ?? "story_bone_throne_finale" },
+      bossDef: {
+        id: "bone_sovereign",
+        name: "Bone Sovereign",
+        spriteKey: "boss_bone_sovereign",
+        baseHealth: 800,
+        phases: [],
+        dropTableId: "boss_bone_sovereign_rare",
+        exclusiveFloor: 5
+      }
+    })),
+    resolveBossEncounterByBossId: vi.fn((_bossId) => ({
+      encounter: { id: "story_bone_throne_finale" },
+      bossDef: {
+        id: "bone_sovereign",
+        name: "Bone Sovereign",
+        spriteKey: "boss_bone_sovereign",
+        baseHealth: 800,
+        phases: [],
+        dropTableId: "boss_bone_sovereign_rare",
+        exclusiveFloor: 5
+      }
+    })),
+    currentBossEncounterId: null,
     floorConfig: null,
     currentBiome: null
   } as unknown as RunStateRestoreHost;
@@ -409,5 +436,35 @@ describe("RunStateRestorer", () => {
     expect(restoredMonsters[0]?.state.activeBuffs).toEqual([]);
     expect(restoredMonsters[0]?.baseMoveSpeed).toBe(128);
     expect(restoredMonsters[0]?.state.moveSpeed).toBe(128);
+  });
+
+  it("restores boss encounter identity before rebuilding boss runtime", () => {
+    const host = createHost();
+    const restorer = new RunStateRestorer({
+      host
+    });
+    const save = createSave();
+    save.runtime.bossEncounterId = "branch_molten_trial";
+    save.runtime.boss = {
+      bossId: "bone_sovereign",
+      currentPhaseIndex: 0,
+      health: 200,
+      maxHealth: 800,
+      attackCooldowns: {},
+      position: { x: 2, y: 2 },
+      aiState: "idle"
+    };
+
+    const restored = restorer.restore(save);
+
+    expect(restored).toBe(true);
+    expect(host.resolveBossEncounterById).toHaveBeenCalledWith("branch_molten_trial");
+    expect(host.replaceBossDef).toHaveBeenCalled();
+    expect(host.currentBossEncounterId).toBe("branch_molten_trial");
+    expect(vi.mocked(host.renderSystem.spawnBoss)).toHaveBeenCalledWith(
+      { x: 2, y: 2 },
+      host.origin,
+      "boss_bone_sovereign"
+    );
   });
 });

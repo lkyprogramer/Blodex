@@ -16,7 +16,7 @@ import {
   type ItemInstance,
   type RandomEventDef
 } from "@blodex/core";
-import { GAME_CONFIG, ITEM_DEF_MAP, LOOT_TABLE_MAP, RANDOM_EVENT_DEFS } from "@blodex/content";
+import { GAME_CONFIG, ITEM_DEF_MAP, LOOT_TABLE_MAP, RANDOM_EVENT_DEFS, resolveChallengeEncounterIdForFloor } from "@blodex/content";
 import { t } from "../../../i18n";
 import type { MessageParams } from "../../../i18n/types";
 import { describeDebugCommands, type DebugLogLevel } from "./types";
@@ -181,7 +181,10 @@ export class DebugCommandRegistry {
 
     this.host.progressionRuntimeModule.removeChallengeMonsters();
     this.host.progressionRuntimeModule.clearChallengeState();
-    this.host.challengeRoomState = createChallengeRoomState(challengeRoom.id);
+    this.host.challengeRoomState = createChallengeRoomState(
+      challengeRoom.id,
+      resolveChallengeEncounterIdForFloor(this.host.run.currentFloor) ?? undefined
+    );
     this.host.challengeWaveTotal = this.host.progressionRuntimeModule.resolveChallengeWaveTotal(challengeRoom.id);
     const center = this.host.progressionRuntimeModule.challengeRoomCenter(challengeRoom.id);
     if (center !== null) {

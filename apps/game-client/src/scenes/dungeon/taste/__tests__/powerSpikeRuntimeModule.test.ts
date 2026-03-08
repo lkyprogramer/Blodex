@@ -224,8 +224,46 @@ describe("PowerSpikeRuntimeModule", () => {
     });
 
     const module = new PowerSpikeRuntimeModule({ host });
-    module.grantStoryBossReward(5_000);
+    module.grantBossEncounterReward(
+      {
+        encounterId: "story_bone_throne_finale",
+        rewardSource: "boss_reward",
+        compareBinding: "immediate",
+        flow: "enter_abyss_or_finish_run",
+        rareDropTableId: host.bossDef.dropTableId,
+        exclusiveDropTableId: "boss_bone_sovereign_exclusive"
+      },
+      5_000
+    );
 
     expect(telemetry.snapshot(60_000).story.powerSpikes).toBe(1);
+  });
+
+  it("uses progression reward track for challenge encounter rewards", () => {
+    const { host } = createHost({
+      run: {
+        ...createRunState("phase7-7.4-test", 0, "normal"),
+        currentFloor: 2,
+        floor: 2
+      },
+      resolveProgressionLootTable: () => LOOT_TABLE_MAP.cathedral_depths
+    });
+    const module = new PowerSpikeRuntimeModule({ host });
+
+    expect(() =>
+      module.grantBossEncounterReward(
+        {
+          encounterId: "challenge_ossuary_trial",
+          rewardSource: "challenge_reward",
+          compareBinding: "immediate",
+          flow: "resume_run",
+          rareDropTableId: host.bossDef.dropTableId
+        },
+        2_000
+      )
+    ).not.toThrow();
+
+    expect(host.player.inventory.length).toBeGreaterThan(0);
+    expect(host.run.lootCollected).toBeGreaterThan(0);
   });
 });

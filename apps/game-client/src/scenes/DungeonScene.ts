@@ -221,6 +221,7 @@ import {
   type DungeonSceneHostBridge
 } from "./dungeon/dungeonSceneHostFactories";
 import { HeartbeatFeedbackRuntime } from "./dungeon/feedback/HeartbeatFeedbackRuntime";
+import { BossEncounterDispatcher } from "./dungeon/encounter/BossEncounterDispatcher";
 import { BossCombatService } from "./dungeon/encounter/BossCombatService";
 import { BossRuntimeModule, type BossRuntimeHost } from "./dungeon/encounter/BossRuntimeModule";
 import { BossSpawnService } from "./dungeon/encounter/BossSpawnService";
@@ -268,7 +269,6 @@ import { MerchantFlowService } from "./dungeon/world/MerchantFlowService";
 import { ProgressionRuntimeModule } from "./dungeon/world/ProgressionRuntimeModule";
 import type { RuntimeEventHost } from "./dungeon/world/types";
 import { WorldEventController } from "./dungeon/world/WorldEventController";
-
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
 const RUN_SAVE_APP_VERSION = "phase2-4c";
@@ -392,6 +392,10 @@ export class DungeonScene extends Phaser.Scene {
       recommendations: this.tasteRuntime.buildRecommendations()
     })
   });
+  private readonly bossEncounterDispatcher = (() => {
+    const scene = this;
+    return new BossEncounterDispatcher({ get run() { return scene.run; }, get bossDef() { return scene.bossDef; }, set bossDef(value) { scene.bossDef = value; }, get currentBossEncounterId() { return scene.currentBossEncounterId; }, set currentBossEncounterId(value) { scene.currentBossEncounterId = value; } });
+  })();
   private readonly metaRuntime = new DungeonMetaRuntime(() => this.dungeonSceneHostBridge);
   private readonly sessionFacade = new DungeonSessionFacade(() => this.dungeonSceneHostBridge);
   private readonly dungeonSceneHostBridge: DungeonSceneHostBridge = (() => {
@@ -401,6 +405,7 @@ export class DungeonScene extends Phaser.Scene {
       run: mutableHostField(() => scene.run, (value) => { scene.run = value; }),
       player: mutableHostField(() => scene.player, (value) => { scene.player = value; }),
       bossDef: readonlyHostField(() => scene.bossDef),
+      currentBossEncounterId: mutableHostField(() => scene.currentBossEncounterId, (value) => { scene.currentBossEncounterId = value; }),
       staircaseState: mutableHostField(() => scene.staircaseState, (value) => { scene.staircaseState = value; }),
       lootRng: mutableHostField(() => scene.lootRng, (value) => { scene.lootRng = value; }),
       origin: mutableHostField(() => scene.origin, (value) => { scene.origin = value; }),
@@ -586,15 +591,24 @@ export class DungeonScene extends Phaser.Scene {
       getRunRelativeNowMs: () => scene.getRunRelativeNowMs(),
       resolveMinimumActiveSkillManaCost: () => scene.resolveMinimumActiveSkillManaCost(),
       handleLevelUpGain: (levelsGained, nowMs, source) => scene.handleLevelUpGain(levelsGained, nowMs, source),
-      grantStoryBossReward: (nowMs) => scene.grantStoryBossReward(nowMs),
-      flushBossRewardComparePrompts: (onDrained) => scene.flushBossRewardComparePrompts(onDrained),
+      grantBossEncounterReward: (binding, nowMs) => scene.powerSpikeRuntimeModule.grantBossEncounterReward(binding, nowMs),
+      queueBossEncounterCompare: (item, binding) =>
+        scene.heartbeatFeedbackRuntime.maybeQueueEquipmentCompare(item, binding.rewardSource, binding.compareBinding),
+      flushBossRewardComparePrompts: (onDrained) => scene.heartbeatFeedbackRuntime.flushImmediateComparePrompts(onDrained),
       describeItem: (item) => scene.powerSpikeRuntimeModule.describeItem(item),
       recordBossRewardClosed: (choiceId, nowMs) => scene.recordBossRewardClosed(choiceId, nowMs),
+      replaceBossDef: (bossDef) => { scene.bossDef = bossDef; },
+      resolveBossEncounterById: (encounterId) => scene.bossEncounterDispatcher.resolveEncounter(encounterId === undefined ? {} : { encounterId }),
+      resolveBossEncounterByBossId: (bossId) => scene.bossEncounterDispatcher.resolveEncounter({
+        ...(bossId === undefined ? {} : { bossId }),
+        floor: scene.run.currentFloor,
+        ...(scene.run.branchChoice === undefined ? {} : { branchChoice: scene.run.branchChoice })
+      }),
       saveMeta: (meta) => scene.metaRuntime.saveMeta(meta),
       renderHud: () => scene.hudRuntime.render(),
       capturePhase6TelemetrySummary: (elapsedMs) => scene.capturePhase6TelemetrySummary(elapsedMs),
       resolveRunRecommendations: () => scene.tasteRuntime.buildRecommendations(),
-      grantFloorPairFallbackReward: (nowMs) => scene.grantFloorPairFallbackReward(nowMs),
+      grantFloorPairFallbackReward: (nowMs) => scene.powerSpikeRuntimeModule.grantFloorPairFallbackReward(nowMs),
       ensureFloorChoiceBudget: (nowMs) => scene.ensureFloorChoiceBudget(nowMs),
       resolveRuntimeSkillDef: (skillDef) => scene.resolveRuntimeSkillDef(skillDef),
       spawnSplitChildren: (monster, archetype, nowMs) => scene.combatRuntime.spawnSplitChildren(monster, archetype, nowMs),
@@ -712,6 +726,7 @@ export class DungeonScene extends Phaser.Scene {
   private playerSprite!: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
 
   private bossDef: BossDef = BONE_SOVEREIGN;
+  private currentBossEncounterId: string | null = null;
   private bossState: BossRuntimeState | null = null;
   private bossSprite: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle | null = null;
 
@@ -914,7 +929,6 @@ export class DungeonScene extends Phaser.Scene {
     this.sfxSystem.setEnabled(!resolveDebugQueryFlag(DISABLE_SFX_QUERY));
     initializeDungeonSceneShell(this);
   }
-
   createShellRuntimeSource(): DungeonSceneShellSource {
     const scene = this;
     return createHostOverlay(this.dungeonSceneHostBridge, {
@@ -934,6 +948,7 @@ export class DungeonScene extends Phaser.Scene {
       set runPersistenceModule(value) { scene.runPersistenceModule = value; },
       get eventRuntimeModule() { return scene.eventRuntimeModule; },
       set eventRuntimeModule(value) { scene.eventRuntimeModule = value; },
+      get bossEncounterDispatcher() { return scene.bossEncounterDispatcher; },
       get bossRuntimeModule() { return scene.bossRuntimeModule; },
       set bossRuntimeModule(value) { scene.bossRuntimeModule = value; },
       get runCompletionModule() { return scene.runCompletionModule; },
@@ -1426,22 +1441,6 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
     this.entityManager.setMonsters(runtimes);
-  }
-
-  grantFloorPairFallbackReward(nowMs: number): void {
-    this.powerSpikeRuntimeModule.grantFloorPairFallbackReward(nowMs);
-  }
-
-  grantStoryBossReward(nowMs: number): ItemInstance[] {
-    const rewards = this.powerSpikeRuntimeModule.grantStoryBossReward(nowMs);
-    for (const item of rewards) {
-      this.heartbeatFeedbackRuntime.maybeQueueEquipmentCompare(item, "boss_reward");
-    }
-    return rewards;
-  }
-
-  flushBossRewardComparePrompts(onDrained: () => void): boolean {
-    return this.heartbeatFeedbackRuntime.flushImmediateComparePrompts(onDrained);
   }
 
   private tryUseSkill(slotIndex: number): void {

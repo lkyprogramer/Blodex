@@ -1,4 +1,5 @@
 import type { BossAttack, BossRuntimeState } from "@blodex/core";
+import type { BossTelegraphProfileDef } from "@blodex/content";
 import Phaser from "phaser";
 import { gridToIso } from "../../../systems/iso";
 import type { BossTelegraphHost } from "./ports";
@@ -13,13 +14,14 @@ export class BossTelegraphPresenter {
 
   constructor(private readonly options: BossTelegraphPresenterOptions) {}
 
-  show(state: BossRuntimeState, attack: BossAttack): void {
+  show(state: BossRuntimeState, attack: BossAttack, profile?: BossTelegraphProfileDef): void {
     const host = this.options.host;
     const target = state.telegraphTarget ?? state.position;
+    const radiusScale = profile?.radiusScale ?? 1;
     const radius =
       attack.type === "aoe_zone"
-        ? Math.max(0.9, attack.radius ?? 1.25)
-        : Math.max(0.75, Math.min(1.5, attack.range));
+        ? Math.max(0.9, (attack.radius ?? 1.25) * radiusScale)
+        : Math.max(0.75, Math.min(1.5, attack.range * radiusScale));
 
     if (this.marker !== null && this.markerAttackId === attack.id) {
       this.updateMarkerPosition(target);
@@ -31,13 +33,16 @@ export class BossTelegraphPresenter {
     const marker = host.renderSystem.spawnTelegraphCircle(target, radius, host.origin);
     this.marker = marker;
     this.markerAttackId = attack.id;
-    marker.setAlpha(0.52);
+    marker.setAlpha(profile?.alpha ?? 0.52);
+    if (marker instanceof Phaser.GameObjects.Image) {
+      marker.setTint(profile?.tintColor ?? 0xb74f4f);
+    }
     marker.setVisible(true);
 
     host.tweens.add({
       targets: marker,
       alpha: 0.22,
-      duration: 160,
+      duration: profile?.pulseDurationMs ?? 160,
       yoyo: true,
       repeat: -1,
       ease: "Sine.InOut"

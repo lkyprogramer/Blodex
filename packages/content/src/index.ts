@@ -8,6 +8,7 @@ export * from "./monsters";
 export * from "./monsterAffixes";
 export * from "./randomEvents";
 export * from "./bosses";
+export * from "./bossRegistry";
 export * from "./skills";
 export * from "./buffs";
 export * from "./unlocks";

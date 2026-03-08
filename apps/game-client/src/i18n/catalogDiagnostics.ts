@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const KEY_LITERAL_PATTERN = /["'`](ui|log)\.[A-Za-z0-9_.-]+["'`]/g;
+const KEY_LITERAL_PATTERN = /["'`]((?:ui|log|boss)\.[A-Za-z0-9_.-]+)["'`]/g;
 const PLACEHOLDER_PATTERN = /\{([a-zA-Z0-9_]+)\}/g;
 const CATALOG_ENTRY_PATTERN =
-  /(["'`])((?:ui|log)\.[A-Za-z0-9_.-]+)\1\s*:\s*(["'`])((?:\\.|(?!\3)[\s\S])*)\3/g;
+  /(["'`])((?:ui|log|boss)\.[A-Za-z0-9_.-]+)\1\s*:\s*(["'`])((?:\\.|(?!\3)[\s\S])*)\3/g;
 
 function shouldScanFile(filePath: string): boolean {
   if (!filePath.endsWith(".ts") && !filePath.endsWith(".tsx")) {
@@ -39,6 +40,21 @@ function walkFiles(rootDir: string, acc: string[]): void {
   }
 }
 
+function collectBossSummaryKeys(): string[] {
+  const diagnosticsDir = path.dirname(fileURLToPath(import.meta.url));
+  const registryPath = path.resolve(diagnosticsDir, "../../../../packages/content/src/bossRegistry.ts");
+  const source = fs.readFileSync(registryPath, "utf8");
+  const values = new Set<string>();
+  const pattern = /summaryKey:\s*"([^"]+)"/g;
+  for (const match of source.matchAll(pattern)) {
+    const summaryKey = match[1];
+    if (summaryKey !== undefined) {
+      values.add(summaryKey);
+    }
+  }
+  return [...values];
+}
+
 export function collectSourceI18nKeys(rootDir: string): Set<string> {
   const files: string[] = [];
   walkFiles(rootDir, files);
@@ -50,6 +66,13 @@ export function collectSourceI18nKeys(rootDir: string): Set<string> {
       const literal = match[0];
       keys.add(literal.slice(1, -1));
     }
+  }
+  for (const summaryKey of collectBossSummaryKeys()) {
+    keys.add(`${summaryKey}.title`);
+    keys.add(`${summaryKey}.description`);
+    keys.add(`${summaryKey}.description_abyss`);
+    keys.add(`${summaryKey}.description_daily`);
+    keys.add(`${summaryKey}.log_defeated`);
   }
   return keys;
 }

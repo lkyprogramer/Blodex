@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import {
   collectLoot,
   rollBossDrops,
+  rollItemDrop,
   type GameEventMap,
   type BossDef,
   type ItemDef,
@@ -18,6 +19,7 @@ import {
 import { ITEM_DEF_MAP, LOOT_TABLE_MAP } from "@blodex/content";
 import type { LogLevel } from "../../../ui/Hud";
 import type { MessageParams } from "../../../i18n/types";
+import type { BossEncounterRewardBinding } from "../encounter/BossEncounterDispatcher";
 import type { Phase6TelemetryTracker } from "./Phase6Telemetry";
 import type { HeartbeatEvent, TasteRuntimePortHub } from "./TasteRuntimePorts";
 import {
@@ -80,8 +82,6 @@ export interface PowerSpikeRuntimeHost {
 export interface PowerSpikeRuntimeModuleOptions {
   host: PowerSpikeRuntimeHost;
 }
-
-const BOSS_EXCLUSIVE_TABLE_ID = "boss_bone_sovereign_exclusive";
 
 export class PowerSpikeRuntimeModule {
   private readonly budget = new PowerSpikeBudgetTracker();
@@ -198,22 +198,22 @@ export class PowerSpikeRuntimeModule {
     );
   }
 
-  grantStoryBossReward(nowMs: number): ItemInstance[] {
+  grantBossEncounterReward(binding: BossEncounterRewardBinding, nowMs: number): ItemInstance[] {
     const host = this.options.host;
-    const drops = rollBossDrops(
-      LOOT_TABLE_MAP[host.bossDef.dropTableId]!,
-      LOOT_TABLE_MAP[BOSS_EXCLUSIVE_TABLE_ID]!,
-      ITEM_DEF_MAP,
-      host.run.currentFloor,
-      host.lootRng,
-      `${host.runSeed}:boss-reward:${Math.floor(nowMs)}`,
-      host.resolveLootRollOptions({
-        isItemEligible: (itemDef: ItemDef) => host.isItemDefUnlocked(itemDef)
-      })
-    );
-    const collected = [drops.guaranteedRare, drops.guaranteedBossExclusive, drops.bonusDrop].filter(
-      (item): item is ItemInstance => item !== undefined
-    );
+    const rollOptions = host.resolveLootRollOptions({
+      isItemEligible: (itemDef: ItemDef) => host.isItemDefUnlocked(itemDef)
+    });
+    const rareTable =
+      binding.rewardSource === "challenge_reward"
+        ? host.resolveProgressionLootTable(host.run.currentFloor + 1) ??
+          LOOT_TABLE_MAP[binding.rareDropTableId] ??
+          LOOT_TABLE_MAP[host.bossDef.dropTableId]!
+        : LOOT_TABLE_MAP[binding.rareDropTableId] ?? LOOT_TABLE_MAP[host.bossDef.dropTableId]!;
+
+    const collected: ItemInstance[] =
+      binding.exclusiveDropTableId === undefined
+        ? this.rollSingleTrackEncounterRewards(rareTable, binding, rollOptions, nowMs)
+        : this.rollBossTableEncounterRewards(rareTable, binding, rollOptions, nowMs);
     for (const item of collected) {
       const baselinePlayer = host.player;
       host.player = collectLoot(host.player, item);
@@ -221,12 +221,12 @@ export class PowerSpikeRuntimeModule {
         ...host.run,
         lootCollected: host.run.lootCollected + 1
       };
-      host.tasteRuntime.recordPickup(item, host.run.currentFloor, "boss_reward", nowMs);
-      this.recordAcquiredItemTelemetry(item, "boss_reward", nowMs, baselinePlayer);
+      host.tasteRuntime.recordPickup(item, host.run.currentFloor, binding.rewardSource, nowMs);
+      this.recordAcquiredItemTelemetry(item, binding.rewardSource, nowMs, baselinePlayer);
       host.runLog.appendKey(
         "log.event.reward.item_acquired",
         {
-          source: "boss_reward",
+          source: binding.rewardSource,
           itemName: host.contentLocalizer.itemName(item.defId, item.name)
         },
         "success",
@@ -235,6 +235,63 @@ export class PowerSpikeRuntimeModule {
     }
     host.hudDirty = true;
     return collected;
+  }
+
+  private rollBossTableEncounterRewards(
+    rareTable: LootTableDef,
+    binding: BossEncounterRewardBinding,
+    rollOptions: RollItemDropOptions,
+    nowMs: number
+  ): ItemInstance[] {
+    const host = this.options.host;
+    const exclusiveTable = binding.exclusiveDropTableId === undefined ? undefined : LOOT_TABLE_MAP[binding.exclusiveDropTableId];
+    if (exclusiveTable === undefined) {
+      throw new Error(`Boss encounter ${binding.encounterId} is missing an exclusive drop table.`);
+    }
+    const drops = rollBossDrops(
+      rareTable,
+      exclusiveTable,
+      ITEM_DEF_MAP,
+      host.run.currentFloor,
+      host.lootRng,
+      `${host.runSeed}:${binding.encounterId}:boss-reward:${Math.floor(nowMs)}`,
+      rollOptions
+    );
+    return [drops.guaranteedRare, drops.guaranteedBossExclusive, drops.bonusDrop].filter(
+      (item): item is ItemInstance => item !== undefined
+    );
+  }
+
+  private rollSingleTrackEncounterRewards(
+    table: LootTableDef,
+    binding: BossEncounterRewardBinding,
+    rollOptions: RollItemDropOptions,
+    nowMs: number
+  ): ItemInstance[] {
+    const host = this.options.host;
+    const guaranteed = rollItemDrop(
+      table,
+      ITEM_DEF_MAP,
+      Math.max(1, host.run.currentFloor + 1),
+      host.lootRng,
+      `${host.runSeed}:${binding.encounterId}:reward:${Math.floor(nowMs)}`,
+      rollOptions
+    );
+    if (guaranteed === null) {
+      throw new Error(`Encounter ${binding.encounterId} reward table must include floor-compatible entries.`);
+    }
+    const bonus =
+      host.lootRng.next() < 0.35
+        ? rollItemDrop(
+            table,
+            ITEM_DEF_MAP,
+            Math.max(1, host.run.currentFloor + 1),
+            host.lootRng,
+            `${host.runSeed}:${binding.encounterId}:reward-bonus:${Math.floor(nowMs)}`,
+            rollOptions
+          )
+        : null;
+    return bonus === null ? [guaranteed] : [guaranteed, bonus];
   }
 
   private recordRareDropPresented(

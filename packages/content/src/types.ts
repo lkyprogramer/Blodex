@@ -255,6 +255,51 @@ export interface BossDef {
   exclusiveFloor: number;
 }
 
+export type BossEncounterType = "story" | "branch" | "challenge";
+
+export type BossEncounterSelector =
+  | {
+      kind: "story_floor";
+      floor: number;
+    }
+  | {
+      kind: "branch_route";
+      floor: number;
+      route: "molten_route" | "frozen_route";
+    }
+  | {
+      kind: "challenge";
+      challengeId: string;
+      floor?: number;
+    };
+
+export interface BossRewardPolicyDef {
+  id: string;
+  flow: "finish_run" | "enter_abyss_or_finish_run" | "resume_run";
+  rewardSource: "boss_reward" | "challenge_reward";
+  exclusiveDropTableId?: string;
+  rareDropTableId?: string;
+  compareBinding: "immediate" | "deferred";
+}
+
+export interface BossTelegraphProfileDef {
+  id: string;
+  tintColor: number;
+  alpha: number;
+  pulseDurationMs: number;
+  radiusScale: number;
+}
+
+export interface BossEncounterDef {
+  id: string;
+  bossId: string;
+  encounterType: BossEncounterType;
+  selector: BossEncounterSelector;
+  rewardPolicyId: string;
+  telegraphProfileId: string;
+  summaryKey: string;
+}
+
 export interface SkillEffect {
   type: "damage" | "heal" | "buff" | "debuff" | "summon";
   value: number | { base: number; scaling: "strength" | "dexterity" | "vitality" | "intelligence"; ratio: number };

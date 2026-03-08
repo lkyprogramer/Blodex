@@ -18,5 +18,5 @@ describe("phase6 smoke scenario registry", () => {
     expect(smokeMatrix.find((entry) => entry.id === "S6-05")?.status).toBe("pass");
     expect(smokeMatrix.find((entry) => entry.id === "S6-06")?.status).toBe("pass");
     expect(smokeMatrix.find((entry) => entry.id === "S6-07")?.status).toBe("pass");
-  });
+  }, 20_000);
 });

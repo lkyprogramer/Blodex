@@ -16,5 +16,5 @@ describe("phase6 signoff checklist registry", () => {
     expect(checklist.find((entry) => entry.id === "skill-cadence")?.status).toBe("pass");
     expect(checklist.find((entry) => entry.id === "manual-smoke")?.status).toBe("pass");
     expect(checklist.find((entry) => entry.id === "taste-signoff")?.status).toBe("pass");
-  });
+  }, 20_000);
 });

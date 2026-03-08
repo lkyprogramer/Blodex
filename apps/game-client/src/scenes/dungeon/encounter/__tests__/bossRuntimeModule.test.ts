@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ItemInstance } from "@blodex/core";
+import { BONE_SOVEREIGN } from "@blodex/content";
+import { BossEncounterDispatcher } from "../BossEncounterDispatcher";
 import { BossRuntimeModule, type BossRuntimeHost } from "../BossRuntimeModule";
 
 function createReward(defId: string, rarity: ItemInstance["rarity"] = "rare"): ItemInstance {
@@ -66,7 +68,8 @@ function createHost(): BossRuntimeHost {
       enterAbyss: vi.fn(),
       finishRun: vi.fn()
     },
-    grantStoryBossReward: vi.fn(() => [createReward("sovereign_requiem"), createReward("voidsigil_band")]),
+    grantBossEncounterReward: vi.fn(() => [createReward("sovereign_requiem"), createReward("voidsigil_band")]),
+    queueBossEncounterCompare: vi.fn(),
     flushBossRewardComparePrompts: vi.fn(() => false),
     describeItem: vi.fn((item: ItemInstance) => item.defId),
     recordBossRewardClosed: vi.fn(),
@@ -79,18 +82,33 @@ function createHost(): BossRuntimeHost {
   };
 }
 
+function createDispatcher(host: BossRuntimeHost) {
+  return new BossEncounterDispatcher({
+    run: host.run,
+    bossDef: BONE_SOVEREIGN,
+    currentBossEncounterId: null
+  });
+}
+
 describe("BossRuntimeModule", () => {
   it("grants story boss rewards before showing the victory choice panel", () => {
     const host = createHost();
     const module = new BossRuntimeModule({
       host,
       combatService: { updateCombat: vi.fn() } as never,
-      spawnService: { spawnBoss: vi.fn() } as never
+      spawnService: { spawnBoss: vi.fn() } as never,
+      dispatcher: createDispatcher(host)
     });
 
     module.openVictoryChoice(700);
 
-    expect(host.grantStoryBossReward).toHaveBeenCalledWith(700);
+    expect(host.grantBossEncounterReward).toHaveBeenCalledWith(
+      expect.objectContaining({
+        encounterId: "story_bone_throne_finale",
+        rewardSource: "boss_reward"
+      }),
+      700
+    );
     const [eventDef, , onSelect] = vi.mocked(host.uiManager.showEventDialog).mock.calls[0] ?? [];
     expect(eventDef?.description).toContain("sovereign_requiem");
     expect(eventDef?.description).toContain("voidsigil_band");
@@ -107,7 +125,8 @@ describe("BossRuntimeModule", () => {
     const module = new BossRuntimeModule({
       host,
       combatService: { updateCombat: vi.fn() } as never,
-      spawnService: { spawnBoss: vi.fn() } as never
+      spawnService: { spawnBoss: vi.fn() } as never,
+      dispatcher: createDispatcher(host)
     });
 
     module.openVictoryChoice(700);
@@ -118,6 +137,34 @@ describe("BossRuntimeModule", () => {
     expect(host.recordBossRewardClosed).toHaveBeenCalledWith("enter_abyss", 800);
     expect(host.runCompletionModule.enterAbyss).toHaveBeenCalledWith(800);
     expect(host.runCompletionModule.finishRun).not.toHaveBeenCalled();
+  });
+
+  it("derives branch victory presentation and compare dispatch from encounter metadata", () => {
+    const host = createHost();
+    host.run.branchChoice = "molten_route";
+    const module = new BossRuntimeModule({
+      host,
+      combatService: { updateCombat: vi.fn() } as never,
+      spawnService: { spawnBoss: vi.fn() } as never,
+      dispatcher: createDispatcher(host)
+    });
+
+    module.openVictoryChoice(700);
+
+    const [eventDef] = vi.mocked(host.uiManager.showEventDialog).mock.calls[0] ?? [];
+    expect(eventDef?.name).toBe("Molten Trial Cleared");
+    expect(eventDef?.description).toContain("molten route reward");
+    expect(eventDef?.description).not.toContain("Daily mode");
+    expect(host.queueBossEncounterCompare).toHaveBeenCalledWith(
+      expect.objectContaining({ defId: "sovereign_requiem" }),
+      expect.objectContaining({ compareBinding: "immediate", encounterId: "branch_molten_trial" })
+    );
+    expect(host.runLog.appendKey).toHaveBeenCalledWith(
+      "boss.branch.molten_trial.log_defeated",
+      undefined,
+      "success",
+      700
+    );
   });
 
   it("defers run resolution until boss reward compare prompts drain", () => {
@@ -132,7 +179,8 @@ describe("BossRuntimeModule", () => {
     const module = new BossRuntimeModule({
       host,
       combatService: { updateCombat: vi.fn() } as never,
-      spawnService: { spawnBoss: vi.fn() } as never
+      spawnService: { spawnBoss: vi.fn() } as never,
+      dispatcher: createDispatcher(host)
     });
 
     module.openVictoryChoice(700);
