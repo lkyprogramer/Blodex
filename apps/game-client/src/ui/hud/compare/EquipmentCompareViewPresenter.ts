@@ -1,6 +1,7 @@
 import {
   calculateItemPowerScore,
   collectItemAffixMap,
+  getItemTradeoffCalibrationAsset,
   type ItemInstance
 } from "@blodex/core";
 import {
@@ -23,9 +24,6 @@ export interface EquipmentCompareView {
   powerDelta: number;
   powerDirection: DeltaDirection;
 }
-
-const MERCHANT_COMPARE_MIN_POWER_DELTA = 10;
-const MERCHANT_COMPARE_MIN_POSITIVE_SUMMARIES = 2;
 
 export function buildEquipmentCompareView(
   item: ItemInstance,
@@ -64,11 +62,12 @@ export function isMerchantHighValueCompareCandidate(
   if (compareItem === undefined) {
     return false;
   }
+  const calibration = getItemTradeoffCalibrationAsset();
   const compareView = buildEquipmentCompareView(item, compareItem);
   const positiveSummaryCount = compareView.summaryLines.filter((line) => line.direction === "up").length;
   return (
-    compareView.powerDelta >= MERCHANT_COMPARE_MIN_POWER_DELTA &&
-    positiveSummaryCount >= MERCHANT_COMPARE_MIN_POSITIVE_SUMMARIES
+    compareView.powerDelta >= calibration.merchantCompareThresholds.minPowerDelta &&
+    positiveSummaryCount >= calibration.merchantCompareThresholds.minPositiveSummaryCount
   );
 }
 

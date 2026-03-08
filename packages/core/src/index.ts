@@ -28,6 +28,7 @@ export * from "./pacingModel";
 export * from "./stats";
 export * from "./xp";
 export * from "./specialAffix";
+export * from "./itemTradeoffCalibration";
 export * from "./itemTradeoff";
 export * from "./talent";
 export * from "./save";

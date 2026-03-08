@@ -12,6 +12,10 @@ import {
   type PowerSpikePairId
 } from "@blodex/core";
 import type { BuildIdentitySnapshot } from "./TasteRuntimePorts";
+import {
+  DEFAULT_POWER_SPIKE_CALIBRATION_ASSET,
+  type PowerSpikeCalibrationAsset
+} from "./PowerSpikeCalibration";
 
 export type PowerSpikeSourceKind =
   | "drop_spawn"
@@ -41,6 +45,14 @@ export interface PowerSpikeEvaluation {
   amplitude: PowerSpikeAmplitude;
   itemDefId?: string;
   rarity?: ItemInstance["rarity"];
+}
+
+interface PowerSpikeMetricSnapshot {
+  offensiveDelta: number;
+  defensiveDelta: number;
+  utilityDelta: number;
+  ttkDelta: number;
+  sustainDelta: number;
 }
 
 interface PlayerPowerMetrics {
@@ -163,76 +175,89 @@ export function resolvePowerSpikeSourceKind(source: string): PowerSpikeSourceKin
   }
 }
 
-export function scorePowerSpikeFromItem(player: PlayerState, item: ItemInstance): PowerSpikeAmplitude {
+export function scorePowerSpikeFromItem(
+  player: PlayerState,
+  item: ItemInstance,
+  calibration: PowerSpikeCalibrationAsset = DEFAULT_POWER_SPIKE_CALIBRATION_ASSET
+): PowerSpikeAmplitude {
   const before = buildPlayerPowerMetrics(player);
   const after = buildPlayerPowerMetrics(simulatePlayerWithCandidateItem(player, item));
-  const offensiveDelta = clampDelta(safeRatio(after.offense, before.offense));
-  const defensiveDelta = clampDelta(safeRatio(after.defense, before.defense));
-  const utilityDelta = clampDelta(safeRatio(after.utility, before.utility));
-  const sustainDelta = clampDelta(safeRatio(after.sustain, before.sustain));
-  const ttkDelta = clampDelta(before.offense <= 0 || after.offense <= 0 ? 0 : 1 - before.offense / after.offense);
+  const metrics: PowerSpikeMetricSnapshot = {
+    offensiveDelta: clampDelta(safeRatio(after.offense, before.offense)),
+    defensiveDelta: clampDelta(safeRatio(after.defense, before.defense)),
+    utilityDelta: clampDelta(safeRatio(after.utility, before.utility)),
+    sustainDelta: clampDelta(safeRatio(after.sustain, before.sustain)),
+    ttkDelta: clampDelta(before.offense <= 0 || after.offense <= 0 ? 0 : 1 - before.offense / after.offense)
+  };
+  return classifyPowerSpikeMetrics(metrics, calibration);
+}
+
+export function classifyPowerSpikeMetrics(
+  metrics: PowerSpikeMetricSnapshot,
+  calibration: PowerSpikeCalibrationAsset = DEFAULT_POWER_SPIKE_CALIBRATION_ASSET
+): PowerSpikeAmplitude {
   const dominantAxis =
-    defensiveDelta >= offensiveDelta && defensiveDelta >= utilityDelta
+    metrics.defensiveDelta >= metrics.offensiveDelta && metrics.defensiveDelta >= metrics.utilityDelta
       ? "defense"
-      : utilityDelta >= offensiveDelta
+      : metrics.utilityDelta >= metrics.offensiveDelta
         ? "utility"
         : "offense";
   const accepted =
-    offensiveDelta >= 0.3 ||
-    ttkDelta >= 0.25 ||
-    defensiveDelta >= 0.4 ||
-    sustainDelta >= 0.35 ||
-    utilityDelta >= 0.35;
+    metrics.offensiveDelta >= calibration.thresholds.offensiveAccepted ||
+    metrics.ttkDelta >= calibration.thresholds.ttkAccepted ||
+    metrics.defensiveDelta >= calibration.thresholds.defensiveAccepted ||
+    metrics.sustainDelta >= calibration.thresholds.sustainAccepted ||
+    metrics.utilityDelta >= calibration.thresholds.utilityAccepted;
   const major =
-    offensiveDelta >= 0.5 || defensiveDelta >= 0.5 || utilityDelta >= 0.5 || sustainDelta >= 0.5;
+    metrics.offensiveDelta >= calibration.thresholds.majorAnyAxis ||
+    metrics.defensiveDelta >= calibration.thresholds.majorAnyAxis ||
+    metrics.utilityDelta >= calibration.thresholds.majorAnyAxis ||
+    metrics.sustainDelta >= calibration.thresholds.majorAnyAxis;
   return {
-    offensiveDelta,
-    defensiveDelta,
-    utilityDelta,
-    ttkDelta,
-    sustainDelta,
+    offensiveDelta: metrics.offensiveDelta,
+    defensiveDelta: metrics.defensiveDelta,
+    utilityDelta: metrics.utilityDelta,
+    ttkDelta: metrics.ttkDelta,
+    sustainDelta: metrics.sustainDelta,
     accepted,
     major,
     dominantAxis
   };
 }
 
-export function scorePowerSpikeFromBuildThreshold(snapshot: BuildIdentitySnapshot): PowerSpikeAmplitude {
-  const keyItemBonus = Math.min(0.24, snapshot.keyItemDefIds.length * 0.12);
-  const pivotBonus = Math.min(0.18, snapshot.pivots.length * 0.06);
-  const offensiveDelta = snapshot.tags.includes("build:offense") ? 0.32 + keyItemBonus : 0;
-  const defensiveDelta = snapshot.tags.includes("build:defense") ? 0.38 + keyItemBonus : 0;
+export function scorePowerSpikeFromBuildThreshold(
+  snapshot: BuildIdentitySnapshot,
+  calibration: PowerSpikeCalibrationAsset = DEFAULT_POWER_SPIKE_CALIBRATION_ASSET
+): PowerSpikeAmplitude {
+  const keyItemBonus = Math.min(
+    calibration.buildThreshold.keyItemBonusCap,
+    snapshot.keyItemDefIds.length * calibration.buildThreshold.keyItemBonusPerItem
+  );
+  const pivotBonus = Math.min(
+    calibration.buildThreshold.pivotBonusCap,
+    snapshot.pivots.length * calibration.buildThreshold.pivotBonusPerPivot
+  );
+  const offensiveDelta = snapshot.tags.includes("build:offense") ? calibration.buildThreshold.offenseBase + keyItemBonus : 0;
+  const defensiveDelta = snapshot.tags.includes("build:defense") ? calibration.buildThreshold.defenseBase + keyItemBonus : 0;
   const utilityDelta =
     snapshot.tags.includes("build:utility") || snapshot.tags.includes("build:branching")
-      ? 0.32 + pivotBonus
+      ? calibration.buildThreshold.utilityBase + pivotBonus
       : pivotBonus;
   const sustainDelta =
-    snapshot.tags.includes("build:defense") || snapshot.tags.includes("stat:vitality") ? 0.36 + keyItemBonus : 0;
-  const ttkDelta = snapshot.tags.includes("build:offense") ? 0.28 + keyItemBonus : 0;
-  const dominantAxis =
-    defensiveDelta >= offensiveDelta && defensiveDelta >= utilityDelta
-      ? "defense"
-      : utilityDelta >= offensiveDelta
-        ? "utility"
-        : "offense";
-  const accepted =
-    offensiveDelta >= 0.3 ||
-    ttkDelta >= 0.25 ||
-    defensiveDelta >= 0.4 ||
-    sustainDelta >= 0.35 ||
-    utilityDelta >= 0.35;
-  const major =
-    offensiveDelta >= 0.5 || defensiveDelta >= 0.5 || utilityDelta >= 0.5 || sustainDelta >= 0.5;
-  return {
-    offensiveDelta: clampDelta(offensiveDelta),
-    defensiveDelta: clampDelta(defensiveDelta),
-    utilityDelta: clampDelta(utilityDelta),
-    ttkDelta: clampDelta(ttkDelta),
-    sustainDelta: clampDelta(sustainDelta),
-    accepted,
-    major,
-    dominantAxis
-  };
+    snapshot.tags.includes("build:defense") || snapshot.tags.includes("stat:vitality")
+      ? calibration.buildThreshold.sustainBase + keyItemBonus
+      : 0;
+  const ttkDelta = snapshot.tags.includes("build:offense") ? calibration.buildThreshold.ttkBase + keyItemBonus : 0;
+  return classifyPowerSpikeMetrics(
+    {
+      offensiveDelta: clampDelta(offensiveDelta),
+      defensiveDelta: clampDelta(defensiveDelta),
+      utilityDelta: clampDelta(utilityDelta),
+      ttkDelta: clampDelta(ttkDelta),
+      sustainDelta: clampDelta(sustainDelta)
+    },
+    calibration
+  );
 }
 
 export function resolveGuaranteedSpikeReward(options: GuaranteedSpikeRewardOptions): ItemInstance | null {
