@@ -9,6 +9,12 @@
 2. Evidence pack 输出：`pnpm phase6:evidence:report`
 3. 自动化门禁：`pnpm ci:check`
 
+## 1.1 关联证据索引
+
+1. 浏览器烟测：`docs/plans/phase6/release/2026-03-07-phase6-browser-smoke-report.md`
+2. 阻塞 smoke matrix：`docs/plans/phase6/release/2026-03-06-phase6-regression-matrix.md`
+3. 最终 Taste sign-off：`docs/plans/phase6/release/2026-03-06-phase6-taste-signoff.md`
+
 ## 2. 自动化门禁结果
 
 | 门禁 | 结果 | 证据 |
