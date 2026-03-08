@@ -55,7 +55,16 @@ const ITEM_NAME_ZH: Readonly<Record<string, string>> = {
   crown_of_bone: "白骨王冠",
   cataclysm_mail: "浩劫战铠",
   echostep_greaves: "回响胫甲",
-  voidsigil_band: "虚印指环"
+  voidsigil_band: "虚印指环",
+  emberbrand_edge: "烬纹锋刃",
+  cindersigil_band: "炽烬印戒",
+  ashwake_treads: "烬醒便靴",
+  judicator_crown: "裁判官之冠",
+  edict_plate: "敕令板甲",
+  absolver_seal: "赦令徽戒",
+  gravewake_greaves: "墓醒胫甲",
+  ossuary_signet: "骨库徽戒",
+  keeper_veil: "守卫面纱"
 };
 
 const SKILL_ZH: Readonly<Record<string, { name: string; description: string }>> = {
@@ -332,7 +341,10 @@ const AFFIX_ZH: Readonly<Record<string, { name: string; description: string }>> 
 };
 
 const BOSS_NAME_ZH: Readonly<Record<string, string>> = {
-  bone_sovereign: "白骨君王"
+  bone_sovereign: "白骨君王",
+  cathedral_judge: "大教堂裁判官",
+  ember_warden: "余烬守望者",
+  ossuary_keeper: "骨库守卫"
 };
 
 export function buildZhCnContentMessages(): Record<string, string> {

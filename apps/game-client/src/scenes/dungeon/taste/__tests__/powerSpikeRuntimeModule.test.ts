@@ -243,8 +243,8 @@ describe("PowerSpikeRuntimeModule", () => {
     const { host } = createHost({
       run: {
         ...createRunState("phase7-7.4-test", 0, "normal"),
-        currentFloor: 2,
-        floor: 2
+        currentFloor: 4,
+        floor: 4
       },
       resolveProgressionLootTable: () => LOOT_TABLE_MAP.cathedral_depths
     });
@@ -255,9 +255,10 @@ describe("PowerSpikeRuntimeModule", () => {
         {
           encounterId: "challenge_ossuary_trial",
           rewardSource: "challenge_reward",
-          compareBinding: "immediate",
+          compareBinding: "deferred",
           flow: "resume_run",
-          rareDropTableId: host.bossDef.dropTableId
+          rareDropTableId: "boss_ossuary_keeper_rare",
+          exclusiveDropTableId: "boss_ossuary_keeper_exclusive"
         },
         2_000
       )

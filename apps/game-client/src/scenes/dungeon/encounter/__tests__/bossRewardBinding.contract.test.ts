@@ -101,4 +101,66 @@ describe("boss reward binding contract", () => {
       })
     );
   });
+
+  it("binds the molten branch encounter to ember-warden reward tables", () => {
+    const host = createHost();
+    host.run.branchChoice = "molten_route";
+    const dispatcher = new BossEncounterDispatcher({
+      run: host.run,
+      bossDef: BONE_SOVEREIGN,
+      currentBossEncounterId: null
+    });
+    const module = new BossRuntimeModule({
+      host,
+      combatService: { updateCombat: vi.fn() } as never,
+      spawnService: { spawnBoss: vi.fn() } as never,
+      dispatcher
+    });
+
+    module.openVictoryChoice(500);
+
+    expect(host.grantBossEncounterReward).toHaveBeenCalledWith(
+      expect.objectContaining({
+        encounterId: "branch_molten_trial",
+        rareDropTableId: "boss_ember_warden_rare",
+        exclusiveDropTableId: "boss_ember_warden_exclusive"
+      }),
+      500
+    );
+  });
+
+  it("binds the ossuary challenge encounter to deferred compare rewards", () => {
+    const host = createHost();
+    host.run.currentFloor = 4;
+    host.run.floor = 4;
+    const dispatcher = new BossEncounterDispatcher({
+      run: host.run,
+      bossDef: BONE_SOVEREIGN,
+      currentBossEncounterId: null,
+      challengeRoomState: {
+        challengeId: "ossuary_trial",
+        started: true,
+        finished: false
+      }
+    });
+    const module = new BossRuntimeModule({
+      host,
+      combatService: { updateCombat: vi.fn() } as never,
+      spawnService: { spawnBoss: vi.fn() } as never,
+      dispatcher
+    });
+
+    module.openVictoryChoice(500, { challengeId: "ossuary_trial" });
+
+    expect(host.grantBossEncounterReward).toHaveBeenCalledWith(
+      expect.objectContaining({
+        encounterId: "challenge_ossuary_trial",
+        rewardSource: "challenge_reward",
+        compareBinding: "deferred",
+        rareDropTableId: "boss_ossuary_keeper_rare",
+        exclusiveDropTableId: "boss_ossuary_keeper_exclusive"
+      }),
+      500
+    );
+  });
 });

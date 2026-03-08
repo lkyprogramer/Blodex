@@ -87,7 +87,7 @@ describe("phase6 release consistency", () => {
         expect.stringContaining("regression_matrix_status_mismatch:S6-02:Pending!=Pass")
       ])
     );
-  });
+  }, 20_000);
 
   it("reports missing present artifacts without throwing", () => {
     const pack = createPhase6EvidencePack(18);

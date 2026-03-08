@@ -40,7 +40,7 @@ describe("ProgressionRuntimeModule", () => {
       },
       challengeMonsterIds: new Set<string>(["challenge-1"]),
       run: {
-        currentFloor: 5,
+        currentFloor: 4,
         challengeSuccessCount: 0,
         runEconomy: {
           obols: 0
@@ -181,7 +181,7 @@ describe("ProgressionRuntimeModule", () => {
   it("restores challenge room state from room-configured challenge id", () => {
     const host = {
       floorConfig: { isBossFloor: false },
-      run: { currentFloor: 5 },
+      run: { currentFloor: 4 },
       dungeon: {
         rooms: [{ id: "room-restore", roomType: "challenge", challengeId: "ossuary_trial", x: 6, y: 7, width: 4, height: 4 }]
       },

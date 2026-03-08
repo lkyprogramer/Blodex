@@ -152,7 +152,7 @@ describe("BossRuntimeModule", () => {
     module.openVictoryChoice(700);
 
     const [eventDef] = vi.mocked(host.uiManager.showEventDialog).mock.calls[0] ?? [];
-    expect(eventDef?.name).toBe("Molten Trial Cleared");
+    expect(eventDef?.name).toBe("Ember Warden Routed");
     expect(eventDef?.description).toContain("molten route reward");
     expect(eventDef?.description).not.toContain("Daily mode");
     expect(host.queueBossEncounterCompare).toHaveBeenCalledWith(
@@ -160,7 +160,7 @@ describe("BossRuntimeModule", () => {
       expect.objectContaining({ compareBinding: "immediate", encounterId: "branch_molten_trial" })
     );
     expect(host.runLog.appendKey).toHaveBeenCalledWith(
-      "boss.branch.molten_trial.log_defeated",
+      "boss.branch.ember_warden_trial.log_defeated",
       undefined,
       "success",
       700
@@ -202,32 +202,38 @@ describe("BossRuntimeModule", () => {
     host.flushBossRewardComparePrompts = vi.fn(() => true);
     const dispatcher = {
       resolveEncounter: vi.fn(() => ({
-        encounter: {
-          id: "challenge_ossuary_trial",
-          encounterType: "challenge",
-          selector: {
-            kind: "challenge",
-            challengeId: "ossuary_trial",
-            floor: 5
-          },
-          rewardPolicyId: "challenge_boss_default",
-          telegraphProfileId: "challenge_default",
-          summaryKey: "boss.challenge.ossuary_trial",
-          bossId: "bone_sovereign"
+          encounter: {
+            id: "challenge_ossuary_trial",
+            encounterType: "challenge",
+            selector: {
+              kind: "challenge",
+              challengeId: "ossuary_trial",
+              floor: 4
+            },
+            rewardPolicyId: "challenge_ossuary_keeper_default",
+            telegraphProfileId: "ossuary_keeper_default",
+            summaryKey: "boss.challenge.ossuary_keeper_trial",
+          bossId: "ossuary_keeper"
         },
-        bossDef: BONE_SOVEREIGN,
+        bossDef: {
+          ...BONE_SOVEREIGN,
+          id: "ossuary_keeper",
+          dropTableId: "boss_ossuary_keeper_rare"
+        },
         rewardPolicy: {
-          id: "challenge_boss_default",
+          id: "challenge_ossuary_keeper_default",
           flow: "resume_run",
           rewardSource: "challenge_reward",
+          exclusiveDropTableId: "boss_ossuary_keeper_exclusive",
+          rareDropTableId: "boss_ossuary_keeper_rare",
           compareBinding: "deferred"
         },
         telegraphProfile: {
-          id: "challenge_default",
-          tintColor: 0x5aa0d6,
+          id: "ossuary_keeper_default",
+          tintColor: 0x73b6a3,
           alpha: 0.46,
           pulseDurationMs: 180,
-          radiusScale: 1
+          radiusScale: 1.04
         }
       })),
       resolveRewardBinding: vi.fn(() => ({
@@ -235,7 +241,8 @@ describe("BossRuntimeModule", () => {
         rewardSource: "challenge_reward",
         compareBinding: "deferred" as const,
         flow: "resume_run" as const,
-        rareDropTableId: "boss_bone_sovereign_rare"
+        rareDropTableId: "boss_ossuary_keeper_rare",
+        exclusiveDropTableId: "boss_ossuary_keeper_exclusive"
       })),
       allowsEnterAbyss: vi.fn(() => false),
       resolveChoiceAction: vi.fn(() => "resume_run" as const)

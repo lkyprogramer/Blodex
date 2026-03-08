@@ -422,6 +422,198 @@ export const ITEM_DEFS: ItemDef[] = [
       cooldownReduction: 14,
       aoeRadius: 18
     }
+  },
+  {
+    id: "emberbrand_edge",
+    name: "Emberbrand Edge",
+    kind: "unique",
+    slot: "weapon",
+    weaponType: "sword_master",
+    rarity: "rare",
+    requiredLevel: 5,
+    iconId: "item_weapon_03",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      attackPower: 28,
+      critChance: 5,
+      attackSpeed: 6,
+      moveSpeed: -4
+    },
+    fixedSpecialAffixes: {
+      critDamage: 24,
+      lifesteal: 5
+    }
+  },
+  {
+    id: "cindersigil_band",
+    name: "Cindersigil Band",
+    kind: "unique",
+    slot: "ring",
+    rarity: "rare",
+    requiredLevel: 5,
+    iconId: "item_ring_02",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      attackPower: 14,
+      critChance: 7,
+      maxMana: 10
+    },
+    fixedSpecialAffixes: {
+      critDamage: 18,
+      skillBonusDamage: 12
+    }
+  },
+  {
+    id: "ashwake_treads",
+    name: "Ashwake Treads",
+    kind: "unique",
+    slot: "boots",
+    rarity: "rare",
+    requiredLevel: 5,
+    iconId: "item_boots_02",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      moveSpeed: 14,
+      attackPower: 8,
+      armor: -6
+    },
+    fixedSpecialAffixes: {
+      aoeRadius: 18,
+      cooldownReduction: 10
+    }
+  },
+  {
+    id: "judicator_crown",
+    name: "Judicator Crown",
+    kind: "unique",
+    slot: "helm",
+    rarity: "rare",
+    requiredLevel: 5,
+    iconId: "item_helm_02",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      armor: 12,
+      maxHealth: 22,
+      maxMana: 18
+    },
+    fixedSpecialAffixes: {
+      cooldownReduction: 12,
+      healthRegen: 5
+    }
+  },
+  {
+    id: "edict_plate",
+    name: "Edict Plate",
+    kind: "unique",
+    slot: "chest",
+    rarity: "rare",
+    requiredLevel: 5,
+    iconId: "item_chest_02",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      armor: 19,
+      maxHealth: 38,
+      maxMana: 14,
+      moveSpeed: -8
+    },
+    fixedSpecialAffixes: {
+      thorns: 12,
+      healthRegen: 6
+    }
+  },
+  {
+    id: "absolver_seal",
+    name: "Absolver Seal",
+    kind: "unique",
+    slot: "ring",
+    rarity: "rare",
+    requiredLevel: 5,
+    iconId: "item_ring_01",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      armor: 8,
+      maxHealth: 16,
+      maxMana: 24
+    },
+    fixedSpecialAffixes: {
+      cooldownReduction: 10,
+      soulShardBonus: 16
+    }
+  },
+  {
+    id: "gravewake_greaves",
+    name: "Gravewake Greaves",
+    kind: "unique",
+    slot: "boots",
+    rarity: "rare",
+    requiredLevel: 4,
+    iconId: "item_boots_02",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      moveSpeed: 14,
+      maxMana: 18,
+      armor: -4
+    },
+    fixedSpecialAffixes: {
+      dodgeChance: 10,
+      cooldownReduction: 14
+    }
+  },
+  {
+    id: "ossuary_signet",
+    name: "Ossuary Signet",
+    kind: "unique",
+    slot: "ring",
+    rarity: "rare",
+    requiredLevel: 4,
+    iconId: "item_ring_02",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      attackPower: 8,
+      critChance: 3,
+      maxMana: 26
+    },
+    fixedSpecialAffixes: {
+      aoeRadius: 22,
+      soulShardBonus: 18
+    }
+  },
+  {
+    id: "keeper_veil",
+    name: "Keeper Veil",
+    kind: "unique",
+    slot: "helm",
+    rarity: "rare",
+    requiredLevel: 4,
+    iconId: "item_helm_02",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      armor: 8,
+      maxHealth: 14,
+      maxMana: 22
+    },
+    fixedSpecialAffixes: {
+      cooldownReduction: 12,
+      xpBonus: 18
+    }
   }
 ];
 
