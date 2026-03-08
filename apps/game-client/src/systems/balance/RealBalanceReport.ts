@@ -4,15 +4,15 @@ import {
   type BalanceReportScenario,
   type RunSimulation
 } from "@blodex/core";
-import { resolveRealBalanceScenarioCalibration } from "./RealBalanceCalibration";
+import {
+  DEFAULT_BALANCE_DRIFT_THRESHOLDS,
+  resolveEffectivePhase6DriftThresholds,
+  type BalanceDriftThresholds
+} from "./BalanceThresholdGovernance";
 import { simulateRealRun } from "./RealBalanceSimulator";
 
-export interface BalanceDriftThresholds {
-  clearRate: number;
-  avgFloorReached: number;
-  rareShare: number;
-  avgRunDurationMs: number;
-}
+export { DEFAULT_BALANCE_DRIFT_THRESHOLDS };
+export type { BalanceDriftThresholds };
 
 export interface BalanceDriftDelta {
   clearRate: number;
@@ -40,13 +40,6 @@ export interface RealBalanceReport {
   rows: BalanceDriftRow[];
 }
 
-export const DEFAULT_BALANCE_DRIFT_THRESHOLDS: BalanceDriftThresholds = {
-  clearRate: 0.62,
-  avgFloorReached: 1.75,
-  rareShare: 0.09,
-  avgRunDurationMs: 150_000
-};
-
 function absoluteDelta(left: number, right: number): number {
   return Number(Math.abs(left - right).toFixed(4));
 }
@@ -56,10 +49,11 @@ export function createBalanceDriftRow(
   sampleSize: number,
   thresholds: BalanceDriftThresholds = DEFAULT_BALANCE_DRIFT_THRESHOLDS
 ): BalanceDriftRow {
-  const calibration = resolveRealBalanceScenarioCalibration(scenario.name, sampleSize);
+  const governance = resolveEffectivePhase6DriftThresholds(scenario.name, sampleSize);
   const effectiveThresholds: BalanceDriftThresholds = {
+    ...governance.policyThresholds,
     ...thresholds,
-    ...(calibration?.thresholds ?? {})
+    ...(governance.overrideThresholds ?? {})
   };
   const seedBase = `phase5-real-${scenario.name}`;
   const heuristic = simulateRun({
@@ -99,7 +93,7 @@ export function createBalanceDriftRow(
     name: scenario.name,
     sampleSize,
     seedBase,
-    ...(calibration === undefined ? {} : { calibrationId: calibration.id }),
+    ...(governance.calibration === undefined ? {} : { calibrationId: governance.calibration.id }),
     heuristic,
     real,
     delta,

@@ -34,4 +34,38 @@ describe("real balance report", () => {
       "phase6-6.5-nightmare-optimal-v1"
     );
   });
+
+  it("preserves caller-supplied thresholds while still applying allowed override metrics", () => {
+    const report = createRealBalanceReport(18, undefined, {
+      clearRate: 0.7,
+      avgFloorReached: 1.2,
+      rareShare: 0.2,
+      avgRunDurationMs: 90_000
+    });
+
+    expect(report.thresholds).toEqual({
+      clearRate: 0.7,
+      avgFloorReached: 1.2,
+      rareShare: 0.2,
+      avgRunDurationMs: 90_000
+    });
+    expect(report.rows.find((row) => row.name === "normal-average")?.effectiveThresholds).toEqual({
+      clearRate: 0.7,
+      avgFloorReached: 1.2,
+      rareShare: 0.2,
+      avgRunDurationMs: 90_000
+    });
+    expect(report.rows.find((row) => row.name === "hard-average")?.effectiveThresholds).toEqual({
+      clearRate: 0.82,
+      avgFloorReached: 1.2,
+      rareShare: 0.11,
+      avgRunDurationMs: 180_000
+    });
+    expect(report.rows.find((row) => row.name === "nightmare-optimal")?.effectiveThresholds).toEqual({
+      clearRate: 0.7,
+      avgFloorReached: 1.2,
+      rareShare: 0.2,
+      avgRunDurationMs: 320_000
+    });
+  });
 });

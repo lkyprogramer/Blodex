@@ -1,23 +1,18 @@
 import type { DifficultyMode } from "@blodex/core";
 import {
-  DEFAULT_BALANCE_DRIFT_THRESHOLDS,
-  type BalanceDriftThresholds
-} from "./RealBalanceReport";
-import {
-  DEFAULT_REAL_BALANCE_SCENARIO_CALIBRATIONS,
-  PHASE6_BALANCE_BASELINE_COMMIT,
-  type BalanceDriftCalibrationRecord
-} from "./RealBalanceCalibration";
+  createPhase6BalanceCalibrationOverrides,
+  createPhase6BalanceThresholdPolicy,
+  type BalanceCalibrationDiffClass,
+  type BalanceDriftThresholds,
+  type Phase6BalanceCalibrationOverride
+} from "./BalanceThresholdGovernance";
 import {
   getPhase6ReleaseArtifact,
   type Phase6ReleaseArtifactEntry
 } from "./Phase6ReleaseArtifactIndex";
 import type { PacingAssessment } from "./Phase6Pacing";
 
-export interface Phase6CalibrationRegistryEntry extends BalanceDriftCalibrationRecord {
-  sourceCommand: string;
-  evidenceArtifactId: string;
-}
+export type Phase6CalibrationRegistryEntry = Phase6BalanceCalibrationOverride;
 
 export interface Phase6ThresholdRegistryEntry {
   scope: "global_default" | "scenario_override";
@@ -28,6 +23,7 @@ export interface Phase6ThresholdRegistryEntry {
   baselineCommit: string;
   evidenceArtifactId: string;
   rationale: string;
+  diffClass?: BalanceCalibrationDiffClass;
 }
 
 export interface ThresholdAuditResult {
@@ -109,30 +105,21 @@ function resolveArtifactPaths(artifactIds: readonly string[]): string[] {
 }
 
 export function createPhase6CalibrationRegistry(): Record<string, Phase6CalibrationRegistryEntry> {
-  return Object.fromEntries(
-    Object.entries(DEFAULT_REAL_BALANCE_SCENARIO_CALIBRATIONS).map(([scenarioName, record]) => [
-      scenarioName,
-      {
-        ...record,
-        sourceCommand: "pnpm balance:real:report && pnpm phase6:evidence:report",
-        evidenceArtifactId: "phase6-performance-compare-doc"
-      }
-    ])
-  );
+  return createPhase6BalanceCalibrationOverrides();
 }
 
 export function buildPhase6ThresholdRegistry(
   calibrations: Record<string, Phase6CalibrationRegistryEntry>
 ): Phase6ThresholdRegistryEntry[] {
+  const policy = createPhase6BalanceThresholdPolicy();
   return [
     {
-      scope: "global_default",
-      id: "phase6-default-drift-thresholds",
-      metricThresholds: DEFAULT_BALANCE_DRIFT_THRESHOLDS,
-      baselineCommit: PHASE6_BALANCE_BASELINE_COMMIT,
-      evidenceArtifactId: "phase6-performance-compare-doc",
-      rationale:
-        "Phase 6 default drift thresholds are globally frozen and must not be widened without scenario-scoped evidence."
+      scope: policy.scope,
+      id: policy.id,
+      metricThresholds: policy.metricThresholds,
+      baselineCommit: policy.baselineCommit,
+      evidenceArtifactId: policy.evidenceArtifactId,
+      rationale: policy.rationale
     },
     ...Object.values(calibrations).map((record) => ({
       scope: "scenario_override" as const,
@@ -142,7 +129,8 @@ export function buildPhase6ThresholdRegistry(
       sourceSampleSize: record.sourceSampleSize,
       baselineCommit: record.baselineCommit,
       evidenceArtifactId: record.evidenceArtifactId,
-      rationale: record.rationale
+      rationale: record.rationale,
+      diffClass: record.diffClass
     }))
   ];
 }
@@ -166,6 +154,12 @@ export function auditThresholdRegistry(entries: readonly Phase6ThresholdRegistry
       }
       if ((entry.sourceSampleSize ?? 0) <= 0) {
         violations.push(`registry_override_missing_sample_size:${entry.id}`);
+      }
+      if (entry.diffClass === undefined) {
+        violations.push(`registry_override_missing_diff_class:${entry.id}`);
+      }
+      if (entry.diffClass === "runtime_bug") {
+        violations.push(`registry_override_runtime_bug_blocked:${entry.id}`);
       }
     }
   }

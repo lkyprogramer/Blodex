@@ -1,5 +1,9 @@
 import type { ItemInstance } from "./contracts/types";
 import { normalizeDerivedAffixValue } from "./itemAffix";
+import {
+  DEFAULT_ITEM_TRADEOFF_CALIBRATION_ASSET,
+  type ItemTradeoffCalibrationAsset
+} from "./itemTradeoffCalibration";
 
 export type ItemTradeoffCategory = "offense" | "defense" | "utility";
 
@@ -8,28 +12,6 @@ export interface ItemTradeoffCategoryScores {
   defense: number;
   utility: number;
 }
-
-const AFFIX_TRADEOFF_WEIGHTS: Readonly<
-  Record<string, { category: ItemTradeoffCategory; weight: number }>
-> = {
-  attackPower: { category: "offense", weight: 2.2 },
-  critChance: { category: "offense", weight: 160 },
-  critDamage: { category: "offense", weight: 120 },
-  attackSpeed: { category: "offense", weight: 32 },
-  aoeRadius: { category: "offense", weight: 90 },
-  skillBonusDamage: { category: "offense", weight: 1.8 },
-  lifesteal: { category: "offense", weight: 150 },
-  maxHealth: { category: "defense", weight: 0.18 },
-  armor: { category: "defense", weight: 1.35 },
-  dodgeChance: { category: "defense", weight: 120 },
-  healthRegen: { category: "defense", weight: 3 },
-  thorns: { category: "defense", weight: 70 },
-  maxMana: { category: "utility", weight: 0.18 },
-  moveSpeed: { category: "utility", weight: 0.55 },
-  xpBonus: { category: "utility", weight: 12 },
-  soulShardBonus: { category: "utility", weight: 8 },
-  cooldownReduction: { category: "utility", weight: 110 }
-};
 
 function emptyScores(): ItemTradeoffCategoryScores {
   return {
@@ -59,14 +41,17 @@ export function collectItemAffixMap(item: ItemInstance | undefined): Map<string,
   return map;
 }
 
-export function calculateItemCategoryScores(item: ItemInstance | undefined): ItemTradeoffCategoryScores {
+export function calculateItemCategoryScores(
+  item: ItemInstance | undefined,
+  calibration: ItemTradeoffCalibrationAsset = DEFAULT_ITEM_TRADEOFF_CALIBRATION_ASSET
+): ItemTradeoffCategoryScores {
   const scores = emptyScores();
   if (item === undefined) {
     return scores;
   }
 
   for (const [key, value] of collectItemAffixMap(item)) {
-    const config = AFFIX_TRADEOFF_WEIGHTS[key];
+    const config = calibration.weights[key];
     if (config === undefined) {
       continue;
     }
@@ -80,7 +65,10 @@ export function calculateItemCategoryScores(item: ItemInstance | undefined): Ite
   };
 }
 
-export function calculateItemPowerScore(item: ItemInstance | undefined): number {
-  const scores = calculateItemCategoryScores(item);
+export function calculateItemPowerScore(
+  item: ItemInstance | undefined,
+  calibration: ItemTradeoffCalibrationAsset = DEFAULT_ITEM_TRADEOFF_CALIBRATION_ASSET
+): number {
+  const scores = calculateItemCategoryScores(item, calibration);
   return Number((scores.offense + scores.defense + scores.utility).toFixed(4));
 }

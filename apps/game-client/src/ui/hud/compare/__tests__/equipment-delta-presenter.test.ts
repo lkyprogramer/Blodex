@@ -1,4 +1,4 @@
-import type { ItemInstance } from "@blodex/core";
+import { getItemTradeoffCalibrationAsset, type ItemInstance } from "@blodex/core";
 import { describe, expect, it } from "vitest";
 import { buildEquipmentDeltaSummary } from "../EquipmentDeltaPresenter";
 import {
@@ -119,5 +119,12 @@ describe("EquipmentDeltaPresenter", () => {
     expect(isMerchantHighValueCompareCandidate(lowValueCandidate, equipped)).toBe(false);
     expect(isMerchantHighValueCompareCandidate(highValueCandidate, equipped)).toBe(true);
     expect(isMerchantHighValueCompareCandidate(highValueCandidate, undefined)).toBe(false);
+  });
+
+  it("uses the shared item tradeoff calibration thresholds for merchant gating", () => {
+    const calibration = getItemTradeoffCalibrationAsset();
+
+    expect(calibration.merchantCompareThresholds.minPowerDelta).toBe(10);
+    expect(calibration.merchantCompareThresholds.minPositiveSummaryCount).toBe(2);
   });
 });
