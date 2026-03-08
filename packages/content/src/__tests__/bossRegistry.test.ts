@@ -23,4 +23,12 @@ describe("boss registry", () => {
     expect(encounterTypes.has("branch")).toBe(true);
     expect(encounterTypes.has("challenge")).toBe(true);
   });
+
+  it("uses multiple distinct boss definitions across the encounter roster", () => {
+    const bossIds = new Set(BOSS_ENCOUNTERS.map((entry) => entry.bossId));
+    expect(bossIds.has("bone_sovereign")).toBe(true);
+    expect(bossIds.has("ember_warden")).toBe(true);
+    expect(bossIds.has("cathedral_judge")).toBe(true);
+    expect(bossIds.has("ossuary_keeper")).toBe(true);
+  });
 });

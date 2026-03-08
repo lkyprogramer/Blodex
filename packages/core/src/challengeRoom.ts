@@ -45,7 +45,7 @@ export function chooseChallengeRoom(layout: DungeonLayout, rng: RngLike): Dungeo
   return candidates[idx] ?? null;
 }
 
-export function markRoomAsChallenge(layout: DungeonLayout, roomId: string): DungeonLayout {
+export function markRoomAsChallenge(layout: DungeonLayout, roomId: string, challengeId?: string): DungeonLayout {
   return {
     ...layout,
     rooms: layout.rooms.map((room) => {
@@ -54,7 +54,8 @@ export function markRoomAsChallenge(layout: DungeonLayout, roomId: string): Dung
       }
       return {
         ...room,
-        roomType: "challenge"
+        roomType: "challenge",
+        ...(challengeId === undefined ? {} : { challengeId })
       };
     })
   };

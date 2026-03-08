@@ -42,24 +42,28 @@ describe("BossEncounterDispatcher", () => {
     const resolved = dispatcher.prepareEncounter();
 
     expect(resolved.encounter.id).toBe("branch_molten_trial");
+    expect(resolved.bossDef.id).toBe("ember_warden");
     expect(resolved.rewardPolicy.flow).toBe("finish_run");
-    expect(resolved.telegraphProfile.id).toBe("route_trial_default");
+    expect(resolved.rewardPolicy.exclusiveDropTableId).toBe("boss_ember_warden_exclusive");
+    expect(resolved.telegraphProfile.id).toBe("ember_warden_default");
   });
 
   it("can restore an explicit challenge encounter independently of the run route", () => {
-    const dispatcher = createDispatcher(5, "frozen_route");
+    const dispatcher = createDispatcher(4, "frozen_route");
 
     const resolved = dispatcher.resolveEncounter({
       encounterId: "challenge_ossuary_trial"
     });
 
     expect(resolved.encounter.encounterType).toBe("challenge");
+    expect(resolved.bossDef.id).toBe("ossuary_keeper");
     expect(resolved.rewardPolicy.flow).toBe("resume_run");
+    expect(resolved.rewardPolicy.compareBinding).toBe("deferred");
     expect(dispatcher.resolveChoiceAction("claim_victory", resolved)).toBe("resume_run");
   });
 
   it("resolves an active challenge encounter from runtime challenge state", () => {
-    const dispatcher = createDispatcher(5, undefined, {
+    const dispatcher = createDispatcher(4, undefined, {
       challengeId: "ossuary_trial",
       started: true,
       finished: false
@@ -69,6 +73,7 @@ describe("BossEncounterDispatcher", () => {
 
     expect(resolved.encounter.id).toBe("challenge_ossuary_trial");
     expect(resolved.encounter.encounterType).toBe("challenge");
+    expect(resolved.bossDef.id).toBe("ossuary_keeper");
     expect(resolved.rewardPolicy.rewardSource).toBe("challenge_reward");
   });
 

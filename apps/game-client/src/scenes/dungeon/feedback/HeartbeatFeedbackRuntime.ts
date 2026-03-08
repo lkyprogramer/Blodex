@@ -116,7 +116,7 @@ export class HeartbeatFeedbackRuntime {
   private readonly lastToastAtByKey = new Map<string, number>();
   private readonly compareQueue: QueuedComparePrompt[] = [];
   private readonly deferredCompareQueue: QueuedComparePrompt[] = [];
-  private readonly immediateDrainCallbacks: Array<() => void> = [];
+  private readonly drainCallbacks: Array<() => void> = [];
   private activeComparePrompt: QueuedComparePrompt | null = null;
   private compareDrainMode: "all" | "immediate" = "all";
 
@@ -150,7 +150,7 @@ export class HeartbeatFeedbackRuntime {
     this.lastToastAtByKey.clear();
     this.compareQueue.length = 0;
     this.deferredCompareQueue.length = 0;
-    this.immediateDrainCallbacks.length = 0;
+    this.drainCallbacks.length = 0;
     this.activeComparePrompt = null;
     this.compareDrainMode = "all";
     this.host.comparePromptOpen = false;
@@ -177,16 +177,20 @@ export class HeartbeatFeedbackRuntime {
     this.drainCompareQueue();
   }
 
-  flushImmediateComparePrompts(onDrained?: () => void): boolean {
+  flushComparePrompts(mode: ComparePromptMode = "immediate", onDrained?: () => void): boolean {
     if (onDrained !== undefined) {
-      this.immediateDrainCallbacks.push(onDrained);
+      this.drainCallbacks.push(onDrained);
     }
-    this.compareDrainMode = "immediate";
+    this.compareDrainMode = mode === "deferred" ? "all" : "immediate";
     if (this.host.eventPanelOpen || this.host.comparePromptOpen) {
       return false;
     }
-    this.drainCompareQueue(false);
+    this.drainCompareQueue(mode === "deferred");
     return this.host.comparePromptOpen;
+  }
+
+  flushImmediateComparePrompts(onDrained?: () => void): boolean {
+    return this.flushComparePrompts("immediate", onDrained);
   }
 
   private drainCompareQueue(allowDeferred = this.compareDrainMode === "all"): void {
@@ -195,7 +199,7 @@ export class HeartbeatFeedbackRuntime {
     }
     const next = this.compareQueue.shift() ?? (allowDeferred ? this.deferredCompareQueue.shift() : undefined);
     if (next === undefined) {
-      this.finishImmediateDrainIfIdle();
+      this.finishDrainIfIdle();
       return;
     }
     const compareItem = this.host.player.equipment[next.item.slot];
@@ -219,7 +223,7 @@ export class HeartbeatFeedbackRuntime {
             this.drainCompareQueue(false);
             return;
           }
-          this.finishImmediateDrainIfIdle();
+          this.finishDrainIfIdle();
           return;
         }
         this.drainCompareQueue();
@@ -248,12 +252,12 @@ export class HeartbeatFeedbackRuntime {
     );
   }
 
-  private finishImmediateDrainIfIdle(): void {
-    if (this.compareDrainMode !== "immediate") {
+  private finishDrainIfIdle(): void {
+    if (this.drainCallbacks.length === 0) {
       return;
     }
     this.compareDrainMode = "all";
-    const callbacks = this.immediateDrainCallbacks.splice(0);
+    const callbacks = this.drainCallbacks.splice(0);
     for (const callback of callbacks) {
       callback();
     }
@@ -385,7 +389,7 @@ export class HeartbeatFeedbackRuntime {
   restoreComparePromptState(state: ComparePromptRuntimeState | null | undefined): void {
     this.compareQueue.length = 0;
     this.deferredCompareQueue.length = 0;
-    this.immediateDrainCallbacks.length = 0;
+    this.drainCallbacks.length = 0;
     this.activeComparePrompt = null;
     this.compareDrainMode = state?.drainMode ?? "all";
     this.host.comparePromptOpen = false;

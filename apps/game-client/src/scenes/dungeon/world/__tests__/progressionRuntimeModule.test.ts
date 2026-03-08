@@ -40,7 +40,7 @@ describe("ProgressionRuntimeModule", () => {
       },
       challengeMonsterIds: new Set<string>(["challenge-1"]),
       run: {
-        currentFloor: 5,
+        currentFloor: 4,
         challengeSuccessCount: 0,
         runEconomy: {
           obols: 0
@@ -79,7 +79,7 @@ describe("ProgressionRuntimeModule", () => {
       manualMoveTarget: null,
       manualMoveTargetFailures: 0,
       dungeon: {
-        rooms: [{ id: "room-1", roomType: "challenge", x: 4, y: 5, width: 4, height: 4 }]
+        rooms: [{ id: "room-1", roomType: "challenge", challengeId: "ossuary_trial", x: 4, y: 5, width: 4, height: 4 }]
       }
     } as unknown as ConstructorParameters<typeof ProgressionRuntimeModule>[0]["host"];
 
@@ -176,5 +176,36 @@ describe("ProgressionRuntimeModule", () => {
     } finally {
       rollItemDrop.mockRestore();
     }
+  });
+
+  it("restores challenge room state from room-configured challenge id", () => {
+    const host = {
+      floorConfig: { isBossFloor: false },
+      run: { currentFloor: 4 },
+      dungeon: {
+        rooms: [{ id: "room-restore", roomType: "challenge", challengeId: "ossuary_trial", x: 6, y: 7, width: 4, height: 4 }]
+      },
+      challengeRoomState: null,
+      challengeWaveTotal: 0,
+      challengeMarker: null,
+      renderSystem: {
+        spawnTelegraphCircle: vi.fn(() => ({ setAlpha: vi.fn(), setTint: vi.fn() }))
+      },
+      origin: { x: 0, y: 0 },
+      entityManager: { listMonsters: vi.fn(() => []) },
+      challengeMonsterIds: new Set<string>(),
+      runLog: { appendKey: vi.fn() }
+    } as unknown as ConstructorParameters<typeof ProgressionRuntimeModule>[0]["host"];
+
+    const module = new ProgressionRuntimeModule({ host });
+
+    module.restoreChallengeRoom(5_000);
+
+    expect(host.challengeRoomState).toEqual(
+      expect.objectContaining({
+        roomId: "room-restore",
+        challengeId: "ossuary_trial"
+      })
+    );
   });
 });

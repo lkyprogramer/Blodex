@@ -196,6 +196,31 @@ describe("HeartbeatFeedbackRuntime", () => {
     });
   });
 
+  it("can flush deferred compare prompts when a reward flow settles after choice selection", () => {
+    const { runtime, showEquipmentComparePrompt } = createHost();
+    const deferred = makeItem("oathbound_cuirass", {
+      rolledAffixes: {
+        armor: 14
+      }
+    });
+    const onDrained = vi.fn();
+
+    runtime.maybeQueueEquipmentCompare(deferred, "boss_reward", "deferred");
+
+    expect(runtime.flushComparePrompts("deferred", onDrained)).toBe(true);
+    expect(showEquipmentComparePrompt).toHaveBeenCalledTimes(1);
+    expect(showEquipmentComparePrompt.mock.calls[0]![0]).toMatchObject({
+      id: deferred.id
+    });
+
+    const options = showEquipmentComparePrompt.mock.calls[0]![2] as {
+      onAction: (action: "equip" | "later" | "ignore") => void;
+    };
+    options.onAction("ignore");
+
+    expect(onDrained).toHaveBeenCalledTimes(1);
+  });
+
   it("captures the active compare prompt in session state while the prompt is open", () => {
     const { runtime } = createHost();
     const first = makeItem("sanctified_greatsword", {

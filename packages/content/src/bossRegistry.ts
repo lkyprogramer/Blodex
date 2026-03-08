@@ -13,17 +13,28 @@ export const BOSS_REWARD_POLICIES: BossRewardPolicyDef[] = [
     compareBinding: "immediate"
   },
   {
-    id: "branch_victory_default",
+    id: "branch_molten_ember_warden",
     flow: "finish_run",
     rewardSource: "boss_reward",
-    exclusiveDropTableId: "boss_bone_sovereign_exclusive",
+    rareDropTableId: "boss_ember_warden_rare",
+    exclusiveDropTableId: "boss_ember_warden_exclusive",
     compareBinding: "immediate"
   },
   {
-    id: "challenge_boss_default",
+    id: "branch_frozen_cathedral_judge",
+    flow: "finish_run",
+    rewardSource: "boss_reward",
+    rareDropTableId: "boss_cathedral_judge_rare",
+    exclusiveDropTableId: "boss_cathedral_judge_exclusive",
+    compareBinding: "immediate"
+  },
+  {
+    id: "challenge_ossuary_keeper_default",
     flow: "resume_run",
     rewardSource: "challenge_reward",
-    compareBinding: "immediate"
+    rareDropTableId: "boss_ossuary_keeper_rare",
+    exclusiveDropTableId: "boss_ossuary_keeper_exclusive",
+    compareBinding: "deferred"
   }
 ];
 
@@ -40,18 +51,25 @@ export const BOSS_TELEGRAPH_PROFILES: BossTelegraphProfileDef[] = [
     radiusScale: 1
   },
   {
-    id: "route_trial_default",
-    tintColor: 0x9071c2,
-    alpha: 0.48,
-    pulseDurationMs: 170,
-    radiusScale: 1
+    id: "ember_warden_default",
+    tintColor: 0xd86a42,
+    alpha: 0.54,
+    pulseDurationMs: 140,
+    radiusScale: 1.08
   },
   {
-    id: "challenge_default",
-    tintColor: 0x5aa0d6,
+    id: "cathedral_judge_default",
+    tintColor: 0xc8d9ee,
+    alpha: 0.48,
+    pulseDurationMs: 155,
+    radiusScale: 0.96
+  },
+  {
+    id: "ossuary_keeper_default",
+    tintColor: 0x73b6a3,
     alpha: 0.46,
     pulseDurationMs: 180,
-    radiusScale: 1
+    radiusScale: 1.04
   }
 ];
 
@@ -74,42 +92,42 @@ export const BOSS_ENCOUNTERS: BossEncounterDef[] = [
   },
   {
     id: "branch_molten_trial",
-    bossId: "bone_sovereign",
+    bossId: "ember_warden",
     encounterType: "branch",
     selector: {
       kind: "branch_route",
       floor: 5,
       route: "molten_route"
     },
-    rewardPolicyId: "branch_victory_default",
-    telegraphProfileId: "route_trial_default",
-    summaryKey: "boss.branch.molten_trial"
+    rewardPolicyId: "branch_molten_ember_warden",
+    telegraphProfileId: "ember_warden_default",
+    summaryKey: "boss.branch.ember_warden_trial"
   },
   {
     id: "branch_frozen_trial",
-    bossId: "bone_sovereign",
+    bossId: "cathedral_judge",
     encounterType: "branch",
     selector: {
       kind: "branch_route",
       floor: 5,
       route: "frozen_route"
     },
-    rewardPolicyId: "branch_victory_default",
-    telegraphProfileId: "route_trial_default",
-    summaryKey: "boss.branch.frozen_trial"
+    rewardPolicyId: "branch_frozen_cathedral_judge",
+    telegraphProfileId: "cathedral_judge_default",
+    summaryKey: "boss.branch.cathedral_judge_trial"
   },
   {
     id: "challenge_ossuary_trial",
-    bossId: "bone_sovereign",
+    bossId: "ossuary_keeper",
     encounterType: "challenge",
     selector: {
       kind: "challenge",
       challengeId: "ossuary_trial",
-      floor: 5
+      floor: 4
     },
-    rewardPolicyId: "challenge_boss_default",
-    telegraphProfileId: "challenge_default",
-    summaryKey: "boss.challenge.ossuary_trial"
+    rewardPolicyId: "challenge_ossuary_keeper_default",
+    telegraphProfileId: "ossuary_keeper_default",
+    summaryKey: "boss.challenge.ossuary_keeper_trial"
   }
 ];
 
@@ -118,12 +136,14 @@ export const BOSS_ENCOUNTER_MAP = Object.fromEntries(BOSS_ENCOUNTERS.map((entry)
   BossEncounterDef
 >;
 
-export function resolveChallengeEncounterIdForFloor(floor: number): string | null {
-  const encounter = BOSS_ENCOUNTERS.find(
-    (entry) => entry.selector.kind === "challenge" && (entry.selector.floor === undefined || entry.selector.floor === floor)
-  );
-  if (encounter === undefined || encounter.selector.kind !== "challenge") {
-    return null;
-  }
-  return encounter.selector.challengeId;
+export function listChallengeEncounterIdsForFloor(floor: number): string[] {
+  return BOSS_ENCOUNTERS.flatMap((entry) => {
+    if (entry.selector.kind !== "challenge") {
+      return [];
+    }
+    if (entry.selector.floor !== undefined && entry.selector.floor !== floor) {
+      return [];
+    }
+    return [entry.selector.challengeId];
+  });
 }

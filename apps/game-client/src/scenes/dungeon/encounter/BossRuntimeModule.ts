@@ -47,7 +47,7 @@ export interface BossRuntimeHost {
   };
   grantBossEncounterReward(binding: BossEncounterRewardBinding, nowMs: number): ItemInstance[];
   queueBossEncounterCompare(item: ItemInstance, binding: BossEncounterRewardBinding): void;
-  flushBossRewardComparePrompts?(onDrained: () => void): boolean;
+  flushBossRewardComparePrompts?(onDrained: () => void, mode?: "immediate" | "deferred"): boolean;
   describeItem(item: ItemInstance): string;
   recordBossRewardClosed?(choiceId: string, nowMs: number): void;
   time: {
@@ -149,7 +149,7 @@ export class BossRuntimeModule {
           }
           host.runCompletionModule.finishRun(true);
         };
-        if (host.flushBossRewardComparePrompts?.(resolveChoice) === true) {
+        if (host.flushBossRewardComparePrompts?.(resolveChoice, rewardBinding.compareBinding) === true) {
           return;
         }
         resolveChoice();
@@ -166,7 +166,7 @@ export class BossRuntimeModule {
           }
           host.runCompletionModule.finishRun(true);
         };
-        if (host.flushBossRewardComparePrompts?.(resolveChoice) === true) {
+        if (host.flushBossRewardComparePrompts?.(resolveChoice, rewardBinding.compareBinding) === true) {
           return;
         }
         resolveChoice();

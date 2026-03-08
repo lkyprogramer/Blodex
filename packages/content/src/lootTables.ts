@@ -62,6 +62,60 @@ export const LOOT_TABLES: LootTableDef[] = [
     ]
   },
   {
+    id: "boss_ember_warden_rare",
+    entries: [
+      { itemDefId: "sanctified_greatsword", weight: 16, minFloor: 5 },
+      { itemDefId: "bloodsigil_band", weight: 18, minFloor: 5 },
+      { itemDefId: "catacomb_greaves", weight: 14, minFloor: 5 },
+      { itemDefId: "dusk_halberd", weight: 12, minFloor: 5 },
+      { itemDefId: "penitent_blade", weight: 12, minFloor: 5 }
+    ]
+  },
+  {
+    id: "boss_ember_warden_exclusive",
+    entries: [
+      { itemDefId: "emberbrand_edge", weight: 34, minFloor: 5 },
+      { itemDefId: "cindersigil_band", weight: 33, minFloor: 5 },
+      { itemDefId: "ashwake_treads", weight: 33, minFloor: 5 }
+    ]
+  },
+  {
+    id: "boss_cathedral_judge_rare",
+    entries: [
+      { itemDefId: "revenant_mask", weight: 16, minFloor: 5 },
+      { itemDefId: "oathbound_cuirass", weight: 18, minFloor: 5 },
+      { itemDefId: "cathedral_plate", weight: 14, minFloor: 5 },
+      { itemDefId: "oath_ring", weight: 14, minFloor: 5 },
+      { itemDefId: "warden_greathelm", weight: 12, minFloor: 5 }
+    ]
+  },
+  {
+    id: "boss_cathedral_judge_exclusive",
+    entries: [
+      { itemDefId: "judicator_crown", weight: 34, minFloor: 5 },
+      { itemDefId: "edict_plate", weight: 33, minFloor: 5 },
+      { itemDefId: "absolver_seal", weight: 33, minFloor: 5 }
+    ]
+  },
+  {
+    id: "boss_ossuary_keeper_rare",
+    entries: [
+      { itemDefId: "catacomb_greaves", weight: 16, minFloor: 4 },
+      { itemDefId: "revenant_mask", weight: 14, minFloor: 4 },
+      { itemDefId: "oath_ring", weight: 14, minFloor: 4 },
+      { itemDefId: "iron_vow_loop", weight: 12, minFloor: 4 },
+      { itemDefId: "penitent_blade", weight: 12, minFloor: 4 }
+    ]
+  },
+  {
+    id: "boss_ossuary_keeper_exclusive",
+    entries: [
+      { itemDefId: "gravewake_greaves", weight: 34, minFloor: 4 },
+      { itemDefId: "ossuary_signet", weight: 33, minFloor: 4 },
+      { itemDefId: "keeper_veil", weight: 33, minFloor: 4 }
+    ]
+  },
+  {
     id: "merchant_pool",
     entries: [
       { itemDefId: "rusted_sabre", weight: 8, minFloor: 1 },

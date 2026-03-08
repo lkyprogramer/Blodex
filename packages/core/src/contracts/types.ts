@@ -323,6 +323,7 @@ export interface DungeonRoom {
   width: number;
   height: number;
   roomType?: "normal" | "challenge";
+  challengeId?: string;
 }
 
 export interface DungeonCorridor {
