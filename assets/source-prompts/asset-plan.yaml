@@ -5,6 +5,289 @@ defaults:
   quality: high
   background: transparent
   outputFormat: png
+phase7_content_gate:
+  art_style_bible: docs/art-style-bible.md
+  minimum_ship_set:
+    "7.4":
+      description: Boss 管线与遭遇编排最小资源位冻结
+      assets:
+        - id: phase7_7_4_boss_node_marker
+          category: node_marker
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_event_unstable_portal_01
+            placeholder_surface: boss-node-marker-placeholder
+        - id: phase7_7_4_boss_reward_badge
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: meta_unlock_available
+            placeholder_surface: boss-reward-badge-placeholder
+        - id: phase7_7_4_boss_telegraph_sigils
+          category: fx_sheet
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: telegraph_circle_red
+            placeholder_surface: boss-telegraph-placeholder
+    "7.5":
+      description: Boss batch one 最小可玩资源
+      assets:
+        - id: phase7_7_5_boss_cathedral_judge_sprite
+          category: boss_sprite
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: boss_bone_sovereign
+            placeholder_surface: boss-cathedral-judge-placeholder
+        - id: phase7_7_5_boss_ossuary_keeper_sprite
+          category: boss_sprite
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: boss_bone_sovereign
+            placeholder_surface: boss-ossuary-keeper-placeholder
+        - id: phase7_7_5_boss_ember_warden_sprite
+          category: boss_sprite
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: boss_bone_sovereign
+            placeholder_surface: boss-ember-warden-placeholder
+        - id: phase7_7_5_boss_portrait_batch
+          category: boss_portrait
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: boss_bone_sovereign
+            placeholder_surface: boss-portrait-batch-placeholder
+    "7.6":
+      description: affix / consumable / merchant / talent 扩展最小资源
+      assets:
+        - id: phase7_7_6_consumable_icon_batch
+          category: item_icon
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: item_ring_02
+            placeholder_surface: consumable-icon-batch-placeholder
+        - id: phase7_7_6_merchant_room_marker
+          category: node_marker
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_event_wandering_merchant_01
+            placeholder_surface: merchant-room-marker-placeholder
+        - id: phase7_7_6_talent_rank_badges
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: meta_unlock_unlocked
+            placeholder_surface: talent-rank-badge-placeholder
+        - id: phase7_7_6_affix_badge_batch
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: meta_unlock_locked
+            placeholder_surface: affix-badge-batch-placeholder
+    "7.7":
+      description: 元素体系与 set foundations 最小资源
+      assets:
+        - id: phase7_7_7_elemental_icon_batch
+          category: ui_icon
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_event_cursed_altar_01
+            placeholder_surface: elemental-icon-batch-placeholder
+        - id: phase7_7_7_elemental_status_badges
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: meta_unlock_available
+            placeholder_surface: elemental-status-badge-placeholder
+        - id: phase7_7_7_set_badge_batch
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: meta_unlock_unlocked
+            placeholder_surface: set-badge-batch-placeholder
+    "7.8":
+      description: 长 run 与楼层扩展最小资源
+      assets:
+        - id: phase7_7_8_node_marker_batch
+          category: node_marker
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_event_unstable_portal_01
+            placeholder_surface: node-marker-batch-placeholder
+        - id: phase7_7_8_floor_enter_banner_batch
+          category: ui_banner
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_merchant_open_01
+            placeholder_surface: floor-enter-banner-placeholder
+        - id: phase7_7_8_biome_marker_batch
+          category: minimap_marker
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_event_fallen_adventurer_01
+            placeholder_surface: biome-marker-batch-placeholder
+  optional_enhancement_set:
+    "7.4":
+      description: Boss 管线表现增强
+      assets:
+        - id: phase7_7_4_boss_intro_ornament
+          category: ui_frame
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_merchant_open_01
+            placeholder_surface: boss-intro-ornament-placeholder
+        - id: phase7_7_4_boss_phase_backplate
+          category: ui_frame
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_event_unstable_portal_01
+            placeholder_surface: boss-phase-backplate-placeholder
+    "7.5":
+      description: Boss batch one 表现增强
+      assets:
+        - id: phase7_7_5_boss_phase_variant_sheet
+          category: boss_variant
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: boss_bone_sovereign
+            placeholder_surface: boss-phase-variant-placeholder
+        - id: phase7_7_5_boss_reward_flourish_icons
+          category: ui_icon
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_merchant_buy_01
+            placeholder_surface: boss-reward-flourish-placeholder
+    "7.6":
+      description: 商人与天赋表现增强
+      assets:
+        - id: phase7_7_6_merchant_shopkeep_portrait
+          category: portrait
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: boss_bone_sovereign
+            placeholder_surface: merchant-shopkeep-portrait-placeholder
+        - id: phase7_7_6_consumable_rare_variant_icons
+          category: item_icon
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: item_ring_02
+            placeholder_surface: consumable-rare-variant-placeholder
+    "7.7":
+      description: 元素体系表现增强
+      assets:
+        - id: phase7_7_7_elemental_fx_backplate
+          category: fx_sheet
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: telegraph_circle_red
+            placeholder_surface: elemental-fx-backplate-placeholder
+        - id: phase7_7_7_set_collection_card
+          category: ui_card
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_event_mysterious_shrine_01
+            placeholder_surface: set-collection-card-placeholder
+    "7.8":
+      description: 长 run 节点表现增强
+      assets:
+        - id: phase7_7_8_branch_route_cards
+          category: ui_card
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_event_unstable_portal_01
+            placeholder_surface: branch-route-card-placeholder
+        - id: phase7_7_8_biome_transition_panels
+          category: ui_panel
+          gemini_key_required: true
+          generation_status: prompt_frozen
+          placeholder_allowed: true
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_manifest_entry_id: ui_merchant_open_01
+            placeholder_surface: biome-transition-panel-placeholder
+  placeholder_policy:
+    gameplay_validation_with_placeholders: true
+    require_manifest_entry_before_runtime_binding: true
+    generated_art_requires_gemini_key: true
+    generated_art_default_label: Gemini Key Required
+    direct_generation_forbidden_without_gemini_key: true
 assets:
   - id: player_vanguard
     category: player_sprite

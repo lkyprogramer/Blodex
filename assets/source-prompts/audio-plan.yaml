@@ -1,6 +1,203 @@
 styleTag: grim-fantasy-audio-v1
 defaults:
   format: ogg
+phase7_content_gate:
+  naming_policy:
+    id_pattern: "<scope>_<subject>_<action>_01"
+    event_key_pattern: "<domain>:<subject>:<action>"
+    output_name_pattern: "<id>.ogg"
+  minimum_ship_set:
+    "7.4":
+      description: Boss 管线与遭遇编排最小 cue 集
+      cues:
+        - id: ui_boss_node_open_01
+          category: ui
+          event_key: boss:pipeline:nodeOpen
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: ui_event_wandering_merchant_open_01
+            placeholder_surface: boss-node-open-placeholder
+        - id: sfx_boss_telegraph_warning_01
+          category: sfx
+          event_key: boss:telegraph:warning
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: sfx_boss_phase_change_01
+            placeholder_surface: boss-telegraph-warning-placeholder
+        - id: ui_boss_reward_reveal_01
+          category: ui
+          event_key: boss:reward:reveal
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: ui_boss_reward_open_01
+            placeholder_surface: boss-reward-reveal-placeholder
+    "7.5":
+      description: Boss batch one 最小 cue 集
+      cues:
+        - id: sfx_boss_cathedral_judge_intro_01
+          category: sfx
+          event_key: boss:cathedral_judge:intro
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: sfx_boss_phase_change_01
+            placeholder_surface: boss-cathedral-judge-intro-placeholder
+        - id: sfx_boss_ossuary_keeper_phase_change_01
+          category: sfx
+          event_key: boss:ossuary_keeper:phaseChange
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: sfx_boss_phase_change_01
+            placeholder_surface: boss-ossuary-keeper-phase-placeholder
+        - id: sfx_boss_ember_warden_defeat_01
+          category: sfx
+          event_key: boss:ember_warden:defeat
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: sfx_boss_phase_change_01
+            placeholder_surface: boss-ember-warden-defeat-placeholder
+    "7.6":
+      description: affix / consumable / merchant / talent 扩展最小 cue 集
+      cues:
+        - id: ui_merchant_room_open_01
+          category: ui
+          event_key: merchant:room:open
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: ui_event_wandering_merchant_open_01
+            placeholder_surface: merchant-room-open-placeholder
+        - id: sfx_consumable_use_batch_01
+          category: sfx
+          event_key: consumable:use:batch1
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: sfx_skill_blood_drain_01
+            placeholder_surface: consumable-use-batch-placeholder
+        - id: ui_talent_rank_up_01
+          category: ui
+          event_key: talent:rankUp
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: ui_build_formed_01
+            placeholder_surface: talent-rank-up-placeholder
+    "7.7":
+      description: 元素体系与 set foundations 最小 cue 集
+      cues:
+        - id: sfx_element_fire_impact_01
+          category: sfx
+          event_key: elemental:fire:impact
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: sfx_skill_spirit_burst_01
+            placeholder_surface: elemental-fire-impact-placeholder
+        - id: sfx_element_cold_impact_01
+          category: sfx
+          event_key: elemental:cold:impact
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: sfx_skill_frost_nova_01
+            placeholder_surface: elemental-cold-impact-placeholder
+        - id: ui_set_activate_01
+          category: ui
+          event_key: set:activate
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: ui_build_formed_01
+            placeholder_surface: set-activate-placeholder
+    "7.8":
+      description: 长 run 与楼层扩展最小 cue 集
+      cues:
+        - id: ui_node_forge_open_01
+          category: ui
+          event_key: node:forge:open
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: ui_event_wandering_merchant_open_01
+            placeholder_surface: node-forge-open-placeholder
+        - id: ui_node_branch_open_01
+          category: ui
+          event_key: node:branch:open
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: ui_loot_rare_drop_01
+            placeholder_surface: node-branch-open-placeholder
+        - id: amb_floor_enter_new_biome_01
+          category: amb
+          event_key: floor:enter:newBiome
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: amb_biome_forgotten_catacombs_loop_01
+            placeholder_surface: floor-enter-new-biome-placeholder
+  optional_enhancement_set:
+    "7.4":
+      description: Boss 管线表现增强 cue
+      cues:
+        - id: ui_boss_intro_stinger_01
+          category: ui
+          event_key: boss:pipeline:introStinger
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: ui_boss_reward_open_01
+            placeholder_surface: boss-intro-stinger-placeholder
+    "7.5":
+      description: Boss batch one 表现增强 cue
+      cues:
+        - id: sfx_boss_batch_one_reward_flourish_01
+          category: sfx
+          event_key: boss:batch1:rewardFlourish
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: sfx_boss_phase_change_01
+            placeholder_surface: boss-batch-one-reward-flourish-placeholder
+    "7.6":
+      description: 商人与 consumable 表现增强 cue
+      cues:
+        - id: ui_merchant_purchase_big_01
+          category: ui
+          event_key: merchant:purchase:big
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: ui_equipment_compare_open_01
+            placeholder_surface: merchant-purchase-big-placeholder
+    "7.7":
+      description: 元素与 set 表现增强 cue
+      cues:
+        - id: sfx_set_synergy_pulse_01
+          category: sfx
+          event_key: set:synergy:pulse
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: sfx_skill_spirit_burst_01
+            placeholder_surface: set-synergy-pulse-placeholder
+    "7.8":
+      description: 长 run 节点表现增强 cue
+      cues:
+        - id: ui_floor_transition_stinger_01
+          category: ui
+          event_key: floor:transition:stinger
+          implementation_status: plan_frozen
+          runtime_binding:
+            binding_mode: placeholder_binding
+            placeholder_audio_manifest_entry_id: ui_loot_rare_drop_01
+            placeholder_surface: floor-transition-stinger-placeholder
 assets:
   - id: sfx_combat_hit_01
     category: sfx
