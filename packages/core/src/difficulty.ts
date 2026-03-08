@@ -14,8 +14,8 @@ export const DIFFICULTY_MODIFIERS: Record<DifficultyMode, DifficultyModifier> = 
     soulShardMultiplier: 1.5
   },
   nightmare: {
-    monsterHealthMultiplier: 1.6,
-    monsterDamageMultiplier: 1.6,
+    monsterHealthMultiplier: 1.45,
+    monsterDamageMultiplier: 1.35,
     affixPolicy: "forceOne",
     soulShardMultiplier: 2
   }

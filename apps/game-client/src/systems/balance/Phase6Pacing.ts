@@ -115,7 +115,7 @@ export const PHASE6_PACING_TARGETS: Record<DifficultyMode, DifficultyPacingTarge
     playerMoveSpeedBaseline: PLAYER_MOVE_SPEED_BASELINE,
     expectedEventNodesPerRun: 2,
     expectedMerchantNodesPerRun: 1,
-    floorTargets: createFloorTargets([150_000, 180_000, 210_000, 240_000, 270_000])
+    floorTargets: createFloorTargets([150_000, 180_000, 210_000, 240_000, 265_000])
   }
 };
 

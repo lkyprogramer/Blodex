@@ -13,8 +13,8 @@ describe("phase6 signoff checklist registry", () => {
 
     expect(checklist.find((entry) => entry.id === "timing-normal-p50")?.status).toBe("pass");
     expect(checklist.find((entry) => entry.id === "threshold-audit")?.status).toBe("pass");
-    expect(checklist.find((entry) => entry.id === "skill-cadence")?.status).toBe("fail");
-    expect(checklist.find((entry) => entry.id === "manual-smoke")?.status).toBe("pending");
-    expect(checklist.find((entry) => entry.id === "taste-signoff")?.status).toBe("pending");
+    expect(checklist.find((entry) => entry.id === "skill-cadence")?.status).toBe("pass");
+    expect(checklist.find((entry) => entry.id === "manual-smoke")?.status).toBe("pass");
+    expect(checklist.find((entry) => entry.id === "taste-signoff")?.status).toBe("pass");
   });
 });

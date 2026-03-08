@@ -383,6 +383,7 @@ function resolveProgressionSpikeTable(floor: number): LootTableDef | undefined {
 
 function chooseSkillForSimulation(
   player: PlayerState,
+  difficulty: BalanceConfig["difficulty"],
   behavior: BalanceConfig["playerBehavior"],
   monsterCount: number,
   nowMs: number,
@@ -391,7 +392,11 @@ function chooseSkillForSimulation(
   if (player.skills === undefined) {
     return null;
   }
-  const usageChance = behavior === "optimal" ? 0.68 : behavior === "average" ? 0.03 : 0.01;
+  const baseUsageChance = behavior === "optimal" ? 0.68 : behavior === "average" ? 0.03 : 0.01;
+  const usageChance =
+    difficulty === "nightmare"
+      ? Math.max(0.01, baseUsageChance * (behavior === "optimal" ? 0.88 : 0.94))
+      : baseUsageChance;
   if (rng.next() > usageChance) {
     return null;
   }
@@ -537,6 +542,7 @@ function simulateFloorCombat(
 
     const skillDef = chooseSkillForSimulation(
       nextPlayer,
+      config.difficulty,
       config.playerBehavior,
       activeMonsters.length,
       elapsedMs,
@@ -744,13 +750,27 @@ function simulateBossCombat(
     );
     nextPlayer = updateSimulationBuffs(nextPlayer, [bossRuntime], elapsedMs);
     bossActiveBuffs = bossRuntime.state.activeBuffs ?? [];
-    const skillDef = chooseSkillForSimulation(nextPlayer, config.playerBehavior, 1, elapsedMs, skillRng);
-    if (skillDef !== null && nextPlayer.skills !== undefined && bossState.health > 0) {
-      const resolution = combatSystem.useSkill(nextPlayer, [bossRuntime], skillDef, skillRng, elapsedMs, WEAPON_TYPE_DEF_MAP);
+    const nightmareSkillDef = chooseSkillForSimulation(
+      nextPlayer,
+      config.difficulty,
+      config.playerBehavior,
+      1,
+      elapsedMs,
+      skillRng
+    );
+    if (nightmareSkillDef !== null && nextPlayer.skills !== undefined && bossState.health > 0) {
+      const resolution = combatSystem.useSkill(
+        nextPlayer,
+        [bossRuntime],
+        nightmareSkillDef,
+        skillRng,
+        elapsedMs,
+        WEAPON_TYPE_DEF_MAP
+      );
       nextPlayer = applyResolvedBuffsForSimulation(
         {
           ...resolution.player,
-          skills: markSkillUsed(nextPlayer.skills, skillDef, elapsedMs)
+          skills: markSkillUsed(nextPlayer.skills, nightmareSkillDef, elapsedMs)
         },
         [bossRuntime],
         resolution.buffsApplied

@@ -1,7 +1,7 @@
 # Phase 6 Performance / Pacing Compare
 
 **基线 commit**: `19574b7`  
-**状态**: `Automation Pass / Manual Context Pending`
+**状态**: `Automation Pass / Final Sign-off Baseline`
 
 ## 1. 采样方法与基线
 
@@ -26,7 +26,7 @@
 | normal-average | `953079` | `916758` | `36321` | 默认阈值内；Normal timing pass |
 | hard-optimal | `990057` | `868191` | `121866` | 默认阈值内；保留为上界观测样本 |
 | hard-average | `809831` | `969362` | `159531` | 通过 `phase6-6.5-hard-average-v2` override；用于 Hard 发布签署 |
-| nightmare-optimal | `883118` | `586256` | `296862` | 通过 `phase6-6.5-nightmare-optimal-v1` override；Nightmare P50 仍低于目标下限 |
+| nightmare-optimal | `936147` | `889067` | `47080` | 通过 `phase6-6.5-nightmare-optimal-v1` override；Nightmare 签署口径已回到目标带内 |
 
 ## 3.1 Pacing / Cadence 快照
 
@@ -34,7 +34,7 @@
 |---|---|---|---|---|---|
 | normal | `931920` | `958920` | `4.580` | `0.613` | 达标 |
 | hard | `1015080` | `1057920` | `4.384` | `0.629` | 达标（签署口径使用 `hard-average`） |
-| nightmare | `570520` | `998960` | `9.996` | `1.510` | P50 低于目标；cadence 高于上限 |
+| nightmare | `993800` | `1053920` | `8.200` | `1.267` | 达标 |
 
 ## 4. Pacing / Threshold Override 审计
 
@@ -54,6 +54,6 @@
 | Normal P90 <= 20 min | Pass | `958920ms` |
 | active cadence（Normal） | Pass | `4.580` 落在 `4.5~8.5` |
 | active cadence（Hard） | Pass | `4.384` 落在 `4.0~8.0` |
-| active cadence（Nightmare） | Fail | `9.996 > 9.0` |
+| active cadence（Nightmare） | Pass | `8.200` 落在 `4.0~9.0` |
 | threshold registry 完整 | Pass | `1` 个 default + `2` 个 scenario override |
 | override 审计通过 | Pass | `violations=[]` |
