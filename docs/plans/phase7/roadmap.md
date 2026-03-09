@@ -1,6 +1,6 @@
 # Phase 7 Roadmap（入口）
 
-**更新时间**: 2026-03-07  
+**更新时间**: 2026-03-09  
 **主入口**: `docs/plans/phase7/2026-03-07-phase7-technical-debt-first-refactor-roadmap.md`
 
 ---
@@ -30,6 +30,7 @@
 11. `docs/plans/phase7/2026-03-07-phase7-7.6-affix-consumable-merchant-and-talent-expansion.md`
 12. `docs/plans/phase7/2026-03-07-phase7-7.7-elemental-system-and-set-foundations.md`
 13. `docs/plans/phase7/2026-03-07-phase7-7.8-long-run-and-floor-expansion.md`
+14. `docs/plans/phase7/2026-03-09-phase7-7.8b-long-run-tuning-closure.md`
 
 ---
 

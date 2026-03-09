@@ -1,16 +1,17 @@
-# Blodex 架构说明（Phase 4）
+# Blodex 架构说明（Phase 7 基线）
 
-> 更新时间：2026-03-04  
-> 适用范围：当前 `main`（Phase 4 改造后）  
-> 目的：作为开发、评审、回归的统一架构基线，避免继续沿用旧版“单体 Scene”认知。
+> 更新时间：2026-03-09  
+> 适用范围：当前 `main@c7a28a6`  
+> 目的：作为 Phase 7 完成后的统一架构基线，明确当前主干已经完成的 shell 重构、`RunSaveV3`、evidence registry 与 content gate，不再沿用旧的 `Phase 4` / debt ceiling 叙事。
 
 ## 1. 设计目标
 
-1. 将 `DungeonScene` 限制为场景壳（生命周期 + 装配），避免继续演化为 God Class。
-2. 用显式编排层管理帧流程，确保更新顺序可读、可测、可替换。
-3. 将高变业务（事件、Boss、危险区、推进、保存）模块化，降低跨功能回归风险。
-4. 保持核心规则在 `@blodex/core`，客户端只做运行时适配与表现层映射。
-5. 用架构预算门禁防止体量反弹。
+1. `DungeonScene` 只保留 scene shell、生命周期与顶层装配，不再承担业务协调。
+2. `HudContainer` 只保留 view container 语义，不再吞掉 compare / overlay / summary 业务动作。
+3. `MetaMenuScene` 只保留导航与装配，meta 业务统一收口到 controller / builder。
+4. `save / restore` 只允许经过 `RunSaveV3` 的严格 schema 与固定恢复流水线。
+5. `release evidence / threshold / calibration / content gate` 形成显式 registry，不再散落在报告构建器与阶段文档里。
+6. 架构预算门禁不再依赖 `DungeonScene / HudContainer` 的 debt ceiling。
 
 ---
 
@@ -18,10 +19,10 @@
 
 | 层 | 路径 | 职责 | 约束 |
 |---|---|---|---|
-| Client Runtime | `apps/game-client` | Phaser 场景、运行时模块、系统、UI、存档适配 | 不在 UI 层重写核心规则 |
-| Core Domain | `packages/core` | 战斗、成长、随机、事件结算、运行与存档协议 | 不依赖 Phaser / DOM |
-| Content Data | `packages/content` | 怪物/物品/掉落/Biome/事件/关卡配置 | 只承载数据与配置，不承载运行时副作用 |
-| Tooling | `packages/tooling` | 资产计划编译、manifest 校验与报告 | 不侵入运行时逻辑 |
+| Client Runtime | `apps/game-client` | Phaser 场景壳、runtime module、UI、debug、save/restore 适配、release evidence consumer | 不在 UI 层重写核心规则 |
+| Core Domain | `packages/core` | 战斗、成长、掉落、story run、save schema、set/element/buff 规则 | 不依赖 Phaser / DOM |
+| Content Data | `packages/content` | 怪物、Boss、物品、掉落表、事件、节点、registry 数据 | 只承载配置与静态元数据 |
+| Tooling | `packages/tooling` | 资产计划编译、manifest/audio-manifest 校验、Phase 7 content gate | 不侵入运行时逻辑 |
 
 ---
 
@@ -29,171 +30,212 @@
 
 ```mermaid
 graph TD
-  Main["main.ts"] --> Scene["DungeonScene (Scene Shell)"]
-  Scene --> Flow["RunFlowOrchestrator"]
-  Scene --> Encounter["EncounterController"]
-  Scene --> World["WorldEventController"]
+  Main["main.ts"] --> Dungeon["DungeonScene (Scene Shell)"]
+  Main --> Meta["MetaMenuScene (Meta Shell)"]
 
-  Scene --> Debug["DebugRuntimeModule"]
-  Scene --> Save["RunPersistenceModule"]
-  Scene --> Event["EventRuntimeModule"]
-  Scene --> Boss["BossRuntimeModule"]
-  Scene --> Hazard["HazardRuntimeModule"]
-  Scene --> Progress["ProgressionRuntimeModule"]
-  Scene --> Floor["FloorProgressionModule"]
-  Scene --> RunDone["RunCompletionModule"]
-  Scene --> Action["PlayerActionModule"]
+  Dungeon --> Shell["DungeonSceneShellRuntime"]
+  Dungeon --> Frame["DungeonFrameRuntime"]
+  Dungeon --> Input["DungeonInputRuntime"]
+  Dungeon --> Combat["DungeonCombatRuntime"]
+  Dungeon --> HudRuntime["DungeonHudRuntime"]
+  Dungeon --> MetaRuntime["DungeonMetaRuntime"]
+  Dungeon --> Session["DungeonSessionFacade"]
+  Dungeon --> Diag["DungeonDiagnosticsRuntime"]
 
-  Scene --> Systems["Movement/AI/Combat/Render/VFX/SFX Systems"]
-  Scene --> UI["HudPresenter + UIManager + HudContainer"]
+  Dungeon --> Save["RunPersistenceModule"]
+  Dungeon --> Event["EventRuntimeModule"]
+  Dungeon --> Boss["BossRuntimeModule"]
+  Dungeon --> Hazard["HazardRuntimeModule"]
+  Dungeon --> Progress["ProgressionRuntimeModule"]
+  Dungeon --> Floor["FloorProgressionModule"]
+  Dungeon --> RunDone["RunCompletionModule"]
+  Dungeon --> Action["PlayerActionModule"]
 
-  Scene --> Core["@blodex/core"]
-  Scene --> Content["@blodex/content"]
+  Session --> Core["@blodex/core"]
+  Dungeon --> Content["@blodex/content"]
+  HudRuntime --> UI["UIManager -> Hud -> HudContainer"]
+  Meta --> Flow["MetaFlowController"]
+  Meta --> Builder["MetaMenuViewBuilder"]
 ```
 
-### 3.1 关键组件与职责
+### 3.1 当前关键组件
 
 | 组件 | 路径 | 主要职责 |
 |---|---|---|
-| Scene 壳 | `apps/game-client/src/scenes/DungeonScene.ts` | Phaser 生命周期、模块装配、帧入口 |
-| 帧总编排 | `apps/game-client/src/scenes/dungeon/orchestrator/RunFlowOrchestrator.ts` | `runEnded / eventPanelOpen` 分支编排 |
-| 战斗遭遇编排 | `apps/game-client/src/scenes/dungeon/encounter/EncounterController.ts` | 玩家/怪物/Boss/挑战房更新顺序 |
-| 世界事件编排 | `apps/game-client/src/scenes/dungeon/world/WorldEventController.ts` | Hazard/Loot/Event/Floor/Minimap 更新顺序 |
-| 调试模块 | `apps/game-client/src/scenes/dungeon/debug/DebugRuntimeModule.ts` | Debug API 注入、热键命令分发 |
-| 持久化模块 | `apps/game-client/src/scenes/dungeon/save/RunPersistenceModule.ts` | 快照构建、恢复、保存协调 |
-| 事件模块 | `apps/game-client/src/scenes/dungeon/world/EventRuntimeModule.ts` | 随机事件节点、选项结算、商人流程 |
-| Boss 模块 | `apps/game-client/src/scenes/dungeon/encounter/BossRuntimeModule.ts` | Boss 生成、战斗驱动、胜利分岔 |
-| 危险区模块 | `apps/game-client/src/scenes/dungeon/world/HazardRuntimeModule.ts` | Hazard 生成、触发、伤害与视觉同步 |
-| 推进模块 | `apps/game-client/src/scenes/dungeon/world/ProgressionRuntimeModule.ts` | 楼层初始化、地牢渲染、挑战房与隐藏房 |
-| 楼层推进 | `apps/game-client/src/scenes/dungeon/world/FloorProgressionModule.ts` | 阶梯可见性、过层、Endless 进入与推进 |
-| 结算模块 | `apps/game-client/src/scenes/dungeon/run/RunCompletionModule.ts` | Run 结束、奖励结算、Meta 回写 |
-| HUD 适配 | `apps/game-client/src/scenes/dungeon/ui/HudPresenter.ts` | 构建 UI 快照，隔离 Scene 与 HUD |
+| Scene 壳 | `apps/game-client/src/scenes/DungeonScene.ts` | Phaser 生命周期、顶层装配、runtime 委托入口 |
+| Scene Shell Runtime | `apps/game-client/src/scenes/dungeon/shell/DungeonSceneShellRuntime.ts` | shell 级初始化与模块 wiring |
+| 帧编排 | `apps/game-client/src/scenes/dungeon/shell/DungeonFrameRuntime.ts` | active/event/summary frame 调度 |
+| 输入运行时 | `apps/game-client/src/scenes/dungeon/shell/DungeonInputRuntime.ts` | pointer、keyboard、移动与 debug hotkey |
+| 战斗运行时 | `apps/game-client/src/scenes/dungeon/shell/DungeonCombatRuntime.ts` | combat、monster、loot、pressure peak 驱动 |
+| HUD 运行时 | `apps/game-client/src/scenes/dungeon/shell/DungeonHudRuntime.ts` | HUD snapshot、overlay flush、compare prompt 协调 |
+| Meta 运行时 | `apps/game-client/src/scenes/dungeon/shell/DungeonMetaRuntime.ts` | meta 加载/保存、difficulty、daily、release note 提示 |
+| Session Facade | `apps/game-client/src/scenes/dungeon/shell/DungeonSessionFacade.ts` | player/set/buff/talent/synergy 汇总重算与 run-level 状态汇口 |
+| Diagnostics Runtime | `apps/game-client/src/scenes/dungeon/shell/DungeonDiagnosticsRuntime.ts` | diagnostics panel、snapshot 与 debug 输出 |
+| Meta 业务流 | `apps/game-client/src/scenes/meta/MetaFlowController.ts` | meta business flow、按钮行为、继续挑战与遗产路径 |
+| Meta 视图构建 | `apps/game-client/src/scenes/meta/MetaMenuViewBuilder.ts` | meta view model 与面板数据 |
 
-### 3.2 结构决策说明
+### 3.2 Host / Source Discipline
 
-1. 不单独引入 `CombatRuntimeModule`，战斗职责由 `CombatSystem + EncounterController` 承载，避免重复抽象层。
-2. 目前多个模块仍通过 `host: Record<string, any>` 访问 Scene 状态，这是 Phase 4 的兼容折中；后续可逐步收敛为显式 Host Interface。
-
----
-
-## 4. 帧流程（Update Pipeline）
-
-```mermaid
-sequenceDiagram
-  participant P as Phaser Loop
-  participant S as DungeonScene
-  participant O as RunFlowOrchestrator
-  participant E as EncounterController
-  participant W as WorldEventController
-  participant U as UIManager
-
-  P->>S: update(deltaMs)
-  S->>O: update(runEnded, eventPanelOpen, nowMs, deltaMs)
-
-  alt eventPanelOpen
-    O->>S: runEventPanelFrame(nowMs)
-    S->>U: render HUD if dirty
-    S->>U: update minimap
-  else active gameplay
-    O->>S: runActiveFrame(nowMs, deltaMs)
-    S->>E: updateFrame(combat/monster/boss)
-    S->>W: updatePreResolution(hazard/loot/event)
-    S->>E: updateChallenge(nowMs)
-    S->>W: updatePostResolution(floor/minimap)
-    S->>S: autosave check + HUD render + diagnostics
-  end
-```
-
-该顺序将“模拟”“事件交互”“表现刷新”分离，避免相互穿插造成的状态竞态。
+1. `DungeonScene` 不再把 `this as unknown as Host` 直接传给 runtime module。
+2. 统一通过 `apps/game-client/src/scenes/dungeon/dungeonSceneHostFactories.ts` 构造 typed bridge / overlay source。
+3. `shell` 目录下的 runtime / facade 不再依赖 source-side cast；统一接收显式 `Source`。
 
 ---
 
-## 5. 状态与数据边界
-
-| 类别 | 主体 | 说明 |
-|---|---|---|
-| 领域状态 | `RunState` / `PlayerState` / `BossRuntimeState` 等（`@blodex/core`） | 规则层定义，客户端只消费与持有 |
-| 运行时状态 | Scene 内 Sprite、输入、定时器、缓存 | 与 Phaser 强耦合，不进入 core |
-| 内容配置 | `@blodex/content` 的 Def/Map | 数据驱动，不写流程分支 |
-| 表现快照 | `UIStateSnapshot` | 通过 `HudPresenter` 生成，降低 HUD 与 Scene 耦合 |
-| 事件总线 | `createEventBus<GameEventMap>()` | 用于日志、反馈、可观测事件归档 |
-
----
-
-## 6. 持久化架构
-
-### 6.1 Meta 与 Run 存档
-
-| 存档 | key | schema | 兼容策略 |
-|---|---|---|---|
-| Meta | `blodex_meta_v2`（兼容 v1 读取） | `6` | `migrateMeta` 向后兼容 |
-| Run | `blodex_run_save_v2`（兼容 v1 读取） | `2` | `deserializeRunStateResult` 自动迁移并回写 v2 |
-
-### 6.2 Run 保存链路
-
-1. `RunSaveSnapshotBuilder` 负责构建快照（含 `deferredOutcomes`）。
-2. `SaveCoordinator` 统一调度 `flush / schedule / heartbeat / lifecycle`。
-3. `SaveManager` 负责 localStorage 读写、跨 tab lease（TTL `15000ms`，心跳 `5000ms`）。
-4. `RunStateRestorer` 负责恢复地牢、实体、事件、minimap、mutator、deferred outcome。
-
-### 6.3 持久化决策（已落地）
-
-1. Endless mutator 运行态保存在 `RunState`（随单局存档），不放入 `MetaProgression`。
-2. 事件/商人延迟收益保存在 `RunSaveDataV2.deferredOutcomes?`，老存档缺省为 `[]` 语义。
-
----
-
-## 7. UI 架构
+## 4. UI 架构
 
 ```mermaid
 graph LR
-  Scene["DungeonScene"] --> Presenter["HudPresenter"]
-  Presenter --> Snapshot["UIStateSnapshot"]
-  Snapshot --> UIManager["UIManager"]
-  UIManager --> Hud["Hud (thin alias)"]
+  Scene["DungeonScene"] --> HudRuntime["DungeonHudRuntime"]
+  HudRuntime --> UIManager["UIManager"]
+  UIManager --> Hud["Hud"]
   Hud --> Container["HudContainer"]
-  Container --> Components["HudPanel/EventDialog/SkillBar/RunSummary/BossHealthBar"]
-  UIManager --> Minimap["Minimap"]
+  Container --> Overlay["HudOverlayController"]
+  Container --> Inventory["HudInventoryController"]
+  Container --> Log["HudLogPresenter"]
+  Container --> Tooltip["HudQuickbarTooltipPresenter"]
+  Container --> Compare["EquipmentCompareViewPresenter"]
 ```
 
-要点：
-1. `Hud.ts` 仅作为 `HudContainer` 的薄入口。
-2. UI 组件拆分在 `ui/components/*`，容器集中在 `ui/hud/HudContainer.ts`。
-3. `UIManager.renderSnapshot` 接收快照，不直接绑定 Scene 内部字段。
+### 4.1 UI 约束
+
+1. `HudContainer` 当前仅承载 view/container 组合，行数基线已压到 `339`。
+2. compare 行为语义回到 runtime：
+   - `equip / later / ignore`
+   - `immediate / deferred compare`
+   - `queued compare flush`
+3. `MetaMenuPanel` 与 `MetaMenuScene` 也已经拆分为：
+   - `MetaFlowController`
+   - `MetaMenuViewBuilder`
+   - `MetaMenuPanelRender`
 
 ---
 
-## 8. 架构治理与预算门禁
+## 5. Save / Resume 架构
 
-预算脚本：`scripts/check-architecture-budgets.sh`  
-CI 集成：`pnpm ci:check` 包含 `pnpm check:architecture-budget`
+### 5.1 当前协议
 
-| 文件 | 当前行数 | 阈值（lines） | 阈值（methods） |
+| 项目 | 现状 |
+|---|---|
+| Run key | `blodex_run_save_v3` |
+| Schema | `RunSaveV3` |
+| 流水线 | `strict deserialize -> load persistent -> rebuild derived -> bootstrap ephemeral` |
+| 旧 key 处理 | 旧 `v1/v2` 直接清理，并显示一次性提示 |
+
+### 5.2 状态分层
+
+| 层 | 说明 |
+|---|---|
+| `domain` | `run / player / consumables / mutation / blueprint` 等稳定领域状态 |
+| `runtime` | dungeon、monster、boss、event、minimap、power spike budget、telemetry aggregates |
+| `session` | compare prompt、progression prompt、lease 等会话态 |
+
+### 5.3 当前例外
+
+1. 当前主干仍保留一个**窄兼容例外**：对旧版 `RunSaveV3` 中 `powerSpikeBudgetState.pairStates["5"]` 的归一化。
+2. 该例外仅用于 `7.8` 将 reward curve 从 `1-2 / 3-4 / 5` 扩展为 `1-2 / 3-4 / 5-6 / 7-8` 时，接住 pre-change 的 V3 save。
+3. 这不构成 `v1/v2` 兼容回流，也不恢复旧 migration helper。
+
+---
+
+## 6. Evidence / Calibration / Release 治理
+
+### 6.1 当前治理结构
+
+| 组件 | 路径 | 职责 |
+|---|---|---|
+| Calibration / Threshold Governance | `apps/game-client/src/systems/balance/BalanceThresholdGovernance.ts` | policy threshold、override allowlist、diffClass |
+| Evidence Registry | `apps/game-client/src/systems/balance/Phase6EvidenceRegistry.ts` | smoke scenario、sign-off checklist、threshold registry |
+| Release Artifact Index | `apps/game-client/src/systems/balance/Phase6ReleaseArtifactIndex.ts` | manual/doc/screenshot artifact registry |
+| Evidence Pack | `apps/game-client/src/systems/balance/Phase6EvidencePack.ts` | 只消费 registry，不再维护第二套规则 |
+| Release Consistency | `apps/game-client/src/systems/balance/Phase6ReleaseConsistency.ts` | release 文档与 artifact 一致性校验 |
+
+### 6.2 当前原则
+
+1. `report` 不再直接吃 raw calibration；effective thresholds 必须经 governance resolver。
+2. smoke / sign-off / artifact 不再用文档短语手工拼状态。
+3. `phase6:evidence:check` 与 `phase6:evidence:report` 是 release evidence 的唯一自动化入口。
+
+---
+
+## 7. Content Gate 与资源入口门
+
+### 7.1 Content Gate
+
+正式 gate：`pnpm phase7:content-gate:check`
+
+它会检查：
+
+1. `7.0A ~ 7.1` 阶段文档完成态
+2. `check:architecture-budget`
+3. `phase6:evidence:check`
+4. `Phase 6 release readiness = Signed`
+5. `S6-01 ~ S6-07 = Pass`
+6. `asset-plan/audio-plan` 的 phase7 gate metadata
+7. runtime binding 的 manifest / placeholder compatibility
+
+### 7.2 资源策略
+
+1. `assets/source-prompts/asset-plan.yaml`
+2. `assets/source-prompts/audio-plan.yaml`
+3. `assets/generated/manifest.json`
+4. `assets/generated/audio-manifest.json`
+
+当前主干已要求：
+
+1. 新增美术资源的实际生成必须先提供 Gemini Key。
+2. 在未提供 Gemini Key 前，只允许：
+   - style prompt
+   - plan freeze
+   - manifest placeholder
+   - runtime binding
+
+---
+
+## 8. 当前架构预算
+
+预算脚本：`scripts/check-architecture-budgets.sh`
+
+| 文件 | 当前行数 | lines 阈值 | methods 阈值 |
 |---|---:|---:|---:|
-| `apps/game-client/src/scenes/DungeonScene.ts` | 4286 | 2600 | 90 |
-| `apps/game-client/src/scenes/MetaMenuScene.ts` | 1092 | 1200 | 85 |
-| `apps/game-client/src/ui/Hud.ts` | 5 | 300 | 25 |
-| `apps/game-client/src/ui/hud/HudContainer.ts` | 1186 | 1100 | 60 |
+| `apps/game-client/src/scenes/DungeonScene.ts` | `1531` | `1532` | `60` |
+| `apps/game-client/src/scenes/MetaMenuScene.ts` | `543` | `650` | `85` |
+| `apps/game-client/src/ui/Hud.ts` | `5` | `300` | `25` |
+| `apps/game-client/src/ui/hud/HudContainer.ts` | `339` | `450` | `25` |
 
 说明：
-1. `DungeonScene.ts` 当前仍高于目标预算，脚本使用临时 debt ceiling `4286 lines / 92 methods` 做 no-regression gate。
-2. `HudContainer.ts` 当前也高于目标预算，脚本使用临时 debt ceiling `1186 lines` 做 no-regression gate。
-3. 这不是放宽目标预算；`DungeonScene <= 2600 / 90` 与 `HudContainer <= 1100 / 60` 仍是明确收口目标。
-4. 发布 DoD 仍要求继续收口 `DungeonScene < 2500`。
+
+1. 当前主干已经移除了 `DungeonScene / HudContainer` 的 debt ceiling 模式。
+2. `DungeonScene` 仍然接近 hard limit，后续如继续扩 bridge/method pack，应优先再拆 source/method pack，而不是回流 Scene。
 
 ---
 
-## 9. 开发约束（执行时必须遵守）
+## 9. 当前玩法扩展基线
 
-1. 新业务逻辑默认进入 `scenes/dungeon/*` 模块，不回流 `DungeonScene`。
-2. 模块间交互优先通过编排器/服务接口，不直接互相读取实现细节。
-3. 修改存档协议时，必须同时补齐迁移兼容测试与回归样例。
-4. 影响玩家可见行为的改动需同步更新 `en-US` / `zh-CN` 文案与回归矩阵。
+Phase 7 已经把以下基础设施接入主干：
+
+1. Boss encounter registry / dispatcher
+2. `story / branch / challenge` reward / compare / summary metadata
+3. `RunSaveV3`
+4. `item set` skeleton
+5. `physical / arcane / fire / cold / lightning` 元素基础
+6. `8` 层 story run 与 mid-run node
+7. dedicated `8-floor` long-run evidence
+
+但需要注意：
+
+1. `7.8` 的 runtime topology 已完成，不等于 long-run tuning 已签署。
+2. 长线 pacing / reward curve 的最终质量门槛，当前由单独的 `7.8` follow-up 文档继续追踪。
 
 ---
 
-## 10. 后续收敛方向
+## 10. 维护约束
 
-1. 将模块 `host: Record<string, any>` 逐步替换为强类型 Host Port，降低隐式耦合。
-2. 继续拆分 `DungeonScene` 与 `HudContainer` 的剩余聚合职责，降低预算压力。
-3. 在 `docs/plans/phase4/release/*` 维持发布证据链（回归矩阵、性能对比、回滚手册）。
+1. 新业务逻辑默认进入 `scenes/dungeon/*` runtime / module / controller，不回流 `DungeonScene`。
+2. 新的 save 字段必须先判断其归属：
+   - `domain`
+   - `runtime`
+   - `session`
+3. 新的 release / smoke / calibration 结论必须先入 registry，再入文档。
+4. 阶段文档、summary report、architecture doc 必须同步更新，避免再次出现“脚本是对的、文档还是旧的”。
+

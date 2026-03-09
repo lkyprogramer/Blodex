@@ -595,6 +595,7 @@ graph TD
 1. 地牢层数从 `5` 扩展到 `8~10`
 2. 插入中期节点、锻造/抉择/挑战房
 3. 调整 pacing model、reward curve、save snapshot 边界
+4. `7.8` runtime 完成后，必须进入 dedicated `7.8B long-run tuning closure`，不得把 runtime topology 完成误写成最终质量签署
 
 ---
 
@@ -679,6 +680,12 @@ graph TD
 1. floor count expansion
 2. mid-run node insertion
 3. pacing / reward rebalance
+
+### PR-7.8B-01 long-run tuning closure
+
+1. dedicated 8-floor evidence rerun
+2. reward curve / pair satisfaction 调优
+3. long-run pacing closure 与文档签署
 
 ---
 

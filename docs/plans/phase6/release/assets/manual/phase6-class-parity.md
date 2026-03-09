@@ -8,7 +8,8 @@
 
 1. Mixed opening skill offer: `./phase6-class-parity-skill-offer.png`
 2. Warrior-leaning path after first pick: `./phase6-class-parity-warrior-path.png`
-3. Ranger-leaning path sample: `./phase6-buff-contract-shadow-step-offer.png`
+3. Ranger-leaning path with explicit branch unlock log: `./phase6-class-parity-ranger-offer-stronger.png`
+4. Shared arcanist path sample: `./phase6-buff-contract-frost-nova-offer.png`
 
 ## 2. Manual Notes
 
@@ -23,13 +24,15 @@
 
 1. Fresh run rerolled with `window.__blodexDebug.newRun()` and `clearFloor()`.
 2. Early offer included `影袭步` (`shadow_step`) together with other ranger picks.
-3. This confirms ranger no longer depends on legacy unlock gating to reach its mobility / crit identity.
+3. The strengthened sample now also captures the follow-up run log `第 1 层构筑分岔已通过技能升级选择解锁` after `shadow_step` is chosen.
+4. This proves not only picker visibility, but that ranger mobility / crit identity can be entered as an explicit branching path in the rebuilt early pipeline.
 
 ### 2.3 Arcanist
 
 1. Fresh run opening offer included `灵爆` (`spirit_burst`) in the first skill choice.
 2. Follow-up offer after a warrior pick still surfaced `冰霜新星` (`frost_nova`), proving arcanist baseline skills remain reachable in the shared early-game pool.
 3. Combined with the existing baseline `血能汲取` (`blood_drain`) start slot, arcanist no longer has the old “2/5 free skills” depth problem.
+4. The arcanist sample remains a white-box entry sample rather than a full directed run, but it is now anchored to a shared artifact path and no longer only inferred from text description.
 
 ## 3. Code-Level Cross Check
 
@@ -44,8 +47,9 @@
 Reasoning:
 
 1. Warrior, ranger, and arcanist all surfaced valid early-game path entries in browser smoke.
-2. Arcanist depth regression from Phase 5 is closed at the baseline access layer.
-3. No archetype required a meta unlock or blueprint gate to expose its first meaningful build direction.
+2. Ranger evidence has been strengthened from simple availability to an explicit branch-entry sample.
+3. Arcanist depth regression from Phase 5 is closed at the baseline access layer.
+4. No archetype required a meta unlock or blueprint gate to expose its first meaningful build direction.
 
 ## 5. Scope Boundary
 
