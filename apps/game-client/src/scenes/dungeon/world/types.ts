@@ -77,7 +77,8 @@ interface RuntimeEventRenderSystem {
   spawnTelegraphCircle(
     position: { x: number; y: number },
     radius: number,
-    origin: { x: number; y: number }
+    origin: { x: number; y: number },
+    textureKey?: string
   ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
   spawnWorldMarker?(
     position: { x: number; y: number },
@@ -250,7 +251,8 @@ interface ProgressionRuntimeRenderPort {
   spawnTelegraphCircle(
     position: { x: number; y: number },
     radius: number,
-    origin: WorldBoundsConfig["origin"]
+    origin: WorldBoundsConfig["origin"],
+    textureKey?: string
   ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
   spawnWorldMarker?(
     position: { x: number; y: number },

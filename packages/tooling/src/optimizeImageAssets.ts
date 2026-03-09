@@ -26,8 +26,13 @@ interface AssetManifestEntry {
     | "skill_icon"
     | "hud"
     | "fx"
+    | "fx_sheet"
     | "ui_badge"
     | "ui_icon"
+    | "ui_card"
+    | "ui_panel"
+    | "ui_banner"
+    | "minimap_marker"
     | "node_marker"
     | "portrait";
   optimized?: OptimizedAssetConfig;

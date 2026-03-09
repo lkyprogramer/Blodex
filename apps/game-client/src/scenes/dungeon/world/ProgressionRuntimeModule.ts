@@ -17,6 +17,7 @@ import {
   resolveEndlessAffixBonusCount,
   rollItemDrop,
   rollMonsterAffixes,
+  isStoryBossFloor,
   shouldFailChallengeRoomByTimeout,
   shouldSpawnChallengeRoom,
   startChallengeRoom,
@@ -49,6 +50,45 @@ export interface ProgressionRuntimeModuleOptions {
 
 export class ProgressionRuntimeModule {
   constructor(private readonly options: ProgressionRuntimeModuleOptions) {}
+
+  private resolveBossNodeTextureKey(nextFloor: number): string | undefined {
+    const host = this.options.host;
+    if (host.run.inEndless) {
+      return undefined;
+    }
+    const storyMaxFloor = GAME_CONFIG.maxFloors ?? 8;
+    return isStoryBossFloor(nextFloor, storyMaxFloor) ? "boss_node_marker_01" : undefined;
+  }
+
+  private resolveBiomeTransitionPanelAssetId(biomeId: string): string | undefined {
+    switch (biomeId) {
+      case "forgotten_catacombs":
+        return "biome_transition_panel_catacombs_01";
+      case "molten_caverns":
+        return "biome_transition_panel_molten_01";
+      case "frozen_halls":
+        return "biome_transition_panel_frozen_01";
+      case "phantom_graveyard":
+        return "biome_transition_panel_phantom_01";
+      case "venom_swamp":
+        return "biome_transition_panel_venom_01";
+      case "bone_throne":
+        return "biome_transition_panel_bone_01";
+      default:
+        return undefined;
+    }
+  }
+
+  private resolveBranchRouteCardAssetId(): string | undefined {
+    const host = this.options.host;
+    if (host.run.branchChoice === "molten_route") {
+      return "branch_route_card_molten_01";
+    }
+    if (host.run.branchChoice === "frozen_route") {
+      return "branch_route_card_frozen_01";
+    }
+    return undefined;
+  }
 
   setupFloor(floor: number, initial: boolean): void {
     const host = this.options.host;
@@ -165,12 +205,28 @@ export class ProgressionRuntimeModule {
     host.runEnded = false;
 
     if (!initial) {
-      playSceneTransition({
+      const backdropAssetId = this.resolveBiomeTransitionPanelAssetId(host.currentBiome.id);
+      const accentAssetId = this.resolveBranchRouteCardAssetId();
+      const transitionOptions: {
+        title: string;
+        subtitle: string;
+        mode: "floor";
+        durationMs: number;
+        backdropAssetId?: string;
+        accentAssetId?: string;
+      } = {
         title: `Floor ${floor}`,
         subtitle: host.currentBiome.name,
         mode: "floor",
         durationMs: 420
-      });
+      };
+      if (backdropAssetId !== undefined) {
+        transitionOptions.backdropAssetId = backdropAssetId;
+      }
+      if (accentAssetId !== undefined) {
+        transitionOptions.accentAssetId = accentAssetId;
+      }
+      playSceneTransition(transitionOptions);
     }
 
     if (!initial) {
@@ -259,7 +315,13 @@ export class ProgressionRuntimeModule {
       );
       return;
     }
-    host.entityManager.setStaircase(host.renderSystem.spawnStaircase(host.staircaseState.position, host.origin));
+    host.entityManager.setStaircase(
+      host.renderSystem.spawnStaircase(
+        host.staircaseState.position,
+        host.origin,
+        this.resolveBossNodeTextureKey(host.run.currentFloor + 1)
+      )
+    );
   }
 
   revealHiddenRoom(roomId: string, nowMs: number, source: "click" | "mutation"): boolean {

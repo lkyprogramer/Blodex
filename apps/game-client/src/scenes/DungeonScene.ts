@@ -299,6 +299,8 @@ const DUNGEON_IMAGE_ASSET_IDS = [
   "boss_cathedral_judge",
   "boss_ember_warden",
   "boss_ossuary_keeper",
+  "boss_node_marker_01",
+  "boss_telegraph_sigil_01",
   "boss_reward_badge_cathedral_judge",
   "boss_reward_badge_ember_warden",
   "boss_reward_badge_ossuary_keeper",

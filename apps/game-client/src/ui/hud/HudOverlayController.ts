@@ -257,6 +257,9 @@ export class HudOverlayController {
         delta: formatSignedValue(compareView.powerDelta)
       }),
       powerDeltaTone: directionToPromptTone(compareView.powerDirection),
+      ...(compareView.setTransition?.cardAssetId === undefined
+        ? {}
+        : { setCardAssetId: compareView.setTransition.cardAssetId }),
       summaryLines,
       affixLines,
       equipNowLabel: t("ui.feedback.compare.equip_now"),

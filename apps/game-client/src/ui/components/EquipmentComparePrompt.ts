@@ -34,6 +34,7 @@ export interface EquipmentComparePromptView {
   rarityLabel: string;
   powerDeltaLabel: string;
   powerDeltaTone: "positive" | "negative" | "neutral";
+  setCardAssetId?: string;
   summaryLines: EquipmentComparePromptSummaryLine[];
   affixLines: EquipmentComparePromptAffixLine[];
   equipNowLabel: string;
@@ -42,6 +43,14 @@ export interface EquipmentComparePromptView {
 }
 
 export function renderEquipmentComparePrompt(view: EquipmentComparePromptView): string {
+  const setCardHtml =
+    view.setCardAssetId === undefined
+      ? ""
+      : `
+        <div class="equipment-compare-set-card">
+          <img class="equipment-compare-set-card-image" src="${resolveGeneratedAssetUrl(view.setCardAssetId, "webp")}" alt="" />
+        </div>
+      `;
   const summaryHtml = view.summaryLines
     .map(
       (line) => `
@@ -96,6 +105,7 @@ export function renderEquipmentComparePrompt(view: EquipmentComparePromptView): 
           }
         </div>
       </div>
+      ${setCardHtml}
       <div class="equipment-compare-summary">${summaryHtml}</div>
       <div class="equipment-compare-affixes">${affixHtml}</div>
       <div class="dialog-actions equipment-compare-actions">

@@ -24,6 +24,7 @@ export interface EquipmentCompareSetTransitionView {
   setId: string;
   setName: string;
   badgeAssetId?: string;
+  cardAssetId?: string;
   beforePieces: number;
   afterPieces: number;
   activatedThresholds: number[];
@@ -97,6 +98,9 @@ export function buildEquipmentCompareView(
             ...(ITEM_SET_DEF_MAP[setTransition.setId]?.badgeAssetId === undefined
               ? {}
               : { badgeAssetId: ITEM_SET_DEF_MAP[setTransition.setId]!.badgeAssetId }),
+            ...(ITEM_SET_DEF_MAP[setTransition.setId]?.cardAssetId === undefined
+              ? {}
+              : { cardAssetId: ITEM_SET_DEF_MAP[setTransition.setId]!.cardAssetId }),
             ...(ITEM_SET_DEF_MAP[setTransition.setId]?.associatedDamageType === undefined
               ? {}
               : {

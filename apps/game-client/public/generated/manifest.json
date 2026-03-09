@@ -2643,5 +2643,258 @@
       "primaryOutputPath": "apps/game-client/public/generated/node_branch_marker_01.webp",
       "fallbackOutputPath": "apps/game-client/public/generated/node_branch_marker_01.png"
     }
+  },
+  {
+    "id": "boss_node_marker_01",
+    "category": "node_marker",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "fe6c4dc100",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_node_marker_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_node_marker_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_node_marker_01.png"
+    }
+  },
+  {
+    "id": "boss_telegraph_sigil_01",
+    "category": "fx_sheet",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "1bc2b0991f",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_telegraph_sigil_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 384,
+        "height": 384
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_telegraph_sigil_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_telegraph_sigil_01.png"
+    }
+  },
+  {
+    "id": "set_collection_card_01",
+    "category": "ui_card",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "351527c1ff",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/set_collection_card_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 640,
+        "height": 360
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/set_collection_card_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/set_collection_card_01.png"
+    }
+  },
+  {
+    "id": "branch_route_card_molten_01",
+    "category": "ui_card",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "8a672c9227",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/branch_route_card_molten_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 640,
+        "height": 360
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/branch_route_card_molten_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/branch_route_card_molten_01.png"
+    }
+  },
+  {
+    "id": "branch_route_card_frozen_01",
+    "category": "ui_card",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "b541b47395",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/branch_route_card_frozen_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 640,
+        "height": 360
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/branch_route_card_frozen_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/branch_route_card_frozen_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_catacombs_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "789ac859e6",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_catacombs_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_catacombs_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_catacombs_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_molten_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "15ebbc5392",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_molten_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_molten_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_molten_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_frozen_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "100fc9d352",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_frozen_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_frozen_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_frozen_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_phantom_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "eeeacfff7a",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_phantom_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_phantom_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_phantom_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_venom_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "1f0d77d11a",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_venom_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_venom_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_venom_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_bone_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "b8027beac9",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_bone_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_bone_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_bone_01.png"
+    }
   }
 ]

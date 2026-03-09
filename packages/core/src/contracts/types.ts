@@ -486,6 +486,7 @@ export interface ItemSetDef {
   theme: "offense" | "defense" | "utility";
   associatedDamageType?: DamageType;
   badgeAssetId?: string;
+  cardAssetId?: string;
   itemIds: string[];
   bonuses: ItemSetBonusDef[];
 }

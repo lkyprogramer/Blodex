@@ -344,14 +344,15 @@ export class RenderSystem {
   spawnTelegraphCircle(
     position: { x: number; y: number },
     radiusTiles: number,
-    origin: { x: number; y: number }
+    origin: { x: number; y: number },
+    textureKey = "telegraph_circle_red"
   ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse {
     const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
     const width = Math.max(12, radiusTiles * this.tileWidth * 0.7);
     const height = Math.max(10, radiusTiles * this.tileHeight * 0.7);
-    if (this.scene.textures.exists("telegraph_circle_red")) {
+    if (this.scene.textures.exists(textureKey)) {
       return this.scene.add
-        .image(iso.x, iso.y, "telegraph_circle_red")
+        .image(iso.x, iso.y, textureKey)
         .setDisplaySize(width, height)
         .setAlpha(0.45)
         .setDepth(iso.y + this.entityDepthOffset - 8);

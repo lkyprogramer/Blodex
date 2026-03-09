@@ -14,11 +14,11 @@ phase7_content_gate:
         - id: phase7_7_4_boss_node_marker
           category: node_marker
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: ui_event_unstable_portal_01
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: boss_node_marker_01
             placeholder_surface: boss-node-marker-placeholder
         - id: phase7_7_4_boss_reward_badge
           category: ui_badge
@@ -32,11 +32,11 @@ phase7_content_gate:
         - id: phase7_7_4_boss_telegraph_sigils
           category: fx_sheet
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: telegraph_circle_red
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: boss_telegraph_sigil_01
             placeholder_surface: boss-telegraph-placeholder
     "7.5":
       description: Boss batch one 最小可玩资源
@@ -507,11 +507,11 @@ phase7_content_gate:
         - id: phase7_7_7_set_collection_card
           category: ui_card
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: ui_event_mysterious_shrine_01
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: set_collection_card_01
             placeholder_surface: set-collection-card-placeholder
     "7.8":
       description: 长 run 节点表现增强
@@ -519,20 +519,20 @@ phase7_content_gate:
         - id: phase7_7_8_branch_route_cards
           category: ui_card
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: ui_event_unstable_portal_01
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: branch_route_card_molten_01
             placeholder_surface: branch-route-card-placeholder
         - id: phase7_7_8_biome_transition_panels
           category: ui_panel
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: ui_merchant_open_01
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: biome_transition_panel_catacombs_01
             placeholder_surface: biome-transition-panel-placeholder
   placeholder_policy:
     gameplay_validation_with_placeholders: true
@@ -1878,3 +1878,146 @@ assets:
     materials: "carved stone, dark steel, tarnished brass"
     constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
     avoid: "cartoon signpost, bright path arrows, UI neon split"
+
+  - id: boss_node_marker_01
+    category: node_marker
+    outputName: boss_node_marker_01.png
+    prompt: "World node marker for story boss floor, severe crowned skull sigil mounted on cathedral iron crest, dark fantasy progression marker"
+    subject: "single world marker icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered icon, isolated, readable from top-down gameplay"
+    lighting: "low-key top-left with restrained bone and ember rim light"
+    palette: "bone ivory, black iron, cinder gold"
+    materials: "forged iron, carved bone, weathered brass"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "cartoon boss icon, bright halo, clean esports crest"
+
+  - id: boss_telegraph_sigil_01
+    category: fx_sheet
+    outputName: boss_telegraph_sigil_01.png
+    prompt: "Ritual boss telegraph sigil sheet, concentric grave-circles, runic wedges, chained cathedral glyphs, dark fantasy AOE warning effect"
+    subject: "single circular sigil effect asset"
+    style: "painterly dark fantasy VFX texture"
+    composition: "top-down circular glyph, centered, readable when scaled"
+    lighting: "self-illuminated spectral ember glow"
+    palette: "blood orange, grave teal, ash gold, soot black"
+    materials: "arcane smoke, etched brass, spectral flame"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "clean sci-fi HUD rings, neon cyberpunk circles, anime magic array"
+
+  - id: set_collection_card_01
+    category: ui_card
+    outputName: set_collection_card_01.png
+    prompt: "Collection card background for dark fantasy armor set, layered stone frame with relic clasps, parchment center, subtle ember-teal dual motif"
+    subject: "single UI collection card"
+    style: "painterly dark fantasy UI illustration"
+    composition: "landscape card frame with central content area"
+    lighting: "low-key vignette with restrained metallic highlights"
+    palette: "charcoal stone, tarnished gold, ember orange, grave teal"
+    materials: "weathered stone, worn parchment, brass trim"
+    constraints: "no text; safe negative space for overlay UI; original dark fantasy IP; no logos or trademarks; no watermark"
+    avoid: "flat card template, glossy mobile UI, bright fantasy banner"
+
+  - id: branch_route_card_molten_01
+    category: ui_card
+    outputName: branch_route_card_molten_01.png
+    prompt: "Route choice card for molten branch, lava caverns, furnace arches, cracked basalt path, oppressive dark fantasy travel panel"
+    subject: "single branch route card"
+    style: "painterly dark fantasy UI illustration"
+    composition: "landscape panel with clear central vista and frame-safe margins"
+    lighting: "low-key with molten fissure glow"
+    palette: "basalt black, ember orange, sulfur gold"
+    materials: "cracked stone, lava glass, soot haze"
+    constraints: "no text; safe negative space for overlay UI; original dark fantasy IP; no logos or trademarks; no watermark"
+    avoid: "bright volcano postcard, saturated cartoon lava, clean concept paintover"
+
+  - id: branch_route_card_frozen_01
+    category: ui_card
+    outputName: branch_route_card_frozen_01.png
+    prompt: "Route choice card for frozen branch, frost halls, shattered ice columns, wind-carved bridge, oppressive dark fantasy travel panel"
+    subject: "single branch route card"
+    style: "painterly dark fantasy UI illustration"
+    composition: "landscape panel with clear central vista and frame-safe margins"
+    lighting: "low-key with cold moonlit edge"
+    palette: "iron blue, glacier cyan, dead silver"
+    materials: "frosted stone, cracked ice, windblown snow"
+    constraints: "no text; safe negative space for overlay UI; original dark fantasy IP; no logos or trademarks; no watermark"
+    avoid: "bright winter postcard, cute snow scene, glossy fantasy wallpaper"
+
+  - id: biome_transition_panel_catacombs_01
+    category: ui_panel
+    outputName: biome_transition_panel_catacombs_01.png
+    prompt: "Biome transition panel for forgotten catacombs, torchlit ossuary corridor with collapsed arches and stacked crypt niches, dark fantasy chapter panel"
+    subject: "single wide transition panel"
+    style: "painterly dark fantasy UI illustration"
+    composition: "wide cinematic panel with left-right depth and central title-safe area"
+    lighting: "low-key torchlight and deep shadow"
+    palette: "bone ivory, damp umber, smoke gold"
+    materials: "wet stone, bone, ancient mortar"
+    constraints: "no text; safe negative space for overlay UI; original dark fantasy IP; no logos or trademarks; no watermark"
+    avoid: "bright dungeon postcard, generic stone tunnel, cartoon skeletons"
+
+  - id: biome_transition_panel_molten_01
+    category: ui_panel
+    outputName: biome_transition_panel_molten_01.png
+    prompt: "Biome transition panel for molten caverns, cathedral-scale magma trench with hanging chains and black furnace ribs, dark fantasy chapter panel"
+    subject: "single wide transition panel"
+    style: "painterly dark fantasy UI illustration"
+    composition: "wide cinematic panel with central title-safe area"
+    lighting: "low-key with lava underglow"
+    palette: "obsidian black, ember orange, sulfur brass"
+    materials: "basalt, molten glass, forged iron"
+    constraints: "no text; safe negative space for overlay UI; original dark fantasy IP; no logos or trademarks; no watermark"
+    avoid: "bright volcano landscape, generic hellscape, cartoon magma river"
+
+  - id: biome_transition_panel_frozen_01
+    category: ui_panel
+    outputName: biome_transition_panel_frozen_01.png
+    prompt: "Biome transition panel for frozen halls, vast frost nave with shattered ice windows and hoarfrost statues, dark fantasy chapter panel"
+    subject: "single wide transition panel"
+    style: "painterly dark fantasy UI illustration"
+    composition: "wide cinematic panel with central title-safe area"
+    lighting: "low-key moonlit frost sheen"
+    palette: "iron blue, glacier cyan, pale silver"
+    materials: "ice, frozen stone, rime-coated metal"
+    constraints: "no text; safe negative space for overlay UI; original dark fantasy IP; no logos or trademarks; no watermark"
+    avoid: "bright winter castle postcard, clean crystal palace, cheerful snow fantasy"
+
+  - id: biome_transition_panel_phantom_01
+    category: ui_panel
+    outputName: biome_transition_panel_phantom_01.png
+    prompt: "Biome transition panel for phantom graveyard, spectral grave sea with leaning mausoleums and soul lantern fog, dark fantasy chapter panel"
+    subject: "single wide transition panel"
+    style: "painterly dark fantasy UI illustration"
+    composition: "wide cinematic panel with central title-safe area"
+    lighting: "low-key with spectral teal fog bloom"
+    palette: "grave teal, ash gray, bone ivory"
+    materials: "weathered stone, ghost flame, grave mist"
+    constraints: "no text; safe negative space for overlay UI; original dark fantasy IP; no logos or trademarks; no watermark"
+    avoid: "cute cemetery, halloween cartoon ghost, bright horror neon"
+
+  - id: biome_transition_panel_venom_01
+    category: ui_panel
+    outputName: biome_transition_panel_venom_01.png
+    prompt: "Biome transition panel for venom swamp, rotted causeway through toxic marsh with hanging roots and diseased bloom, dark fantasy chapter panel"
+    subject: "single wide transition panel"
+    style: "painterly dark fantasy UI illustration"
+    composition: "wide cinematic panel with central title-safe area"
+    lighting: "low-key with sickly phosphor reflections"
+    palette: "poison green, peat brown, rotten gold"
+    materials: "stagnant water, rotten wood, corroded bronze"
+    constraints: "no text; safe negative space for overlay UI; original dark fantasy IP; no logos or trademarks; no watermark"
+    avoid: "bright jungle swamp, cartoon poison goo, high-sat slime fantasy"
+
+  - id: biome_transition_panel_bone_01
+    category: ui_panel
+    outputName: biome_transition_panel_bone_01.png
+    prompt: "Biome transition panel for bone throne, monumental ossuary court with throne dais, rib vaults and judge-like bone architecture, dark fantasy chapter panel"
+    subject: "single wide transition panel"
+    style: "painterly dark fantasy UI illustration"
+    composition: "wide cinematic panel with central title-safe area"
+    lighting: "low-key with ritual gold and bone glow"
+    palette: "bone ivory, soot black, old gold"
+    materials: "carved bone, black stone, tarnished brass"
+    constraints: "no text; safe negative space for overlay UI; original dark fantasy IP; no logos or trademarks; no watermark"
+    avoid: "bright throne room concept art, clean skeletal palace, heroic fantasy hall"
