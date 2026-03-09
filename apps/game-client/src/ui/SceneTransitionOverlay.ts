@@ -1,4 +1,4 @@
-import { resolveGeneratedAssetUrl } from "../assets/imageAsset";
+import { detectPreferredImageFormat, resolveGeneratedAssetUrl } from "../assets/imageAsset";
 
 interface SceneTransitionOptions {
   title: string;
@@ -10,6 +10,7 @@ interface SceneTransitionOptions {
 }
 
 let hideTimer: number | null = null;
+const preferredImageFormat = detectPreferredImageFormat();
 
 function getOverlayRoot(): HTMLDivElement | null {
   if (typeof document === "undefined") {
@@ -41,11 +42,11 @@ export function playSceneTransition(options: SceneTransitionOptions): void {
   const backdropHtml =
     options.backdropAssetId === undefined
       ? ""
-      : `<img class="scene-transition-backdrop" src="${resolveGeneratedAssetUrl(options.backdropAssetId, "webp")}" alt="" />`;
+      : `<img class="scene-transition-backdrop" src="${resolveGeneratedAssetUrl(options.backdropAssetId, preferredImageFormat)}" alt="" />`;
   const accentHtml =
     options.accentAssetId === undefined
       ? ""
-      : `<img class="scene-transition-accent" src="${resolveGeneratedAssetUrl(options.accentAssetId, "webp")}" alt="" />`;
+      : `<img class="scene-transition-accent" src="${resolveGeneratedAssetUrl(options.accentAssetId, preferredImageFormat)}" alt="" />`;
   root.innerHTML = `
     <div class="scene-transition-card ${options.mode === "floor" ? "floor" : "scene"}">
       ${backdropHtml}
