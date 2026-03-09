@@ -5,7 +5,7 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     id: "mysterious_shrine",
     name: "Mysterious Shrine",
     description: "A pulsing shrine asks for tribute.",
-    floorRange: { min: 1, max: 5 },
+    floorRange: { min: 1, max: 8 },
     spawnWeight: 18,
     choices: [
       {
@@ -37,7 +37,7 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     id: "trapped_chest",
     name: "Trapped Chest",
     description: "An ornate chest hums with pressure runes.",
-    floorRange: { min: 2, max: 5 },
+    floorRange: { min: 2, max: 8 },
     spawnWeight: 16,
     choices: [
       {
@@ -69,7 +69,7 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     id: "wandering_merchant",
     name: "Wandering Merchant",
     description: "A cloaked trader offers relics for Obol.",
-    floorRange: { min: 2, max: 5 },
+    floorRange: { min: 2, max: 8 },
     spawnWeight: 14,
     unlockId: "wandering_merchant",
     choices: [
@@ -88,10 +88,38 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     ]
   },
   {
+    id: "forge_anvil",
+    name: "Forge Anvil",
+    description: "An ancient anvil still glows, inviting one careful tempering.",
+    floorRange: { min: 3, max: 3 },
+    spawnWeight: 1,
+    choices: [
+      {
+        id: "temper_weapon",
+        name: "Temper Weapon",
+        description: "Spend Obol to temper a floor-scaled weapon.",
+        cost: { type: "obol", amount: 10 },
+        rewards: [{ type: "item", lootTableId: "cathedral_depths" }, { type: "xp", amount: 20 }]
+      },
+      {
+        id: "etch_blueprint",
+        name: "Etch Blueprint",
+        description: "Study the forge marks to uncover a hidden plan.",
+        rewards: [{ type: "blueprint", blueprintId: "bp_weapon_hammer" }, { type: "mana", amount: 16 }]
+      },
+      {
+        id: "leave",
+        name: "Leave",
+        description: "Preserve your pace and move on.",
+        rewards: []
+      }
+    ]
+  },
+  {
     id: "cursed_altar",
     name: "Cursed Altar",
     description: "Blood sigils promise strength for pain.",
-    floorRange: { min: 3, max: 5 },
+    floorRange: { min: 3, max: 8 },
     spawnWeight: 12,
     choices: [
       {
@@ -123,7 +151,7 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     id: "fallen_adventurer",
     name: "Fallen Adventurer",
     description: "A dying warrior offers their last stash.",
-    floorRange: { min: 1, max: 5 },
+    floorRange: { min: 1, max: 8 },
     spawnWeight: 15,
     choices: [
       {
@@ -153,7 +181,7 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     id: "unstable_portal",
     name: "Unstable Portal",
     description: "A crackling rift twists local reality.",
-    floorRange: { min: 3, max: 5 },
+    floorRange: { min: 3, max: 8 },
     biomeIds: ["molten_caverns", "frozen_halls", "bone_throne"],
     spawnWeight: 10,
     unlockId: "unstable_portal",
@@ -187,10 +215,43 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     ]
   },
   {
+    id: "gambler_cache",
+    name: "Gambler Cache",
+    description: "A locked coffer demands a wager before it reveals its haul.",
+    floorRange: { min: 5, max: 5 },
+    spawnWeight: 1,
+    choices: [
+      {
+        id: "double_down",
+        name: "Double Down",
+        description: "Pay heavily for a high-end gamble.",
+        cost: { type: "obol", amount: 16 },
+        rewards: [{ type: "item", lootTableId: "catacomb_elite" }, { type: "obol", amount: 6 }],
+        risk: {
+          chance: 0.45,
+          penalty: { type: "health", amount: 20 }
+        }
+      },
+      {
+        id: "safe_pull",
+        name: "Safe Pull",
+        description: "Take a smaller pull with steadier value.",
+        cost: { type: "obol", amount: 8 },
+        rewards: [{ type: "item", lootTableId: "cathedral_depths" }, { type: "consumable", consumableId: "mana_potion", amount: 1 }]
+      },
+      {
+        id: "walk",
+        name: "Walk Away",
+        description: "Leave the cache sealed.",
+        rewards: []
+      }
+    ]
+  },
+  {
     id: "abyss_contract",
     name: "Abyss Contract",
     description: "An ink-black contract promises delayed profit at a steep premium.",
-    floorRange: { min: 6, max: 30 },
+    floorRange: { min: 9, max: 30 },
     spawnWeight: 9,
     choices: [
       {
@@ -233,7 +294,7 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     id: "war_trophy_ledger",
     name: "War Trophy Ledger",
     description: "A quartermaster ledger offers boss-bounty claims in advance.",
-    floorRange: { min: 7, max: 30 },
+    floorRange: { min: 10, max: 30 },
     spawnWeight: 8,
     choices: [
       {
@@ -275,7 +336,7 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     id: "echo_loan",
     name: "Echo Loan",
     description: "A broker offers floor-indexed credit backed by future loot rights.",
-    floorRange: { min: 8, max: 30 },
+    floorRange: { min: 11, max: 30 },
     spawnWeight: 7,
     choices: [
       {

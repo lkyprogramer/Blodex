@@ -129,4 +129,21 @@ describe("renderRunSummaryScreen", () => {
     expect(html).toContain("Rhythm");
     expect(html).toContain("4.1 casts / 30s");
   });
+
+  it("renders floor progress against story max floor when provided", () => {
+    const html = renderRunSummaryScreen({
+      isVictory: false,
+      floorReached: 7,
+      storyMaxFloor: 8,
+      kills: 29,
+      lootCollected: 14,
+      obolsEarned: 31,
+      soulShardsEarned: 9,
+      elapsedMs: 180_000,
+      leveledTo: 10,
+      difficulty: "nightmare"
+    });
+
+    expect(html).toContain("7 / 8");
+  });
 });

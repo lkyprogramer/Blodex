@@ -2,8 +2,9 @@ import type { DifficultyMode } from "./contracts/types";
 import { getDifficultyModifier } from "./difficulty";
 import { estimateStoryFloorPacingOverheadMs } from "./pacingModel";
 import { SeededRng } from "./rng";
+import { PHASE6_BASELINE_MAX_FLOOR } from "./storyRun";
 
-const DEFAULT_FLOORS = 5;
+const DEFAULT_FLOORS = PHASE6_BASELINE_MAX_FLOOR;
 
 const BEHAVIOR_POWER: Record<BalanceConfig["playerBehavior"], number> = {
   optimal: 1.26,

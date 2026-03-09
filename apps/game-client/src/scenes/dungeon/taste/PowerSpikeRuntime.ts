@@ -1,6 +1,10 @@
 import {
+  DEFAULT_STORY_MAX_FLOOR,
   SeededRng,
   deriveEquippedPlayerStats,
+  isTerminalStoryPowerSpikePairId,
+  resolveStoryPowerSpikePairId,
+  resolveStoryPowerSpikePairIds,
   resolveSpecialAffixTotals,
   rollItemDrop,
   type ItemDef,
@@ -73,8 +77,6 @@ interface GuaranteedSpikeRewardOptions {
   isItemEligible?: (itemDef: ItemDef) => boolean;
 }
 
-const POWER_SPIKE_PAIR_IDS: PowerSpikePairId[] = ["1-2", "3-4", "5"];
-
 function createEmptyPairState(): PowerSpikePairBudgetState {
   return {
     hitCount: 0,
@@ -145,14 +147,12 @@ function simulatePlayerWithCandidateItem(player: PlayerState, candidate: ItemIns
   };
 }
 
-export function resolvePowerSpikePairId(floor: number): PowerSpikePairId {
-  if (floor <= 2) {
-    return "1-2";
-  }
-  if (floor <= 4) {
-    return "3-4";
-  }
-  return "5";
+export function resolvePowerSpikePairIds(maxFloors = DEFAULT_STORY_MAX_FLOOR): PowerSpikePairId[] {
+  return resolveStoryPowerSpikePairIds(maxFloors) as PowerSpikePairId[];
+}
+
+export function resolvePowerSpikePairId(floor: number, maxFloors = DEFAULT_STORY_MAX_FLOOR): PowerSpikePairId {
+  return resolveStoryPowerSpikePairId(floor, maxFloors) as PowerSpikePairId;
 }
 
 export function resolvePowerSpikeSourceKind(source: string): PowerSpikeSourceKind {
@@ -330,35 +330,44 @@ export function resolveGuaranteedSpikeReward(options: GuaranteedSpikeRewardOptio
 }
 
 export class PowerSpikeBudgetTracker {
-  private state: PowerSpikeBudgetRuntimeState = {
-    pairStates: {
-      "1-2": createEmptyPairState(),
-      "3-4": createEmptyPairState(),
-      "5": createEmptyPairState()
-    },
-    acceptedSpikeCount: 0,
-    majorSpikeCount: 0
-  };
+  private readonly pairIds: PowerSpikePairId[];
+  private state: PowerSpikeBudgetRuntimeState;
 
-  resetRun(): void {
-    this.state = {
-      pairStates: {
-        "1-2": createEmptyPairState(),
-        "3-4": createEmptyPairState(),
-        "5": createEmptyPairState()
-      },
+  constructor(private readonly maxFloors = DEFAULT_STORY_MAX_FLOOR) {
+    this.pairIds = resolvePowerSpikePairIds(maxFloors);
+    this.state = this.createEmptyState();
+  }
+
+  private createEmptyState(): PowerSpikeBudgetRuntimeState {
+    return {
+      pairStates: Object.fromEntries(this.pairIds.map((pairId) => [pairId, createEmptyPairState()])) as Record<
+        PowerSpikePairId,
+        PowerSpikePairBudgetState
+      >,
       acceptedSpikeCount: 0,
       majorSpikeCount: 0
     };
   }
 
+  private requirePairState(pairId: PowerSpikePairId): PowerSpikePairBudgetState {
+    const existing = this.state.pairStates[pairId];
+    if (existing !== undefined) {
+      return existing;
+    }
+    const created = createEmptyPairState();
+    this.state.pairStates[pairId] = created;
+    return created;
+  }
+
+  resetRun(): void {
+    this.state = this.createEmptyState();
+  }
+
   exportRuntimeState(): PowerSpikeBudgetRuntimeState {
     return {
-      pairStates: {
-        "1-2": { ...this.state.pairStates["1-2"] },
-        "3-4": { ...this.state.pairStates["3-4"] },
-        "5": { ...this.state.pairStates["5"] }
-      },
+      pairStates: Object.fromEntries(
+        this.pairIds.map((pairId) => [pairId, { ...this.state.pairStates[pairId] }])
+      ) as Record<PowerSpikePairId, PowerSpikePairBudgetState>,
       acceptedSpikeCount: this.state.acceptedSpikeCount,
       majorSpikeCount: this.state.majorSpikeCount
     };
@@ -370,11 +379,9 @@ export class PowerSpikeBudgetTracker {
       return;
     }
     this.state = {
-      pairStates: {
-        "1-2": { ...state.pairStates["1-2"] },
-        "3-4": { ...state.pairStates["3-4"] },
-        "5": { ...state.pairStates["5"] }
-      },
+      pairStates: Object.fromEntries(
+        this.pairIds.map((pairId) => [pairId, { ...state.pairStates[pairId] }])
+      ) as Record<PowerSpikePairId, PowerSpikePairBudgetState>,
       acceptedSpikeCount: state.acceptedSpikeCount,
       majorSpikeCount: state.majorSpikeCount
     };
@@ -384,8 +391,8 @@ export class PowerSpikeBudgetTracker {
     if (!amplitude.accepted) {
       return;
     }
-    const pairId = resolvePowerSpikePairId(floor);
-    const pairState = this.state.pairStates[pairId];
+    const pairId = resolvePowerSpikePairId(floor, this.maxFloors);
+    const pairState = this.requirePairState(pairId);
     pairState.hitCount += 1;
     pairState.satisfied = true;
     if (amplitude.major) {
@@ -396,16 +403,16 @@ export class PowerSpikeBudgetTracker {
   }
 
   needsFallbackReward(floor: number): boolean {
-    const pairId = resolvePowerSpikePairId(floor);
-    const pairState = this.state.pairStates[pairId];
-    if (pairId === "5") {
+    const pairId = resolvePowerSpikePairId(floor, this.maxFloors);
+    const pairState = this.requirePairState(pairId);
+    if (isTerminalStoryPowerSpikePairId(pairId, this.maxFloors)) {
       return false;
     }
     return !pairState.satisfied && !pairState.fallbackGranted;
   }
 
   markFallbackGranted(floor: number): void {
-    this.state.pairStates[resolvePowerSpikePairId(floor)].fallbackGranted = true;
+    this.requirePairState(resolvePowerSpikePairId(floor, this.maxFloors)).fallbackGranted = true;
   }
 
   hasMajorSpike(): boolean {
@@ -413,7 +420,7 @@ export class PowerSpikeBudgetTracker {
   }
 
   isPairSatisfied(pairId: PowerSpikePairId): boolean {
-    return this.state.pairStates[pairId].satisfied;
+    return this.requirePairState(pairId).satisfied;
   }
 
   snapshot(): PowerSpikeBudgetRuntimeState {

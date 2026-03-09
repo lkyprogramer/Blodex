@@ -3,6 +3,7 @@ import type {
   BossRewardPolicyDef,
   BossTelegraphProfileDef
 } from "./types";
+import { STORY_MAX_FLOOR } from "./config";
 
 export const BOSS_REWARD_POLICIES: BossRewardPolicyDef[] = [
   {
@@ -84,7 +85,7 @@ export const BOSS_ENCOUNTERS: BossEncounterDef[] = [
     encounterType: "story",
     selector: {
       kind: "story_floor",
-      floor: 5
+      floor: STORY_MAX_FLOOR
     },
     rewardPolicyId: "story_victory_default",
     telegraphProfileId: "bone_throne_default",
@@ -96,7 +97,7 @@ export const BOSS_ENCOUNTERS: BossEncounterDef[] = [
     encounterType: "branch",
     selector: {
       kind: "branch_route",
-      floor: 5,
+      floor: STORY_MAX_FLOOR,
       route: "molten_route"
     },
     rewardPolicyId: "branch_molten_ember_warden",
@@ -109,7 +110,7 @@ export const BOSS_ENCOUNTERS: BossEncounterDef[] = [
     encounterType: "branch",
     selector: {
       kind: "branch_route",
-      floor: 5,
+      floor: STORY_MAX_FLOOR,
       route: "frozen_route"
     },
     rewardPolicyId: "branch_frozen_cathedral_judge",
@@ -123,7 +124,7 @@ export const BOSS_ENCOUNTERS: BossEncounterDef[] = [
     selector: {
       kind: "challenge",
       challengeId: "ossuary_trial",
-      floor: 4
+      floor: STORY_MAX_FLOOR - 1
     },
     rewardPolicyId: "challenge_ossuary_keeper_default",
     telegraphProfileId: "ossuary_keeper_default",

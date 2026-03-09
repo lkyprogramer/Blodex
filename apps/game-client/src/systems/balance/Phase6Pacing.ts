@@ -1,6 +1,6 @@
 import type { DifficultyMode, RunSimulation } from "@blodex/core";
 import { defaultBaseStats, deriveStats } from "@blodex/core";
-import { GAME_CONFIG, getFloorConfig } from "@blodex/content";
+import { GAME_CONFIG } from "@blodex/content";
 
 export interface FloorPacingTarget {
   floor: number;
@@ -48,18 +48,32 @@ export interface PacingAssessment {
   alerts: string[];
 }
 
+function resolvePhase6BaselineMonsterCount(floor: number): number {
+  if (floor >= 5) {
+    return 1;
+  }
+  return 12 + (floor - 1) * 2;
+}
+
+function resolvePhase6BaselineRevealThreshold(floor: number, monsterCount: number): number {
+  if (floor >= 5) {
+    return 1;
+  }
+  return Math.ceil(monsterCount * 0.7);
+}
+
 function createFloorTargets(targetDurationsMs: readonly number[]): FloorPacingTarget[] {
   return targetDurationsMs.map((targetDurationMs, index) => {
     const floor = index + 1;
-    const floorConfig = getFloorConfig(floor);
+    const monsterCount = resolvePhase6BaselineMonsterCount(floor);
     const slackMs = floor >= 4 ? 75_000 : floor === 3 ? 60_000 : 45_000;
     return {
       floor,
       minDurationMs: targetDurationMs - slackMs,
       targetDurationMs,
       maxDurationMs: targetDurationMs + slackMs,
-      monsterCount: floorConfig.monsterCount,
-      revealThresholdKills: Math.ceil(floorConfig.monsterCount * floorConfig.clearThreshold),
+      monsterCount,
+      revealThresholdKills: resolvePhase6BaselineRevealThreshold(floor, monsterCount),
       mapWidth: GAME_CONFIG.gridWidth,
       mapHeight: GAME_CONFIG.gridHeight
     };

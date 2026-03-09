@@ -1,7 +1,9 @@
 import Phaser from "phaser";
 import {
   canPayEventCost,
+  isGuaranteedMerchantFloor,
   pickRandomEvent,
+  resolveGuaranteedEventIdForFloor,
   resolveEndlessMutatorModifiers,
   rollEventRisk,
   type RandomEventDef,
@@ -14,8 +16,6 @@ import { MerchantFlowService } from "./MerchantFlowService";
 import type { RuntimeEventHost } from "./types";
 
 const FLOOR_EVENT_SPAWN_CHANCE = 0.62;
-const GUARANTEED_MERCHANT_FLOORS = new Set<number>([2, 4]);
-
 export interface EventRuntimeModuleOptions {
   host: RuntimeEventHost;
   resolutionService: EventResolutionService;
@@ -29,6 +29,9 @@ export class EventRuntimeModule {
     const host = this.options.host;
     this.destroyEventNode();
     if (host.floorConfig.isBossFloor) {
+      return;
+    }
+    if (this.setupGuaranteedFloorEvent(nowMs)) {
       return;
     }
     if (this.setupGuaranteedMerchantEvent(nowMs)) {
@@ -61,7 +64,7 @@ export class EventRuntimeModule {
     if (!host.unlockedEventIds.includes("wandering_merchant")) {
       return false;
     }
-    if (!GUARANTEED_MERCHANT_FLOORS.has(host.run.currentFloor)) {
+    if (!isGuaranteedMerchantFloor(host.run.currentFloor)) {
       return false;
     }
     const merchantEvent = RANDOM_EVENT_DEFS.find((eventDef) => eventDef.id === "wandering_merchant");
@@ -73,6 +76,24 @@ export class EventRuntimeModule {
       return false;
     }
     this.createEventNode(merchantEvent, position, nowMs);
+    return true;
+  }
+
+  private setupGuaranteedFloorEvent(nowMs: number): boolean {
+    const host = this.options.host;
+    const guaranteedEventId = resolveGuaranteedEventIdForFloor(host.run.currentFloor);
+    if (guaranteedEventId === undefined) {
+      return false;
+    }
+    const eventDef = RANDOM_EVENT_DEFS.find((entry) => entry.id === guaranteedEventId);
+    if (eventDef === undefined) {
+      return false;
+    }
+    const position = this.pickFloorEventPosition();
+    if (position === null) {
+      return false;
+    }
+    this.createEventNode(eventDef, position, nowMs);
     return true;
   }
 

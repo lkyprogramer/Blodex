@@ -59,4 +59,10 @@ describe("floor", () => {
     };
     expect(isPlayerOnStaircase(option0.position, visible, 0.8)).toBe(true);
   });
+
+  it("creates a second branch staircase on floor 6", () => {
+    const state = createStaircaseState(makeLayout(), undefined, 6);
+    expect(state.kind).toBe("branch");
+    expect(state.options).toHaveLength(2);
+  });
 });

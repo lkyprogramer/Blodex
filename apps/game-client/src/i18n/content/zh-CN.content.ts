@@ -174,6 +174,15 @@ const EVENT_ZH: Readonly<
       leave: { name: "离开", description: "暂时不需要。" }
     }
   },
+  forge_anvil: {
+    name: "古锻铁砧",
+    description: "一座仍在发热的古老铁砧邀请你进行一次精炼。",
+    choices: {
+      temper_weapon: { name: "锻打武器", description: "花费欧铂，锻打一件随层成长的武器。" },
+      etch_blueprint: { name: "描刻蓝图", description: "研究炉印，发掘一份隐藏工艺。" },
+      leave: { name: "离开", description: "维持节奏，继续前进。" }
+    }
+  },
   cursed_altar: {
     name: "诅咒祭坛",
     description: "血色符印承诺以痛苦换取力量。",
@@ -198,6 +207,15 @@ const EVENT_ZH: Readonly<
       attune: { name: "调谐", description: "获得洞察并揭示地图目标。" },
       harvest: { name: "萃取", description: "提取欧铂，但可能反噬。" },
       seal: { name: "封印", description: "稳定裂隙后离开。" }
+    }
+  },
+  gambler_cache: {
+    name: "赌徒秘匣",
+    description: "一只密封赌匣要求你先下注，才肯吐出内容。",
+    choices: {
+      double_down: { name: "重注豪赌", description: "付出更高欧铂，换取高阶赌注。" },
+      safe_pull: { name: "稳妥抽取", description: "付出较少欧铂，获取更稳的收益。" },
+      walk: { name: "转身离开", description: "保持克制，让赌匣继续沉睡。" }
     }
   },
   abyss_contract: {

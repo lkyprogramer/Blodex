@@ -257,7 +257,8 @@ function makeSave(): RunSaveDataV3 {
         pairStates: {
           "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
           "3-4": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
-          "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+          "5-6": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
+          "7-8": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
         },
         acceptedSpikeCount: 1,
         majorSpikeCount: 0
@@ -357,7 +358,8 @@ describe("save", () => {
         pairStates: {
           "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
           "3-4": { hitCount: "0", majorHitCount: 0, satisfied: false, fallbackGranted: false },
-          "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+          "5-6": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
+          "7-8": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
         },
         acceptedSpikeCount: 1,
         majorSpikeCount: 0

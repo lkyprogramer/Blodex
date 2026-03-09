@@ -8,7 +8,7 @@ import { createRunState } from "../run";
 import { defaultBaseStats, deriveStats } from "../stats";
 
 describe("phase4c integration", () => {
-  it("routes F3/F4 biome by branch choice", () => {
+  it("routes F3-F6 biome by branch choice before bone throne finale", () => {
     const layout = {
       width: 24,
       height: 24,
@@ -37,8 +37,10 @@ describe("phase4c integration", () => {
     expect(side).toBe("left");
     const choice = resolveBranchChoiceFromSide(side!);
     expect(resolveBiomeForFloorBySeed(3, "run-seed-x", choice)).toBe("molten_caverns");
-    expect(resolveBiomeForFloorBySeed(4, "run-seed-x", choice)).toBe("phantom_graveyard");
-    expect(resolveBiomeForFloorBySeed(5, "run-seed-x", choice)).toBe("bone_throne");
+    expect(resolveBiomeForFloorBySeed(4, "run-seed-x", choice)).toBe("molten_caverns");
+    expect(resolveBiomeForFloorBySeed(5, "run-seed-x", choice)).toBe("phantom_graveyard");
+    expect(resolveBiomeForFloorBySeed(6, "run-seed-x", choice)).toBe("phantom_graveyard");
+    expect(resolveBiomeForFloorBySeed(7, "run-seed-x", choice)).toBe("bone_throne");
   });
 
   it("round-trips v3 branch staircase state at floor 2", () => {

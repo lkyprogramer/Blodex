@@ -55,6 +55,11 @@ describe("challengeRoom", () => {
     expect(shouldSpawnChallengeRoom(2, rng)).toBe(true);
   });
 
+  it("guarantees a challenge room on floor 7", () => {
+    const rng = makeRng([0.99, 0.99]);
+    expect(shouldSpawnChallengeRoom(7, rng)).toBe(true);
+  });
+
   it("selects and marks challenge room", () => {
     const layout = makeLayout();
     const room = chooseChallengeRoom(layout, makeRng([0.6]));

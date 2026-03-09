@@ -13,6 +13,11 @@ import type {
   StaircaseState
 } from "./contracts/types";
 import type { RunState } from "./run";
+import {
+  DEFAULT_STORY_MAX_FLOOR,
+  resolveStoryPowerSpikePairIds,
+  type StoryPowerSpikePairId
+} from "./storyRun";
 
 export const RUN_SAVE_STORAGE_KEY_V3 = "blodex_run_save_v3";
 export const RUN_SAVE_STORAGE_KEY = RUN_SAVE_STORAGE_KEY_V3;
@@ -100,7 +105,7 @@ export interface ProgressionPromptState {
   pendingLevelUpSkillOfferIds: string[];
 }
 
-export type PowerSpikePairId = "1-2" | "3-4" | "5";
+export type PowerSpikePairId = StoryPowerSpikePairId;
 
 export interface PowerSpikePairBudgetState {
   hitCount: number;
@@ -254,13 +259,15 @@ function isPowerSpikeBudgetRuntimeState(value: unknown): value is PowerSpikeBudg
   if (!isRecord(value) || !isRecord(value.pairStates)) {
     return false;
   }
-  return (
-    isPowerSpikePairBudgetState(value.pairStates["1-2"]) &&
-    isPowerSpikePairBudgetState(value.pairStates["3-4"]) &&
-    isPowerSpikePairBudgetState(value.pairStates["5"]) &&
-    isFiniteNumber(value.acceptedSpikeCount) &&
-    isFiniteNumber(value.majorSpikeCount)
-  );
+  const requiredPairIds = resolveStoryPowerSpikePairIds(DEFAULT_STORY_MAX_FLOOR);
+  const statePairIds = Object.keys(value.pairStates);
+  if (
+    statePairIds.length !== requiredPairIds.length ||
+    requiredPairIds.some((pairId) => !isPowerSpikePairBudgetState((value.pairStates as Record<string, unknown>)[pairId]))
+  ) {
+    return false;
+  }
+  return isFiniteNumber(value.acceptedSpikeCount) && isFiniteNumber(value.majorSpikeCount);
 }
 
 function isStringNumberRecord(value: unknown): value is Record<string, number> {

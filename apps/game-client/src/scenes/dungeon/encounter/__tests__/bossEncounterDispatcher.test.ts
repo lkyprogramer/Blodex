@@ -3,7 +3,7 @@ import { BONE_SOVEREIGN } from "@blodex/content";
 import { BossEncounterDispatcher } from "../BossEncounterDispatcher";
 
 function createDispatcher(
-  floor = 5,
+  floor = 8,
   branchChoice?: "molten_route" | "frozen_route",
   challengeRoomState?: { challengeId?: string; started: boolean; finished: boolean } | null
 ) {
@@ -37,7 +37,7 @@ describe("BossEncounterDispatcher", () => {
   });
 
   it("prefers branch encounters when a route-specific entry exists", () => {
-    const dispatcher = createDispatcher(5, "molten_route");
+    const dispatcher = createDispatcher(8, "molten_route");
 
     const resolved = dispatcher.prepareEncounter();
 
@@ -49,7 +49,7 @@ describe("BossEncounterDispatcher", () => {
   });
 
   it("can restore an explicit challenge encounter independently of the run route", () => {
-    const dispatcher = createDispatcher(4, "frozen_route");
+    const dispatcher = createDispatcher(7, "frozen_route");
 
     const resolved = dispatcher.resolveEncounter({
       encounterId: "challenge_ossuary_trial"
@@ -63,7 +63,7 @@ describe("BossEncounterDispatcher", () => {
   });
 
   it("resolves an active challenge encounter from runtime challenge state", () => {
-    const dispatcher = createDispatcher(4, undefined, {
+    const dispatcher = createDispatcher(7, undefined, {
       challengeId: "ossuary_trial",
       started: true,
       finished: false
@@ -78,7 +78,7 @@ describe("BossEncounterDispatcher", () => {
   });
 
   it("does not resolve a floor-bound challenge encounter when the floor does not match", () => {
-    const dispatcher = createDispatcher(3, undefined, {
+    const dispatcher = createDispatcher(6, undefined, {
       challengeId: "ossuary_trial",
       started: true,
       finished: false

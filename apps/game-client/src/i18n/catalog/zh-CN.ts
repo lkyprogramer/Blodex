@@ -548,7 +548,7 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "log.debug.boss_victory_opened": "已打开 Boss 胜利选择。",
   "log.debug.daily_cannot_enter_abyss": "每日模式不能进入深渊。",
   "log.debug.already_in_abyss": "当前已经处于深渊/无尽模式。",
-  "log.debug.abyss_requires_floor_five": "进入深渊前需要先到达第 5 层。",
+  "log.debug.abyss_requires_floor_five": "进入深渊前需要先到达第 {floor} 层。",
   "log.debug.abyss_entered": "已强制在第 {floor} 层进入深渊。",
   "log.debug.floor_advanced": "已推进到第 {floor} 层。",
   "log.debug.floor_advanced_endless": "已推进到第 {floor} 层（无尽层数 {endlessFloor}）。",

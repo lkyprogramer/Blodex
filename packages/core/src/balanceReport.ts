@@ -1,4 +1,5 @@
 import { simulateRun, type BalanceConfig, type RunSimulation } from "./balance";
+import { DEFAULT_STORY_MAX_FLOOR, PHASE6_BASELINE_MAX_FLOOR } from "./storyRun";
 
 export interface BalanceReportScenario {
   name: string;
@@ -23,28 +24,59 @@ export const DEFAULT_BALANCE_REPORT_SCENARIOS: readonly BalanceReportScenario[] 
     name: "normal-average",
     config: {
       difficulty: "normal",
-      playerBehavior: "average"
+      playerBehavior: "average",
+      maxFloors: PHASE6_BASELINE_MAX_FLOOR
     }
   },
   {
     name: "hard-optimal",
     config: {
       difficulty: "hard",
-      playerBehavior: "optimal"
+      playerBehavior: "optimal",
+      maxFloors: PHASE6_BASELINE_MAX_FLOOR
     }
   },
   {
     name: "hard-average",
     config: {
       difficulty: "hard",
-      playerBehavior: "average"
+      playerBehavior: "average",
+      maxFloors: PHASE6_BASELINE_MAX_FLOOR
     }
   },
   {
     name: "nightmare-optimal",
     config: {
       difficulty: "nightmare",
-      playerBehavior: "optimal"
+      playerBehavior: "optimal",
+      maxFloors: PHASE6_BASELINE_MAX_FLOOR
+    }
+  }
+] as const;
+
+export const PHASE7_LONG_RUN_REPORT_SCENARIOS: readonly BalanceReportScenario[] = [
+  {
+    name: "longrun-normal-average",
+    config: {
+      difficulty: "normal",
+      playerBehavior: "average",
+      maxFloors: DEFAULT_STORY_MAX_FLOOR
+    }
+  },
+  {
+    name: "longrun-hard-average",
+    config: {
+      difficulty: "hard",
+      playerBehavior: "average",
+      maxFloors: DEFAULT_STORY_MAX_FLOOR
+    }
+  },
+  {
+    name: "longrun-nightmare-optimal",
+    config: {
+      difficulty: "nightmare",
+      playerBehavior: "optimal",
+      maxFloors: DEFAULT_STORY_MAX_FLOOR
     }
   }
 ] as const;

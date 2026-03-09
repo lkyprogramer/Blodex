@@ -1,5 +1,7 @@
 import type { DifficultyMode, GameConfig } from "./types";
 
+export const STORY_MAX_FLOOR = 8;
+
 export const GAME_CONFIG: GameConfig = {
   tileWidth: 96,
   tileHeight: 48,
@@ -7,7 +9,7 @@ export const GAME_CONFIG: GameConfig = {
   gridHeight: 64,
   floorClearKillTarget: 12,
   floorClearKillRatio: 0.7,
-  maxFloors: 5,
+  maxFloors: STORY_MAX_FLOOR,
   enemyBaseHealth: 85,
   enemyBaseDamage: 7
 };
