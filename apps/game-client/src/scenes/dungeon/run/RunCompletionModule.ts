@@ -27,6 +27,7 @@ import {
   type RunSummary,
   type TypedEventBus
 } from "@blodex/core";
+import { GAME_CONFIG } from "@blodex/content";
 import type { LogLevel } from "../../../ui/Hud";
 import { resolveInitialRunSeed } from "./resolveInitialRunSeed";
 import { analyzeRunOutcome, type RunOutcomeAnalysis } from "../taste/RunOutcomeAnalyzer";
@@ -199,7 +200,8 @@ export class RunCompletionModule {
               host.run.mutatorActiveIds ?? []
             );
             let floorBonus = 0;
-            for (let floor = 6; floor <= host.run.currentFloor; floor += 1) {
+            const endlessStartFloor = (GAME_CONFIG.maxFloors ?? 8) + 1;
+            for (let floor = endlessStartFloor; floor <= host.run.currentFloor; floor += 1) {
               floorBonus += endlessFloorClearBonus(floor, host.run.mutatorActiveIds ?? []);
             }
             return kills * perKillReward + floorBonus;
@@ -219,6 +221,7 @@ export class RunCompletionModule {
 
     let summary = {
       ...baseSummary,
+      storyMaxFloor: GAME_CONFIG.maxFloors ?? 8,
       isVictory,
       soulShardsEarned: soulShards,
       obolsEarned: host.run.runEconomy.obols

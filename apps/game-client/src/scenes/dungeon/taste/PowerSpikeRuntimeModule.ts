@@ -16,7 +16,7 @@ import {
   type StaircaseState,
   type TypedEventBus
 } from "@blodex/core";
-import { ITEM_DEF_MAP, LOOT_TABLE_MAP } from "@blodex/content";
+import { GAME_CONFIG, ITEM_DEF_MAP, LOOT_TABLE_MAP } from "@blodex/content";
 import type { LogLevel } from "../../../ui/Hud";
 import type { MessageParams } from "../../../i18n/types";
 import type { BossEncounterRewardBinding } from "../encounter/BossEncounterDispatcher";
@@ -84,7 +84,7 @@ export interface PowerSpikeRuntimeModuleOptions {
 }
 
 export class PowerSpikeRuntimeModule {
-  private readonly budget = new PowerSpikeBudgetTracker();
+  private readonly budget = new PowerSpikeBudgetTracker(GAME_CONFIG.maxFloors);
 
   constructor(private readonly options: PowerSpikeRuntimeModuleOptions) {}
 

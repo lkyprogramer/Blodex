@@ -3,6 +3,7 @@ import {
   createBranchStaircaseState,
   resolveBranchSideAtPosition
 } from "./pathSelection";
+import { isStoryBranchFloor } from "./storyRun";
 
 function roomCenter(room: { x: number; y: number; width: number; height: number }): { x: number; y: number } {
   return {
@@ -44,7 +45,7 @@ export function createStaircaseState(
   playerSpawn: { x: number; y: number } = layout.playerSpawn,
   floorNumber = 1
 ): StaircaseState {
-  if (floorNumber === 2) {
+  if (isStoryBranchFloor(floorNumber)) {
     return createBranchStaircaseState(layout, playerSpawn);
   }
   return {

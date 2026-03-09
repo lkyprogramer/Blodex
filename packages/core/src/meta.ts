@@ -21,6 +21,7 @@ import {
   mapLegacyPermanentUpgradesToTalents,
   normalizeTalentPoints
 } from "./talent";
+import { DEFAULT_STORY_MAX_FLOOR } from "./storyRun";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -414,7 +415,7 @@ export function calculateSoulShardReward(run: RunState, isVictory: boolean): num
   const kills = Math.max(run.totalKills, run.kills);
   const killReward = kills;
   const floorReward = run.floorsCleared * 5;
-  const bossReward = run.currentFloor >= 5 ? 20 : 0;
+  const bossReward = run.currentFloor >= DEFAULT_STORY_MAX_FLOOR ? 20 : 0;
   const completionReward = isVictory ? 10 : 0;
   const earned = killReward + floorReward + bossReward + completionReward;
   if (isVictory) {

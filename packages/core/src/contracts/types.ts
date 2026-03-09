@@ -656,6 +656,7 @@ export interface Phase6TelemetryRuntimeState extends Phase6TelemetrySnapshot {
 
 export interface RunSummary {
   floorReached: number;
+  storyMaxFloor?: number;
   kills: number;
   lootCollected: number;
   elapsedMs: number;

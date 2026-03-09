@@ -3,6 +3,7 @@ import { deriveStats, type ItemInstance, type PlayerState } from "@blodex/core";
 import { ITEM_DEF_MAP, LOOT_TABLE_MAP } from "@blodex/content";
 import {
   PowerSpikeBudgetTracker,
+  resolvePowerSpikePairId,
   resolveGuaranteedSpikeReward,
   scorePowerSpikeFromBuildThreshold,
   scorePowerSpikeFromItem
@@ -120,6 +121,26 @@ describe("PowerSpikeRuntime", () => {
 
     expect(tracker.isPairSatisfied("1-2")).toBe(true);
     expect(tracker.snapshot().acceptedSpikeCount).toBe(1);
+  });
+
+  it("expands pair layout for 8-floor long runs", () => {
+    const tracker = new PowerSpikeBudgetTracker(8);
+
+    tracker.recordAcceptedSpike(6, {
+      offensiveDelta: 0.28,
+      defensiveDelta: 0.14,
+      utilityDelta: 0.05,
+      ttkDelta: 0.2,
+      sustainDelta: 0.06,
+      accepted: true,
+      major: false,
+      dominantAxis: "offense"
+    });
+
+    expect(resolvePowerSpikePairId(6, 8)).toBe("5-6");
+    expect(resolvePowerSpikePairId(8, 8)).toBe("7-8");
+    expect(tracker.isPairSatisfied("5-6")).toBe(true);
+    expect(tracker.needsFallbackReward(7)).toBe(false);
   });
 
   it("treats formed build thresholds as contract spikes", () => {

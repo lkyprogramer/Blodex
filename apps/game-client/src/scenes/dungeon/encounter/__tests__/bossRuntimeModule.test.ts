@@ -38,10 +38,10 @@ function createHost(): BossRuntimeHost {
         affixPolicy: "default",
         soulShardMultiplier: 1
       },
-      currentFloor: 5,
+      currentFloor: 8,
       currentBiomeId: "bone_throne",
-      floor: 5,
-      floorsCleared: 4,
+      floor: 8,
+      floorsCleared: 7,
       kills: 0,
       totalKills: 0,
       lootCollected: 0,
@@ -199,6 +199,8 @@ describe("BossRuntimeModule", () => {
 
   it("passes deferred compare binding through the boss reward settlement path", () => {
     const host = createHost();
+    host.run.currentFloor = 7;
+    host.run.floor = 7;
     host.flushBossRewardComparePrompts = vi.fn(() => true);
     const dispatcher = {
       resolveEncounter: vi.fn(() => ({
@@ -208,7 +210,7 @@ describe("BossRuntimeModule", () => {
             selector: {
               kind: "challenge",
               challengeId: "ossuary_trial",
-              floor: 4
+              floor: 7
             },
             rewardPolicyId: "challenge_ossuary_keeper_default",
             telegraphProfileId: "ossuary_keeper_default",

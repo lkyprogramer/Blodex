@@ -1,4 +1,5 @@
 import type { ChallengeRoomState, DungeonLayout, DungeonRoom, RngLike } from "./contracts/types";
+import { isGuaranteedChallengeFloor } from "./storyRun";
 
 export const CHALLENGE_DURATION_MS = 30_000;
 export const CHALLENGE_SPAWN_CHANCE_MIN = 0.1;
@@ -28,6 +29,9 @@ export function shouldSpawnChallengeRoom(
 ): boolean {
   if (floorNumber < 2) {
     return false;
+  }
+  if (isGuaranteedChallengeFloor(floorNumber)) {
+    return true;
   }
   const chance = pickSpawnChance(rng, minChance, maxChance);
   return rng.next() <= chance;

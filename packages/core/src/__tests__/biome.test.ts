@@ -10,15 +10,21 @@ describe("biome resolution", () => {
   it("resolves fixed floors for catacombs and bone throne", () => {
     expect(resolveBiomeForFloorBySeed(1, "seed-a")).toBe("forgotten_catacombs");
     expect(resolveBiomeForFloorBySeed(2, "seed-a")).toBe("forgotten_catacombs");
-    expect(resolveBiomeForFloorBySeed(5, "seed-a")).toBe("bone_throne");
+    expect(resolveBiomeForFloorBySeed(7, "seed-a")).toBe("bone_throne");
+    expect(resolveBiomeForFloorBySeed(8, "seed-a")).toBe("bone_throne");
   });
 
-  it("keeps floor 3/4 order stable for same seed", () => {
+  it("keeps floor 3/6 route order stable for same seed", () => {
     const seed = "stable-seed";
     const floor3 = resolveBiomeForFloorBySeed(3, seed);
     const floor4 = resolveBiomeForFloorBySeed(4, seed);
+    const floor5 = resolveBiomeForFloorBySeed(5, seed);
+    const floor6 = resolveBiomeForFloorBySeed(6, seed);
     expect([floor3, floor4]).toEqual([resolveBiomeForFloorBySeed(3, seed), resolveBiomeForFloorBySeed(4, seed)]);
-    expect(floor3).not.toBe(floor4);
+    expect([floor5, floor6]).toEqual([resolveBiomeForFloorBySeed(5, seed), resolveBiomeForFloorBySeed(6, seed)]);
+    expect(floor3).toBe(floor4);
+    expect(floor5).toBe(floor6);
+    expect(floor3).not.toBe(floor5);
   });
 
   it("produces at least two different mid-floor orders across seeds", () => {
@@ -32,7 +38,8 @@ describe("biome resolution", () => {
   it("maps floors with explicit mid order", () => {
     const order = resolveMidBiomeOrderByRoll(0.1);
     expect(resolveBiomeForFloor(3, order)).toBe(order[0]);
-    expect(resolveBiomeForFloor(4, order)).toBe(order[1]);
+    expect(resolveBiomeForFloor(4, order)).toBe(order[0]);
+    expect(resolveBiomeForFloor(5, order)).toBe(order[1]);
+    expect(resolveBiomeForFloor(6, order)).toBe(order[1]);
   });
 });
-

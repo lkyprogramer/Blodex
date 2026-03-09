@@ -79,6 +79,8 @@ function fallbackRecommendation(
 
 export function analyzeRunOutcome(input: AnalyzeRunOutcomeInput): RunOutcomeAnalysis {
   const { summary, buildIdentity, heartbeats, recommendations } = input;
+  const storyMaxFloor = Math.max(1, summary.storyMaxFloor ?? 5);
+  const lateFloorThreshold = Math.max(5, storyMaxFloor - 1);
   const hasDefense = hasTag(buildIdentity, "build:defense");
   const hasOffense = hasTag(buildIdentity, "build:offense");
   const pickupCount = countHeartbeats(heartbeats, "key_pickup");
@@ -89,7 +91,7 @@ export function analyzeRunOutcome(input: AnalyzeRunOutcomeInput): RunOutcomeAnal
   let failureHeadline = t("ui.summary.failure.attrition");
   if (summary.isVictory) {
     failureHeadline = t("ui.summary.failure.victory");
-  } else if (summary.floorReached >= 5 || input.lastDeathReason?.toLowerCase().includes("boss") === true) {
+  } else if (summary.floorReached >= lateFloorThreshold || input.lastDeathReason?.toLowerCase().includes("boss") === true) {
     failureHeadline = t("ui.summary.failure.boss");
   } else if (!hasDefense) {
     failureHeadline = t("ui.summary.failure.defense");
@@ -111,7 +113,7 @@ export function analyzeRunOutcome(input: AnalyzeRunOutcomeInput): RunOutcomeAnal
   if (branchCount < 2) {
     missedOpportunities.push(t("ui.summary.missed.branching"));
   }
-  if (!summary.isVictory && summary.floorReached >= 5 && keyKillCount === 0) {
+  if (!summary.isVictory && summary.floorReached >= lateFloorThreshold && keyKillCount === 0) {
     missedOpportunities.push(t("ui.summary.missed.boss"));
   }
   if (missedOpportunities.length === 0) {

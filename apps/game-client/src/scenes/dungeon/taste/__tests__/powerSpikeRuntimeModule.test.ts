@@ -151,8 +151,8 @@ describe("PowerSpikeRuntimeModule", () => {
 
     module.grantFloorPairFallbackReward(1_000);
 
-    expect(module.captureBudgetState().pairStates["1-2"].fallbackGranted).toBe(false);
-    expect(module.captureBudgetState().pairStates["1-2"].satisfied).toBe(false);
+    expect(module.captureBudgetState().pairStates["1-2"]?.fallbackGranted).toBe(false);
+    expect(module.captureBudgetState().pairStates["1-2"]?.satisfied).toBe(false);
     expect(groundLoot).toHaveLength(0);
   });
 

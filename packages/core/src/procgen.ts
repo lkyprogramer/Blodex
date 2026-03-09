@@ -5,6 +5,7 @@ import type {
   HiddenRoomState
 } from "./contracts/types";
 import { SeededRng } from "./rng";
+import { DEFAULT_STORY_MAX_FLOOR } from "./storyRun";
 
 type CorridorAxisFirst = "horizontal" | "vertical";
 
@@ -358,8 +359,14 @@ function defaultRoomCountByFloor(floorNumber: number | undefined): number {
   if (floorNumber === undefined) {
     return 12;
   }
-  if (floorNumber >= 5) {
+  if (floorNumber >= DEFAULT_STORY_MAX_FLOOR) {
     return 1;
+  }
+  if (floorNumber >= 7) {
+    return 18;
+  }
+  if (floorNumber >= 5) {
+    return 16;
   }
   if (floorNumber >= 3) {
     return 14;
@@ -419,7 +426,7 @@ export function generateDungeon(options: ProcgenOptions): DungeonLayout {
   const floorNumber = options.floorNumber ?? 1;
   const resolvedRoomCount = options.roomCount ?? defaultRoomCountByFloor(floorNumber);
 
-  if (floorNumber >= 5 && resolvedRoomCount <= 1) {
+  if (floorNumber >= DEFAULT_STORY_MAX_FLOOR && resolvedRoomCount <= 1) {
     return generateBossRoom(options.seed, options.width, options.height);
   }
 

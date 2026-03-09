@@ -11,6 +11,7 @@ import {
   enterNextFloor,
   grantConsumable,
   markRoomAsChallenge,
+  resolveEndlessStartFloor,
   rollItemDrop,
   type ItemDef,
   type ItemInstance,
@@ -287,8 +288,12 @@ export class DebugCommandRegistry {
       this.debugLogKey("log.debug.already_in_abyss");
       return true;
     }
-    if (this.host.run.currentFloor < 5) {
-      this.debugLogKey("log.debug.abyss_requires_floor_five", undefined, "warn");
+    if (this.host.run.currentFloor < (GAME_CONFIG.maxFloors ?? 8)) {
+      this.debugLogKey(
+        "log.debug.abyss_requires_floor_five",
+        { floor: GAME_CONFIG.maxFloors ?? 8 },
+        "warn"
+      );
       return false;
     }
     if (this.host.floorConfig.isBossFloor && this.host.bossState !== null && this.host.bossState.health > 0) {
@@ -526,8 +531,9 @@ export class DebugCommandRegistry {
   }
 
   jumpFloor(targetFloor: number): void {
-    const maxFloors = GAME_CONFIG.maxFloors ?? 5;
-    const normalized = Math.max(1, Math.min(maxFloors, Math.floor(targetFloor)));
+    const storyMaxFloors = GAME_CONFIG.maxFloors ?? 5;
+    const debugMaxFloor = resolveEndlessStartFloor(storyMaxFloors) + 12;
+    const normalized = Math.max(1, Math.min(debugMaxFloor, Math.floor(targetFloor)));
     if (!Number.isFinite(normalized)) {
       this.debugLogKey("log.debug.floor_invalid_index", { floor: targetFloor }, "warn");
       return;
@@ -543,6 +549,8 @@ export class DebugCommandRegistry {
       return;
     }
 
+    const endlessStartFloor = resolveEndlessStartFloor(storyMaxFloors);
+    const inEndless = normalized >= endlessStartFloor;
     this.host.run = appendReplayInput(this.host.run, {
       type: "floor_transition",
       atMs: this.host.getRunRelativeNowMs(),
@@ -552,8 +560,13 @@ export class DebugCommandRegistry {
     this.host.run = {
       ...this.host.run,
       currentFloor: normalized,
-      floor: normalized
+      floor: normalized,
+      inEndless,
+      endlessFloor: inEndless ? normalized - storyMaxFloors : 0
     };
+    if (inEndless) {
+      this.host.syncEndlessMutators(this.host.time.now);
+    }
     this.host.progressionRuntimeModule.setupFloor(normalized, false);
     this.host.hudDirty = true;
     this.debugLogKey("log.debug.floor_jumped", { floor: normalized }, "success");

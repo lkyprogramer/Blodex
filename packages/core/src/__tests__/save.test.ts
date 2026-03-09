@@ -257,7 +257,8 @@ function makeSave(): RunSaveDataV3 {
         pairStates: {
           "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
           "3-4": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
-          "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+          "5-6": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
+          "7-8": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
         },
         acceptedSpikeCount: 1,
         majorSpikeCount: 0
@@ -357,7 +358,8 @@ describe("save", () => {
         pairStates: {
           "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
           "3-4": { hitCount: "0", majorHitCount: 0, satisfied: false, fallbackGranted: false },
-          "5": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
+          "5-6": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
+          "7-8": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false }
         },
         acceptedSpikeCount: 1,
         majorSpikeCount: 0
@@ -365,6 +367,52 @@ describe("save", () => {
     };
 
     expect(validateSave(broken)).toBe(false);
+  });
+
+  it("accepts legacy v3 power spike pair state and normalizes it into split late-game pairs", () => {
+    const legacy = makeSave() as unknown as Record<string, unknown>;
+    legacy.runtime = {
+      ...(legacy.runtime as Record<string, unknown>),
+      powerSpikeBudgetState: {
+        pairStates: {
+          "1-2": { hitCount: 1, majorHitCount: 0, satisfied: true, fallbackGranted: false },
+          "3-4": { hitCount: 0, majorHitCount: 0, satisfied: false, fallbackGranted: false },
+          "5": { hitCount: 2, majorHitCount: 1, satisfied: true, fallbackGranted: true }
+        },
+        acceptedSpikeCount: 3,
+        majorSpikeCount: 1
+      }
+    };
+
+    expect(validateSave(legacy)).toBe(true);
+    const normalized = (legacy.runtime as Record<string, unknown>).powerSpikeBudgetState as Record<string, unknown>;
+    expect((normalized.pairStates as Record<string, unknown>)["5"]).toBeUndefined();
+    expect((normalized.pairStates as Record<string, unknown>)["5-6"]).toEqual({
+      hitCount: 2,
+      majorHitCount: 1,
+      satisfied: true,
+      fallbackGranted: true
+    });
+    expect((normalized.pairStates as Record<string, unknown>)["7-8"]).toEqual({
+      hitCount: 2,
+      majorHitCount: 1,
+      satisfied: true,
+      fallbackGranted: true
+    });
+
+    const loaded = deserializeRunState(JSON.stringify(legacy));
+    expect(loaded?.runtime.powerSpikeBudgetState?.pairStates["5-6"]).toEqual({
+      hitCount: 2,
+      majorHitCount: 1,
+      satisfied: true,
+      fallbackGranted: true
+    });
+    expect(loaded?.runtime.powerSpikeBudgetState?.pairStates["7-8"]).toEqual({
+      hitCount: 2,
+      majorHitCount: 1,
+      satisfied: true,
+      fallbackGranted: true
+    });
   });
 
   it("rejects invalid boss runtime shape", () => {

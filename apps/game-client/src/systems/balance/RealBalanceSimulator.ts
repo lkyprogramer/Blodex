@@ -21,12 +21,14 @@ import {
   resolveBossAttack,
   resolveEquippedWeaponType,
   resolvePlayerAttack,
+  resolveStoryPowerSpikePairIds,
   resolveSpecialAffixTotals,
   resolveWeaponTypeDef,
   rollItemDrop,
   rollBossDrops,
   SeededRng,
   selectBossAttack,
+  PHASE6_BASELINE_MAX_FLOOR,
   type BalanceConfig,
   type BranchChoice,
   type CombatEvent,
@@ -67,7 +69,7 @@ import {
   scorePowerSpikeFromItem
 } from "../../scenes/dungeon/taste/PowerSpikeRuntime";
 
-const STORY_MAX_FLOOR = 5;
+const STORY_MAX_FLOOR = PHASE6_BASELINE_MAX_FLOOR;
 const LOOP_TICK_MS = 120;
 const MAX_FLOOR_SIM_MS = 240_000;
 const BOSS_EXCLUSIVE_TABLE_ID = "boss_bone_sovereign_exclusive";
@@ -320,7 +322,7 @@ function createFloorMonsters(
 ): MonsterRuntime[] {
   const difficulty = getDifficultyModifier(config.difficulty);
   const floorConfig = resolveFloorConfig(floor, difficulty);
-  const biome = BIOME_MAP[resolveBiomeForFloorBySeed(floor, runSeed, branchChoice)];
+  const biome = BIOME_MAP[resolveBiomeForFloorBySeed(floor, runSeed, branchChoice, STORY_MAX_FLOOR)];
   const rng = new SeededRng(`${runSeed}:real:spawn:${floor}`);
   const runtimes: MonsterRuntime[] = [];
 
@@ -576,7 +578,9 @@ function simulateFloorCombat(
           .map((event) => event.targetId)
       );
       if (deadIds.size > 0) {
-        const slotWeightMultiplier = BIOME_MAP[resolveBiomeForFloorBySeed(floor, runSeed, branchChoice)].lootBias;
+        const slotWeightMultiplier = BIOME_MAP[
+          resolveBiomeForFloorBySeed(floor, runSeed, branchChoice, STORY_MAX_FLOOR)
+        ].lootBias;
         for (const targetId of deadIds) {
           const index = activeMonsters.findIndex((monster) => monster.state.id === targetId);
           if (index < 0) {
@@ -622,7 +626,9 @@ function simulateFloorCombat(
       itemDefs: ITEM_DEF_MAP,
       lootTables: LOOT_TABLE_MAP,
       weaponTypeDefs: WEAPON_TYPE_DEF_MAP,
-      slotWeightMultiplier: BIOME_MAP[resolveBiomeForFloorBySeed(floor, runSeed, branchChoice)].lootBias
+      slotWeightMultiplier: BIOME_MAP[
+        resolveBiomeForFloorBySeed(floor, runSeed, branchChoice, STORY_MAX_FLOOR)
+      ].lootBias
     });
 
     nextPlayer = playerTurn.player;
@@ -958,7 +964,7 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
   let skillDamage = 0;
   let autoAttackDamage = 0;
   let cleared = true;
-  const powerSpikeBudget = new PowerSpikeBudgetTracker();
+  const powerSpikeBudget = new PowerSpikeBudgetTracker(floors);
 
   for (let floor = 1; floor <= floors; floor += 1) {
     const result =
@@ -1030,11 +1036,8 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
   let totalCombatDurationMs = 0;
   let totalAcceptedPowerSpikes = 0;
   let totalMajorPowerSpikes = 0;
-  const pairSatisfiedCounts: Record<string, number> = {
-    "1-2": 0,
-    "3-4": 0,
-    "5": 0
-  };
+  const pairIds = resolveStoryPowerSpikePairIds(floors);
+  const pairSatisfiedCounts: Record<string, number> = Object.fromEntries(pairIds.map((pairId) => [pairId, 0]));
 
   for (const run of runs) {
     deathCauseDistribution[run.deathCause] = (deathCauseDistribution[run.deathCause] ?? 0) + 1;
@@ -1047,12 +1050,9 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
     totalCombatDurationMs += run.combatDurationMs;
     totalAcceptedPowerSpikes += run.powerSpikeBudget.acceptedSpikeCount;
     totalMajorPowerSpikes += run.powerSpikeBudget.majorSpikeCount;
-    const pair12Satisfied = run.powerSpikeBudget.pairStates["1-2"].satisfied;
-    const pair34Satisfied = run.powerSpikeBudget.pairStates["3-4"].satisfied;
-    const pair5Satisfied = run.powerSpikeBudget.pairStates["5"].satisfied;
-    pairSatisfiedCounts["1-2"] = (pairSatisfiedCounts["1-2"] ?? 0) + (pair12Satisfied ? 1 : 0);
-    pairSatisfiedCounts["3-4"] = (pairSatisfiedCounts["3-4"] ?? 0) + (pair34Satisfied ? 1 : 0);
-    pairSatisfiedCounts["5"] = (pairSatisfiedCounts["5"] ?? 0) + (pair5Satisfied ? 1 : 0);
+    for (const pairId of pairIds) {
+      pairSatisfiedCounts[pairId] = (pairSatisfiedCounts[pairId] ?? 0) + (run.powerSpikeBudget.pairStates[pairId]?.satisfied ? 1 : 0);
+    }
   }
 
   const hpCurveP50: number[] = [];
@@ -1105,11 +1105,9 @@ export function simulateRealRun(config: BalanceConfig): RunSimulation {
     powerSpikes: {
       avgAcceptedSpikesPerRun: Number((totalAcceptedPowerSpikes / sampleSize).toFixed(3)),
       avgMajorSpikesPerRun: Number((totalMajorPowerSpikes / sampleSize).toFixed(3)),
-      pairSatisfactionRate: {
-        "1-2": Number((((pairSatisfiedCounts["1-2"] ?? 0) / sampleSize)).toFixed(4)),
-        "3-4": Number((((pairSatisfiedCounts["3-4"] ?? 0) / sampleSize)).toFixed(4)),
-        "5": Number((((pairSatisfiedCounts["5"] ?? 0) / sampleSize)).toFixed(4))
-      }
+      pairSatisfactionRate: Object.fromEntries(
+        pairIds.map((pairId) => [pairId, Number((((pairSatisfiedCounts[pairId] ?? 0) / sampleSize)).toFixed(4))])
+      )
     }
   };
 }

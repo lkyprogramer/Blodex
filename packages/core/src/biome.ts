@@ -1,4 +1,5 @@
 import type { BiomeId, BranchChoice, RngLike } from "./contracts/types";
+import { DEFAULT_STORY_MAX_FLOOR } from "./storyRun";
 
 const CATACOMBS: BiomeId = "forgotten_catacombs";
 const MOLTEN: BiomeId = "molten_caverns";
@@ -45,17 +46,21 @@ export function resolveBranchChoiceBySeed(runSeed: string): BranchChoice {
 
 export function resolveBiomeForFloor(
   floor: number,
-  midOrderOrChoice: readonly [BiomeId, BiomeId] | BranchChoice
+  midOrderOrChoice: readonly [BiomeId, BiomeId] | BranchChoice,
+  storyMaxFloor = DEFAULT_STORY_MAX_FLOOR
 ): BiomeId {
   if (floor <= 2) {
     return CATACOMBS;
   }
-  if (floor >= 5) {
+  if (floor >= Math.max(5, storyMaxFloor - 1)) {
     return BONE_THRONE;
   }
   const midOrder =
     typeof midOrderOrChoice === "string" ? resolveRouteBiomes(midOrderOrChoice) : midOrderOrChoice;
-  if (floor === 3) {
+  if (storyMaxFloor <= 5) {
+    return floor === 3 ? midOrder[0] : midOrder[1];
+  }
+  if (floor <= 4) {
     return midOrder[0];
   }
   return midOrder[1];
@@ -64,7 +69,12 @@ export function resolveBiomeForFloor(
 export function resolveBiomeForFloorBySeed(
   floor: number,
   runSeed: string,
-  branchChoice?: BranchChoice
+  branchChoice?: BranchChoice,
+  storyMaxFloor = DEFAULT_STORY_MAX_FLOOR
 ): BiomeId {
-  return resolveBiomeForFloor(floor, branchChoice ?? resolveBranchChoiceBySeed(runSeed));
+  return resolveBiomeForFloor(
+    floor,
+    branchChoice ?? resolveBranchChoiceBySeed(runSeed),
+    storyMaxFloor
+  );
 }

@@ -38,10 +38,10 @@ function createHost(): BossRuntimeHost {
         affixPolicy: "default",
         soulShardMultiplier: 1
       },
-      currentFloor: 5,
+      currentFloor: 8,
       currentBiomeId: "bone_throne",
-      floor: 5,
-      floorsCleared: 4,
+      floor: 8,
+      floorsCleared: 7,
       kills: 0,
       totalKills: 0,
       lootCollected: 0,
@@ -131,8 +131,8 @@ describe("boss reward binding contract", () => {
 
   it("binds the ossuary challenge encounter to deferred compare rewards", () => {
     const host = createHost();
-    host.run.currentFloor = 4;
-    host.run.floor = 4;
+    host.run.currentFloor = 7;
+    host.run.floor = 7;
     const dispatcher = new BossEncounterDispatcher({
       run: host.run,
       bossDef: BONE_SOVEREIGN,

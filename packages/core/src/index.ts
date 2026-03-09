@@ -42,3 +42,4 @@ export * from "./synergy";
 export * from "./endless";
 export * from "./endlessMutator";
 export * from "./daily";
+export * from "./storyRun";

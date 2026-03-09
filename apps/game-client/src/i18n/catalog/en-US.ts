@@ -583,7 +583,7 @@ const UI_MESSAGES: Record<string, string> = {
   "log.debug.boss_victory_opened": "Boss victory choice opened.",
   "log.debug.daily_cannot_enter_abyss": "Daily mode cannot enter abyss.",
   "log.debug.already_in_abyss": "Already in abyss/endless.",
-  "log.debug.abyss_requires_floor_five": "Abyss entry requires reaching floor 5.",
+  "log.debug.abyss_requires_floor_five": "Abyss entry requires reaching floor {floor}.",
   "log.debug.abyss_entered": "Forced abyss entry at floor {floor}.",
   "log.debug.floor_advanced": "Advanced to floor {floor}.",
   "log.debug.floor_advanced_endless": "Advanced to floor {floor} (endless {endlessFloor}).",

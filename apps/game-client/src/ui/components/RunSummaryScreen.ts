@@ -11,9 +11,11 @@ function summaryModeLabel(summary: RunSummary): string {
 }
 
 export function renderRunSummaryScreen(summary: RunSummary, analysis?: RunOutcomeAnalysis): string {
+  const floorValue =
+    summary.storyMaxFloor === undefined ? String(summary.floorReached) : `${summary.floorReached} / ${summary.storyMaxFloor}`;
   const rows: Array<{ label: string; value: string }> = [
     { label: t("ui.summary.mode"), value: summaryModeLabel(summary) },
-    { label: t("ui.summary.floor"), value: String(summary.floorReached) },
+    { label: t("ui.summary.floor"), value: floorValue },
     { label: t("ui.summary.kills"), value: String(summary.kills) },
     { label: t("ui.summary.loot"), value: String(summary.lootCollected) },
     { label: t("ui.summary.obol"), value: String(summary.obolsEarned ?? 0) },
