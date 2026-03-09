@@ -485,6 +485,8 @@ export interface ItemSetDef {
   name: string;
   theme: "offense" | "defense" | "utility";
   associatedDamageType?: DamageType;
+  badgeAssetId?: string;
+  cardAssetId?: string;
   itemIds: string[];
   bonuses: ItemSetBonusDef[];
 }
@@ -592,6 +594,9 @@ export interface RandomEventDef {
   id: string;
   name: string;
   description: string;
+  artAssetId?: string;
+  badgeAssetId?: string;
+  markerAssetId?: string;
   floorRange: { min: number; max: number };
   biomeIds?: BiomeId[];
   unlockId?: string;

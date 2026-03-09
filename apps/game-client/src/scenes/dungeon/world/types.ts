@@ -62,7 +62,8 @@ interface RuntimeEventUiManager {
   showMerchantDialog(
     view: Parameters<import("../../../ui/UIManager").UIManager["showMerchantDialog"]>[0],
     onSelect: (offerId: string) => void,
-    onClose: () => void
+    onClose: () => void,
+    options?: { artAssetId?: string }
   ): void;
   hideEventPanel(): void;
 }
@@ -76,8 +77,15 @@ interface RuntimeEventRenderSystem {
   spawnTelegraphCircle(
     position: { x: number; y: number },
     radius: number,
-    origin: { x: number; y: number }
+    origin: { x: number; y: number },
+    textureKey?: string
   ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
+  spawnWorldMarker?(
+    position: { x: number; y: number },
+    textureKey: string,
+    origin: { x: number; y: number },
+    displaySize?: { width: number; height: number }
+  ): Phaser.GameObjects.Image | null;
 }
 
 interface RuntimeRngPort {
@@ -237,13 +245,21 @@ interface ProgressionRuntimeRenderPort {
   ): MonsterRuntime;
   spawnStaircase(
     position: { x: number; y: number },
-    origin: WorldBoundsConfig["origin"]
+    origin: WorldBoundsConfig["origin"],
+    textureKey?: string
   ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
   spawnTelegraphCircle(
     position: { x: number; y: number },
     radius: number,
-    origin: WorldBoundsConfig["origin"]
+    origin: WorldBoundsConfig["origin"],
+    textureKey?: string
   ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
+  spawnWorldMarker?(
+    position: { x: number; y: number },
+    textureKey: string,
+    origin: WorldBoundsConfig["origin"],
+    displaySize?: { width: number; height: number }
+  ): Phaser.GameObjects.Image | null;
   configureCamera(
     camera: Phaser.Cameras.Scene2D.Camera,
     worldBounds: WorldBoundsConfig["worldBounds"],

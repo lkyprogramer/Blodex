@@ -23,12 +23,15 @@ export interface EquipmentCompareAffixView {
 export interface EquipmentCompareSetTransitionView {
   setId: string;
   setName: string;
+  badgeAssetId?: string;
+  cardAssetId?: string;
   beforePieces: number;
   afterPieces: number;
   activatedThresholds: number[];
   lostThresholds: number[];
   nextThreshold?: number;
   associatedDamageType?: string;
+  associatedDamageTypeAssetId?: string;
   direction: DeltaDirection;
 }
 
@@ -38,6 +41,23 @@ export interface EquipmentCompareView {
   powerDelta: number;
   powerDirection: DeltaDirection;
   setTransition?: EquipmentCompareSetTransitionView;
+}
+
+function resolveDamageTypeAssetId(damageType: string | undefined): string | undefined {
+  switch (damageType) {
+    case "physical":
+      return "element_icon_physical";
+    case "arcane":
+      return "element_icon_arcane";
+    case "fire":
+      return "element_icon_fire";
+    case "cold":
+      return "element_icon_cold";
+    case "lightning":
+      return "element_icon_lightning";
+    default:
+      return undefined;
+  }
 }
 
 export function buildEquipmentCompareView(
@@ -75,9 +95,24 @@ export function buildEquipmentCompareView(
           setTransition: {
             ...setTransition,
             setName: ITEM_SET_DEF_MAP[setTransition.setId]?.name ?? setTransition.setId,
+            ...(ITEM_SET_DEF_MAP[setTransition.setId]?.badgeAssetId === undefined
+              ? {}
+              : { badgeAssetId: ITEM_SET_DEF_MAP[setTransition.setId]!.badgeAssetId }),
+            ...(ITEM_SET_DEF_MAP[setTransition.setId]?.cardAssetId === undefined
+              ? {}
+              : { cardAssetId: ITEM_SET_DEF_MAP[setTransition.setId]!.cardAssetId }),
             ...(ITEM_SET_DEF_MAP[setTransition.setId]?.associatedDamageType === undefined
               ? {}
-              : { associatedDamageType: ITEM_SET_DEF_MAP[setTransition.setId]!.associatedDamageType }),
+              : {
+                  associatedDamageType: ITEM_SET_DEF_MAP[setTransition.setId]!.associatedDamageType,
+                  ...(resolveDamageTypeAssetId(ITEM_SET_DEF_MAP[setTransition.setId]!.associatedDamageType) === undefined
+                    ? {}
+                    : {
+                        associatedDamageTypeAssetId: resolveDamageTypeAssetId(
+                          ITEM_SET_DEF_MAP[setTransition.setId]!.associatedDamageType
+                        )!
+                      })
+                }),
             direction: resolveDeltaDirection(setTransition.afterPieces - setTransition.beforePieces)
           }
         })

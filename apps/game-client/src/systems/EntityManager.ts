@@ -10,7 +10,7 @@ export interface MonsterRuntime {
   sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;
   healthBarBg: Phaser.GameObjects.Rectangle;
   healthBarFg: Phaser.GameObjects.Rectangle;
-  affixMarker: Phaser.GameObjects.Ellipse | undefined;
+  affixMarker: Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse | undefined;
   healthBarYOffset: number;
   yOffset: number;
   nextAttackAt: number;

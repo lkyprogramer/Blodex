@@ -209,6 +209,12 @@ export class BossRuntimeModule {
       id: ABYSS_VICTORY_EVENT_ID,
       name: t(this.resolveEncounterTitleKey(encounter)),
       description,
+      ...(encounter.encounter.portraitAssetId === undefined
+        ? {}
+        : { artAssetId: encounter.encounter.portraitAssetId }),
+      ...(encounter.encounter.rewardBadgeAssetId === undefined
+        ? {}
+        : { badgeAssetId: encounter.encounter.rewardBadgeAssetId }),
       floorRange: { min: currentFloor, max: currentFloor },
       spawnWeight: 1,
       choices

@@ -218,6 +218,24 @@ export class RenderSystem {
       .setDepth(iso.y + this.entityDepthOffset + 3)
       .setVisible(false);
     const affixId = state.affixes?.[0];
+    const affixMarkerAssetId =
+      affixId === "frenzied"
+        ? "affix_badge_frenzied"
+        : affixId === "armored"
+          ? "affix_badge_armored"
+          : affixId === "vampiric"
+            ? "affix_badge_vampiric"
+            : affixId === "splitting"
+              ? "affix_badge_splitting"
+              : affixId === "hulking"
+                ? "affix_badge_hulking"
+                : affixId === "warded"
+                  ? "affix_badge_warded"
+                  : affixId === "skirmisher"
+                    ? "affix_badge_skirmisher"
+                    : affixId === "manaburn"
+                      ? "affix_badge_manaburn"
+                      : undefined;
     const affixColor =
       affixId === "frenzied"
         ? 0xea5d4b
@@ -237,7 +255,12 @@ export class RenderSystem {
                       ? 0x6d60d8
               : null;
     const affixMarker =
-      affixColor === null
+      affixMarkerAssetId !== undefined && this.scene.textures.exists(affixMarkerAssetId)
+        ? this.scene.add
+            .image(iso.x + 14, iso.y - 45, affixMarkerAssetId)
+            .setDisplaySize(14, 14)
+            .setDepth(iso.y + this.entityDepthOffset + 4)
+        : affixColor === null
         ? undefined
         : this.scene.add
             .ellipse(iso.x + 14, iso.y - 45, 8, 8, affixColor, 0.95)
@@ -280,12 +303,13 @@ export class RenderSystem {
 
   spawnStaircase(
     position: { x: number; y: number },
-    origin: { x: number; y: number }
+    origin: { x: number; y: number },
+    textureKey = "staircase_floor_exit"
   ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse {
     const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
-    if (this.scene.textures.exists("staircase_floor_exit")) {
+    if (this.scene.textures.exists(textureKey)) {
       return this.scene.add
-        .image(iso.x, iso.y - 6, "staircase_floor_exit")
+        .image(iso.x, iso.y - 6, textureKey)
         .setDisplaySize(42, 42)
         .setDepth(iso.y + this.entityDepthOffset - 5);
     }
@@ -320,14 +344,15 @@ export class RenderSystem {
   spawnTelegraphCircle(
     position: { x: number; y: number },
     radiusTiles: number,
-    origin: { x: number; y: number }
+    origin: { x: number; y: number },
+    textureKey = "telegraph_circle_red"
   ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse {
     const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
     const width = Math.max(12, radiusTiles * this.tileWidth * 0.7);
     const height = Math.max(10, radiusTiles * this.tileHeight * 0.7);
-    if (this.scene.textures.exists("telegraph_circle_red")) {
+    if (this.scene.textures.exists(textureKey)) {
       return this.scene.add
-        .image(iso.x, iso.y, "telegraph_circle_red")
+        .image(iso.x, iso.y, textureKey)
         .setDisplaySize(width, height)
         .setAlpha(0.45)
         .setDepth(iso.y + this.entityDepthOffset - 8);
@@ -336,6 +361,22 @@ export class RenderSystem {
       .ellipse(iso.x, iso.y, width, height, 0xd45757, 0.35)
       .setStrokeStyle(2, 0x7f1f1f, 0.7)
       .setDepth(iso.y + this.entityDepthOffset - 8);
+  }
+
+  spawnWorldMarker(
+    position: { x: number; y: number },
+    textureKey: string,
+    origin: { x: number; y: number },
+    displaySize: { width: number; height: number } = { width: 32, height: 32 }
+  ): Phaser.GameObjects.Image | null {
+    if (!this.scene.textures.exists(textureKey)) {
+      return null;
+    }
+    const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
+    return this.scene.add
+      .image(iso.x, iso.y - 10, textureKey)
+      .setDisplaySize(displaySize.width, displaySize.height)
+      .setDepth(iso.y + this.entityDepthOffset + 6);
   }
 
   syncPlayerSprite(

@@ -20,12 +20,21 @@ interface AssetManifestEntry {
     | "player_sprite"
     | "monster_sprite"
     | "boss_sprite"
+    | "boss_portrait"
     | "tile"
     | "item_icon"
     | "skill_icon"
     | "hud"
     | "fx"
-    | "ui_icon";
+    | "fx_sheet"
+    | "ui_badge"
+    | "ui_icon"
+    | "ui_card"
+    | "ui_panel"
+    | "ui_banner"
+    | "minimap_marker"
+    | "node_marker"
+    | "portrait";
   optimized?: OptimizedAssetConfig;
 }
 

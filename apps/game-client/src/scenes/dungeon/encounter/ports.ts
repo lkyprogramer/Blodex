@@ -63,7 +63,8 @@ interface BossTelegraphRenderPort {
   spawnTelegraphCircle(
     position: { x: number; y: number },
     radius: number,
-    origin: { x: number; y: number }
+    origin: { x: number; y: number },
+    textureKey?: string
   ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
 }
 
@@ -93,4 +94,3 @@ export interface BossCombatHost {
 export interface BossCombatResolveHost extends BossCombatHost {
   bossState: BossRuntimeState;
 }
-

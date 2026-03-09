@@ -89,7 +89,8 @@ export const BOSS_ENCOUNTERS: BossEncounterDef[] = [
     },
     rewardPolicyId: "story_victory_default",
     telegraphProfileId: "bone_throne_default",
-    summaryKey: "boss.story.bone_throne_finale"
+    summaryKey: "boss.story.bone_throne_finale",
+    portraitAssetId: "boss_bone_sovereign"
   },
   {
     id: "branch_molten_trial",
@@ -102,7 +103,9 @@ export const BOSS_ENCOUNTERS: BossEncounterDef[] = [
     },
     rewardPolicyId: "branch_molten_ember_warden",
     telegraphProfileId: "ember_warden_default",
-    summaryKey: "boss.branch.ember_warden_trial"
+    summaryKey: "boss.branch.ember_warden_trial",
+    portraitAssetId: "boss_portrait_ember_warden",
+    rewardBadgeAssetId: "boss_reward_badge_ember_warden"
   },
   {
     id: "branch_frozen_trial",
@@ -115,7 +118,9 @@ export const BOSS_ENCOUNTERS: BossEncounterDef[] = [
     },
     rewardPolicyId: "branch_frozen_cathedral_judge",
     telegraphProfileId: "cathedral_judge_default",
-    summaryKey: "boss.branch.cathedral_judge_trial"
+    summaryKey: "boss.branch.cathedral_judge_trial",
+    portraitAssetId: "boss_portrait_cathedral_judge",
+    rewardBadgeAssetId: "boss_reward_badge_cathedral_judge"
   },
   {
     id: "challenge_ossuary_trial",
@@ -128,7 +133,9 @@ export const BOSS_ENCOUNTERS: BossEncounterDef[] = [
     },
     rewardPolicyId: "challenge_ossuary_keeper_default",
     telegraphProfileId: "ossuary_keeper_default",
-    summaryKey: "boss.challenge.ossuary_keeper_trial"
+    summaryKey: "boss.challenge.ossuary_keeper_trial",
+    portraitAssetId: "boss_portrait_ossuary_keeper",
+    rewardBadgeAssetId: "boss_reward_badge_ossuary_keeper"
   }
 ];
 

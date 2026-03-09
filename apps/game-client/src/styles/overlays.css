@@ -142,6 +142,7 @@
   transition:
     transform var(--motion-base) var(--ease-standard),
     opacity var(--motion-base) var(--ease-standard);
+  overflow: hidden;
 }
 
 .scene-transition-card.floor {
@@ -159,6 +160,8 @@
 }
 
 .scene-transition-title {
+  position: relative;
+  z-index: 1;
   font-family: "Cinzel", serif;
   font-size: clamp(20px, 3.2vw, 30px);
   letter-spacing: 0.8px;
@@ -166,9 +169,30 @@
 }
 
 .scene-transition-subtitle {
+  position: relative;
+  z-index: 1;
   margin-top: 6px;
   font-size: 13px;
   color: #dcc7a4;
+}
+
+.scene-transition-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.28;
+}
+
+.scene-transition-accent {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(220px, 50%);
+  margin: 0 auto 10px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.35));
 }
 
 .dialog-card,
@@ -187,6 +211,36 @@
   font-family: "Cinzel", serif;
   font-size: 22px;
   color: var(--accent);
+}
+
+.dialog-art-frame {
+  margin-bottom: 12px;
+  border: 1px solid rgba(208, 168, 111, 0.24);
+  border-radius: 10px;
+  background: rgba(20, 27, 36, 0.85);
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 8.25rem;
+  overflow: hidden;
+}
+
+.dialog-art {
+  display: block;
+  max-width: 100%;
+  max-height: 11.75rem;
+  object-fit: contain;
+}
+
+.dialog-art-badge {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 4.25rem;
+  height: 4.25rem;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
 }
 
 .equipment-compare-card {
@@ -250,12 +304,48 @@
   gap: 8px;
 }
 
+.equipment-compare-set-card {
+  margin-top: 12px;
+  border: 1px solid rgba(208, 168, 111, 0.22);
+  border-radius: 10px;
+  background: rgba(20, 27, 36, 0.72);
+  overflow: hidden;
+}
+
+.equipment-compare-set-card-image {
+  display: block;
+  width: 100%;
+  max-height: 8.25rem;
+  object-fit: cover;
+  opacity: 0.82;
+}
+
 .equipment-compare-summary-line,
 .equipment-compare-affix-line {
   display: flex;
   justify-content: space-between;
   gap: 10px;
   font-size: 13px;
+}
+
+.equipment-compare-summary-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.equipment-compare-summary-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+
+.equipment-compare-summary-icon.accent {
+  width: 16px;
+  height: 16px;
+  opacity: 0.9;
 }
 
 .equipment-compare-actions {

@@ -1,11 +1,16 @@
+import { detectPreferredImageFormat, resolveGeneratedAssetUrl } from "../assets/imageAsset";
+
 interface SceneTransitionOptions {
   title: string;
   subtitle?: string;
   durationMs?: number;
   mode?: "scene" | "floor";
+  backdropAssetId?: string;
+  accentAssetId?: string;
 }
 
 let hideTimer: number | null = null;
+const preferredImageFormat = detectPreferredImageFormat();
 
 function getOverlayRoot(): HTMLDivElement | null {
   if (typeof document === "undefined") {
@@ -34,8 +39,18 @@ export function playSceneTransition(options: SceneTransitionOptions): void {
     return;
   }
   const durationMs = Math.max(160, options.durationMs ?? 480);
+  const backdropHtml =
+    options.backdropAssetId === undefined
+      ? ""
+      : `<img class="scene-transition-backdrop" src="${resolveGeneratedAssetUrl(options.backdropAssetId, preferredImageFormat)}" alt="" />`;
+  const accentHtml =
+    options.accentAssetId === undefined
+      ? ""
+      : `<img class="scene-transition-accent" src="${resolveGeneratedAssetUrl(options.accentAssetId, preferredImageFormat)}" alt="" />`;
   root.innerHTML = `
     <div class="scene-transition-card ${options.mode === "floor" ? "floor" : "scene"}">
+      ${backdropHtml}
+      ${accentHtml}
       <div class="scene-transition-title">${options.title}</div>
       ${options.subtitle === undefined ? "" : `<div class="scene-transition-subtitle">${options.subtitle}</div>`}
     </div>

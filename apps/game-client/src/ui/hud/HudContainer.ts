@@ -298,9 +298,10 @@ export class HudContainer {
   showMerchantPanel(
     offers: Array<MerchantOffer & { itemName: string; rarity: string }>,
     onBuy: (offerId: string) => void,
-    onClose: () => void
+    onClose: () => void,
+    options?: { artAssetId?: string }
   ): void {
-    this.overlayController.showMerchantPanel(offers, onBuy, onClose);
+    this.overlayController.showMerchantPanel(offers, onBuy, onClose, options);
   }
 
   hideEventPanel(): void {

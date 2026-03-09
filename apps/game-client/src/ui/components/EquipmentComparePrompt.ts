@@ -1,3 +1,5 @@
+import { resolveGeneratedAssetUrl } from "../../assets/imageAsset";
+
 function escapeHtml(raw: string): string {
   return raw
     .replaceAll("&", "&amp;")
@@ -11,6 +13,8 @@ export interface EquipmentComparePromptSummaryLine {
   label: string;
   symbol: string;
   tone: "positive" | "negative" | "neutral";
+  assetId?: string;
+  accentAssetId?: string;
 }
 
 export interface EquipmentComparePromptAffixLine {
@@ -30,6 +34,7 @@ export interface EquipmentComparePromptView {
   rarityLabel: string;
   powerDeltaLabel: string;
   powerDeltaTone: "positive" | "negative" | "neutral";
+  setCardAssetId?: string;
   summaryLines: EquipmentComparePromptSummaryLine[];
   affixLines: EquipmentComparePromptAffixLine[];
   equipNowLabel: string;
@@ -38,11 +43,31 @@ export interface EquipmentComparePromptView {
 }
 
 export function renderEquipmentComparePrompt(view: EquipmentComparePromptView): string {
+  const setCardHtml =
+    view.setCardAssetId === undefined
+      ? ""
+      : `
+        <div class="equipment-compare-set-card">
+          <img class="equipment-compare-set-card-image" src="${resolveGeneratedAssetUrl(view.setCardAssetId, "webp")}" alt="" />
+        </div>
+      `;
   const summaryHtml = view.summaryLines
     .map(
       (line) => `
         <div class="equipment-compare-summary-line">
-          <span>${escapeHtml(line.label)}</span>
+          <span class="equipment-compare-summary-label">
+            ${
+              line.assetId === undefined
+                ? ""
+                : `<img class="equipment-compare-summary-icon" src="${resolveGeneratedAssetUrl(line.assetId, "webp")}" alt="" />`
+            }
+            ${
+              line.accentAssetId === undefined
+                ? ""
+                : `<img class="equipment-compare-summary-icon accent" src="${resolveGeneratedAssetUrl(line.accentAssetId, "webp")}" alt="" />`
+            }
+            <span>${escapeHtml(line.label)}</span>
+          </span>
           <span class="equipment-compare-summary-value ${line.tone}">${escapeHtml(line.symbol)}</span>
         </div>
       `
@@ -80,6 +105,7 @@ export function renderEquipmentComparePrompt(view: EquipmentComparePromptView): 
           }
         </div>
       </div>
+      ${setCardHtml}
       <div class="equipment-compare-summary">${summaryHtml}</div>
       <div class="equipment-compare-affixes">${affixHtml}</div>
       <div class="dialog-actions equipment-compare-actions">

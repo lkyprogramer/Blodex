@@ -6,6 +6,8 @@ export const ITEM_SET_DEFS: ItemSetDef[] = [
     name: "Ember Vow",
     theme: "offense",
     associatedDamageType: "fire",
+    badgeAssetId: "set_badge_ember_vow",
+    cardAssetId: "set_collection_card_01",
     itemIds: ["emberbrand_edge", "cindersigil_band", "ashwake_treads"],
     bonuses: [
       {
@@ -29,6 +31,8 @@ export const ITEM_SET_DEFS: ItemSetDef[] = [
     name: "Judicator Regalia",
     theme: "defense",
     associatedDamageType: "lightning",
+    badgeAssetId: "set_badge_judicator_regalia",
+    cardAssetId: "set_collection_card_01",
     itemIds: ["judicator_crown", "edict_plate", "absolver_seal"],
     bonuses: [
       {
@@ -52,6 +56,8 @@ export const ITEM_SET_DEFS: ItemSetDef[] = [
     name: "Gravewake Relics",
     theme: "utility",
     associatedDamageType: "arcane",
+    badgeAssetId: "set_badge_gravewake_relics",
+    cardAssetId: "set_collection_card_01",
     itemIds: ["gravewake_greaves", "ossuary_signet", "keeper_veil"],
     bonuses: [
       {

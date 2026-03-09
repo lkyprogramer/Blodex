@@ -391,6 +391,443 @@
     }
   },
   {
+    "id": "boss_cathedral_judge",
+    "category": "boss_sprite",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "b1a84a480a",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_cathedral_judge.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 448,
+        "height": 448
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_cathedral_judge.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_cathedral_judge.png"
+    }
+  },
+  {
+    "id": "boss_ember_warden",
+    "category": "boss_sprite",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "a5bde7a983",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_ember_warden.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 448,
+        "height": 448
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_ember_warden.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_ember_warden.png"
+    }
+  },
+  {
+    "id": "boss_ossuary_keeper",
+    "category": "boss_sprite",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "429c15eabb",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_ossuary_keeper.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 448,
+        "height": 448
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_ossuary_keeper.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_ossuary_keeper.png"
+    }
+  },
+  {
+    "id": "boss_portrait_cathedral_judge",
+    "category": "boss_portrait",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "0e56230b67",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_portrait_cathedral_judge.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 512,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_portrait_cathedral_judge.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_portrait_cathedral_judge.png"
+    }
+  },
+  {
+    "id": "boss_portrait_ember_warden",
+    "category": "boss_portrait",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "5eb2cc2d50",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_portrait_ember_warden.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 512,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_portrait_ember_warden.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_portrait_ember_warden.png"
+    }
+  },
+  {
+    "id": "boss_portrait_ossuary_keeper",
+    "category": "boss_portrait",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "794085cde7",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_portrait_ossuary_keeper.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 512,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_portrait_ossuary_keeper.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_portrait_ossuary_keeper.png"
+    }
+  },
+  {
+    "id": "item_consumable_scroll_mapping_plus_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "5b9ba70d14",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_consumable_scroll_mapping_plus_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_consumable_scroll_mapping_plus_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_consumable_scroll_mapping_plus_01.png"
+    }
+  },
+  {
+    "id": "item_consumable_frenzy_tonic_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "83c20206ce",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_consumable_frenzy_tonic_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_consumable_frenzy_tonic_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_consumable_frenzy_tonic_01.png"
+    }
+  },
+  {
+    "id": "item_consumable_phantom_brew_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "4e493b68ff",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_consumable_phantom_brew_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_consumable_phantom_brew_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_consumable_phantom_brew_01.png"
+    }
+  },
+  {
+    "id": "merchant_room_marker_01",
+    "category": "node_marker",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "ff3f4a2554",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/merchant_room_marker_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/merchant_room_marker_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/merchant_room_marker_01.png"
+    }
+  },
+  {
+    "id": "merchant_portrait_01",
+    "category": "portrait",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "acc39fca1e",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/merchant_portrait_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 512,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/merchant_portrait_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/merchant_portrait_01.png"
+    }
+  },
+  {
+    "id": "element_icon_physical",
+    "category": "ui_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "28e73c6206",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/element_icon_physical.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/element_icon_physical.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/element_icon_physical.png"
+    }
+  },
+  {
+    "id": "element_icon_arcane",
+    "category": "ui_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "99e39354df",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/element_icon_arcane.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/element_icon_arcane.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/element_icon_arcane.png"
+    }
+  },
+  {
+    "id": "element_icon_fire",
+    "category": "ui_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "18931b6e77",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/element_icon_fire.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/element_icon_fire.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/element_icon_fire.png"
+    }
+  },
+  {
+    "id": "element_icon_cold",
+    "category": "ui_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "3bb52c5e49",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/element_icon_cold.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/element_icon_cold.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/element_icon_cold.png"
+    }
+  },
+  {
+    "id": "element_icon_lightning",
+    "category": "ui_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "d15d7813df",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/element_icon_lightning.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/element_icon_lightning.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/element_icon_lightning.png"
+    }
+  },
+  {
+    "id": "set_badge_ember_vow",
+    "category": "ui_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "186c3d588a",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/set_badge_ember_vow.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/set_badge_ember_vow.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/set_badge_ember_vow.png"
+    }
+  },
+  {
+    "id": "set_badge_judicator_regalia",
+    "category": "ui_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "47bad72c93",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/set_badge_judicator_regalia.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/set_badge_judicator_regalia.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/set_badge_judicator_regalia.png"
+    }
+  },
+  {
+    "id": "set_badge_gravewake_relics",
+    "category": "ui_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "f25aa5edae",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/set_badge_gravewake_relics.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/set_badge_gravewake_relics.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/set_badge_gravewake_relics.png"
+    }
+  },
+  {
     "id": "telegraph_circle_red",
     "category": "fx",
     "styleTag": "painterly-dark-fantasy-v1",
@@ -1607,6 +2044,857 @@
       },
       "primaryOutputPath": "apps/game-client/public/generated/item_consumable_scroll_mapping_01.webp",
       "fallbackOutputPath": "apps/game-client/public/generated/item_consumable_scroll_mapping_01.png"
+    }
+  },
+  {
+    "id": "boss_reward_badge_ember_warden",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "b264fbc693",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_reward_badge_ember_warden.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_reward_badge_ember_warden.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_reward_badge_ember_warden.png"
+    }
+  },
+  {
+    "id": "boss_reward_badge_cathedral_judge",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "2c16148465",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_reward_badge_cathedral_judge.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_reward_badge_cathedral_judge.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_reward_badge_cathedral_judge.png"
+    }
+  },
+  {
+    "id": "boss_reward_badge_ossuary_keeper",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "676a2c110c",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_reward_badge_ossuary_keeper.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_reward_badge_ossuary_keeper.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_reward_badge_ossuary_keeper.png"
+    }
+  },
+  {
+    "id": "affix_badge_armored",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "3417947e59",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/affix_badge_armored.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/affix_badge_armored.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/affix_badge_armored.png"
+    }
+  },
+  {
+    "id": "affix_badge_vampiric",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "77554708e2",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/affix_badge_vampiric.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/affix_badge_vampiric.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/affix_badge_vampiric.png"
+    }
+  },
+  {
+    "id": "affix_badge_splitting",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "7e8784226d",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/affix_badge_splitting.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/affix_badge_splitting.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/affix_badge_splitting.png"
+    }
+  },
+  {
+    "id": "affix_badge_frenzied",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "6d14b6ff46",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/affix_badge_frenzied.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/affix_badge_frenzied.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/affix_badge_frenzied.png"
+    }
+  },
+  {
+    "id": "affix_badge_hulking",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "efd08d75cd",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/affix_badge_hulking.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/affix_badge_hulking.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/affix_badge_hulking.png"
+    }
+  },
+  {
+    "id": "affix_badge_warded",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "ce8e23f17e",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/affix_badge_warded.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/affix_badge_warded.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/affix_badge_warded.png"
+    }
+  },
+  {
+    "id": "affix_badge_skirmisher",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "bf4bdb06aa",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/affix_badge_skirmisher.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/affix_badge_skirmisher.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/affix_badge_skirmisher.png"
+    }
+  },
+  {
+    "id": "affix_badge_manaburn",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "8f87881b87",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/affix_badge_manaburn.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/affix_badge_manaburn.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/affix_badge_manaburn.png"
+    }
+  },
+  {
+    "id": "ui_talent_rank_pip_01",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "d4e875ddd3",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/ui_talent_rank_pip_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/ui_talent_rank_pip_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/ui_talent_rank_pip_01.png"
+    }
+  },
+  {
+    "id": "ui_talent_rank_glow_01",
+    "category": "ui_badge",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "cae3ee611c",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/ui_talent_rank_glow_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/ui_talent_rank_glow_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/ui_talent_rank_glow_01.png"
+    }
+  },
+  {
+    "id": "item_set_emberbrand_edge_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "71853b0881",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_set_emberbrand_edge_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_set_emberbrand_edge_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_set_emberbrand_edge_01.png"
+    }
+  },
+  {
+    "id": "item_set_cindersigil_band_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "bd124cb9b0",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_set_cindersigil_band_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_set_cindersigil_band_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_set_cindersigil_band_01.png"
+    }
+  },
+  {
+    "id": "item_set_ashwake_treads_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "39ae665ea0",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_set_ashwake_treads_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_set_ashwake_treads_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_set_ashwake_treads_01.png"
+    }
+  },
+  {
+    "id": "item_set_judicator_crown_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "298a70785e",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_set_judicator_crown_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_set_judicator_crown_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_set_judicator_crown_01.png"
+    }
+  },
+  {
+    "id": "item_set_edict_plate_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "8ff29503dc",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_set_edict_plate_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_set_edict_plate_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_set_edict_plate_01.png"
+    }
+  },
+  {
+    "id": "item_set_absolver_seal_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "a69ccbdbf0",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_set_absolver_seal_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_set_absolver_seal_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_set_absolver_seal_01.png"
+    }
+  },
+  {
+    "id": "item_set_gravewake_greaves_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "0ddee86d3b",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_set_gravewake_greaves_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_set_gravewake_greaves_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_set_gravewake_greaves_01.png"
+    }
+  },
+  {
+    "id": "item_set_ossuary_signet_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "ce92484b20",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_set_ossuary_signet_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_set_ossuary_signet_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_set_ossuary_signet_01.png"
+    }
+  },
+  {
+    "id": "item_set_keeper_veil_01",
+    "category": "item_icon",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "80ff7d8e8d",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/item_set_keeper_veil_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/item_set_keeper_veil_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/item_set_keeper_veil_01.png"
+    }
+  },
+  {
+    "id": "node_forge_marker_01",
+    "category": "node_marker",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "71d3b51547",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/node_forge_marker_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/node_forge_marker_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/node_forge_marker_01.png"
+    }
+  },
+  {
+    "id": "node_gamble_marker_01",
+    "category": "node_marker",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "d87938883a",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/node_gamble_marker_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/node_gamble_marker_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/node_gamble_marker_01.png"
+    }
+  },
+  {
+    "id": "node_challenge_marker_01",
+    "category": "node_marker",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "ae1d54b5aa",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/node_challenge_marker_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/node_challenge_marker_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/node_challenge_marker_01.png"
+    }
+  },
+  {
+    "id": "node_branch_marker_01",
+    "category": "node_marker",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "7c762fa886",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/node_branch_marker_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/node_branch_marker_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/node_branch_marker_01.png"
+    }
+  },
+  {
+    "id": "boss_node_marker_01",
+    "category": "node_marker",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "fe6c4dc100",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_node_marker_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 192,
+        "height": 192
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_node_marker_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_node_marker_01.png"
+    }
+  },
+  {
+    "id": "boss_telegraph_sigil_01",
+    "category": "fx_sheet",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "1bc2b0991f",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/boss_telegraph_sigil_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 384,
+        "height": 384
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/boss_telegraph_sigil_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/boss_telegraph_sigil_01.png"
+    }
+  },
+  {
+    "id": "set_collection_card_01",
+    "category": "ui_card",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "351527c1ff",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/set_collection_card_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 640,
+        "height": 360
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/set_collection_card_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/set_collection_card_01.png"
+    }
+  },
+  {
+    "id": "branch_route_card_molten_01",
+    "category": "ui_card",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "8a672c9227",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/branch_route_card_molten_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 640,
+        "height": 360
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/branch_route_card_molten_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/branch_route_card_molten_01.png"
+    }
+  },
+  {
+    "id": "branch_route_card_frozen_01",
+    "category": "ui_card",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "b541b47395",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/branch_route_card_frozen_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 640,
+        "height": 360
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/branch_route_card_frozen_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/branch_route_card_frozen_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_catacombs_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "789ac859e6",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_catacombs_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_catacombs_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_catacombs_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_molten_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "15ebbc5392",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_molten_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_molten_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_molten_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_frozen_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "100fc9d352",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_frozen_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_frozen_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_frozen_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_phantom_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "eeeacfff7a",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_phantom_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_phantom_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_phantom_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_venom_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "1f0d77d11a",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_venom_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_venom_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_venom_01.png"
+    }
+  },
+  {
+    "id": "biome_transition_panel_bone_01",
+    "category": "ui_panel",
+    "styleTag": "painterly-dark-fantasy-v1",
+    "promptHash": "b8027beac9",
+    "sourcePath": "assets/source-prompts/asset-plan.yaml",
+    "outputPath": "apps/game-client/public/generated/biome_transition_panel_bone_01.png",
+    "license": "generated-original",
+    "revision": 1,
+    "sourceType": "generated",
+    "sourceRef": "gemini:gemini-3.1-flash-image-preview",
+    "attribution": "",
+    "optimized": {
+      "primaryFormat": "webp",
+      "fallbackFormat": "png",
+      "targetSize": {
+        "width": 1024,
+        "height": 512
+      },
+      "primaryOutputPath": "apps/game-client/public/generated/biome_transition_panel_bone_01.webp",
+      "fallbackOutputPath": "apps/game-client/public/generated/biome_transition_panel_bone_01.png"
     }
   }
 ]

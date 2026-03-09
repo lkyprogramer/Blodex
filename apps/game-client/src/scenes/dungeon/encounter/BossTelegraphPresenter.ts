@@ -9,6 +9,7 @@ export interface BossTelegraphPresenterOptions {
 }
 
 export class BossTelegraphPresenter {
+  private static readonly BOSS_TELEGRAPH_TEXTURE_KEY = "boss_telegraph_sigil_01";
   private marker: Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse | null = null;
   private markerAttackId: string | null = null;
 
@@ -30,7 +31,12 @@ export class BossTelegraphPresenter {
     }
 
     this.clear();
-    const marker = host.renderSystem.spawnTelegraphCircle(target, radius, host.origin);
+    const marker = host.renderSystem.spawnTelegraphCircle(
+      target,
+      radius,
+      host.origin,
+      BossTelegraphPresenter.BOSS_TELEGRAPH_TEXTURE_KEY
+    );
     this.marker = marker;
     this.markerAttackId = attack.id;
     marker.setAlpha(profile?.alpha ?? 0.52);

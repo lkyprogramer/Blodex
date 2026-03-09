@@ -269,49 +269,16 @@ import { MerchantFlowService } from "./dungeon/world/MerchantFlowService";
 import { ProgressionRuntimeModule } from "./dungeon/world/ProgressionRuntimeModule";
 import type { RuntimeEventHost } from "./dungeon/world/types";
 import { WorldEventController } from "./dungeon/world/WorldEventController";
+import {
+  CONSUMABLE_ICON_BY_ID,
+  DUNGEON_IMAGE_ASSET_IDS,
+  DUNGEON_IMAGE_ASSET_KEY_SET,
+  ENTITY_ASSET_KEYS_FOR_BACKGROUND_REMOVAL
+} from "./dungeon/runtimeAssets";
 const META_STORAGE_KEY_V1 = "blodex_meta_v1";
 const META_STORAGE_KEY_V2 = "blodex_meta_v2";
 const RUN_SAVE_APP_VERSION = "phase2-4c";
 const AUTO_SAVE_INTERVAL_MS = 60_000;
-const DUNGEON_IMAGE_ASSET_IDS = [
-  "player_vanguard",
-  "monster_melee_01",
-  "monster_ranged_01",
-  "monster_elite_01",
-  "tile_floor_01",
-  "biome_catacombs_tile_floor_01",
-  "biome_molten_tile_floor_01",
-  "biome_venom_tile_floor_01",
-  "biome_frozen_tile_floor_01",
-  "biome_bone_tile_floor_01",
-  "item_weapon_01",
-  "item_weapon_02",
-  "item_weapon_03",
-  "item_helm_01",
-  "item_helm_02",
-  "item_chest_01",
-  "item_chest_02",
-  "item_boots_01",
-  "item_boots_02",
-  "item_ring_01",
-  "item_ring_02",
-  "boss_bone_sovereign",
-  "telegraph_circle_red",
-  "staircase_floor_exit",
-  "skill_cleave",
-  "skill_shadow_step",
-  "skill_blood_drain",
-  "skill_frost_nova",
-  "skill_war_cry"
-] as const;
-const DUNGEON_IMAGE_ASSET_KEY_SET = new Set<string>(DUNGEON_IMAGE_ASSET_IDS);
-const ENTITY_ASSET_KEYS_FOR_BACKGROUND_REMOVAL = [
-  "player_vanguard",
-  "monster_melee_01",
-  "monster_ranged_01",
-  "monster_elite_01",
-  "boss_bone_sovereign"
-] as const;
 const DEBUG_CHEATS_QUERY = "debugCheats";
 const DISABLE_VFX_QUERY = "disableVfx";
 const DISABLE_SFX_QUERY = "disableSfx";
@@ -321,14 +288,6 @@ const DEBUG_LOCKED_EQUIP_ICON_ID = "item_ring_02";
 const MINIMAP_REFRESH_INTERVAL_MS = 120;
 const SKILL_READY_FLASH_DURATION_MS = 480;
 const STAT_HIGHLIGHT_DURATION_MS = 1_300;
-const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
-  health_potion: "item_consumable_health_potion_01",
-  mana_potion: "item_consumable_mana_potion_01",
-  scroll_of_mapping: "item_consumable_scroll_mapping_01",
-  scroll_of_mapping_plus: "item_consumable_scroll_mapping_01",
-  frenzy_tonic: "item_consumable_health_potion_01",
-  phantom_brew: "item_consumable_mana_potion_01"
-};
 const SKILL_DEF_BY_ID = new Map(SKILL_DEFS.map((entry) => [entry.id, entry]));
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
 const DAILY_WEAPON_ROTATION: WeaponType[] = ["sword", "axe", "dagger", "staff", "hammer"];
