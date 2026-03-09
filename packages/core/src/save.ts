@@ -270,6 +270,31 @@ function isPowerSpikeBudgetRuntimeState(value: unknown): value is PowerSpikeBudg
   return isFiniteNumber(value.acceptedSpikeCount) && isFiniteNumber(value.majorSpikeCount);
 }
 
+function normalizeLegacyPowerSpikeBudgetState(value: unknown): void {
+  if (!isRecord(value) || !isRecord(value.pairStates)) {
+    return;
+  }
+  const pairStates = value.pairStates as Record<string, unknown>;
+  const legacyLatePair = pairStates["5"];
+  if (!isPowerSpikePairBudgetState(legacyLatePair)) {
+    return;
+  }
+  if (pairStates["5-6"] === undefined) {
+    pairStates["5-6"] = { ...legacyLatePair };
+  }
+  if (pairStates["7-8"] === undefined) {
+    pairStates["7-8"] = { ...legacyLatePair };
+  }
+  delete pairStates["5"];
+}
+
+function normalizeLegacyV3DraftFields(raw: Record<string, unknown>): void {
+  if (raw.schemaVersion !== 3 || !isRecord(raw.runtime)) {
+    return;
+  }
+  normalizeLegacyPowerSpikeBudgetState(raw.runtime.powerSpikeBudgetState);
+}
+
 function isStringNumberRecord(value: unknown): value is Record<string, number> {
   return isRecord(value) && Object.values(value).every((entry) => isFiniteNumber(entry));
 }
@@ -749,6 +774,7 @@ export function validateSave(raw: unknown): raw is RunSaveEnvelope {
   if (!isRecord(raw)) {
     return false;
   }
+  normalizeLegacyV3DraftFields(raw);
   if (raw.schemaVersion !== 3) {
     return false;
   }
