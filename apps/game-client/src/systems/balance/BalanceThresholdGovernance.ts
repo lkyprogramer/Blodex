@@ -48,7 +48,7 @@ export const DEFAULT_BALANCE_DRIFT_THRESHOLDS: BalanceDriftThresholds = {
 };
 
 const PHASE6_OVERRIDE_DIFF_CLASSES: Record<string, BalanceCalibrationDiffClass> = {
-  "hard-average": "sampling_mismatch",
+  "hard-average": "content_drift",
   "nightmare-optimal": "model_incomplete"
 };
 

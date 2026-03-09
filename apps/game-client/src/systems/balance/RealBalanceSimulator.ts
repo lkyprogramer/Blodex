@@ -8,6 +8,7 @@ import {
   createSkillDefForLevel,
   createRunState,
   defaultBaseStats,
+  deriveEquippedPlayerStats,
   deriveStats,
   estimateStoryFloorPacingOverheadMs,
   getDifficultyModifier,
@@ -45,6 +46,7 @@ import {
   BIOME_MAP,
   BONE_SOVEREIGN,
   ITEM_DEF_MAP,
+  ITEM_SET_DEFS,
   LOOT_TABLE_MAP,
   MONSTER_ARCHETYPE_MAP,
   SKILL_DEFS,
@@ -192,7 +194,9 @@ function applyPendingLevelUps(
   while ((next.pendingLevelUpChoices ?? 0) > 0) {
     next = applyLevelUpChoice(next, chooseLevelStat(next, behavior));
     const equipped = Object.values(next.equipment).filter((item): item is ItemInstance => item !== undefined);
-    const derivedStats = deriveStats(next.baseStats, equipped);
+    const derivedStats = deriveEquippedPlayerStats(next.baseStats, equipped, {
+      itemSetDefs: ITEM_SET_DEFS
+    });
     next = {
       ...next,
       derivedStats,
@@ -276,7 +280,9 @@ function collectItem(
     nextInventory.push(replaced);
   }
   const equipped = Object.values(equipment).filter((entry): entry is ItemInstance => entry !== undefined);
-  const derivedStats = deriveStats(next.baseStats, equipped);
+  const derivedStats = deriveEquippedPlayerStats(next.baseStats, equipped, {
+    itemSetDefs: ITEM_SET_DEFS
+  });
   return {
     ...next,
     inventory: nextInventory,
@@ -331,6 +337,8 @@ function createFloorMonsters(
     const state: MonsterState = {
       id: `real-floor-${floor}-monster-${index}`,
       archetypeId: archetype.id,
+      ...(archetype.enemyProfileId === undefined ? {} : { enemyProfileId: archetype.enemyProfileId }),
+      ...(archetype.damageProfile === undefined ? {} : { damageProfile: archetype.damageProfile }),
       level: floor,
       health: Math.floor(85 * archetype.healthMultiplier * floorConfig.monsterHpMultiplier),
       maxHealth: Math.floor(85 * archetype.healthMultiplier * floorConfig.monsterHpMultiplier),
@@ -440,7 +448,9 @@ function applyMonsterKillRewards(
   const xpResult = applyXpGain(player, monster.xpValue, "manual", {
     xpBonus: specialAffixTotals.xpBonus
   });
-  const nextDerived = deriveStats(xpResult.player.baseStats, equippedItems);
+  const nextDerived = deriveEquippedPlayerStats(xpResult.player.baseStats, equippedItems, {
+    itemSetDefs: ITEM_SET_DEFS
+  });
   let nextPlayer: PlayerState = {
     ...xpResult.player,
     derivedStats: nextDerived,
@@ -734,6 +744,8 @@ function simulateBossCombat(
       {
         id: bossState.bossId,
         archetypeId: "melee_grunt",
+        ...(bossState.enemyProfileId === undefined ? {} : { enemyProfileId: bossState.enemyProfileId }),
+        ...(bossState.damageProfile === undefined ? {} : { damageProfile: bossState.damageProfile }),
         level: STORY_MAX_FLOOR,
         health: bossState.health,
         maxHealth: bossState.maxHealth,
@@ -791,6 +803,8 @@ function simulateBossCombat(
       const proxy = {
         id: bossState.bossId,
         archetypeId: "boss_proxy",
+        ...(bossState.enemyProfileId === undefined ? {} : { enemyProfileId: bossState.enemyProfileId }),
+        ...(bossState.damageProfile === undefined ? {} : { damageProfile: bossState.damageProfile }),
         level: STORY_MAX_FLOOR,
         health: bossState.health,
         maxHealth: bossState.maxHealth,
@@ -819,7 +833,7 @@ function simulateBossCombat(
       nextPlayer = regen.player;
       regenAccumulator = regen.accumulator;
       if (dealt > 0) {
-        bossState = updateBossPhase(applyDamageToBoss(bossState, dealt), BONE_SOVEREIGN);
+        bossState = updateBossPhase(applyDamageToBoss(bossState, dealt, "physical"), BONE_SOVEREIGN);
       }
       nextPlayerAttackAt =
         elapsedMs +

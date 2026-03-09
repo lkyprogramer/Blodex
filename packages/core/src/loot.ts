@@ -166,6 +166,7 @@ function createItemInstance(def: ItemDef, seedFragment: string, rng: RngLike): I
     name: def.name,
     kind,
     slot: def.slot,
+    ...(def.setId === undefined ? {} : { setId: def.setId }),
     ...(def.weaponType === undefined ? {} : { weaponType: def.weaponType }),
     rarity: def.rarity,
     requiredLevel: def.requiredLevel,

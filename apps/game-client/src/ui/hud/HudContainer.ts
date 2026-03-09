@@ -275,6 +275,7 @@ export class HudContainer {
       title: string;
       subtitle: string;
       sourceLabel: string;
+      equippedItems?: ItemInstance[];
       onAction: (action: "equip" | "later" | "ignore") => void;
     }
   ): void {

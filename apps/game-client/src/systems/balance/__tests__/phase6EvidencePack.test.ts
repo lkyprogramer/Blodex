@@ -13,14 +13,14 @@ describe("phase6 evidence pack", () => {
     expect(pack.calibrationRegistry).toHaveLength(2);
     expect(pack.thresholdAudit.passed).toBe(true);
     expect(pack.thresholdRegistry.find((entry) => entry.scope === "global_default")?.baselineCommit).toBe("19574b7");
-    expect(pack.thresholdRegistry.find((entry) => entry.id === "phase6-6.5-hard-average-v2")?.baselineCommit).toBe(
+    expect(pack.thresholdRegistry.find((entry) => entry.id === "phase7-7.7-hard-average-v1")?.baselineCommit).toBe(
       "19574b7"
     );
     expect(pack.releaseArtifactIndex.some((artifact) => artifact.id === "phase6-browser-smoke-report-doc")).toBe(true);
     expect(pack.smokeScenarioRegistry).toHaveLength(7);
     expect(pack.signoffChecklistRegistry.some((item) => item.id === "taste-signoff")).toBe(true);
     expect(pack.pacingAssessments.normal.floorChecks).toHaveLength(5);
-    expect(pack.pacingAssessments.hard.skillCastsPer30s).toBeCloseTo(4.384, 3);
+    expect(pack.pacingAssessments.hard.skillCastsPer30s).toBeCloseTo(4.367, 3);
     expect(
       pack.smokeMatrix
         .filter((entry) => entry.evidenceType === "automation")

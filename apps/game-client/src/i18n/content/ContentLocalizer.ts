@@ -10,6 +10,7 @@ import {
   contentEventDescriptionKey,
   contentEventNameKey,
   contentItemNameKey,
+  contentItemSetNameKey,
   contentMutationNameKey,
   contentMonsterNameKey,
   contentSkillDescriptionKey,
@@ -25,6 +26,10 @@ export class ContentLocalizer {
 
   itemName(itemId: string, fallback: string): string {
     return this.resolve(contentItemNameKey(itemId), fallback);
+  }
+
+  itemSetName(setId: string, fallback: string): string {
+    return this.resolve(contentItemSetNameKey(setId), fallback);
   }
 
   skillName(skillId: string, fallback: string): string {

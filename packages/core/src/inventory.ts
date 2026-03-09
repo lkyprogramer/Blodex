@@ -1,11 +1,11 @@
-import type { ItemInstance, PlayerState } from "./contracts/types";
-import { deriveStats } from "./stats";
+import type { ItemInstance, ItemSetDef, PlayerState } from "./contracts/types";
+import { deriveEquippedPlayerStats } from "./stats";
 
 export function canEquip(player: PlayerState, item: ItemInstance): boolean {
   return player.level >= item.requiredLevel;
 }
 
-export function equipItem(player: PlayerState, itemId: string): PlayerState {
+export function equipItem(player: PlayerState, itemId: string, itemSetDefs?: ItemSetDef[]): PlayerState {
   const item = player.inventory.find((candidate) => candidate.id === itemId);
   if (item === undefined) {
     return player;
@@ -24,7 +24,9 @@ export function equipItem(player: PlayerState, itemId: string): PlayerState {
   }
 
   const equipped = Object.values(equipment).filter((entry): entry is ItemInstance => entry !== undefined);
-  const derivedStats = deriveStats(player.baseStats, equipped);
+  const derivedStats = deriveEquippedPlayerStats(player.baseStats, equipped, {
+    ...(itemSetDefs === undefined ? {} : { itemSetDefs })
+  });
 
   return {
     ...player,
@@ -36,7 +38,7 @@ export function equipItem(player: PlayerState, itemId: string): PlayerState {
   };
 }
 
-export function unequipItem(player: PlayerState, slot: ItemInstance["slot"]): PlayerState {
+export function unequipItem(player: PlayerState, slot: ItemInstance["slot"], itemSetDefs?: ItemSetDef[]): PlayerState {
   const equippedItem = player.equipment[slot];
   if (equippedItem === undefined) {
     return player;
@@ -47,7 +49,9 @@ export function unequipItem(player: PlayerState, slot: ItemInstance["slot"]): Pl
 
   const inventory = [...player.inventory, equippedItem];
   const equipped = Object.values(equipment).filter((entry): entry is ItemInstance => entry !== undefined);
-  const derivedStats = deriveStats(player.baseStats, equipped);
+  const derivedStats = deriveEquippedPlayerStats(player.baseStats, equipped, {
+    ...(itemSetDefs === undefined ? {} : { itemSetDefs })
+  });
 
   return {
     ...player,

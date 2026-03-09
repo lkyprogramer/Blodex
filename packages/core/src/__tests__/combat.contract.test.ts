@@ -215,6 +215,54 @@ describe("combat contract", () => {
     expect(arcaneDamage).toBeLessThan(physicalDamage);
   });
 
+  it("applies elemental enemy profile multipliers for fire, cold and lightning", () => {
+    const player = makePlayer();
+    const emberborn: MonsterState = {
+      ...makeMonster(100),
+      enemyProfileId: "emberborn",
+      damageProfile: {
+        fire: 0.72,
+        cold: 1.18,
+        lightning: 1.04
+      }
+    };
+    const fireSkill: SkillDef = {
+      id: "fire_probe",
+      name: "Fire Probe",
+      description: "",
+      icon: "",
+      cooldownMs: 1000,
+      manaCost: 5,
+      damageType: "fire",
+      targeting: "nearest",
+      range: 3,
+      effects: [{ type: "damage", value: 20 }]
+    };
+    const coldSkill: SkillDef = {
+      ...fireSkill,
+      id: "cold_probe",
+      name: "Cold Probe",
+      damageType: "cold"
+    };
+    const lightningSkill: SkillDef = {
+      ...fireSkill,
+      id: "lightning_probe",
+      name: "Lightning Probe",
+      damageType: "lightning"
+    };
+
+    const fire = resolveSkill(player, [emberborn], fireSkill, fixedRng(1), 1200);
+    const cold = resolveSkill(player, [emberborn], coldSkill, fixedRng(1), 1400);
+    const lightning = resolveSkill(player, [emberborn], lightningSkill, fixedRng(1), 1600);
+
+    const fireDamage = fire.events.find((event) => event.kind === "damage")?.amount ?? 0;
+    const coldDamage = cold.events.find((event) => event.kind === "damage")?.amount ?? 0;
+    const lightningDamage = lightning.events.find((event) => event.kind === "damage")?.amount ?? 0;
+
+    expect(fireDamage).toBeLessThan(lightningDamage);
+    expect(lightningDamage).toBeLessThan(coldDamage);
+  });
+
   it("consumes cooldownReduction when applying skill cooldown", () => {
     const state = {
       skillSlots: [],

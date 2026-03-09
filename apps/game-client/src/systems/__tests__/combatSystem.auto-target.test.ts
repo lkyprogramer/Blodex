@@ -1,12 +1,14 @@
 import {
   SeededRng,
   createRunState,
+  deriveEquippedPlayerStats,
   type BaseStats,
   type DerivedStats,
   type ItemInstance,
   type MonsterState,
   type PlayerState
 } from "@blodex/core";
+import { ITEM_SET_DEFS } from "@blodex/content";
 import { describe, expect, it } from "vitest";
 import { CombatSystem } from "../CombatSystem";
 import type { MonsterRuntime } from "../EntityManager";
@@ -93,6 +95,42 @@ function makeLifestealWeapon(lifesteal = 0.1): ItemInstance {
     rolledAffixes: {},
     rolledSpecialAffixes: {
       lifesteal
+    }
+  };
+}
+
+function makeEmberSetWeapon(): ItemInstance {
+  return {
+    id: "emberbrand-edge",
+    defId: "emberbrand_edge",
+    name: "Emberbrand Edge",
+    slot: "weapon",
+    kind: "unique",
+    rarity: "rare",
+    requiredLevel: 1,
+    iconId: "item_weapon_01",
+    seed: "emberbrand-seed",
+    setId: "ember_vow",
+    rolledAffixes: {
+      attackPower: 10
+    }
+  };
+}
+
+function makeEmberSetRing(): ItemInstance {
+  return {
+    id: "cindersigil-band",
+    defId: "cindersigil_band",
+    name: "Cindersigil Band",
+    slot: "ring",
+    kind: "unique",
+    rarity: "rare",
+    requiredLevel: 1,
+    iconId: "item_ring_01",
+    seed: "cindersigil-seed",
+    setId: "ember_vow",
+    rolledAffixes: {
+      critChance: 0.02
     }
   };
 }
@@ -234,5 +272,45 @@ describe("CombatSystem auto target preference", () => {
 
     expect(result.killedMonsterId).toBe("target");
     expect(result.player.health).toBeGreaterThan(player.health + 12);
+  });
+
+  it("preserves active set bonuses when a kill-triggered level up recomputes derived stats", () => {
+    const combat = new CombatSystem();
+    const player = {
+      ...makePlayer({ x: 0, y: 0 }),
+      xp: 96,
+      xpToNextLevel: 98,
+      equipment: {
+        weapon: makeEmberSetWeapon(),
+        ring: makeEmberSetRing()
+      }
+    };
+    const target = makeMonsterRuntime("target", { x: 1, y: 0 });
+    target.state.health = 10;
+    target.state.maxHealth = 10;
+    const run = createRunState("seed", 0, "normal");
+
+    const result = combat.updatePlayerAttack({
+      player,
+      run,
+      monsters: [target],
+      attackTargetId: "target",
+      nextPlayerAttackAt: 0,
+      nowMs: 0,
+      combatRng: new SeededRng("combat-seed"),
+      lootRng: new SeededRng("loot-seed"),
+      itemDefs: {},
+      lootTables: {}
+    });
+
+    const expected = deriveEquippedPlayerStats(
+      result.player.baseStats,
+      Object.values(result.player.equipment).filter((entry): entry is ItemInstance => entry !== undefined),
+      { itemSetDefs: ITEM_SET_DEFS }
+    );
+
+    expect(result.player.level).toBeGreaterThan(player.level);
+    expect(result.player.derivedStats).toEqual(expected);
+    expect(result.player.derivedStats.attackPower).toBeGreaterThan(30);
   });
 });

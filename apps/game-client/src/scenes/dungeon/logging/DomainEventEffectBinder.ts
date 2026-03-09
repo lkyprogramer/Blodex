@@ -38,6 +38,10 @@ interface DomainEventHostTime {
   now: number;
 }
 
+function damageTypeLabel(damageType: CombatEvent["damageType"]): string {
+  return t(`ui.damage_type.${damageType}`);
+}
+
 interface DomainEventUiPersistence {
   scheduleRunSave(): void;
   flushRunSave(): void;
@@ -130,7 +134,7 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
         host.lastDeathReason = t("log.combat.death_reason", {
           source,
           amount: combat.amount,
-          damageType: combat.damageType
+          damageType: damageTypeLabel(combat.damageType)
         });
         host.runLog.appendKey(
           "log.combat.slain",

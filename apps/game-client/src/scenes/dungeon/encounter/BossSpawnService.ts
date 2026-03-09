@@ -52,6 +52,8 @@ export class BossSpawnService {
       const state = applyAffixesToMonsterState({
         id: `summon-${idx}-${Math.floor(host.time.now)}`,
         archetypeId: archetype.id,
+        ...(archetype.enemyProfileId === undefined ? {} : { enemyProfileId: archetype.enemyProfileId }),
+        ...(archetype.damageProfile === undefined ? {} : { damageProfile: archetype.damageProfile }),
         level: host.run.currentFloor,
         health: Math.floor(65 * host.floorConfig.monsterHpMultiplier),
         maxHealth: Math.floor(65 * host.floorConfig.monsterHpMultiplier),

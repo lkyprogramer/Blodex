@@ -28,7 +28,8 @@ export type MonsterAffixId =
   | "skirmisher"
   | "manaburn";
 
-export type DamageType = "physical" | "arcane";
+export type DamageType = "physical" | "arcane" | "fire" | "cold" | "lightning";
+export type DamageProfile = Partial<Record<DamageType, number>>;
 
 export type DifficultyMode = "normal" | "hard" | "nightmare";
 export type LocaleCode = "en-US" | "zh-CN";
@@ -37,6 +38,7 @@ export type WeaponType = "sword" | "axe" | "dagger" | "staff" | "hammer" | "swor
 export type SkillArchetype = "warrior" | "ranger" | "arcanist";
 export type BranchChoice = "molten_route" | "frozen_route";
 export type RunMode = "normal" | "daily";
+export type ItemSetId = string;
 
 export interface DifficultyModifier {
   monsterHealthMultiplier: number;
@@ -172,6 +174,7 @@ export interface ItemDef {
   name: string;
   slot: EquipmentSlot;
   kind?: ItemKind;
+  setId?: ItemSetId;
   weaponType?: WeaponType;
   rarity: ItemRarity;
   requiredLevel: number;
@@ -192,6 +195,7 @@ export interface ItemInstance {
   name: string;
   slot: EquipmentSlot;
   kind?: ItemKind;
+  setId?: ItemSetId;
   weaponType?: WeaponType;
   rarity: ItemRarity;
   requiredLevel: number;
@@ -299,6 +303,8 @@ export interface PlayerState {
 export interface MonsterState {
   id: string;
   archetypeId: MonsterArchetypeId;
+  enemyProfileId?: string;
+  damageProfile?: DamageProfile;
   level: number;
   health: number;
   maxHealth: number;
@@ -458,14 +464,35 @@ export interface BossDef {
   id: string;
   name: string;
   spriteKey: string;
+  enemyProfileId?: string;
+  damageProfile?: DamageProfile;
   baseHealth: number;
   phases: BossPhase[];
   dropTableId: string;
   exclusiveFloor: number;
 }
 
+export interface ItemSetBonusDef {
+  pieces: number;
+  derivedFlat?: Partial<DerivedStats>;
+  derivedPercent?: Partial<
+    Record<keyof Pick<DerivedStats, "maxHealth" | "maxMana" | "armor" | "attackPower" | "critChance" | "attackSpeed" | "moveSpeed">, number>
+  >;
+}
+
+export interface ItemSetDef {
+  id: ItemSetId;
+  name: string;
+  theme: "offense" | "defense" | "utility";
+  associatedDamageType?: DamageType;
+  itemIds: string[];
+  bonuses: ItemSetBonusDef[];
+}
+
 export interface BossRuntimeState {
   bossId: string;
+  enemyProfileId?: string;
+  damageProfile?: DamageProfile;
   currentPhaseIndex: number;
   health: number;
   maxHealth: number;

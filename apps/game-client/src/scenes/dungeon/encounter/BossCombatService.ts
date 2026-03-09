@@ -66,7 +66,7 @@ export class BossCombatService {
         Math.floor(host.player.derivedStats.attackPower * weaponDef.damageMultiplier * (crit ? effectiveCritMultiplier : 1))
       );
       const previousPhase = host.bossState.currentPhaseIndex;
-      host.bossState = applyDamageToBoss(host.bossState, damage);
+      host.bossState = applyDamageToBoss(host.bossState, damage, "physical");
       host.bossState = {
         ...host.bossState,
         ...(host.bossState.health <= host.bossState.maxHealth * 0.5 && host.bossState.currentPhaseIndex === 0

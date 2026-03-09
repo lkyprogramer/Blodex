@@ -155,7 +155,7 @@ export const SKILL_DEFS: SkillDef[] = [
     archetype: "arcanist",
     cooldownMs: 5200,
     manaCost: 20,
-    damageType: "arcane",
+    damageType: "cold",
     targeting: "aoe_around",
     range: 2,
     effects: [{ type: "debuff", value: 0.5, duration: 3000, radius: 2, buffId: "frost_slow" }]
@@ -168,7 +168,7 @@ export const SKILL_DEFS: SkillDef[] = [
     archetype: "arcanist",
     cooldownMs: 4200,
     manaCost: 16,
-    damageType: "arcane",
+    damageType: "lightning",
     targeting: "nearest",
     range: 6,
     effects: [{ type: "damage", value: { base: 12, scaling: "intelligence", ratio: 1.15 } }]
@@ -181,7 +181,7 @@ export const SKILL_DEFS: SkillDef[] = [
     archetype: "arcanist",
     cooldownMs: 5600,
     manaCost: 18,
-    damageType: "arcane",
+    damageType: "fire",
     targeting: "aoe_around",
     range: 2.4,
     effects: [{ type: "damage", value: { base: 14, scaling: "intelligence", ratio: 1.1 } }]

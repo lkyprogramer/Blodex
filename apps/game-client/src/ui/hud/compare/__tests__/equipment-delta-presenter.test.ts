@@ -127,4 +127,96 @@ describe("EquipmentDeltaPresenter", () => {
     expect(calibration.merchantCompareThresholds.minPowerDelta).toBe(10);
     expect(calibration.merchantCompareThresholds.minPositiveSummaryCount).toBe(2);
   });
+
+  it("surfaces set transition when equipping into a set threshold", () => {
+    const candidate = makeItem({
+      id: "cindersigil-band",
+      defId: "cindersigil_band",
+      name: "Cindersigil Band",
+      slot: "ring",
+      kind: "unique",
+      setId: "ember_vow",
+      rarity: "rare",
+      iconId: "item_ring_02",
+      rolledAffixes: {
+        attackPower: 14
+      }
+    });
+    const compareItem = makeItem({
+      id: "plain-ring",
+      defId: "plain_ring",
+      slot: "ring",
+      kind: "equipment",
+      rolledAffixes: {
+        maxMana: 2
+      }
+    });
+    const equippedItems = [
+      makeItem({
+        id: "emberbrand-edge",
+        defId: "emberbrand_edge",
+        slot: "weapon",
+        kind: "unique",
+        setId: "ember_vow",
+        rolledAffixes: {
+          attackPower: 18
+        }
+      })
+    ];
+
+    const compareView = buildEquipmentCompareView(candidate, compareItem, equippedItems);
+
+    expect(compareView.setTransition).toMatchObject({
+      setId: "ember_vow",
+      activatedThresholds: [2],
+      afterPieces: 2
+    });
+  });
+
+  it("surfaces set transition when a non-set replacement breaks an active threshold", () => {
+    const compareItem = makeItem({
+      id: "cindersigil-band",
+      defId: "cindersigil_band",
+      name: "Cindersigil Band",
+      slot: "ring",
+      kind: "unique",
+      setId: "ember_vow",
+      rarity: "rare",
+      iconId: "item_ring_02",
+      rolledAffixes: {
+        attackPower: 14
+      }
+    });
+    const candidate = makeItem({
+      id: "plain-ring",
+      defId: "plain_ring",
+      slot: "ring",
+      kind: "equipment",
+      rolledAffixes: {
+        maxMana: 2
+      }
+    });
+    const equippedItems = [
+      makeItem({
+        id: "emberbrand-edge",
+        defId: "emberbrand_edge",
+        slot: "weapon",
+        kind: "unique",
+        setId: "ember_vow",
+        rolledAffixes: {
+          attackPower: 18
+        }
+      }),
+      compareItem
+    ];
+
+    const compareView = buildEquipmentCompareView(candidate, compareItem, equippedItems);
+
+    expect(compareView.setTransition).toMatchObject({
+      setId: "ember_vow",
+      beforePieces: 2,
+      afterPieces: 1,
+      lostThresholds: [2]
+    });
+  });
 });

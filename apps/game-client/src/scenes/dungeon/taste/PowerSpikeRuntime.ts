@@ -1,6 +1,6 @@
 import {
   SeededRng,
-  deriveStats,
+  deriveEquippedPlayerStats,
   resolveSpecialAffixTotals,
   rollItemDrop,
   type ItemDef,
@@ -11,6 +11,7 @@ import {
   type PowerSpikePairBudgetState,
   type PowerSpikePairId
 } from "@blodex/core";
+import { ITEM_SET_DEFS } from "@blodex/content";
 import type { BuildIdentitySnapshot } from "./TasteRuntimePorts";
 import {
   DEFAULT_POWER_SPIKE_CALIBRATION_ASSET,
@@ -132,7 +133,9 @@ function simulatePlayerWithCandidateItem(player: PlayerState, candidate: ItemIns
     [candidate.slot]: candidate
   };
   const equipped = Object.values(equipment).filter((item): item is ItemInstance => item !== undefined);
-  const derivedStats = deriveStats(player.baseStats, equipped);
+  const derivedStats = deriveEquippedPlayerStats(player.baseStats, equipped, {
+    itemSetDefs: ITEM_SET_DEFS
+  });
   return {
     ...player,
     equipment,

@@ -3,6 +3,7 @@ import {
   BOSS_DEFS,
   BLUEPRINT_DEFS,
   ITEM_DEFS,
+  ITEM_SET_DEFS,
   MONSTER_AFFIX_DEFS,
   MONSTER_ARCHETYPES,
   MUTATION_DEFS,
@@ -22,6 +23,7 @@ import {
   contentEventDescriptionKey,
   contentEventNameKey,
   contentItemNameKey,
+  contentItemSetNameKey,
   contentMonsterNameKey,
   contentMutationNameKey,
   contentSkillDescriptionKey,
@@ -65,6 +67,12 @@ const ITEM_NAME_ZH: Readonly<Record<string, string>> = {
   gravewake_greaves: "墓醒胫甲",
   ossuary_signet: "骨库徽戒",
   keeper_veil: "守卫面纱"
+};
+
+const ITEM_SET_NAME_ZH: Readonly<Record<string, string>> = {
+  ember_vow: "烬誓遗物",
+  judicator_regalia: "裁判官圣装",
+  gravewake_relics: "墓醒遗物"
 };
 
 const SKILL_ZH: Readonly<Record<string, { name: string; description: string }>> = {
@@ -360,6 +368,10 @@ export function buildZhCnContentMessages(): Record<string, string> {
 
   for (const item of ITEM_DEFS) {
     messages[contentItemNameKey(item.id)] = ITEM_NAME_ZH[item.id] ?? item.name;
+  }
+
+  for (const itemSet of ITEM_SET_DEFS) {
+    messages[contentItemSetNameKey(itemSet.id)] = ITEM_SET_NAME_ZH[itemSet.id] ?? itemSet.name;
   }
 
   for (const skill of SKILL_DEFS) {

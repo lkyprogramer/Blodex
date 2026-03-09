@@ -43,9 +43,11 @@ const EQUIPMENT_SLOTS = ["weapon", "helm", "chest", "boots", "ring"] as const;
 const ITEM_RARITIES = ["common", "magic", "rare"] as const;
 const ITEM_KINDS = ["equipment", "consumable", "unique"] as const;
 const WEAPON_TYPES = ["sword", "axe", "dagger", "staff", "hammer", "sword_master"] as const;
+const DAMAGE_TYPES = ["physical", "arcane", "fire", "cold", "lightning"] as const;
+const BOSS_AI_STATES = ["idle", "telegraph", "attacking", "summoning", "dead"] as const;
 const MONSTER_AI_STATES = ["idle", "chase", "kite", "ambush", "swarm", "shield", "support", "attack", "dead"] as const;
 const MONSTER_AI_BEHAVIORS = ["chase", "kite", "ambush", "swarm", "shield", "support"] as const;
-const MONSTER_AFFIX_IDS = ["frenzied", "armored", "vampiric", "splitting"] as const;
+const MONSTER_AFFIX_IDS = ["frenzied", "armored", "vampiric", "splitting", "hulking", "warded", "skirmisher", "manaburn"] as const;
 
 export interface PersistedBuffState {
   defId: string;
@@ -307,6 +309,19 @@ function isDerivedStats(value: unknown): boolean {
   );
 }
 
+function isDamageProfile(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return Object.entries(value).every(
+    ([key, entry]) => isKnownStringLiteral(key, DAMAGE_TYPES) && isFiniteNumber(entry)
+  );
+}
+
+function isFiniteNumberRecord(value: unknown): value is Record<string, number> {
+  return isRecord(value) && Object.values(value).every((entry) => isFiniteNumber(entry));
+}
+
 function isItemInstance(value: unknown): value is ItemInstance {
   return (
     isRecord(value) &&
@@ -315,6 +330,7 @@ function isItemInstance(value: unknown): value is ItemInstance {
     typeof value.name === "string" &&
     isKnownStringLiteral(value.slot, EQUIPMENT_SLOTS) &&
     (value.kind === undefined || isKnownStringLiteral(value.kind, ITEM_KINDS)) &&
+    (value.setId === undefined || typeof value.setId === "string") &&
     (value.weaponType === undefined || isKnownStringLiteral(value.weaponType, WEAPON_TYPES)) &&
     isKnownStringLiteral(value.rarity, ITEM_RARITIES) &&
     isFiniteNumber(value.requiredLevel) &&
@@ -430,6 +446,8 @@ function isPersistentMonsterState(value: unknown): value is PersistentMonsterSta
     isRecord(value) &&
     typeof value.id === "string" &&
     typeof value.archetypeId === "string" &&
+    (value.enemyProfileId === undefined || typeof value.enemyProfileId === "string") &&
+    (value.damageProfile === undefined || isDamageProfile(value.damageProfile)) &&
     isFiniteNumber(value.level) &&
     isFiniteNumber(value.health) &&
     isFiniteNumber(value.maxHealth) &&
@@ -455,6 +473,25 @@ function isRuntimeMonsterState(value: unknown): value is RuntimeMonsterState {
     isFiniteNumber(value.nextAttackAt) &&
     isFiniteNumber(value.nextSupportAt) &&
     (value.baseMoveSpeed === undefined || isFiniteNumber(value.baseMoveSpeed))
+  );
+}
+
+function isBossRuntimeState(value: unknown): value is BossRuntimeState {
+  return (
+    isRecord(value) &&
+    typeof value.bossId === "string" &&
+    (value.enemyProfileId === undefined || typeof value.enemyProfileId === "string") &&
+    (value.damageProfile === undefined || isDamageProfile(value.damageProfile)) &&
+    isFiniteNumber(value.currentPhaseIndex) &&
+    isFiniteNumber(value.health) &&
+    isFiniteNumber(value.maxHealth) &&
+    isFiniteNumberRecord(value.attackCooldowns) &&
+    isPoint(value.position) &&
+    isKnownStringLiteral(value.aiState, BOSS_AI_STATES) &&
+    (value.telegraphTarget === undefined || isPoint(value.telegraphTarget)) &&
+    (value.telegraphEndMs === undefined || isFiniteNumber(value.telegraphEndMs)) &&
+    (value.telegraphAttackId === undefined || typeof value.telegraphAttackId === "string") &&
+    (value.enrageAtMs === undefined || isFiniteNumber(value.enrageAtMs))
   );
 }
 
@@ -641,7 +678,7 @@ function validateRuntimeState(runtime: Record<string, unknown>): boolean {
   if (!Array.isArray(runtime.hazards) || !runtime.hazards.every((entry) => isRecord(entry))) {
     return false;
   }
-  if (!(runtime.boss === null || isRecord(runtime.boss))) {
+  if (!(runtime.boss === null || isBossRuntimeState(runtime.boss))) {
     return false;
   }
   if (!(runtime.bossEncounterId === undefined || runtime.bossEncounterId === null || typeof runtime.bossEncounterId === "string")) {

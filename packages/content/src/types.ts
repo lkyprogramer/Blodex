@@ -28,12 +28,14 @@ export type MonsterAffixId =
   | "skirmisher"
   | "manaburn";
 
-export type DamageType = "physical" | "arcane";
+export type DamageType = "physical" | "arcane" | "fire" | "cold" | "lightning";
+export type DamageProfile = Partial<Record<DamageType, number>>;
 
 export type DifficultyMode = "normal" | "hard" | "nightmare";
 
 export type WeaponType = "sword" | "axe" | "dagger" | "staff" | "hammer" | "sword_master";
 export type SkillArchetype = "warrior" | "ranger" | "arcanist";
+export type ItemSetId = string;
 
 export type ItemSpecialAffixKey =
   | "lifesteal"
@@ -134,6 +136,8 @@ export interface MonsterAiConfig {
 export interface MonsterArchetypeDef {
   id: MonsterArchetypeId;
   name: string;
+  enemyProfileId?: string;
+  damageProfile?: DamageProfile;
   healthMultiplier: number;
   damageMultiplier: number;
   attackRange: number;
@@ -168,6 +172,7 @@ export interface ItemDef {
   name: string;
   slot: EquipmentSlot;
   kind?: ItemKind;
+  setId?: ItemSetId;
   weaponType?: WeaponType;
   rarity: ItemRarity;
   requiredLevel: number;
@@ -264,10 +269,33 @@ export interface BossDef {
   id: string;
   name: string;
   spriteKey: string;
+  enemyProfileId?: string;
+  damageProfile?: DamageProfile;
   baseHealth: number;
   phases: BossPhase[];
   dropTableId: string;
   exclusiveFloor: number;
+}
+
+export interface EnemyProfileDef {
+  id: string;
+  name: string;
+  damageProfile: DamageProfile;
+}
+
+export interface ItemSetBonusDef {
+  pieces: number;
+  derivedFlat?: Partial<Record<ItemAffix["key"], number>>;
+  derivedPercent?: Partial<Record<ItemAffix["key"], number>>;
+}
+
+export interface ItemSetDef {
+  id: ItemSetId;
+  name: string;
+  theme: "offense" | "defense" | "utility";
+  associatedDamageType?: DamageType;
+  itemIds: string[];
+  bonuses: ItemSetBonusDef[];
 }
 
 export type BossEncounterType = "story" | "branch" | "challenge";
