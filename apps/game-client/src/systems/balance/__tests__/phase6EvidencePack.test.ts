@@ -20,7 +20,7 @@ describe("phase6 evidence pack", () => {
     expect(pack.smokeScenarioRegistry).toHaveLength(7);
     expect(pack.signoffChecklistRegistry.some((item) => item.id === "taste-signoff")).toBe(true);
     expect(pack.pacingAssessments.normal.floorChecks).toHaveLength(5);
-    expect(pack.pacingAssessments.hard.skillCastsPer30s).toBeCloseTo(4.367, 3);
+    expect(pack.pacingAssessments.hard.skillCastsPer30s).toBeCloseTo(4.404, 3);
     expect(
       pack.smokeMatrix
         .filter((entry) => entry.evidenceType === "automation")

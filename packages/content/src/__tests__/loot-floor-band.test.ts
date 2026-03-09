@@ -38,8 +38,8 @@ describe("loot floor bands", () => {
     expect(late.has("rare")).toBe(true);
   });
 
-  it("keeps merchant unique pool gated to floor 5", () => {
-    expect(hasUniqueAtFloor("merchant_pool", 4)).toBe(false);
-    expect(hasUniqueAtFloor("merchant_pool", 5)).toBe(true);
+  it("keeps merchant unique pool gated to floor 8", () => {
+    expect(hasUniqueAtFloor("merchant_pool", 7)).toBe(false);
+    expect(hasUniqueAtFloor("merchant_pool", 8)).toBe(true);
   });
 });

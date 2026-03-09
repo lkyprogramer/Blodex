@@ -5,6 +5,7 @@ import {
   createBalanceReport
 } from "@blodex/core";
 import { createRealBalanceReport } from "../RealBalanceReport";
+import { PHASE7_LONG_RUN_EVIDENCE_TARGETS } from "../Phase7LongRunTargets";
 
 describe("phase7 long-run evidence", () => {
   it("produces dedicated 8-floor heuristic and real reports", () => {
@@ -36,6 +37,20 @@ describe("phase7 long-run evidence", () => {
       expect(row.real.powerSpikes?.pairSatisfactionRate["3-4"] ?? 0).toBeGreaterThanOrEqual(0);
       expect(row.real.powerSpikes?.pairSatisfactionRate["5-6"] ?? 0).toBeGreaterThanOrEqual(0);
       expect(row.real.powerSpikes?.pairSatisfactionRate["7-8"] ?? 0).toBeGreaterThanOrEqual(0);
+
+      const target = PHASE7_LONG_RUN_EVIDENCE_TARGETS[row.name];
+      expect(target, `${row.name} should have a dedicated long-run target`).toBeDefined();
+      expect(row.real.clearRate).toBeLessThanOrEqual(target!.clearRateMax);
+      expect(row.real.avgFloorReached).toBeGreaterThanOrEqual(target!.avgFloorReachedMin);
+      expect(row.real.itemRarityDistribution.rare ?? 0).toBeLessThanOrEqual(target!.rareShareMax);
+      expect(row.real.avgRunDurationMs).toBeLessThanOrEqual(target!.avgRunDurationMsMax);
+      expect(row.real.powerSpikes?.pairSatisfactionRate["5-6"] ?? 0).toBeGreaterThanOrEqual(
+        target!.pairSatisfaction56Min
+      );
+      expect(row.real.powerSpikes?.pairSatisfactionRate["7-8"] ?? 0).toBeGreaterThanOrEqual(
+        target!.pairSatisfaction78Min
+      );
+      expect(row.real.hpCurveP50.at(-1) ?? 0).toBeLessThanOrEqual(target!.finalFloorHpP50Max);
     }
   }, 30_000);
 });

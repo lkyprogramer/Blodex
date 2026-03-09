@@ -140,7 +140,10 @@ describe("PowerSpikeRuntime", () => {
     expect(resolvePowerSpikePairId(6, 8)).toBe("5-6");
     expect(resolvePowerSpikePairId(8, 8)).toBe("7-8");
     expect(tracker.isPairSatisfied("5-6")).toBe(true);
+    expect(tracker.needsFallbackReward(7)).toBe(true);
+    tracker.markFallbackGranted(7);
     expect(tracker.needsFallbackReward(7)).toBe(false);
+    expect(tracker.needsFallbackReward(8)).toBe(false);
   });
 
   it("treats formed build thresholds as contract spikes", () => {
