@@ -1,4 +1,3 @@
-import Phaser from "phaser";
 import {
   addRunObols,
   advanceChallengeRoomWave,
@@ -17,7 +16,6 @@ import {
   resolveEndlessAffixBonusCount,
   rollItemDrop,
   rollMonsterAffixes,
-  isStoryBossFloor,
   shouldFailChallengeRoomByTimeout,
   shouldSpawnChallengeRoom,
   startChallengeRoom,
@@ -42,6 +40,12 @@ import { playSceneTransition } from "../../../ui/SceneTransitionOverlay";
 import { resolveDebugLockedEquipEnabled } from "../debug/debugFlags";
 import { injectDebugLockedEquipment } from "../debug/injectDebugLockedEquipment";
 import { resolveBiomeVisualTheme } from "../presentation/BiomeVisualThemeRegistry";
+import {
+  resolveBiomeTransitionPanelAssetId,
+  resolveBossNodeTextureKey,
+  resolveBranchRouteCardAssetId,
+  spawnChallengeWorldMarker
+} from "./progressionPresentation";
 import type { ProgressionRuntimeHost } from "./types";
 
 export interface ProgressionRuntimeModuleOptions {
@@ -50,45 +54,6 @@ export interface ProgressionRuntimeModuleOptions {
 
 export class ProgressionRuntimeModule {
   constructor(private readonly options: ProgressionRuntimeModuleOptions) {}
-
-  private resolveBossNodeTextureKey(nextFloor: number): string | undefined {
-    const host = this.options.host;
-    if (host.run.inEndless) {
-      return undefined;
-    }
-    const storyMaxFloor = GAME_CONFIG.maxFloors ?? 8;
-    return isStoryBossFloor(nextFloor, storyMaxFloor) ? "boss_node_marker_01" : undefined;
-  }
-
-  private resolveBiomeTransitionPanelAssetId(biomeId: string): string | undefined {
-    switch (biomeId) {
-      case "forgotten_catacombs":
-        return "biome_transition_panel_catacombs_01";
-      case "molten_caverns":
-        return "biome_transition_panel_molten_01";
-      case "frozen_halls":
-        return "biome_transition_panel_frozen_01";
-      case "phantom_graveyard":
-        return "biome_transition_panel_phantom_01";
-      case "venom_swamp":
-        return "biome_transition_panel_venom_01";
-      case "bone_throne":
-        return "biome_transition_panel_bone_01";
-      default:
-        return undefined;
-    }
-  }
-
-  private resolveBranchRouteCardAssetId(): string | undefined {
-    const host = this.options.host;
-    if (host.run.branchChoice === "molten_route") {
-      return "branch_route_card_molten_01";
-    }
-    if (host.run.branchChoice === "frozen_route") {
-      return "branch_route_card_frozen_01";
-    }
-    return undefined;
-  }
 
   setupFloor(floor: number, initial: boolean): void {
     const host = this.options.host;
@@ -205,8 +170,8 @@ export class ProgressionRuntimeModule {
     host.runEnded = false;
 
     if (!initial) {
-      const backdropAssetId = this.resolveBiomeTransitionPanelAssetId(host.currentBiome.id);
-      const accentAssetId = this.resolveBranchRouteCardAssetId();
+      const backdropAssetId = resolveBiomeTransitionPanelAssetId(host.currentBiome.id);
+      const accentAssetId = resolveBranchRouteCardAssetId(host.run.branchChoice);
       const transitionOptions: {
         title: string;
         subtitle: string;
@@ -319,7 +284,7 @@ export class ProgressionRuntimeModule {
       host.renderSystem.spawnStaircase(
         host.staircaseState.position,
         host.origin,
-        this.resolveBossNodeTextureKey(host.run.currentFloor + 1)
+        resolveBossNodeTextureKey(host.run.inEndless, host.run.currentFloor + 1)
       )
     );
   }
@@ -490,16 +455,7 @@ export class ProgressionRuntimeModule {
     if (center === null) {
       return;
     }
-    const challengeMarker =
-      host.renderSystem.spawnWorldMarker?.(center, "node_challenge_marker_01", host.origin, {
-        width: 36,
-        height: 36
-      }) ?? host.renderSystem.spawnTelegraphCircle(center, 0.95, host.origin);
-    challengeMarker.setAlpha(0.2);
-    if (challengeMarker instanceof Phaser.GameObjects.Image) {
-      challengeMarker.setTint(0x9c6ac4);
-    }
-    host.challengeMarker = challengeMarker;
+    host.challengeMarker = spawnChallengeWorldMarker(host, center);
     host.runLog.appendKey(
       "log.challenge.discovered",
       {
@@ -591,8 +547,11 @@ export class ProgressionRuntimeModule {
         12
       );
       host.tryDiscoverBlueprints("challenge_room", nowMs, host.challengeRoomState.roomId);
-      if (host.challengeMarker instanceof Phaser.GameObjects.Image) {
-        host.challengeMarker.setTint(0x5abf8a);
+      if (
+        host.challengeMarker !== null &&
+        typeof (host.challengeMarker as { setTint?: unknown }).setTint === "function"
+      ) {
+        (host.challengeMarker as Phaser.GameObjects.Image).setTint(0x5abf8a);
       }
       host.challengeMarker?.setAlpha(0.12);
       const challengeId = host.challengeRoomState.challengeId;
@@ -672,16 +631,7 @@ export class ProgressionRuntimeModule {
     host.challengeWaveTotal = this.resolveChallengeWaveTotal(challengeRoom.id);
     const center = this.challengeRoomCenter(challengeRoom.id);
     if (center !== null) {
-      const challengeMarker =
-        host.renderSystem.spawnWorldMarker?.(center, "node_challenge_marker_01", host.origin, {
-          width: 36,
-          height: 36
-        }) ?? host.renderSystem.spawnTelegraphCircle(center, 0.95, host.origin);
-      challengeMarker.setAlpha(0.2);
-      if (challengeMarker instanceof Phaser.GameObjects.Image) {
-        challengeMarker.setTint(0x9c6ac4);
-      }
-      host.challengeMarker = challengeMarker;
+      host.challengeMarker = spawnChallengeWorldMarker(host, center);
     }
 
     const floorPrefix = `challenge-${host.run.currentFloor}-`;
