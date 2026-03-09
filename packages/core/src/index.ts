@@ -1,6 +1,7 @@
 export * from "./contracts/events";
 export * from "./contracts/types";
 export * from "./combat";
+export * from "./element";
 export * from "./eventBus";
 export * from "./floor";
 export * from "./loot";
@@ -30,6 +31,7 @@ export * from "./xp";
 export * from "./specialAffix";
 export * from "./itemTradeoffCalibration";
 export * from "./itemTradeoff";
+export * from "./itemSet";
 export * from "./talent";
 export * from "./save";
 export * from "./challengeRoom";

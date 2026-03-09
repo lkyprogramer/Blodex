@@ -1,4 +1,5 @@
 import type { BaseStats, ItemInstance } from "@blodex/core";
+import { ITEM_SET_DEF_MAP } from "@blodex/content";
 import { t } from "../../../i18n";
 
 const MAX_HEARTBEAT_EVENTS = 128;
@@ -252,6 +253,17 @@ export class TasteRuntimePortHub implements BuildIdentityPort, HeartbeatEventPor
       });
     }
 
+    const setTag = [...this.tags].find((tag) => tag.startsWith("set:"));
+    if (setTag !== undefined) {
+      recommendations.push({
+        id: "set-commit",
+        priority: "low",
+        title: t("ui.summary.recommendation.set_commit.title"),
+        reason: t("ui.summary.recommendation.set_commit.reason"),
+        action: t("ui.summary.recommendation.set_commit.action")
+      });
+    }
+
     return recommendations;
   }
 
@@ -273,6 +285,17 @@ export class TasteRuntimePortHub implements BuildIdentityPort, HeartbeatEventPor
   }
 
   private addBuildTagsFromItem(item: ItemInstance): void {
+    if (item.setId !== undefined) {
+      this.tags.add("build:set");
+      this.tags.add(`set:${item.setId}`);
+      const setDef = ITEM_SET_DEF_MAP[item.setId];
+      if (setDef?.associatedDamageType !== undefined) {
+        this.tags.add(`element:${setDef.associatedDamageType}`);
+      }
+      if (setDef !== undefined) {
+        this.tags.add(`build:${setDef.theme}`);
+      }
+    }
     const allAffixEntries = [
       ...Object.entries(item.rolledAffixes),
       ...Object.entries(item.rolledSpecialAffixes ?? {})

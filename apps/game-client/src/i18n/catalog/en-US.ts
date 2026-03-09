@@ -3,6 +3,7 @@ import {
   BOSS_DEFS,
   BLUEPRINT_DEFS,
   ITEM_DEFS,
+  ITEM_SET_DEFS,
   MONSTER_AFFIX_DEFS,
   MONSTER_ARCHETYPES,
   MUTATION_DEFS,
@@ -23,6 +24,7 @@ import {
   contentEventDescriptionKey,
   contentEventNameKey,
   contentItemNameKey,
+  contentItemSetNameKey,
   contentMutationNameKey,
   contentMonsterNameKey,
   contentSkillDescriptionKey,
@@ -139,6 +141,9 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.hud.tooltip.no_affixes": "No affixes",
   "ui.hud.tooltip.compare": "Compare: {name}",
   "ui.hud.tooltip.power_delta": "Power Δ {delta}",
+  "ui.hud.set.transition.activate": "{pieces} · activate {threshold}",
+  "ui.hud.set.transition.progress": "{pieces} · next {threshold}",
+  "ui.hud.set.transition.break": "{pieces} · lose {threshold}",
   "ui.hud.tooltip.summary.offense": "Offense",
   "ui.hud.tooltip.summary.defense": "Defense",
   "ui.hud.tooltip.summary.utility": "Utility",
@@ -172,6 +177,7 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.feedback.build_tag.offense": "Offense",
   "ui.feedback.build_tag.defense": "Defense",
   "ui.feedback.build_tag.utility": "Utility",
+  "ui.feedback.build_tag.set": "Set Lane",
   "ui.feedback.build_tag.branching": "Branching",
   "ui.feedback.build_tag.kill_boss": "Boss Ready",
   "ui.feedback.build_tag.kill_elite": "Elite Pressure",
@@ -179,6 +185,11 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.feedback.build_tag.dexterity": "Dexterity",
   "ui.feedback.build_tag.vitality": "Vitality",
   "ui.feedback.build_tag.intelligence": "Intelligence",
+  "ui.feedback.build_tag.element_physical": "Physical",
+  "ui.feedback.build_tag.element_arcane": "Arcane",
+  "ui.feedback.build_tag.element_fire": "Fire",
+  "ui.feedback.build_tag.element_cold": "Cold",
+  "ui.feedback.build_tag.element_lightning": "Lightning",
   "ui.feedback.synergy.syn_staff_chain_lightning_overload.title": "Overload Online",
   "ui.feedback.synergy.syn_staff_chain_lightning_overload.detail": "Staff and Chain Lightning now hit with a stronger burst lane.",
   "ui.feedback.synergy.syn_dagger_shadow_step_ambush.title": "Ambush Online",
@@ -299,6 +310,14 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.summary.recommendation.stabilize_build.title": "Keep the build coherent",
   "ui.summary.recommendation.stabilize_build.reason": "The current build tags are healthy and no single gap stands out.",
   "ui.summary.recommendation.stabilize_build.action": "Keep stacking same-axis affixes next run instead of reopening the build.",
+  "ui.summary.recommendation.set_commit.title": "Lean into the active set shell",
+  "ui.summary.recommendation.set_commit.reason": "A set lane has already started to form, so the next run can consolidate around it.",
+  "ui.summary.recommendation.set_commit.action": "Prefer the matching set slot or same-element route instead of restarting from a neutral pickup.",
+  "ui.damage_type.physical": "physical",
+  "ui.damage_type.arcane": "arcane",
+  "ui.damage_type.fire": "fire",
+  "ui.damage_type.cold": "cold",
+  "ui.damage_type.lightning": "lightning",
   "ui.summary.suggestion.route.title": "Pivot through {route}",
   "ui.summary.suggestion.route.action_branch": "At floor 2, deliberately take {route} and spend branches on event or merchant rooms instead of a straight clear.",
   "ui.summary.suggestion.route.action_default": "Route the next run toward {route} and let the biome bias reshape your equipment curve.",
@@ -695,6 +714,10 @@ function buildContentMessages(): Record<string, string> {
 
   for (const item of ITEM_DEFS) {
     messages[contentItemNameKey(item.id)] = item.name;
+  }
+
+  for (const itemSet of ITEM_SET_DEFS) {
+    messages[contentItemSetNameKey(itemSet.id)] = itemSet.name;
   }
 
   for (const skill of SKILL_DEFS) {

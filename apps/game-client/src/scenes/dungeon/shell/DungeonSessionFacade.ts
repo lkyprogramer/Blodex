@@ -10,6 +10,7 @@ import {
   deriveFloorSeed,
   deriveStats,
   isItemDefUnlockedByWeaponType,
+  resolveEquippedItemSetEffects,
   mergeSynergyDiscoveries,
   resolveDailyDate,
   normalizeMutationMetaState,
@@ -38,6 +39,7 @@ import {
   BLUEPRINT_DEFS,
   BLUEPRINT_DEF_MAP,
   BUFF_DEF_MAP,
+  ITEM_SET_DEFS,
   MUTATION_DEFS,
   MUTATION_DEF_MAP,
   SYNERGY_DEFS,
@@ -570,12 +572,14 @@ export class DungeonSessionFacade {
     const source = this.source;
     const equipped = Object.values(player.equipment).filter((item): item is NonNullable<typeof item> => item !== undefined);
     const buffEffects = aggregateBuffEffects(player.activeBuffs ?? [], BUFF_DEF_MAP);
+    const itemSetEffects = resolveEquippedItemSetEffects(equipped, ITEM_SET_DEFS);
     const derivedStats = deriveStats(
       player.baseStats,
       equipped,
       buffEffects,
       source.meta.permanentUpgrades,
-      source.talentEffects
+      source.talentEffects,
+      itemSetEffects
     );
 
     return {

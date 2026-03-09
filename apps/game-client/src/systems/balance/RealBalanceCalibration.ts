@@ -19,26 +19,26 @@ export const PHASE6_BALANCE_BASELINE_COMMIT = "19574b7";
 
 export const DEFAULT_REAL_BALANCE_SCENARIO_CALIBRATIONS: Record<string, BalanceDriftCalibrationRecord> = {
   "hard-average": {
-    id: "phase6-6.5-hard-average-v2",
+    id: "phase7-7.7-hard-average-v1",
     scenarioName: "hard-average",
     sourceSampleSize: 18,
     baselineCommit: PHASE6_BALANCE_BASELINE_COMMIT,
     rationale:
-      "6.5 added floor-level pacing overhead to both heuristic and real simulators; hard-average still diverges on avgRunDurationMs and requires a scenario-scoped guard band.",
+      "7.7 elemental enemy profiles introduce a content-driven hard-average duration drift; keep the extra guard band isolated to this scenario instead of widening the global default.",
     observedDelta: {
       clearRate: 0.7222,
       rareShare: 0.0888,
-      avgRunDurationMs: 159_531
+      avgRunDurationMs: 190_400
     },
     guardBand: {
       clearRate: 0.0978,
       rareShare: 0.0212,
-      avgRunDurationMs: 20_469
+      avgRunDurationMs: 14_600
     },
     thresholds: {
       clearRate: 0.82,
       rareShare: 0.11,
-      avgRunDurationMs: 180_000
+      avgRunDurationMs: 205_000
     }
   },
   "nightmare-optimal": {

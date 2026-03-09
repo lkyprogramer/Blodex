@@ -27,6 +27,7 @@ interface HeartbeatUiPort {
       title: string;
       subtitle: string;
       sourceLabel: string;
+      equippedItems?: ItemInstance[];
       onAction: (action: "equip" | "later" | "ignore") => void;
     }
   ): void;
@@ -76,13 +77,19 @@ const BUILD_TAG_LABEL_KEYS: Record<string, string> = {
   "build:offense": "ui.feedback.build_tag.offense",
   "build:defense": "ui.feedback.build_tag.defense",
   "build:utility": "ui.feedback.build_tag.utility",
+  "build:set": "ui.feedback.build_tag.set",
   "build:branching": "ui.feedback.build_tag.branching",
   "kill:boss": "ui.feedback.build_tag.kill_boss",
   "kill:elite": "ui.feedback.build_tag.kill_elite",
   "stat:strength": "ui.feedback.build_tag.strength",
   "stat:dexterity": "ui.feedback.build_tag.dexterity",
   "stat:vitality": "ui.feedback.build_tag.vitality",
-  "stat:intelligence": "ui.feedback.build_tag.intelligence"
+  "stat:intelligence": "ui.feedback.build_tag.intelligence",
+  "element:physical": "ui.feedback.build_tag.element_physical",
+  "element:arcane": "ui.feedback.build_tag.element_arcane",
+  "element:fire": "ui.feedback.build_tag.element_fire",
+  "element:cold": "ui.feedback.build_tag.element_cold",
+  "element:lightning": "ui.feedback.build_tag.element_lightning"
 };
 
 const SYNERGY_COPY_KEYS: Record<string, { title: string; detail: string }> = {
@@ -212,6 +219,9 @@ export class HeartbeatFeedbackRuntime {
       title: t("ui.feedback.compare.title"),
       subtitle: t("ui.feedback.compare.subtitle"),
       sourceLabel: t(SOURCE_LABEL_KEYS[next.source]),
+      equippedItems: Object.values(this.host.player.equipment).filter(
+        (item): item is ItemInstance => item !== undefined
+      ),
       onAction: (action) => {
         const activePrompt = this.activeComparePrompt ?? next;
         this.activeComparePrompt = null;
@@ -241,7 +251,11 @@ export class HeartbeatFeedbackRuntime {
     if (source !== "merchant_purchase") {
       return false;
     }
-    return isMerchantHighValueCompareCandidate(item, this.host.player.equipment[item.slot]);
+    return isMerchantHighValueCompareCandidate(
+      item,
+      this.host.player.equipment[item.slot],
+      Object.values(this.host.player.equipment).filter((entry): entry is ItemInstance => entry !== undefined)
+    );
   }
 
   private isQueued(itemId: string): boolean {

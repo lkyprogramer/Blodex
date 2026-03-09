@@ -119,6 +119,26 @@ function formatSignedValue(value: number): string {
   return normalized;
 }
 
+function formatSetTransitionDetail(transition: NonNullable<ReturnType<typeof buildEquipmentCompareView>["setTransition"]>): string {
+  const pieceDelta = `${transition.beforePieces}→${transition.afterPieces}`;
+  if (transition.activatedThresholds.length > 0) {
+    return t("ui.hud.set.transition.activate", {
+      pieces: pieceDelta,
+      threshold: `${Math.max(...transition.activatedThresholds)}pc`
+    });
+  }
+  if (transition.lostThresholds.length > 0) {
+    return t("ui.hud.set.transition.break", {
+      pieces: pieceDelta,
+      threshold: `${Math.max(...transition.lostThresholds)}pc`
+    });
+  }
+  return t("ui.hud.set.transition.progress", {
+    pieces: pieceDelta,
+    threshold: `${transition.nextThreshold ?? transition.afterPieces}pc`
+  });
+}
+
 function directionToPromptTone(direction: "up" | "down" | "equal"): "positive" | "negative" | "neutral" {
   switch (direction) {
     case "up":
@@ -189,10 +209,11 @@ export class HudOverlayController {
       title: string;
       subtitle: string;
       sourceLabel: string;
+      equippedItems?: ItemInstance[];
       onAction: (action: "equip" | "later" | "ignore") => void;
     }
   ): void {
-    const compareView = buildEquipmentCompareView(item, compareItem);
+    const compareView = buildEquipmentCompareView(item, compareItem, options.equippedItems);
     const localizedItemName = this.contentLocalizer.itemName(item.defId, item.name);
     const localizedCompareName =
       compareItem === undefined
@@ -203,6 +224,13 @@ export class HudOverlayController {
       symbol: summaryDirectionSymbol(line.direction),
       tone: directionToPromptTone(line.direction)
     }));
+    if (compareView.setTransition !== undefined) {
+      summaryLines.push({
+        label: this.contentLocalizer.itemSetName(compareView.setTransition.setId, compareView.setTransition.setName),
+        symbol: formatSetTransitionDetail(compareView.setTransition),
+        tone: directionToPromptTone(compareView.setTransition.direction)
+      });
+    }
     const affixLines: EquipmentComparePromptAffixLine[] = compareView.affixLines.map((line) => ({
       label: localizeAffixName(line.key),
       value: formatAffixValue(line.key, line.value),

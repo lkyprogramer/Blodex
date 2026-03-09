@@ -367,6 +367,20 @@ describe("save", () => {
     expect(validateSave(broken)).toBe(false);
   });
 
+  it("rejects invalid boss runtime shape", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    broken.runtime = {
+      ...(broken.runtime as Record<string, unknown>),
+      boss: {
+        ...((broken.runtime as Record<string, unknown>).boss as Record<string, unknown>),
+        currentPhaseIndex: undefined
+      }
+    };
+
+    expect(validateSave(broken)).toBe(false);
+    expect(deserializeRunState(JSON.stringify(broken))).toBeNull();
+  });
+
   it("rejects runtime state when deferred outcomes are missing", () => {
     const broken = makeSave() as unknown as Record<string, unknown>;
     broken.runtime = {

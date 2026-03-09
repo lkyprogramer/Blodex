@@ -355,7 +355,12 @@ export class HudInventoryController {
         if (item === undefined) {
           return;
         }
-        this.showTooltip(item, player.equipment[item.slot]?.id === item.id ? undefined : player.equipment[item.slot], event as MouseEvent);
+        this.showTooltip(
+          item,
+          player.equipment[item.slot]?.id === item.id ? undefined : player.equipment[item.slot],
+          Object.values(player.equipment).filter((entry): entry is ItemInstance => entry !== undefined),
+          event as MouseEvent
+        );
       });
 
       element.addEventListener("mousemove", (event) => {
@@ -367,7 +372,12 @@ export class HudInventoryController {
         if (item === undefined) {
           return;
         }
-        this.showTooltip(item, player.equipment[item.slot]?.id === item.id ? undefined : player.equipment[item.slot], event as MouseEvent);
+        this.showTooltip(
+          item,
+          player.equipment[item.slot]?.id === item.id ? undefined : player.equipment[item.slot],
+          Object.values(player.equipment).filter((entry): entry is ItemInstance => entry !== undefined),
+          event as MouseEvent
+        );
       });
 
       element.addEventListener("mouseleave", () => {
@@ -410,13 +420,18 @@ export class HudInventoryController {
     this.tooltipEl.style.top = `${nextTop}px`;
   }
 
-  showTooltip(item: ItemInstance, compareItem: ItemInstance | undefined, event: MouseEvent): void {
+  showTooltip(
+    item: ItemInstance,
+    compareItem: ItemInstance | undefined,
+    equippedItems: ItemInstance[],
+    event: MouseEvent
+  ): void {
     const localizedItemName = this.contentLocalizer.itemName(item.defId, item.name);
     const localizedCompareName =
       compareItem === undefined
         ? undefined
         : this.contentLocalizer.itemName(compareItem.defId, compareItem.name);
-    const compareView = buildEquipmentCompareView(item, compareItem);
+    const compareView = buildEquipmentCompareView(item, compareItem, equippedItems);
     const affixLines = compareView.affixLines
       .map((line) => {
         const deltaClass = directionToDeltaClass(line.direction);
@@ -442,6 +457,32 @@ export class HudInventoryController {
               )}</span>
             </div>
           `);
+    const setTransitionLine =
+      compareView.setTransition === undefined
+        ? ""
+        : `
+            <div class="tooltip-compare-summary-line">
+              <span>${escapeHtml(
+                this.contentLocalizer.itemSetName(compareView.setTransition.setId, compareView.setTransition.setName)
+              )}</span>
+              <span class="${directionToDeltaClass(compareView.setTransition.direction)}">${escapeHtml(
+                compareView.setTransition.activatedThresholds.length > 0
+                  ? t("ui.hud.set.transition.activate", {
+                      pieces: `${compareView.setTransition.beforePieces}→${compareView.setTransition.afterPieces}`,
+                      threshold: `${Math.max(...compareView.setTransition.activatedThresholds)}pc`
+                    })
+                  : compareView.setTransition.lostThresholds.length > 0
+                    ? t("ui.hud.set.transition.break", {
+                        pieces: `${compareView.setTransition.beforePieces}→${compareView.setTransition.afterPieces}`,
+                        threshold: `${Math.max(...compareView.setTransition.lostThresholds)}pc`
+                      })
+                    : t("ui.hud.set.transition.progress", {
+                        pieces: `${compareView.setTransition.beforePieces}→${compareView.setTransition.afterPieces}`,
+                        threshold: `${compareView.setTransition.nextThreshold ?? compareView.setTransition.afterPieces}pc`
+                      })
+              )}</span>
+            </div>
+          `;
 
     this.showTooltipHtml(
       `
@@ -467,6 +508,7 @@ export class HudInventoryController {
             )}</div>
             <div class="tooltip-compare-summary">
               ${compareSummaryLines.join("")}
+              ${setTransitionLine}
             </div>
             <div class="tooltip-compare-score ${powerDeltaClass}">
               ${escapeHtml(

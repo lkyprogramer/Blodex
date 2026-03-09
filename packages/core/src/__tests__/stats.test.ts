@@ -66,4 +66,63 @@ describe("deriveStats regression", () => {
     expect(stats.maxHealth).toBe(298);
     expect(stats.critChance).toBe(0.5);
   });
+
+  it("applies item set effects on top of equipment affixes", () => {
+    const base = {
+      strength: 10,
+      dexterity: 10,
+      vitality: 10,
+      intelligence: 6
+    };
+    const items: ItemInstance[] = [
+      {
+        id: "weapon-1",
+        defId: "emberbrand_edge",
+        name: "Emberbrand Edge",
+        slot: "weapon",
+        kind: "unique",
+        setId: "ember_vow",
+        rarity: "rare",
+        requiredLevel: 5,
+        iconId: "item_weapon_03",
+        seed: "seed-weapon",
+        rolledAffixes: {
+          attackPower: 12
+        }
+      },
+      {
+        id: "ring-1",
+        defId: "cindersigil_band",
+        name: "Cindersigil Band",
+        slot: "ring",
+        kind: "unique",
+        setId: "ember_vow",
+        rarity: "rare",
+        requiredLevel: 5,
+        iconId: "item_ring_02",
+        seed: "seed-ring",
+        rolledAffixes: {
+          attackPower: 8
+        }
+      }
+    ];
+
+    const withoutSet = deriveStats(base, items);
+    const withSet = deriveStats(base, items, undefined, {
+      startingHealth: 0,
+      startingArmor: 0,
+      luckBonus: 0,
+      skillSlots: 0,
+      potionCharges: 0
+    }, undefined, {
+      derivedFlat: {
+        attackPower: 6,
+        moveSpeed: 6
+      },
+      derivedPercent: {}
+    });
+
+    expect(withSet.attackPower).toBe(withoutSet.attackPower + 6);
+    expect(withSet.moveSpeed).toBe(withoutSet.moveSpeed + 6);
+  });
 });

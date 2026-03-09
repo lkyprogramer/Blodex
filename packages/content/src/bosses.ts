@@ -1,9 +1,12 @@
 import type { BossDef } from "./types";
+import { ENEMY_PROFILE_MAP } from "./enemyProfiles";
 
 export const BONE_SOVEREIGN: BossDef = {
   id: "bone_sovereign",
   name: "Bone Sovereign",
   spriteKey: "boss_bone_sovereign",
+  enemyProfileId: "grave_flesh",
+  damageProfile: ENEMY_PROFILE_MAP.grave_flesh!.damageProfile,
   baseHealth: 800,
   phases: [
     {
@@ -67,6 +70,8 @@ export const CATHEDRAL_JUDGE: BossDef = {
   id: "cathedral_judge",
   name: "Cathedral Judge",
   spriteKey: "boss_bone_sovereign",
+  enemyProfileId: "storm_forged",
+  damageProfile: ENEMY_PROFILE_MAP.storm_forged!.damageProfile,
   baseHealth: 920,
   phases: [
     {
@@ -130,6 +135,8 @@ export const EMBER_WARDEN: BossDef = {
   id: "ember_warden",
   name: "Ember Warden",
   spriteKey: "boss_bone_sovereign",
+  enemyProfileId: "emberborn",
+  damageProfile: ENEMY_PROFILE_MAP.emberborn!.damageProfile,
   baseHealth: 760,
   phases: [
     {
@@ -193,6 +200,8 @@ export const OSSUARY_KEEPER: BossDef = {
   id: "ossuary_keeper",
   name: "Ossuary Keeper",
   spriteKey: "boss_bone_sovereign",
+  enemyProfileId: "arcane_ward",
+  damageProfile: ENEMY_PROFILE_MAP.arcane_ward!.damageProfile,
   baseHealth: 840,
   phases: [
     {

@@ -3,8 +3,11 @@ import {
   BUFF_DEF_MAP,
   BLUEPRINT_DEFS,
   BOSS_DEFS,
+  ENEMY_PROFILE_MAP,
+  ENEMY_PROFILES,
   HAZARD_DEFS,
   ITEM_DEFS,
+  ITEM_SET_DEFS,
   LOOT_TABLES,
   MONSTER_AFFIX_DEFS,
   MONSTER_ARCHETYPES,
@@ -45,12 +48,25 @@ describe("content integrity", () => {
 
     for (const monster of MONSTER_ARCHETYPES) {
       expect(lootTableIds.has(monster.dropTableId), `${monster.id} -> missing loot table ${monster.dropTableId}`).toBe(true);
+      if (monster.enemyProfileId !== undefined) {
+        expect(
+          ENEMY_PROFILE_MAP[monster.enemyProfileId],
+          `${monster.id} -> missing enemy profile ${monster.enemyProfileId}`
+        ).toBeDefined();
+        expect(monster.damageProfile).toEqual(ENEMY_PROFILE_MAP[monster.enemyProfileId]?.damageProfile);
+      }
     }
 
     for (const boss of BOSS_DEFS) {
       expect(lootTableIds.has(boss.dropTableId), `${boss.id} -> missing loot table ${boss.dropTableId}`).toBe(true);
       expect(boss.exclusiveFloor, `${boss.id} -> exclusiveFloor must be >= 1`).toBeGreaterThanOrEqual(1);
+      if (boss.enemyProfileId !== undefined) {
+        expect(ENEMY_PROFILE_MAP[boss.enemyProfileId], `${boss.id} -> missing enemy profile ${boss.enemyProfileId}`).toBeDefined();
+        expect(boss.damageProfile).toEqual(ENEMY_PROFILE_MAP[boss.enemyProfileId]?.damageProfile);
+      }
     }
+
+    expect(new Set(ENEMY_PROFILES.map((entry) => entry.id)).size).toBe(ENEMY_PROFILES.length);
 
     for (const biome of BIOME_DEFS) {
       for (const monsterId of biome.monsterPool) {
@@ -248,6 +264,16 @@ describe("content integrity", () => {
     for (const talent of TALENT_DEFS) {
       for (const prerequisite of talent.prerequisites) {
         expect(talentIds.has(prerequisite.talentId), `${talent.id} -> missing prerequisite ${prerequisite.talentId}`).toBe(true);
+      }
+    }
+
+    const itemIds = new Set(ITEM_DEFS.map((item) => item.id));
+    const itemDefById = new Map(ITEM_DEFS.map((item) => [item.id, item]));
+    for (const setDef of ITEM_SET_DEFS) {
+      expect(setDef.itemIds.length).toBeGreaterThan(0);
+      for (const itemId of setDef.itemIds) {
+        expect(itemIds.has(itemId), `${setDef.id} -> missing set item ${itemId}`).toBe(true);
+        expect(itemDefById.get(itemId)?.setId, `${setDef.id} -> item ${itemId} missing matching setId`).toBe(setDef.id);
       }
     }
   });

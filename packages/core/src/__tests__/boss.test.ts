@@ -99,6 +99,24 @@ describe("boss", () => {
     state = markBossAttackUsed(state, attack, 1000);
     expect(state.attackCooldowns.hit).toBe(2000);
   });
+
+  it("applies boss damage profiles when taking elemental damage", () => {
+    const fireBoss = initBossState(
+      {
+        ...BOSS,
+        enemyProfileId: "emberborn",
+        damageProfile: {
+          fire: 0.72,
+          cold: 1.18
+        }
+      },
+      { x: 0, y: 0 }
+    );
+    const fireHit = applyDamageToBoss(fireBoss, 100, "fire");
+    const coldHit = applyDamageToBoss(fireBoss, 100, "cold");
+
+    expect(fireHit.health).toBeGreaterThan(coldHit.health);
+  });
 });
 
 describe("boss combat", () => {

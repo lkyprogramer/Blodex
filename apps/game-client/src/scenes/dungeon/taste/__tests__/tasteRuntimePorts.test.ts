@@ -76,4 +76,36 @@ describe("TasteRuntimePortHub", () => {
     expect(snapshot.pivots).toHaveLength(0);
     expect(hub.listHeartbeatEvents()).toHaveLength(0);
   });
+
+  it("adds set and element tags for set items and suggests committing to the set", () => {
+    const hub = new TasteRuntimePortHub();
+    hub.recordDrop(
+      {
+        id: "emberbrand-edge-id",
+        defId: "emberbrand_edge",
+        name: "Emberbrand Edge",
+        kind: "unique",
+        setId: "ember_vow",
+        slot: "weapon",
+        rarity: "rare",
+        requiredLevel: 5,
+        iconId: "item_weapon_03",
+        seed: "emberbrand-edge-seed",
+        rolledAffixes: {
+          attackPower: 12
+        }
+      },
+      4,
+      "boss_reward",
+      1600
+    );
+
+    const snapshot = hub.snapshotBuildIdentity();
+    const recommendations = hub.buildRecommendations();
+
+    expect(snapshot.tags).toContain("build:set");
+    expect(snapshot.tags).toContain("set:ember_vow");
+    expect(snapshot.tags).toContain("element:fire");
+    expect(recommendations.some((entry) => entry.id === "set-commit")).toBe(true);
+  });
 });

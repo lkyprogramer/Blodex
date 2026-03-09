@@ -139,6 +139,8 @@ export class MonsterSpawnSystem {
       const nextState = applyAffixesToMonsterState({
         id: `monster-${i}`,
         archetypeId: archetype.id,
+        ...(archetype.enemyProfileId === undefined ? {} : { enemyProfileId: archetype.enemyProfileId }),
+        ...(archetype.damageProfile === undefined ? {} : { damageProfile: archetype.damageProfile }),
         level: options.floor,
         health: Math.floor(options.enemyBaseHealth * archetype.healthMultiplier * hpMultiplier),
         maxHealth: Math.floor(options.enemyBaseHealth * archetype.healthMultiplier * hpMultiplier),

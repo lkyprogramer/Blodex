@@ -831,6 +831,8 @@ export class ProgressionRuntimeModule {
       const state = applyAffixesToMonsterState({
         id: `challenge-${host.run.currentFloor}-${waveNumber}-${idx}-${Math.floor(nowMs)}`,
         archetypeId: archetype.id,
+        ...(archetype.enemyProfileId === undefined ? {} : { enemyProfileId: archetype.enemyProfileId }),
+        ...(archetype.damageProfile === undefined ? {} : { damageProfile: archetype.damageProfile }),
         level: host.run.currentFloor,
         health: Math.floor(GAME_CONFIG.enemyBaseHealth * archetype.healthMultiplier * host.floorConfig.monsterHpMultiplier),
         maxHealth: Math.floor(GAME_CONFIG.enemyBaseHealth * archetype.healthMultiplier * host.floorConfig.monsterHpMultiplier),

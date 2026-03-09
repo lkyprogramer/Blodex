@@ -2,6 +2,10 @@ export function contentItemNameKey(itemId: string): string {
   return `content.item.${itemId}.name`;
 }
 
+export function contentItemSetNameKey(setId: string): string {
+  return `content.item_set.${setId}.name`;
+}
+
 export function contentSkillNameKey(skillId: string): string {
   return `content.skill.${skillId}.name`;
 }

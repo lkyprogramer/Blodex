@@ -1,5 +1,6 @@
 import type { CombatEvent, DamageType, MonsterState, PlayerState } from "./contracts/types";
 import type { RngLike } from "./contracts/types";
+import { resolveDamageProfileMultiplier } from "./element";
 import { hasMonsterAffix } from "./monsterAffix";
 import {
   clampSpecialAffixTotals,
@@ -28,6 +29,24 @@ const DEFAULT_ARMOR_MITIGATION_K = 110;
 const MIN_INCOMING_DAMAGE = 1;
 const ARMORED_PHYSICAL_DAMAGE_MULTIPLIER = 0.78;
 const ARMORED_ARCANE_DAMAGE_MULTIPLIER = 0.92;
+const ARMORED_FIRE_DAMAGE_MULTIPLIER = 0.88;
+const ARMORED_COLD_DAMAGE_MULTIPLIER = 0.88;
+const ARMORED_LIGHTNING_DAMAGE_MULTIPLIER = 0.86;
+
+function resolveArmoredMultiplier(damageType: DamageType): number {
+  switch (damageType) {
+    case "physical":
+      return ARMORED_PHYSICAL_DAMAGE_MULTIPLIER;
+    case "arcane":
+      return ARMORED_ARCANE_DAMAGE_MULTIPLIER;
+    case "fire":
+      return ARMORED_FIRE_DAMAGE_MULTIPLIER;
+    case "cold":
+      return ARMORED_COLD_DAMAGE_MULTIPLIER;
+    case "lightning":
+      return ARMORED_LIGHTNING_DAMAGE_MULTIPLIER;
+  }
+}
 
 export function resolveArmorMitigationRatio(armor: number, k = DEFAULT_ARMOR_MITIGATION_K): number {
   const normalizedArmor = Math.max(0, armor);
@@ -43,11 +62,9 @@ export function resolveMitigatedMonsterDamage(rawDamage: number, armor: number, 
 
 export function resolveMonsterTakenDamage(rawDamage: number, monster: MonsterState, damageType: DamageType): number {
   const normalizedRawDamage = Math.max(0, rawDamage);
-  let mitigated = normalizedRawDamage;
+  let mitigated = normalizedRawDamage * resolveDamageProfileMultiplier(monster.damageProfile, damageType);
   if (hasMonsterAffix(monster, "armored")) {
-    const multiplier =
-      damageType === "arcane" ? ARMORED_ARCANE_DAMAGE_MULTIPLIER : ARMORED_PHYSICAL_DAMAGE_MULTIPLIER;
-    mitigated *= multiplier;
+    mitigated *= resolveArmoredMultiplier(damageType);
   }
   if (damageType === "arcane" && hasMonsterAffix(monster, "warded")) {
     mitigated *= 0.72;

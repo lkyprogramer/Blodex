@@ -3,9 +3,11 @@ import type {
   BaseStats,
   DerivedStats,
   ItemInstance,
+  ItemSetDef,
   PermanentUpgrade
 } from "./contracts/types";
 import { normalizeDerivedAffixValue } from "./itemAffix";
+import { resolveEquippedItemSetEffects, type ItemSetEffectTotals } from "./itemSet";
 import type { TalentEffectTotals } from "./talent";
 
 function cloneDerived(stats: DerivedStats): DerivedStats {
@@ -25,7 +27,8 @@ export function deriveStats(
   equippedItems: ItemInstance[],
   buffEffects?: AggregatedBuffEffect,
   permanentUpgrades?: PermanentUpgrade,
-  talentEffects?: Pick<TalentEffectTotals, "derivedFlat" | "derivedPercent">
+  talentEffects?: Pick<TalentEffectTotals, "derivedFlat" | "derivedPercent">,
+  itemSetEffects?: Pick<ItemSetEffectTotals, "derivedFlat" | "derivedPercent">
 ): DerivedStats {
   const upgrade = permanentUpgrades;
   const baseDerived: DerivedStats = {
@@ -46,6 +49,15 @@ export function deriveStats(
         continue;
       }
       next[key] += normalizeDerivedAffixValue(key, value);
+    }
+  }
+
+  if (itemSetEffects !== undefined) {
+    for (const [key, value] of Object.entries(itemSetEffects.derivedFlat) as Array<[keyof DerivedStats, number]>) {
+      next[key] += value;
+    }
+    for (const [key, value] of Object.entries(itemSetEffects.derivedPercent) as Array<[keyof DerivedStats, number]>) {
+      next[key] *= 1 + value;
     }
   }
 
@@ -88,6 +100,30 @@ export function deriveStats(
     : Math.min(0.5, Math.max(0, next.critChance));
 
   return next;
+}
+
+export interface DeriveEquippedPlayerStatsOptions {
+  buffEffects?: AggregatedBuffEffect;
+  permanentUpgrades?: PermanentUpgrade;
+  talentEffects?: Pick<TalentEffectTotals, "derivedFlat" | "derivedPercent">;
+  itemSetDefs?: ItemSetDef[];
+}
+
+export function deriveEquippedPlayerStats(
+  base: BaseStats,
+  equippedItems: ItemInstance[],
+  options: DeriveEquippedPlayerStatsOptions = {}
+): DerivedStats {
+  const itemSetEffects =
+    options.itemSetDefs === undefined ? undefined : resolveEquippedItemSetEffects(equippedItems, options.itemSetDefs);
+  return deriveStats(
+    base,
+    equippedItems,
+    options.buffEffects,
+    options.permanentUpgrades,
+    options.talentEffects,
+    itemSetEffects
+  );
 }
 
 export function defaultBaseStats(): BaseStats {

@@ -55,6 +55,16 @@ function collectBossSummaryKeys(): string[] {
   return [...values];
 }
 
+function collectDynamicCatalogKeys(): string[] {
+  return [
+    "ui.damage_type.physical",
+    "ui.damage_type.arcane",
+    "ui.damage_type.fire",
+    "ui.damage_type.cold",
+    "ui.damage_type.lightning"
+  ];
+}
+
 export function collectSourceI18nKeys(rootDir: string): Set<string> {
   const files: string[] = [];
   walkFiles(rootDir, files);
@@ -73,6 +83,9 @@ export function collectSourceI18nKeys(rootDir: string): Set<string> {
     keys.add(`${summaryKey}.description_abyss`);
     keys.add(`${summaryKey}.description_daily`);
     keys.add(`${summaryKey}.log_defeated`);
+  }
+  for (const key of collectDynamicCatalogKeys()) {
+    keys.add(key);
   }
   return keys;
 }

@@ -3,9 +3,11 @@ import type {
   BossDef,
   BossRuntimeState,
   CombatEvent,
+  DamageType,
   PlayerState,
   RngLike
 } from "./contracts/types";
+import { resolveDamageProfileMultiplier } from "./element";
 import {
   clampSpecialAffixTotals,
   createEmptySpecialAffixTotals,
@@ -21,6 +23,8 @@ export interface BossAttackResolution {
 export function initBossState(boss: BossDef, position: { x: number; y: number }): BossRuntimeState {
   return {
     bossId: boss.id,
+    ...(boss.enemyProfileId === undefined ? {} : { enemyProfileId: boss.enemyProfileId }),
+    ...(boss.damageProfile === undefined ? {} : { damageProfile: boss.damageProfile }),
     currentPhaseIndex: 0,
     health: boss.baseHealth,
     maxHealth: boss.baseHealth,
@@ -185,8 +189,13 @@ export function resolveBossAttack(
   };
 }
 
-export function applyDamageToBoss(state: BossRuntimeState, damage: number): BossRuntimeState {
-  const health = Math.max(0, state.health - Math.max(1, Math.floor(damage)));
+export function applyDamageToBoss(
+  state: BossRuntimeState,
+  damage: number,
+  damageType: DamageType = "physical"
+): BossRuntimeState {
+  const mitigated = Math.max(1, Math.floor(damage * resolveDamageProfileMultiplier(state.damageProfile, damageType)));
+  const health = Math.max(0, state.health - mitigated);
   return {
     ...state,
     health,

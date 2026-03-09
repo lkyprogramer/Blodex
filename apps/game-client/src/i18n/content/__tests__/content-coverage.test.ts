@@ -3,6 +3,7 @@ import {
   BOSS_DEFS,
   BLUEPRINT_DEFS,
   ITEM_DEFS,
+  ITEM_SET_DEFS,
   MONSTER_AFFIX_DEFS,
   MONSTER_ARCHETYPES,
   MUTATION_DEFS,
@@ -26,6 +27,7 @@ import {
   contentEventDescriptionKey,
   contentEventNameKey,
   contentItemNameKey,
+  contentItemSetNameKey,
   contentMonsterNameKey,
   contentMutationNameKey,
   contentSkillDescriptionKey,
@@ -43,6 +45,10 @@ function collectExpectedContentKeys(): Set<string> {
 
   for (const item of ITEM_DEFS) {
     keys.add(contentItemNameKey(item.id));
+  }
+
+  for (const itemSet of ITEM_SET_DEFS) {
+    keys.add(contentItemSetNameKey(itemSet.id));
   }
 
   for (const skill of SKILL_DEFS) {

@@ -1,9 +1,11 @@
 import {
   calculateItemPowerScore,
   collectItemAffixMap,
+  resolveItemSetTransition,
   getItemTradeoffCalibrationAsset,
   type ItemInstance
 } from "@blodex/core";
+import { ITEM_SET_DEFS, ITEM_SET_DEF_MAP } from "@blodex/content";
 import {
   buildEquipmentDeltaSummary,
   resolveDeltaDirection,
@@ -18,16 +20,30 @@ export interface EquipmentCompareAffixView {
   direction: DeltaDirection;
 }
 
+export interface EquipmentCompareSetTransitionView {
+  setId: string;
+  setName: string;
+  beforePieces: number;
+  afterPieces: number;
+  activatedThresholds: number[];
+  lostThresholds: number[];
+  nextThreshold?: number;
+  associatedDamageType?: string;
+  direction: DeltaDirection;
+}
+
 export interface EquipmentCompareView {
   affixLines: EquipmentCompareAffixView[];
   summaryLines: ReturnType<typeof buildEquipmentDeltaSummary>;
   powerDelta: number;
   powerDirection: DeltaDirection;
+  setTransition?: EquipmentCompareSetTransitionView;
 }
 
 export function buildEquipmentCompareView(
   item: ItemInstance,
-  compareItem: ItemInstance | undefined
+  compareItem: ItemInstance | undefined,
+  equippedItems: ItemInstance[] = []
 ): EquipmentCompareView {
   const itemAffixes = collectItemAffixMap(item);
   const compareAffixes = compareItem === undefined ? new Map<string, number>() : collectItemAffixMap(compareItem);
@@ -47,23 +63,37 @@ export function buildEquipmentCompareView(
     });
   const powerDelta =
     compareItem === undefined ? calculateItemPowerScore(item) : calculateItemPowerScore(item) - calculateItemPowerScore(compareItem);
+  const setTransition = resolveItemSetTransition(item, compareItem, equippedItems, ITEM_SET_DEFS);
   return {
     affixLines,
     summaryLines: buildEquipmentDeltaSummary(item, compareItem),
     powerDelta,
-    powerDirection: resolveDeltaDirection(powerDelta)
+    powerDirection: resolveDeltaDirection(powerDelta),
+    ...(setTransition === null
+      ? {}
+      : {
+          setTransition: {
+            ...setTransition,
+            setName: ITEM_SET_DEF_MAP[setTransition.setId]?.name ?? setTransition.setId,
+            ...(ITEM_SET_DEF_MAP[setTransition.setId]?.associatedDamageType === undefined
+              ? {}
+              : { associatedDamageType: ITEM_SET_DEF_MAP[setTransition.setId]!.associatedDamageType }),
+            direction: resolveDeltaDirection(setTransition.afterPieces - setTransition.beforePieces)
+          }
+        })
   };
 }
 
 export function isMerchantHighValueCompareCandidate(
   item: ItemInstance,
-  compareItem: ItemInstance | undefined
+  compareItem: ItemInstance | undefined,
+  equippedItems: ItemInstance[] = []
 ): boolean {
   if (compareItem === undefined) {
     return false;
   }
   const calibration = getItemTradeoffCalibrationAsset();
-  const compareView = buildEquipmentCompareView(item, compareItem);
+  const compareView = buildEquipmentCompareView(item, compareItem, equippedItems);
   const positiveSummaryCount = compareView.summaryLines.filter((line) => line.direction === "up").length;
   return (
     compareView.powerDelta >= calibration.merchantCompareThresholds.minPowerDelta &&

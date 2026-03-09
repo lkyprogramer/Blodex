@@ -1,7 +1,7 @@
 import {
   addRunObols,
   applyXpGain,
-  deriveStats,
+  deriveEquippedPlayerStats,
   resolveEquippedWeaponType,
   resolveMonsterAttack,
   resolvePlayerAttack,
@@ -22,6 +22,7 @@ import {
   type WeaponType,
   type WeaponTypeDef
 } from "@blodex/core";
+import { ITEM_SET_DEFS } from "@blodex/content";
 import type { MonsterRuntime } from "./EntityManager";
 
 interface PlayerCombatContext {
@@ -277,10 +278,9 @@ export class CombatSystem {
     const xpResult = applyXpGain(resolvedPlayer, target.state.xpValue, "manual", {
       xpBonus: specialAffixTotals.xpBonus
     });
-    const nextDerived = deriveStats(
-      xpResult.player.baseStats,
-      equippedItems
-    );
+    const nextDerived = deriveEquippedPlayerStats(xpResult.player.baseStats, equippedItems, {
+      itemSetDefs: ITEM_SET_DEFS
+    });
 
     const nextPlayer = {
       ...xpResult.player,

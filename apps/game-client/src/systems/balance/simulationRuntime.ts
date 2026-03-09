@@ -1,7 +1,7 @@
 import {
   aggregateBuffEffects,
   applyBuff,
-  deriveStats,
+  deriveEquippedPlayerStats,
   resolveHealthRegenTick,
   resolveSpecialAffixTotals,
   updateBuffs,
@@ -10,7 +10,7 @@ import {
   type PlayerState,
   type SkillResolution
 } from "@blodex/core";
-import { BUFF_DEF_MAP } from "@blodex/content";
+import { BUFF_DEF_MAP, ITEM_SET_DEFS } from "@blodex/content";
 import type { MonsterRuntime } from "../EntityManager";
 
 const PASSIVE_MANA_REGEN_PER_SECOND = 2;
@@ -30,7 +30,10 @@ export function createSimulationRegenAccumulator(): SimulationRegenAccumulator {
 function refreshSimulatedPlayer(player: PlayerState): PlayerState {
   const equipped = Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined);
   const buffEffects = aggregateBuffEffects(player.activeBuffs ?? [], BUFF_DEF_MAP);
-  const derivedStats = deriveStats(player.baseStats, equipped, buffEffects);
+  const derivedStats = deriveEquippedPlayerStats(player.baseStats, equipped, {
+    buffEffects,
+    itemSetDefs: ITEM_SET_DEFS
+  });
   return {
     ...player,
     derivedStats,
