@@ -378,14 +378,14 @@ function recordSimulatedItemPowerSpike(
   tracker.recordAcceptedSpike(floor, scorePowerSpikeFromItem(player, item));
 }
 
-function resolveProgressionSpikeTable(floor: number): LootTableDef | undefined {
-  if (floor >= 7) {
+function resolveProgressionSpikeTableForNextFloor(nextFloor: number): LootTableDef | undefined {
+  if (nextFloor >= 7) {
     return LOOT_TABLE_MAP.late_story_progression;
   }
-  if (floor >= 6) {
+  if (nextFloor >= 6) {
     return LOOT_TABLE_MAP.catacomb_elite;
   }
-  if (floor >= 3) {
+  if (nextFloor >= 3) {
     return LOOT_TABLE_MAP.cathedral_depths;
   }
   return LOOT_TABLE_MAP.starter_floor;
@@ -668,7 +668,8 @@ function simulateFloorCombat(
   }
 
   if (nextPlayer.health > 0 && tracker.needsFallbackReward(floor)) {
-    const fallbackTable = resolveProgressionSpikeTable(floor);
+    // Runtime selects fallback rewards against the upcoming floor band.
+    const fallbackTable = resolveProgressionSpikeTableForNextFloor(floor + 1);
     const fallback = fallbackTable === undefined
       ? null
       : resolveGuaranteedSpikeReward({
