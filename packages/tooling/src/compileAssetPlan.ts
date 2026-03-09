@@ -43,12 +43,16 @@ interface ManifestEntry {
     | "player_sprite"
     | "monster_sprite"
     | "boss_sprite"
+    | "boss_portrait"
     | "tile"
     | "item_icon"
     | "skill_icon"
     | "hud"
     | "fx"
-    | "ui_icon";
+    | "ui_badge"
+    | "ui_icon"
+    | "node_marker"
+    | "portrait";
   styleTag: string;
   promptHash: string;
   sourcePath: string;
@@ -81,12 +85,16 @@ const TARGET_SIZE_BY_CATEGORY: Record<ManifestEntry["category"], { width: number
   player_sprite: { width: 384, height: 384 },
   monster_sprite: { width: 320, height: 320 },
   boss_sprite: { width: 448, height: 448 },
+  boss_portrait: { width: 512, height: 512 },
   tile: { width: 320, height: 320 },
   item_icon: { width: 192, height: 192 },
   skill_icon: { width: 192, height: 192 },
   hud: { width: 192, height: 192 },
   fx: { width: 320, height: 320 },
-  ui_icon: { width: 192, height: 192 }
+  ui_badge: { width: 192, height: 192 },
+  ui_icon: { width: 192, height: 192 },
+  node_marker: { width: 192, height: 192 },
+  portrait: { width: 512, height: 512 }
 };
 
 function stableHash(raw: string): string {

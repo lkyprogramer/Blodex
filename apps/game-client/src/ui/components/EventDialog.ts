@@ -1,5 +1,6 @@
 import type { EventChoice, MerchantOffer, RandomEventDef } from "@blodex/core";
 import { getContentLocalizer, t } from "../../i18n";
+import { resolveGeneratedAssetUrl } from "../../assets/imageAsset";
 
 function escapeHtml(raw: string): string {
   return raw
@@ -16,7 +17,10 @@ export interface EventChoiceView {
   disabledReason?: string;
 }
 
-export function renderEventDialog(eventDef: RandomEventDef, choices: EventChoiceView[]): string {
+export function renderEventDialog(
+  eventDef: RandomEventDef,
+  choices: EventChoiceView[]
+): string {
   const contentLocalizer = getContentLocalizer();
   const eventName = contentLocalizer.eventName(eventDef.id, eventDef.name);
   const eventDescription = contentLocalizer.eventDescription(eventDef.id, eventDef.description);
@@ -42,8 +46,35 @@ export function renderEventDialog(eventDef: RandomEventDef, choices: EventChoice
     })
     .join("");
 
+  const artwork =
+    eventDef.artAssetId === undefined
+      ? ""
+      : `
+        <div class="dialog-art-frame">
+          <img
+            class="dialog-art"
+            data-asset-id="${eventDef.artAssetId}"
+            src="${resolveGeneratedAssetUrl(eventDef.artAssetId, "webp")}"
+            alt="${escapeHtml(eventName)}"
+          />
+          ${
+            eventDef.badgeAssetId === undefined
+              ? ""
+              : `
+                <img
+                  class="dialog-art-badge"
+                  data-asset-id="${eventDef.badgeAssetId}"
+                  src="${resolveGeneratedAssetUrl(eventDef.badgeAssetId, "webp")}"
+                  alt=""
+                />
+              `
+          }
+        </div>
+      `;
+
   return `
     <div class="dialog-card event-dialog-card">
+      ${artwork}
       <h2>${escapeHtml(eventName)}</h2>
       <p>${escapeHtml(eventDescription)}</p>
       <div class="dialog-actions">${buttons}</div>
@@ -53,8 +84,22 @@ export function renderEventDialog(eventDef: RandomEventDef, choices: EventChoice
 }
 
 export function renderMerchantDialog(
-  offers: Array<MerchantOffer & { itemName: string; rarity: string }>
+  offers: Array<MerchantOffer & { itemName: string; rarity: string }>,
+  options?: { artAssetId?: string }
 ): string {
+  const artwork =
+    options?.artAssetId === undefined
+      ? ""
+      : `
+        <div class="dialog-art-frame">
+          <img
+            class="dialog-art"
+            data-asset-id="${options.artAssetId}"
+            src="${resolveGeneratedAssetUrl(options.artAssetId, "webp")}"
+            alt="${escapeHtml(t("ui.event.merchant.title"))}"
+          />
+        </div>
+      `;
   const rows = offers
     .map((offer) => {
       return `
@@ -73,6 +118,7 @@ export function renderMerchantDialog(
 
   return `
     <div class="dialog-card merchant-dialog-card">
+      ${artwork}
       <h2>${t("ui.event.merchant.title")}</h2>
       <p>${t("ui.event.merchant.subtitle")}</p>
       <div class="merchant-list">${rows || `<p class="log-empty">${escapeHtml(t("ui.event.merchant.sold_out"))}</p>`}</div>

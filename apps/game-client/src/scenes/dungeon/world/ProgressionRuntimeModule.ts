@@ -254,7 +254,7 @@ export class ProgressionRuntimeModule {
     if (host.staircaseState.kind === "branch" && host.staircaseState.options !== undefined) {
       host.entityManager.setStaircases(
         host.staircaseState.options.map((option: { position: { x: number; y: number } }) =>
-          host.renderSystem.spawnStaircase(option.position, host.origin)
+          host.renderSystem.spawnStaircase(option.position, host.origin, "node_branch_marker_01")
         )
       );
       return;
@@ -428,11 +428,16 @@ export class ProgressionRuntimeModule {
     if (center === null) {
       return;
     }
-    host.challengeMarker = host.renderSystem.spawnTelegraphCircle(center, 0.95, host.origin);
-    host.challengeMarker.setAlpha(0.2);
-    if (host.challengeMarker instanceof Phaser.GameObjects.Image) {
-      host.challengeMarker.setTint(0x9c6ac4);
+    const challengeMarker =
+      host.renderSystem.spawnWorldMarker?.(center, "node_challenge_marker_01", host.origin, {
+        width: 36,
+        height: 36
+      }) ?? host.renderSystem.spawnTelegraphCircle(center, 0.95, host.origin);
+    challengeMarker.setAlpha(0.2);
+    if (challengeMarker instanceof Phaser.GameObjects.Image) {
+      challengeMarker.setTint(0x9c6ac4);
     }
+    host.challengeMarker = challengeMarker;
     host.runLog.appendKey(
       "log.challenge.discovered",
       {
@@ -605,11 +610,16 @@ export class ProgressionRuntimeModule {
     host.challengeWaveTotal = this.resolveChallengeWaveTotal(challengeRoom.id);
     const center = this.challengeRoomCenter(challengeRoom.id);
     if (center !== null) {
-      host.challengeMarker = host.renderSystem.spawnTelegraphCircle(center, 0.95, host.origin);
-      host.challengeMarker.setAlpha(0.2);
-      if (host.challengeMarker instanceof Phaser.GameObjects.Image) {
-        host.challengeMarker.setTint(0x9c6ac4);
+      const challengeMarker =
+        host.renderSystem.spawnWorldMarker?.(center, "node_challenge_marker_01", host.origin, {
+          width: 36,
+          height: 36
+        }) ?? host.renderSystem.spawnTelegraphCircle(center, 0.95, host.origin);
+      challengeMarker.setAlpha(0.2);
+      if (challengeMarker instanceof Phaser.GameObjects.Image) {
+        challengeMarker.setTint(0x9c6ac4);
       }
+      host.challengeMarker = challengeMarker;
     }
 
     const floorPrefix = `challenge-${host.run.currentFloor}-`;

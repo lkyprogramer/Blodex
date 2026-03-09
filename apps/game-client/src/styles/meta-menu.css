@@ -375,6 +375,41 @@
 .meta-talent-rank {
   font-size: 11px;
   color: #b9d4e8;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-talent-rank-pips {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.meta-talent-rank-pip {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.52;
+}
+
+.meta-talent-rank-pip.active {
+  opacity: 1;
+}
+
+.meta-talent-rank-icon,
+.meta-talent-rank-glow {
+  position: absolute;
+  inset: 0;
+  width: 12px;
+  height: 12px;
+  object-fit: contain;
+}
+
+.meta-talent-rank-glow {
+  filter: drop-shadow(0 0 6px rgba(226, 193, 122, 0.52));
 }
 
 .meta-unlock-name {
@@ -490,4 +525,3 @@
   transform: translateY(-1px);
   background: rgba(208, 168, 111, 0.26);
 }
-

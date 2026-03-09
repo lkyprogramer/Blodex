@@ -44,60 +44,132 @@ phase7_content_gate:
         - id: phase7_7_5_boss_cathedral_judge_sprite
           category: boss_sprite
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: boss_bone_sovereign
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: boss_cathedral_judge
             placeholder_surface: boss-cathedral-judge-placeholder
         - id: phase7_7_5_boss_ossuary_keeper_sprite
           category: boss_sprite
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: boss_bone_sovereign
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: boss_ossuary_keeper
             placeholder_surface: boss-ossuary-keeper-placeholder
         - id: phase7_7_5_boss_ember_warden_sprite
           category: boss_sprite
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: boss_bone_sovereign
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: boss_ember_warden
             placeholder_surface: boss-ember-warden-placeholder
-        - id: phase7_7_5_boss_portrait_batch
+        - id: phase7_7_5_boss_cathedral_judge_portrait
           category: boss_portrait
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: boss_bone_sovereign
-            placeholder_surface: boss-portrait-batch-placeholder
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: boss_portrait_cathedral_judge
+            placeholder_surface: boss-portrait-cathedral-judge-placeholder
+        - id: phase7_7_5_boss_ossuary_keeper_portrait
+          category: boss_portrait
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: boss_portrait_ossuary_keeper
+            placeholder_surface: boss-portrait-ossuary-keeper-placeholder
+        - id: phase7_7_5_boss_ember_warden_portrait
+          category: boss_portrait
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: boss_portrait_ember_warden
+            placeholder_surface: boss-portrait-ember-warden-placeholder
+        - id: phase7_7_5_boss_reward_badge_ember_warden
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: boss_reward_badge_ember_warden
+            placeholder_surface: boss-reward-badge-ember-warden
+        - id: phase7_7_5_boss_reward_badge_cathedral_judge
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: boss_reward_badge_cathedral_judge
+            placeholder_surface: boss-reward-badge-cathedral-judge
+        - id: phase7_7_5_boss_reward_badge_ossuary_keeper
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: boss_reward_badge_ossuary_keeper
+            placeholder_surface: boss-reward-badge-ossuary-keeper
     "7.6":
       description: affix / consumable / merchant / talent 扩展最小资源
       assets:
-        - id: phase7_7_6_consumable_icon_batch
+        - id: phase7_7_6_scroll_mapping_plus_icon
           category: item_icon
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: item_ring_02
-            placeholder_surface: consumable-icon-batch-placeholder
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: item_consumable_scroll_mapping_plus_01
+            placeholder_surface: consumable-scroll-mapping-plus-placeholder
+        - id: phase7_7_6_frenzy_tonic_icon
+          category: item_icon
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: item_consumable_frenzy_tonic_01
+            placeholder_surface: consumable-frenzy-tonic-placeholder
+        - id: phase7_7_6_phantom_brew_icon
+          category: item_icon
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: item_consumable_phantom_brew_01
+            placeholder_surface: consumable-phantom-brew-placeholder
         - id: phase7_7_6_merchant_room_marker
           category: node_marker
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: ui_event_wandering_merchant_01
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: merchant_room_marker_01
             placeholder_surface: merchant-room-marker-placeholder
+        - id: phase7_7_6_merchant_portrait
+          category: portrait
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: merchant_portrait_01
+            placeholder_surface: merchant-portrait-placeholder
         - id: phase7_7_6_talent_rank_badges
           category: ui_badge
           gemini_key_required: true
@@ -116,36 +188,180 @@ phase7_content_gate:
             binding_mode: placeholder_binding
             placeholder_manifest_entry_id: meta_unlock_locked
             placeholder_surface: affix-badge-batch-placeholder
+        - id: phase7_7_6_talent_rank_pip
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: ui_talent_rank_pip_01
+            placeholder_surface: talent-rank-pip
+        - id: phase7_7_6_talent_rank_glow
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: ui_talent_rank_glow_01
+            placeholder_surface: talent-rank-glow
+        - id: phase7_7_6_affix_badge_armored
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: affix_badge_armored
+            placeholder_surface: affix-badge-armored
+        - id: phase7_7_6_affix_badge_vampiric
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: affix_badge_vampiric
+            placeholder_surface: affix-badge-vampiric
+        - id: phase7_7_6_affix_badge_splitting
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: affix_badge_splitting
+            placeholder_surface: affix-badge-splitting
+        - id: phase7_7_6_affix_badge_frenzied
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: affix_badge_frenzied
+            placeholder_surface: affix-badge-frenzied
+        - id: phase7_7_6_affix_badge_hulking
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: affix_badge_hulking
+            placeholder_surface: affix-badge-hulking
+        - id: phase7_7_6_affix_badge_warded
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: affix_badge_warded
+            placeholder_surface: affix-badge-warded
+        - id: phase7_7_6_affix_badge_skirmisher
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: affix_badge_skirmisher
+            placeholder_surface: affix-badge-skirmisher
+        - id: phase7_7_6_affix_badge_manaburn
+          category: ui_badge
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: affix_badge_manaburn
+            placeholder_surface: affix-badge-manaburn
     "7.7":
       description: 元素体系与 set foundations 最小资源
       assets:
-        - id: phase7_7_7_elemental_icon_batch
+        - id: phase7_7_7_element_icon_physical
           category: ui_icon
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: ui_event_cursed_altar_01
-            placeholder_surface: elemental-icon-batch-placeholder
-        - id: phase7_7_7_elemental_status_badges
-          category: ui_badge
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: element_icon_physical
+            placeholder_surface: element-physical-icon
+        - id: phase7_7_7_element_icon_arcane
+          category: ui_icon
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: meta_unlock_available
-            placeholder_surface: elemental-status-badge-placeholder
-        - id: phase7_7_7_set_badge_batch
-          category: ui_badge
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: element_icon_arcane
+            placeholder_surface: element-arcane-icon
+        - id: phase7_7_7_element_icon_fire
+          category: ui_icon
           gemini_key_required: true
-          generation_status: prompt_frozen
-          placeholder_allowed: true
+          generation_status: generated
+          placeholder_allowed: false
           runtime_binding:
-            binding_mode: placeholder_binding
-            placeholder_manifest_entry_id: meta_unlock_unlocked
-            placeholder_surface: set-badge-batch-placeholder
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: element_icon_fire
+            placeholder_surface: element-fire-icon
+        - id: phase7_7_7_element_icon_cold
+          category: ui_icon
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: element_icon_cold
+            placeholder_surface: element-cold-icon
+        - id: phase7_7_7_element_icon_lightning
+          category: ui_icon
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: element_icon_lightning
+            placeholder_surface: element-lightning-icon
+        - id: phase7_7_7_set_badge_ember_vow
+          category: ui_icon
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: set_badge_ember_vow
+            placeholder_surface: set-badge-ember-vow
+        - id: phase7_7_7_set_badge_judicator_regalia
+          category: ui_icon
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: set_badge_judicator_regalia
+            placeholder_surface: set-badge-judicator-regalia
+        - id: phase7_7_7_set_badge_gravewake_relics
+          category: ui_icon
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: set_badge_gravewake_relics
+            placeholder_surface: set-badge-gravewake-relics
+        - id: phase7_7_7_set_item_icon_batch
+          category: item_icon
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: item_set_emberbrand_edge_01
+            placeholder_surface: set-item-icon-batch
     "7.8":
       description: 长 run 与楼层扩展最小资源
       assets:
@@ -176,6 +392,42 @@ phase7_content_gate:
             binding_mode: placeholder_binding
             placeholder_manifest_entry_id: ui_event_fallen_adventurer_01
             placeholder_surface: biome-marker-batch-placeholder
+        - id: phase7_7_8_node_forge_marker
+          category: node_marker
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: node_forge_marker_01
+            placeholder_surface: node-forge-marker
+        - id: phase7_7_8_node_gamble_marker
+          category: node_marker
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: node_gamble_marker_01
+            placeholder_surface: node-gamble-marker
+        - id: phase7_7_8_node_challenge_marker
+          category: node_marker
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: node_challenge_marker_01
+            placeholder_surface: node-challenge-marker
+        - id: phase7_7_8_node_branch_marker
+          category: node_marker
+          gemini_key_required: true
+          generation_status: generated
+          placeholder_allowed: false
+          runtime_binding:
+            binding_mode: generated_manifest_entry
+            manifest_entry_id: node_branch_marker_01
+            placeholder_surface: node-branch-marker
   optional_enhancement_set:
     "7.4":
       description: Boss 管线表现增强
@@ -498,6 +750,245 @@ assets:
     materials: "cracked bone, tarnished relic metal, torn ritual cloth"
     constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
     avoid: "neon magical aura, bloom haze, ornate background scene"
+
+  - id: boss_cathedral_judge
+    category: boss_sprite
+    outputName: boss_cathedral_judge.png
+    prompt: "Isometric Cathedral Judge boss, towering storm-forged arbiter in weathered cathedral plate, relic gavel-halberd silhouette, severe judicial posture, readable phase-boss form"
+    subject: "storm-forged cathedral judge boss with halberd-gavel and heavy oathbound armor"
+    style: "painterly dark fantasy concept art with visible brush texture"
+    composition: "single isolated full-body boss subject, centered, readable top-plane silhouette"
+    lighting: "low-key top-left directional light with restrained cold rim"
+    palette: "charcoal, iron blue, damp stone green, desaturated lightning white accents"
+    materials: "worn cathedral plate, engraved steel, cracked stone insignia, ash-dark cloth"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "neon lightning, bloom haze, scenic courtroom background, saturated gold trim"
+
+  - id: boss_ember_warden
+    category: boss_sprite
+    outputName: boss_ember_warden.png
+    prompt: "Isometric Ember Warden boss, furnace sentinel in scorched plate with cinder-greatblade, molten seam glow kept restrained, broad readable silhouette for dark fantasy boss gameplay"
+    subject: "ember-forged warden boss with heavy blade and furnace armor"
+    style: "painterly dark fantasy concept art with visible brush texture"
+    composition: "single isolated full-body boss subject, centered, readable top-plane silhouette"
+    lighting: "low-key top-left directional light with subtle ember rim"
+    palette: "charcoal, iron black, ember orange, dried leather, ash gray"
+    materials: "heat-scarred steel, cracked basalt plating, soot-black leather, ember vents"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "lava splash background, oversaturated orange, bloom-heavy magma glow, cartoon fire"
+
+  - id: boss_ossuary_keeper
+    category: boss_sprite
+    outputName: boss_ossuary_keeper.png
+    prompt: "Isometric Ossuary Keeper boss, reliquary grave-warden with ribcage lantern frame, bone lattice staff and chained relics, severe necropolis silhouette, readable dark fantasy boss form"
+    subject: "ossuary keeper boss made of warded bone, relic iron and funerary cloth"
+    style: "painterly dark fantasy concept art with visible brush texture"
+    composition: "single isolated full-body boss subject, centered, readable top-plane silhouette"
+    lighting: "low-key top-left directional light with restrained cold grave glow"
+    palette: "bone ivory, charcoal, iron blue, damp stone green, faint spectral cyan"
+    materials: "cracked bone, blackened iron, funerary cloth, relic chains"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "cartoon skeleton grin, neon ghost glow, ornate background scenery, bloom haze"
+
+  - id: boss_portrait_cathedral_judge
+    category: boss_portrait
+    outputName: boss_portrait_cathedral_judge.png
+    prompt: "Half-body portrait of the Cathedral Judge, storm-forged cathedral arbiter with severe helm and relic gavel-halberd silhouette, painted dark fantasy UI portrait"
+    subject: "cathedral judge portrait"
+    style: "painterly dark fantasy character portrait"
+    composition: "single isolated bust portrait with clean framing and readable faceplate"
+    lighting: "low-key top-left directional light with restrained cold rim"
+    palette: "charcoal, iron blue, damp stone green, desaturated lightning white"
+    materials: "weathered cathedral plate, engraved steel, ash-dark cloth"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "neon lightning, scenic cathedral background, bloom-heavy haze"
+
+  - id: boss_portrait_ember_warden
+    category: boss_portrait
+    outputName: boss_portrait_ember_warden.png
+    prompt: "Half-body portrait of the Ember Warden, furnace sentinel with scorched visor, cinder vents and broad heavy silhouette, painted dark fantasy UI portrait"
+    subject: "ember warden portrait"
+    style: "painterly dark fantasy character portrait"
+    composition: "single isolated bust portrait with clean framing"
+    lighting: "low-key top-left directional light with restrained ember rim"
+    palette: "charcoal, iron black, ember orange, dried leather, ash gray"
+    materials: "heat-scarred steel, cracked basalt plating, soot-black leather"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "lava background, oversaturated orange, bloom-heavy magma glow"
+
+  - id: boss_portrait_ossuary_keeper
+    category: boss_portrait
+    outputName: boss_portrait_ossuary_keeper.png
+    prompt: "Half-body portrait of the Ossuary Keeper, reliquary grave-warden with bone lattice mask, chained relics and funerary cloth, painted dark fantasy UI portrait"
+    subject: "ossuary keeper portrait"
+    style: "painterly dark fantasy character portrait"
+    composition: "single isolated bust portrait with clean framing"
+    lighting: "low-key top-left directional light with restrained grave-glow accent"
+    palette: "bone ivory, charcoal, iron blue, muted spectral cyan"
+    materials: "cracked bone, blackened iron, funerary cloth, relic chains"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "cartoon skull grin, neon ghost aura, scenic tomb background"
+
+  - id: item_consumable_scroll_mapping_plus_01
+    category: item_icon
+    outputName: item_consumable_scroll_mapping_plus_01.png
+    prompt: "RPG consumable icon of an ornate greater mapping scroll, wax-sealed chart parchment with silver compass sigil, painterly dark fantasy, centered with clean padding"
+    subject: "ornate greater mapping scroll with compass sigil"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key top-left studio light"
+    palette: "aged parchment, iron blue shadow, tarnished silver, muted teal ink"
+    materials: "rolled parchment, wax seal, engraved compass token"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "bright modern map colors, neon magic glow, scenic backdrop, tiny unreadable details"
+
+  - id: item_consumable_frenzy_tonic_01
+    category: item_icon
+    outputName: item_consumable_frenzy_tonic_01.png
+    prompt: "RPG consumable icon of a frenzy tonic vial, brutal alchemical flask with ember-red liquid and iron clasp, painterly dark fantasy, centered with clean padding"
+    subject: "combat stimulant vial with ember-red liquid"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key top-left studio light with restrained ember highlight"
+    palette: "deep crimson, charcoal glass, blackened iron, dried leather"
+    materials: "thick glass vial, iron clasp, leather wrap"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "cartoon potion bottle, candy colors, bloom-heavy glow, decorative scenery"
+
+  - id: item_consumable_phantom_brew_01
+    category: item_icon
+    outputName: item_consumable_phantom_brew_01.png
+    prompt: "RPG consumable icon of a phantom brew bottle, spectral draught in a narrow reliquary flask with cold blue vapor kept restrained, painterly dark fantasy, centered"
+    subject: "spectral brew flask with faint ghostly vapor"
+    style: "painted game UI icon"
+    composition: "single isolated icon with generous padding"
+    lighting: "low-key top-left studio light with restrained cold rim"
+    palette: "iron blue, charcoal, bone white, muted spectral cyan"
+    materials: "frosted glass, relic metal cap, funerary cord binding"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "neon ghost effects, cartoon chemistry flask, bloom haze, scenic backdrop"
+
+  - id: merchant_room_marker_01
+    category: node_marker
+    outputName: merchant_room_marker_01.png
+    prompt: "Small world-space merchant marker icon, hanging coin sigil and traveler's satchel emblem, painterly dark fantasy, readable at minimap and room-entry scale"
+    subject: "merchant room marker emblem"
+    style: "painted game UI icon"
+    composition: "single isolated marker with generous padding"
+    lighting: "low-key top-left studio light"
+    palette: "tarnished gold, charcoal, dried leather, muted teal accent"
+    materials: "aged coin, iron hook, worn leather"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "shop sign text, bright cartoon coin, scenic background"
+
+  - id: merchant_portrait_01
+    category: portrait
+    outputName: merchant_portrait_01.png
+    prompt: "Half-body portrait of a wandering merchant in dark fantasy, hooded peddler with layered packs, coin charms and cautious expression, painterly UI portrait"
+    subject: "wandering merchant portrait"
+    style: "painterly dark fantasy character portrait"
+    composition: "single isolated bust portrait with clean framing"
+    lighting: "low-key top-left directional light with warm lantern accent"
+    palette: "charcoal, dried leather, tarnished gold, muted olive cloth"
+    materials: "worn leather packs, patched cloth, old coin charms"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "friendly cartoon merchant smile, bright market background, modern clothing"
+  - id: element_icon_physical
+    category: ui_icon
+    outputName: element_icon_physical.png
+    prompt: "Physical damage icon for dark fantasy UI, iron halberd sigil crossed with a cracked impact burst, painterly emblem"
+    subject: "physical damage icon"
+    style: "painted game UI icon"
+    composition: "single isolated emblem with generous padding and strong silhouette"
+    lighting: "low-key top-left studio light"
+    palette: "iron blue, charcoal, tarnished steel, muted parchment highlight"
+    materials: "engraved steel sigil, worn metal edge"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "cartoon sword icon, neon glow, flat infographic style"
+  - id: element_icon_arcane
+    category: ui_icon
+    outputName: element_icon_arcane.png
+    prompt: "Arcane damage icon for dark fantasy UI, ritual rune ring with restrained violet-blue core and orbiting shards, painterly emblem"
+    subject: "arcane damage icon"
+    style: "painted game UI icon"
+    composition: "single isolated emblem with generous padding and strong silhouette"
+    lighting: "low-key top-left studio light with restrained arcane rim"
+    palette: "charcoal, iron blue, muted violet, spectral cyan accent"
+    materials: "etched rune metal, crystal shard core"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "sci-fi hologram, neon magic circle, oversaturated purple"
+  - id: element_icon_fire
+    category: ui_icon
+    outputName: element_icon_fire.png
+    prompt: "Fire damage icon for dark fantasy UI, ember brand crest with split flame and blackened steel frame, painterly emblem"
+    subject: "fire damage icon"
+    style: "painted game UI icon"
+    composition: "single isolated emblem with generous padding and strong silhouette"
+    lighting: "low-key top-left studio light with restrained ember accent"
+    palette: "ember orange, charcoal, blackened iron, ash gray"
+    materials: "forged steel frame, living cinder core"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "cartoon flame, neon orange, explosive bloom"
+  - id: element_icon_cold
+    category: ui_icon
+    outputName: element_icon_cold.png
+    prompt: "Cold damage icon for dark fantasy UI, frost rune shard with layered ice sigil and grave-blue frame, painterly emblem"
+    subject: "cold damage icon"
+    style: "painted game UI icon"
+    composition: "single isolated emblem with generous padding and strong silhouette"
+    lighting: "low-key top-left studio light with restrained icy rim"
+    palette: "ice blue, grave teal, charcoal, pale frost white"
+    materials: "frozen crystal, rune-carved steel"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "snowflake emoji style, bright cyan neon, glossy mobile-game polish"
+  - id: element_icon_lightning
+    category: ui_icon
+    outputName: element_icon_lightning.png
+    prompt: "Lightning damage icon for dark fantasy UI, cathedral bolt sigil split through a seal with storm-scar glow, painterly emblem"
+    subject: "lightning damage icon"
+    style: "painted game UI icon"
+    composition: "single isolated emblem with generous padding and strong silhouette"
+    lighting: "low-key top-left studio light with restrained electric rim"
+    palette: "iron blue, storm white, tarnished gold, charcoal"
+    materials: "engraved seal metal, crackling charged core"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "comic thunderbolt, neon blue electricity, sci-fi battery motif"
+  - id: set_badge_ember_vow
+    category: ui_icon
+    outputName: set_badge_ember_vow.png
+    prompt: "Set badge for Ember Vow in dark fantasy UI, oath sigil of ember blade, cinder ring and ash-footed trail, painterly emblem"
+    subject: "Ember Vow set badge"
+    style: "painted game UI icon"
+    composition: "single isolated heraldic badge with clear silhouette"
+    lighting: "low-key top-left studio light with restrained ember rim"
+    palette: "ember orange, charcoal, iron black, dried leather"
+    materials: "blackened iron crest, cinder inlay"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "anime crest, bright heraldic banner, cartoon fire sword"
+  - id: set_badge_judicator_regalia
+    category: ui_icon
+    outputName: set_badge_judicator_regalia.png
+    prompt: "Set badge for Judicator Regalia in dark fantasy UI, storm gavel crest with plated crown and lightning seal, painterly emblem"
+    subject: "Judicator Regalia set badge"
+    style: "painted game UI icon"
+    composition: "single isolated heraldic badge with clear silhouette"
+    lighting: "low-key top-left studio light with restrained storm rim"
+    palette: "iron blue, tarnished gold, charcoal, pale storm white"
+    materials: "engraved cathedral plate, gilded seal"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "royal cartoon crown, superhero lightning badge, neon effects"
+  - id: set_badge_gravewake_relics
+    category: ui_icon
+    outputName: set_badge_gravewake_relics.png
+    prompt: "Set badge for Gravewake Relics in dark fantasy UI, reliquary veil crest with bone sigil and chained grave lantern, painterly emblem"
+    subject: "Gravewake Relics set badge"
+    style: "painted game UI icon"
+    composition: "single isolated heraldic badge with clear silhouette"
+    lighting: "low-key top-left studio light with restrained grave-glow accent"
+    palette: "bone ivory, charcoal, iron blue, muted spectral cyan"
+    materials: "bone inlay, blackened iron, funerary cloth"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "cartoon skull, bright ghost green, decorative fantasy logo"
 
   - id: telegraph_circle_red
     category: fx
@@ -1076,3 +1567,314 @@ assets:
     lighting: "low-key with subtle parchment highlight"
     palette: "aged parchment beige, charcoal ink, muted gold seal"
     constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: boss_reward_badge_ember_warden
+    category: ui_badge
+    outputName: boss_reward_badge_ember_warden.png
+    prompt: "Reward badge for Ember Warden encounter, cracked furnace crest with ember-lit iron crown, ritual badge for victory reward"
+    subject: "single ornate reward medallion"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered badge icon, isolated emblem, readable at small UI scale"
+    lighting: "low-key top-left light with restrained ember highlight"
+    palette: "charcoal iron, ember orange, tarnished brass"
+    materials: "forged iron, scorched enamel, old metal filigree"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "neon glow, modern UI gloss, cartoon simplification"
+
+  - id: boss_reward_badge_cathedral_judge
+    category: ui_badge
+    outputName: boss_reward_badge_cathedral_judge.png
+    prompt: "Reward badge for Cathedral Judge encounter, austere reliquary seal with silver tribunal sigil, solemn sacred victory emblem"
+    subject: "single ornate reward medallion"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered badge icon, isolated emblem, readable at small UI scale"
+    lighting: "low-key top-left light with restrained cold rim"
+    palette: "ashen silver, iron blue, pale parchment gold"
+    materials: "aged silver, carved stone inset, worn cloth ribbon"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "angelic glow overload, clean sci-fi symmetry, glossy gem shine"
+
+  - id: boss_reward_badge_ossuary_keeper
+    category: ui_badge
+    outputName: boss_reward_badge_ossuary_keeper.png
+    prompt: "Reward badge for Ossuary Keeper encounter, chained ossuary seal with bone reliquary and green gravefire accent"
+    subject: "single ornate reward medallion"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered badge icon, isolated emblem, readable at small UI scale"
+    lighting: "low-key top-left light with restrained spectral rim"
+    palette: "bone ivory, grave green, damp bronze"
+    materials: "aged bone, corroded bronze, ritual cord"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "cartoon skulls, neon poison glow, comic exaggeration"
+
+  - id: affix_badge_armored
+    category: ui_badge
+    outputName: affix_badge_armored.png
+    prompt: "Monster affix badge for Armored, heavy shield sigil with layered plate motif"
+    subject: "single affix icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered badge icon, isolated emblem, readable at tiny gameplay scale"
+    lighting: "low-key top-left light with restrained steel highlight"
+    palette: "ashen steel, muted blue, dark slate"
+    materials: "worn plate, riveted steel"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "modern military iconography, glossy shield paint, neon"
+
+  - id: affix_badge_vampiric
+    category: ui_badge
+    outputName: affix_badge_vampiric.png
+    prompt: "Monster affix badge for Vampiric, ritual chalice sigil with blood-thread ornament"
+    subject: "single affix icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered badge icon, isolated emblem, readable at tiny gameplay scale"
+    lighting: "low-key top-left light with restrained crimson accent"
+    palette: "dried crimson, blackened silver, bruised plum"
+    materials: "dark silver, stained enamel"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "cute vampire motifs, bright red neon, cartoon blood drops"
+
+  - id: affix_badge_splitting
+    category: ui_badge
+    outputName: affix_badge_splitting.png
+    prompt: "Monster affix badge for Splitting, cracked sigil divided into mirrored shards"
+    subject: "single affix icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered badge icon, isolated emblem, readable at tiny gameplay scale"
+    lighting: "low-key top-left light with restrained amber edge"
+    palette: "muted gold, old iron, sepia"
+    materials: "fractured stone, old brass"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "clean geometric logo feel, sci-fi splitting effect, neon"
+
+  - id: affix_badge_frenzied
+    category: ui_badge
+    outputName: affix_badge_frenzied.png
+    prompt: "Monster affix badge for Frenzied, jagged claw rune with rushing slash motif"
+    subject: "single affix icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered badge icon, isolated emblem, readable at tiny gameplay scale"
+    lighting: "low-key top-left light with restrained ember streak"
+    palette: "ember orange, black iron, dried leather"
+    materials: "forged iron, scratched pigment"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "anime speedlines, comic burst effects, neon orange"
+
+  - id: affix_badge_hulking
+    category: ui_badge
+    outputName: affix_badge_hulking.png
+    prompt: "Monster affix badge for Hulking, massive stone fist sigil with weighty silhouette"
+    subject: "single affix icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered badge icon, isolated emblem, readable at tiny gameplay scale"
+    lighting: "low-key top-left light with restrained mossy highlight"
+    palette: "damp stone green, umber, old iron"
+    materials: "rough stone, old metal straps"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "comic giant fist, bright green slime, cartoon simplification"
+
+  - id: affix_badge_warded
+    category: ui_badge
+    outputName: affix_badge_warded.png
+    prompt: "Monster affix badge for Warded, circular ward sigil with arcane lattice"
+    subject: "single affix icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered badge icon, isolated emblem, readable at tiny gameplay scale"
+    lighting: "low-key top-left light with restrained cyan glow"
+    palette: "cold cyan, iron blue, dark slate"
+    materials: "etched silver, arcane glass"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "sci-fi shield HUD, neon teal rings, laser aesthetics"
+
+  - id: affix_badge_skirmisher
+    category: ui_badge
+    outputName: affix_badge_skirmisher.png
+    prompt: "Monster affix badge for Skirmisher, hooked boot-and-dagger sigil suggesting mobility and harassment"
+    subject: "single affix icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered badge icon, isolated emblem, readable at tiny gameplay scale"
+    lighting: "low-key top-left light with restrained brass edge"
+    palette: "dull brass, smoke gray, worn leather brown"
+    materials: "aged brass, leather, dark steel"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "modern sneaker icon, playful rogue trope, neon yellow"
+
+  - id: affix_badge_manaburn
+    category: ui_badge
+    outputName: affix_badge_manaburn.png
+    prompt: "Monster affix badge for Manaburn, broken crystal sigil leaking arcane flame"
+    subject: "single affix icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered badge icon, isolated emblem, readable at tiny gameplay scale"
+    lighting: "low-key top-left light with restrained violet-blue accent"
+    palette: "violet ash, arcane blue, dark charcoal"
+    materials: "cracked crystal, burned silver"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "bright mana orb, glowing MMO icon, neon purple"
+
+  - id: ui_talent_rank_pip_01
+    category: ui_badge
+    outputName: ui_talent_rank_pip_01.png
+    prompt: "Small talent rank pip icon, carved oath-stone pip with subtle gilded rim for meta progression UI"
+    subject: "single compact UI pip icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered icon, isolated, readable at tiny UI scale"
+    lighting: "low-key top-left light with restrained gold highlight"
+    palette: "ashen stone, tarnished gold, dark slate"
+    materials: "carved stone, worn gilt trim"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "flat modern gem pip, candy colors, glossy mobile UI"
+
+  - id: ui_talent_rank_glow_01
+    category: ui_badge
+    outputName: ui_talent_rank_glow_01.png
+    prompt: "Soft halo accent for active talent rank pip, restrained ember-gold radiance on dark fantasy UI"
+    subject: "single compact UI glow accent"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered icon, isolated, readable at tiny UI scale"
+    lighting: "restrained radial glow"
+    palette: "ember gold, faint ivory, dark transparent falloff"
+    materials: "magical halo"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "lens flare, bloom-heavy haze, sci-fi glow"
+
+  - id: item_set_emberbrand_edge_01
+    category: item_icon
+    outputName: item_set_emberbrand_edge_01.png
+    prompt: "Inventory icon for Emberbrand Edge, ember-scarred greatsword with runic flame vein, dark fantasy boss loot"
+    style: "painted game UI icon"
+    composition: "single isolated item with strong silhouette"
+    lighting: "low-key with restrained ember core glow"
+    palette: "ember orange, soot black, tarnished brass"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: item_set_cindersigil_band_01
+    category: item_icon
+    outputName: item_set_cindersigil_band_01.png
+    prompt: "Inventory icon for Cindersigil Band, obsidian ring with ember rune seal and molten inner rim, dark fantasy boss loot"
+    style: "painted game UI icon"
+    composition: "single isolated item with strong silhouette"
+    lighting: "low-key with restrained ember ring glow"
+    palette: "obsidian black, ember orange, dark brass"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: item_set_ashwake_treads_01
+    category: item_icon
+    outputName: item_set_ashwake_treads_01.png
+    prompt: "Inventory icon for Ashwake Treads, charred leather boots with ash plume trim and ember-lined soles, dark fantasy boss loot"
+    style: "painted game UI icon"
+    composition: "single isolated item with strong silhouette"
+    lighting: "low-key with warm ember edge"
+    palette: "charcoal black, ember orange, weathered brass"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: item_set_judicator_crown_01
+    category: item_icon
+    outputName: item_set_judicator_crown_01.png
+    prompt: "Inventory icon for Judicator Crown, austere silver-gold crown with tribunal spires and blue reliquary gem, dark fantasy boss loot"
+    style: "painted game UI icon"
+    composition: "single isolated item with strong silhouette"
+    lighting: "low-key with cold sanctified rim light"
+    palette: "ashen silver, pale gold, cathedral blue"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: item_set_edict_plate_01
+    category: item_icon
+    outputName: item_set_edict_plate_01.png
+    prompt: "Inventory icon for Edict Plate, ceremonial cuirass with cathedral crest and blue inlay, dark fantasy boss loot"
+    style: "painted game UI icon"
+    composition: "single isolated item with strong silhouette"
+    lighting: "low-key with cold frontal gleam"
+    palette: "ashen silver, pale gold, cathedral blue"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: item_set_absolver_seal_01
+    category: item_icon
+    outputName: item_set_absolver_seal_01.png
+    prompt: "Inventory icon for Absolver Seal, judicial signet ring with blue enamel tribunal seal, dark fantasy boss loot"
+    style: "painted game UI icon"
+    composition: "single isolated item with strong silhouette"
+    lighting: "low-key with cool metallic glint"
+    palette: "silver gold, cathedral blue, pale ivory"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: item_set_gravewake_greaves_01
+    category: item_icon
+    outputName: item_set_gravewake_greaves_01.png
+    prompt: "Inventory icon for Gravewake Greaves, bone-laced greaves with grave lantern charms and teal necrolight seams, dark fantasy boss loot"
+    style: "painted game UI icon"
+    composition: "single isolated item with strong silhouette"
+    lighting: "low-key with eerie teal underglow"
+    palette: "bone ivory, grave teal, iron gray"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: item_set_ossuary_signet_01
+    category: item_icon
+    outputName: item_set_ossuary_signet_01.png
+    prompt: "Inventory icon for Ossuary Signet, ossuary ring with stacked bone cameo and teal gravefire core, dark fantasy boss loot"
+    style: "painted game UI icon"
+    composition: "single isolated item with strong silhouette"
+    lighting: "low-key with eerie teal inner glow"
+    palette: "bone ivory, grave teal, oxidized silver"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: item_set_keeper_veil_01
+    category: item_icon
+    outputName: item_set_keeper_veil_01.png
+    prompt: "Inventory icon for Keeper Veil, grave-keeper hooded helm with bone mask and spectral teal eye slit, dark fantasy boss loot"
+    style: "painted game UI icon"
+    composition: "single isolated item with strong silhouette"
+    lighting: "low-key with spectral teal face glow"
+    palette: "bone ivory, grave teal, ash gray"
+    constraints: "transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+
+  - id: node_forge_marker_01
+    category: node_marker
+    outputName: node_forge_marker_01.png
+    prompt: "World node marker for forge anvil, compact blacksmith anvil sigil with ember seam"
+    subject: "single world marker icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered icon, isolated, readable from top-down gameplay"
+    lighting: "low-key top-left with restrained ember accent"
+    palette: "charcoal iron, ember orange, tarnished brass"
+    materials: "forged iron, glowing seam"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "clean workshop logo, cartoon hammer icon, neon ember"
+
+  - id: node_gamble_marker_01
+    category: node_marker
+    outputName: node_gamble_marker_01.png
+    prompt: "World node marker for gambler cache, sealed coffer sigil with crooked coin and hidden luck motif"
+    subject: "single world marker icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered icon, isolated, readable from top-down gameplay"
+    lighting: "low-key top-left with restrained brass highlight"
+    palette: "aged brass, black wood, dusty amber"
+    materials: "worn brass, old wood, stamped coin"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "casino imagery, playing cards, cheerful gold shine"
+
+  - id: node_challenge_marker_01
+    category: node_marker
+    outputName: node_challenge_marker_01.png
+    prompt: "World node marker for challenge arena, ritual ring sigil with crossed trial blades"
+    subject: "single world marker icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered icon, isolated, readable from top-down gameplay"
+    lighting: "low-key top-left with restrained cold-hot contrast"
+    palette: "burnt steel, dried crimson, old gold"
+    materials: "ritual steel, scratched brass"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "esports trophy icon, bright tournament banner, neon red"
+
+  - id: node_branch_marker_01
+    category: node_marker
+    outputName: node_branch_marker_01.png
+    prompt: "World node marker for branch route choice, forked sigil with twin paths through ember and frost motifs"
+    subject: "single world marker icon"
+    style: "painterly dark fantasy concept art with brush texture"
+    composition: "centered icon, isolated, readable from top-down gameplay"
+    lighting: "low-key top-left with restrained warm-cold split"
+    palette: "iron blue, ember orange, damp stone gray"
+    materials: "carved stone, dark steel, tarnished brass"
+    constraints: "isolated cutout; transparent background; no text; Constraints: original dark fantasy IP; readable silhouette at gameplay scale; no logos or trademarks; no watermark"
+    avoid: "cartoon signpost, bright path arrows, UI neon split"

@@ -27,9 +27,9 @@ const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
   health_potion: "item_consumable_health_potion_01",
   mana_potion: "item_consumable_mana_potion_01",
   scroll_of_mapping: "item_consumable_scroll_mapping_01",
-  scroll_of_mapping_plus: "item_consumable_scroll_mapping_01",
-  frenzy_tonic: "item_consumable_health_potion_01",
-  phantom_brew: "item_consumable_mana_potion_01"
+  scroll_of_mapping_plus: "item_consumable_scroll_mapping_plus_01",
+  frenzy_tonic: "item_consumable_frenzy_tonic_01",
+  phantom_brew: "item_consumable_phantom_brew_01"
 };
 const SKILL_DEF_BY_ID = new Map(SKILL_DEFS.map((entry) => [entry.id, entry]));
 const DEFAULT_VISIBLE_CONSUMABLES = new Set<ConsumableId>(["health_potion", "mana_potion", "scroll_of_mapping"]);

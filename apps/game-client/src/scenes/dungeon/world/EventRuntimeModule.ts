@@ -104,10 +104,27 @@ export class EventRuntimeModule {
     options?: { emitSpawnEvent?: boolean }
   ): void {
     const host = this.options.host;
-    const marker = host.renderSystem.spawnTelegraphCircle(position, 0.8, host.origin);
-    marker.setAlpha(0.18);
-    if (marker instanceof Phaser.GameObjects.Image) {
-      marker.setTint(0xd0a86f);
+    const marker =
+      eventDef.markerAssetId !== undefined
+        ? host.renderSystem.spawnWorldMarker?.(position, eventDef.markerAssetId, host.origin, {
+            width: 36,
+            height: 36
+          }) ??
+          host.renderSystem.spawnTelegraphCircle(position, 0.8, host.origin)
+      : eventDef.id === "wandering_merchant"
+        ? host.renderSystem.spawnWorldMarker?.(position, "merchant_room_marker_01", host.origin, {
+            width: 36,
+            height: 36
+          }) ??
+          host.renderSystem.spawnTelegraphCircle(position, 0.8, host.origin)
+        : host.renderSystem.spawnTelegraphCircle(position, 0.8, host.origin);
+    if ((eventDef.id === "wandering_merchant" || eventDef.markerAssetId !== undefined) && marker instanceof Phaser.GameObjects.Image) {
+      marker.setAlpha(0.96);
+    } else {
+      marker.setAlpha(0.18);
+      if (marker instanceof Phaser.GameObjects.Image) {
+        marker.setTint(0xd0a86f);
+      }
     }
 
     host.eventNode = {
@@ -269,7 +286,10 @@ export class EventRuntimeModule {
     host.uiManager.showMerchantDialog(
       view,
       (offerId: string) => this.tryBuyMerchantOffer(offerId, host.time.now),
-      () => this.consumeCurrentEvent()
+      () => this.consumeCurrentEvent(),
+      {
+        artAssetId: "merchant_portrait_01"
+      }
     );
   }
 

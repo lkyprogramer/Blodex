@@ -228,7 +228,13 @@ export class HudOverlayController {
       summaryLines.push({
         label: this.contentLocalizer.itemSetName(compareView.setTransition.setId, compareView.setTransition.setName),
         symbol: formatSetTransitionDetail(compareView.setTransition),
-        tone: directionToPromptTone(compareView.setTransition.direction)
+        tone: directionToPromptTone(compareView.setTransition.direction),
+        ...(compareView.setTransition.badgeAssetId === undefined
+          ? {}
+          : { assetId: compareView.setTransition.badgeAssetId }),
+        ...(compareView.setTransition.associatedDamageTypeAssetId === undefined
+          ? {}
+          : { accentAssetId: compareView.setTransition.associatedDamageTypeAssetId })
       });
     }
     const affixLines: EquipmentComparePromptAffixLine[] = compareView.affixLines.map((line) => ({
@@ -285,10 +291,11 @@ export class HudOverlayController {
   showMerchantPanel(
     offers: Array<MerchantOffer & { itemName: string; rarity: string }>,
     onBuy: (offerId: string) => void,
-    onClose: () => void
+    onClose: () => void,
+    options?: { artAssetId?: string }
   ): void {
     this.eventPanelEl.className = "event-panel";
-    this.eventPanelEl.innerHTML = renderMerchantDialog(offers);
+    this.eventPanelEl.innerHTML = renderMerchantDialog(offers, options);
     bindMerchantDialogActions(this.eventPanelEl, onBuy, onClose);
   }
 

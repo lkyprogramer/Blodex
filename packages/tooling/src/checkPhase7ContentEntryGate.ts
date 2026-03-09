@@ -318,8 +318,8 @@ function assertAssetGateMetadata(
       if (entry.gemini_key_required !== true) {
         violations.push(`asset_plan_missing_gemini_key_flag:${stageId}:${entry.id}`);
       }
-      if (entry.generation_status === "generated") {
-        violations.push(`asset_plan_generated_without_key_gate:${stageId}:${entry.id}`);
+      if (entry.generation_status !== "prompt_frozen" && entry.generation_status !== "generated") {
+        violations.push(`asset_plan_generation_status_invalid:${stageId}:${entry.id}:${entry.generation_status}`);
       }
       if (entry.runtime_binding === undefined) {
         violations.push(`asset_plan_missing_runtime_binding:${stageId}:${entry.id}`);
@@ -339,11 +339,13 @@ function assertAssetGateMetadata(
           violations.push(`asset_plan_runtime_binding_manifest_missing:${stageId}:${entry.id}:${manifestEntryId}`);
           continue;
         }
-        const allowedCategories = ASSET_PLACEHOLDER_CATEGORY_ALLOWLIST[entry.category];
-        if (allowedCategories !== undefined && !allowedCategories.includes(manifestEntry.category)) {
+        if (manifestEntry.category !== entry.category) {
           violations.push(
             `asset_plan_runtime_binding_category_incompatible:${stageId}:${entry.id}:${manifestEntry.category}`
           );
+        }
+        if (entry.generation_status !== "generated") {
+          violations.push(`asset_plan_generated_binding_status_mismatch:${stageId}:${entry.id}`);
         }
       }
       if (entry.runtime_binding.binding_mode === "placeholder_binding") {
@@ -366,6 +368,9 @@ function assertAssetGateMetadata(
           violations.push(
             `asset_plan_placeholder_category_incompatible:${stageId}:${entry.id}:${placeholderEntry.category}`
           );
+        }
+        if (entry.generation_status === "generated") {
+          violations.push(`asset_plan_placeholder_generated_status_mismatch:${stageId}:${entry.id}`);
         }
       }
     }

@@ -69,7 +69,7 @@ export const BONE_SOVEREIGN: BossDef = {
 export const CATHEDRAL_JUDGE: BossDef = {
   id: "cathedral_judge",
   name: "Cathedral Judge",
-  spriteKey: "boss_bone_sovereign",
+  spriteKey: "boss_cathedral_judge",
   enemyProfileId: "storm_forged",
   damageProfile: ENEMY_PROFILE_MAP.storm_forged!.damageProfile,
   baseHealth: 920,
@@ -134,7 +134,7 @@ export const CATHEDRAL_JUDGE: BossDef = {
 export const EMBER_WARDEN: BossDef = {
   id: "ember_warden",
   name: "Ember Warden",
-  spriteKey: "boss_bone_sovereign",
+  spriteKey: "boss_ember_warden",
   enemyProfileId: "emberborn",
   damageProfile: ENEMY_PROFILE_MAP.emberborn!.damageProfile,
   baseHealth: 760,
@@ -199,7 +199,7 @@ export const EMBER_WARDEN: BossDef = {
 export const OSSUARY_KEEPER: BossDef = {
   id: "ossuary_keeper",
   name: "Ossuary Keeper",
-  spriteKey: "boss_bone_sovereign",
+  spriteKey: "boss_ossuary_keeper",
   enemyProfileId: "arcane_ward",
   damageProfile: ENEMY_PROFILE_MAP.arcane_ward!.damageProfile,
   baseHealth: 840,

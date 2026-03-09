@@ -189,6 +189,36 @@
   color: var(--accent);
 }
 
+.dialog-art-frame {
+  margin-bottom: 12px;
+  border: 1px solid rgba(208, 168, 111, 0.24);
+  border-radius: 10px;
+  background: rgba(20, 27, 36, 0.85);
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 132px;
+  overflow: hidden;
+}
+
+.dialog-art {
+  display: block;
+  max-width: 100%;
+  max-height: 188px;
+  object-fit: contain;
+}
+
+.dialog-art-badge {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+}
+
 .equipment-compare-card {
   width: min(520px, calc(100vw - 30px));
 }
@@ -256,6 +286,26 @@
   justify-content: space-between;
   gap: 10px;
   font-size: 13px;
+}
+
+.equipment-compare-summary-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.equipment-compare-summary-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+
+.equipment-compare-summary-icon.accent {
+  width: 16px;
+  height: 16px;
+  opacity: 0.9;
 }
 
 .equipment-compare-actions {

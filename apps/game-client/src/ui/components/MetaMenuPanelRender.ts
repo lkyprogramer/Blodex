@@ -6,6 +6,7 @@ import type {
   MetaMenuTalentGroupView,
   MetaMenuUnlockGroupView
 } from "./MetaMenuPanel";
+import { resolveGeneratedAssetUrl } from "../../assets/imageAsset";
 
 function escapeHtml(raw: string): string {
   return raw
@@ -38,6 +39,15 @@ function renderTalentGroups(talentGroups: MetaMenuTalentGroupView[]): string {
     .map((group) => {
       const cards = group.talents
         .map((talent) => {
+          const rankPips = Array.from({ length: talent.maxRank }, (_, index) => {
+            const active = index < talent.rank;
+            return `
+              <span class="meta-talent-rank-pip ${active ? "active" : ""}">
+                ${active ? `<img class="meta-talent-rank-glow" src="${resolveGeneratedAssetUrl("ui_talent_rank_glow_01", "webp")}" alt="" />` : ""}
+                <img class="meta-talent-rank-icon" src="${resolveGeneratedAssetUrl("ui_talent_rank_pip_01", "webp")}" alt="" />
+              </span>
+            `;
+          }).join("");
           const classes = [
             "meta-talent-card",
             talent.rank >= talent.maxRank ? "unlocked" : "",
@@ -59,12 +69,15 @@ function renderTalentGroups(talentGroups: MetaMenuTalentGroupView[]): string {
               </div>
               <div class="meta-talent-meta">
                 <span class="meta-unlock-cost">${escapeHtml(t("ui.meta.talent.cost", { cost: talent.cost }))}</span>
-                <span class="meta-talent-rank">${escapeHtml(
-                  t("ui.meta.talent.rank", {
-                    rank: talent.rank,
-                    maxRank: talent.maxRank
-                  })
-                )}</span>
+                <span class="meta-talent-rank">
+                  <span class="meta-talent-rank-text">${escapeHtml(
+                    t("ui.meta.talent.rank", {
+                      rank: talent.rank,
+                      maxRank: talent.maxRank
+                    })
+                  )}</span>
+                  <span class="meta-talent-rank-pips">${rankPips}</span>
+                </span>
               </div>
               <div class="meta-unlock-description">${escapeHtml(talent.description)}</div>
               <div class="meta-unlock-status">${escapeHtml(talent.statusText)}</div>

@@ -91,6 +91,7 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     id: "forge_anvil",
     name: "Forge Anvil",
     description: "An ancient anvil still glows, inviting one careful tempering.",
+    markerAssetId: "node_forge_marker_01",
     floorRange: { min: 3, max: 3 },
     spawnWeight: 1,
     choices: [
@@ -218,6 +219,7 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
     id: "gambler_cache",
     name: "Gambler Cache",
     description: "A locked coffer demands a wager before it reveals its haul.",
+    markerAssetId: "node_gamble_marker_01",
     floorRange: { min: 5, max: 5 },
     spawnWeight: 1,
     choices: [

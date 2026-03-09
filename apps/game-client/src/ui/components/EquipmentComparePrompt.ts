@@ -1,3 +1,5 @@
+import { resolveGeneratedAssetUrl } from "../../assets/imageAsset";
+
 function escapeHtml(raw: string): string {
   return raw
     .replaceAll("&", "&amp;")
@@ -11,6 +13,8 @@ export interface EquipmentComparePromptSummaryLine {
   label: string;
   symbol: string;
   tone: "positive" | "negative" | "neutral";
+  assetId?: string;
+  accentAssetId?: string;
 }
 
 export interface EquipmentComparePromptAffixLine {
@@ -42,7 +46,19 @@ export function renderEquipmentComparePrompt(view: EquipmentComparePromptView): 
     .map(
       (line) => `
         <div class="equipment-compare-summary-line">
-          <span>${escapeHtml(line.label)}</span>
+          <span class="equipment-compare-summary-label">
+            ${
+              line.assetId === undefined
+                ? ""
+                : `<img class="equipment-compare-summary-icon" src="${resolveGeneratedAssetUrl(line.assetId, "webp")}" alt="" />`
+            }
+            ${
+              line.accentAssetId === undefined
+                ? ""
+                : `<img class="equipment-compare-summary-icon accent" src="${resolveGeneratedAssetUrl(line.accentAssetId, "webp")}" alt="" />`
+            }
+            <span>${escapeHtml(line.label)}</span>
+          </span>
           <span class="equipment-compare-summary-value ${line.tone}">${escapeHtml(line.symbol)}</span>
         </div>
       `
