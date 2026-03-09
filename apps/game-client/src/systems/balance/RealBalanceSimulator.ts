@@ -15,12 +15,14 @@ import {
   initBossState,
   markSkillUsed,
   pickSkillChoicesWeighted,
+  PHASE6_BASELINE_MAX_FLOOR,
   markBossAttackUsed,
   resolveBranchChoiceBySeed,
   resolveBiomeForFloorBySeed,
   resolveBossAttack,
   resolveEquippedWeaponType,
   resolvePlayerAttack,
+  resolveStoryMaxFloor,
   resolveStoryPowerSpikePairIds,
   resolveSpecialAffixTotals,
   resolveWeaponTypeDef,
@@ -28,7 +30,6 @@ import {
   rollBossDrops,
   SeededRng,
   selectBossAttack,
-  PHASE6_BASELINE_MAX_FLOOR,
   type BalanceConfig,
   type BranchChoice,
   type CombatEvent,
@@ -47,6 +48,7 @@ import {
 import {
   BIOME_MAP,
   BONE_SOVEREIGN,
+  getFloorConfig,
   ITEM_DEF_MAP,
   ITEM_SET_DEFS,
   LOOT_TABLE_MAP,
@@ -69,7 +71,6 @@ import {
   scorePowerSpikeFromItem
 } from "../../scenes/dungeon/taste/PowerSpikeRuntime";
 
-const STORY_MAX_FLOOR = PHASE6_BASELINE_MAX_FLOOR;
 const LOOP_TICK_MS = 120;
 const MAX_FLOOR_SIM_MS = 240_000;
 const BOSS_EXCLUSIVE_TABLE_ID = "boss_bone_sovereign_exclusive";
@@ -103,21 +104,12 @@ function percentile(values: readonly number[], ratio: number): number {
   return Number(sorted[index]?.toFixed(4) ?? 0);
 }
 
-function resolveFloorConfig(floor: number, difficulty: ReturnType<typeof getDifficultyModifier>) {
-  const storyFloor = Math.min(STORY_MAX_FLOOR, Math.max(1, Math.floor(floor)));
-  if (storyFloor >= STORY_MAX_FLOOR) {
-    return {
-      monsterHpMultiplier: 2 * difficulty.monsterHealthMultiplier,
-      monsterDmgMultiplier: 1.6 * difficulty.monsterDamageMultiplier,
-      monsterCount: 1
-    };
-  }
-  const scaleIndex = storyFloor - 1;
-  return {
-    monsterHpMultiplier: (1 + scaleIndex * 0.25) * difficulty.monsterHealthMultiplier,
-    monsterDmgMultiplier: (1 + scaleIndex * 0.15) * difficulty.monsterDamageMultiplier,
-    monsterCount: 12 + scaleIndex * 2
-  };
+function resolveFloorConfig(
+  floor: number,
+  difficulty: ReturnType<typeof getDifficultyModifier>,
+  storyMaxFloor: number
+) {
+  return getFloorConfig(floor, difficulty, storyMaxFloor);
 }
 
 function createBalancePlayer(): PlayerState {
@@ -158,13 +150,16 @@ function makeSpriteStub<T>(): T {
 function shouldEquipItem(
   current: ItemInstance | undefined,
   candidate: ItemInstance,
-  behavior: BalanceConfig["playerBehavior"]
+  behavior: BalanceConfig["playerBehavior"],
+  storyMaxFloor: number
 ): boolean {
   if (current === undefined) {
     return true;
   }
   const scoreGap = calculateItemPowerScore(candidate) - calculateItemPowerScore(current);
-  const threshold = behavior === "optimal" ? -2 : behavior === "average" ? 6 : 12;
+  const isLongRun = storyMaxFloor > PHASE6_BASELINE_MAX_FLOOR;
+  const threshold =
+    behavior === "optimal" ? -2 : behavior === "average" ? (isLongRun ? 14 : 6) : isLongRun ? 20 : 12;
   return scoreGap >= threshold;
 }
 
@@ -261,7 +256,8 @@ function applyPendingLevelUps(
 function collectItem(
   player: PlayerState,
   item: ItemInstance,
-  behavior: BalanceConfig["playerBehavior"]
+  behavior: BalanceConfig["playerBehavior"],
+  storyMaxFloor: number
 ): PlayerState {
   const inventory = [...player.inventory, item];
   let next: PlayerState = {
@@ -269,7 +265,7 @@ function collectItem(
     inventory
   };
   const current = next.equipment[item.slot];
-  if (!shouldEquipItem(current, item, behavior)) {
+  if (!shouldEquipItem(current, item, behavior, storyMaxFloor)) {
     return next;
   }
   const equipment = {
@@ -318,11 +314,12 @@ function createFloorMonsters(
   floor: number,
   runSeed: string,
   branchChoice: BranchChoice | undefined,
-  config: BalanceConfig
+  config: BalanceConfig,
+  storyMaxFloor: number
 ): MonsterRuntime[] {
   const difficulty = getDifficultyModifier(config.difficulty);
-  const floorConfig = resolveFloorConfig(floor, difficulty);
-  const biome = BIOME_MAP[resolveBiomeForFloorBySeed(floor, runSeed, branchChoice, STORY_MAX_FLOOR)];
+  const floorConfig = resolveFloorConfig(floor, difficulty, storyMaxFloor);
+  const biome = BIOME_MAP[resolveBiomeForFloorBySeed(floor, runSeed, branchChoice, storyMaxFloor)];
   const rng = new SeededRng(`${runSeed}:real:spawn:${floor}`);
   const runtimes: MonsterRuntime[] = [];
 
@@ -381,11 +378,14 @@ function recordSimulatedItemPowerSpike(
   tracker.recordAcceptedSpike(floor, scorePowerSpikeFromItem(player, item));
 }
 
-function resolveProgressionSpikeTable(floor: number): LootTableDef | undefined {
-  if (floor >= 4) {
+function resolveProgressionSpikeTableForNextFloor(nextFloor: number): LootTableDef | undefined {
+  if (nextFloor >= 7) {
+    return LOOT_TABLE_MAP.late_story_progression;
+  }
+  if (nextFloor >= 6) {
     return LOOT_TABLE_MAP.catacomb_elite;
   }
-  if (floor >= 2) {
+  if (nextFloor >= 3) {
     return LOOT_TABLE_MAP.cathedral_depths;
   }
   return LOOT_TABLE_MAP.starter_floor;
@@ -437,6 +437,7 @@ function applyMonsterKillRewards(
   monster: MonsterState,
   lootRng: SeededRng,
   behavior: BalanceConfig["playerBehavior"],
+  storyMaxFloor: number,
   slotWeightMultiplier: Partial<Record<EquipmentSlot, number>> | undefined,
   tracker: PowerSpikeBudgetTracker
 ): {
@@ -482,7 +483,7 @@ function applyMonsterKillRewards(
     recordSimulatedItemPowerSpike(tracker, run.currentFloor, nextPlayer, droppedItem);
     rarityCounts[droppedItem.rarity] += 1;
     lootCollected += 1;
-    nextPlayer = collectItem(nextPlayer, droppedItem, behavior);
+    nextPlayer = collectItem(nextPlayer, droppedItem, behavior, storyMaxFloor);
   }
   return {
     player: nextPlayer,
@@ -503,7 +504,8 @@ function simulateFloorCombat(
   floor: number,
   runSeed: string,
   branchChoice: BranchChoice | undefined,
-  tracker: PowerSpikeBudgetTracker
+  tracker: PowerSpikeBudgetTracker,
+  storyMaxFloor: number
 ): {
   player: PlayerState;
   elapsedMs: number;
@@ -515,7 +517,7 @@ function simulateFloorCombat(
   autoAttackDamage: number;
 } {
   const combatSystem = new CombatSystem();
-  const monsterQueue = createFloorMonsters(floor, runSeed, branchChoice, config);
+  const monsterQueue = createFloorMonsters(floor, runSeed, branchChoice, config, storyMaxFloor);
   const combatRng = new SeededRng(`${runSeed}:real:combat:${floor}`);
   const lootRng = new SeededRng(`${runSeed}:real:loot:${floor}`);
   const skillRng = new SeededRng(`${runSeed}:real:skill:${floor}`);
@@ -579,7 +581,7 @@ function simulateFloorCombat(
       );
       if (deadIds.size > 0) {
         const slotWeightMultiplier = BIOME_MAP[
-          resolveBiomeForFloorBySeed(floor, runSeed, branchChoice, STORY_MAX_FLOOR)
+          resolveBiomeForFloorBySeed(floor, runSeed, branchChoice, storyMaxFloor)
         ].lootBias;
         for (const targetId of deadIds) {
           const index = activeMonsters.findIndex((monster) => monster.state.id === targetId);
@@ -596,6 +598,7 @@ function simulateFloorCombat(
             deadMonster.state,
             lootRng,
             config.playerBehavior,
+            storyMaxFloor,
             slotWeightMultiplier,
             tracker
           );
@@ -627,7 +630,7 @@ function simulateFloorCombat(
       lootTables: LOOT_TABLE_MAP,
       weaponTypeDefs: WEAPON_TYPE_DEF_MAP,
       slotWeightMultiplier: BIOME_MAP[
-        resolveBiomeForFloorBySeed(floor, runSeed, branchChoice, STORY_MAX_FLOOR)
+        resolveBiomeForFloorBySeed(floor, runSeed, branchChoice, storyMaxFloor)
       ].lootBias
     });
 
@@ -646,7 +649,7 @@ function simulateFloorCombat(
       recordSimulatedItemPowerSpike(tracker, floor, nextPlayer, playerTurn.droppedItem.item);
       rarityCounts[playerTurn.droppedItem.item.rarity] += 1;
       lootCollected += 1;
-      nextPlayer = collectItem(nextPlayer, playerTurn.droppedItem.item, config.playerBehavior);
+      nextPlayer = collectItem(nextPlayer, playerTurn.droppedItem.item, config.playerBehavior, storyMaxFloor);
     }
     nextPlayer = applyPendingLevelUps(nextPlayer, config.playerBehavior);
     if (nextPlayer.health <= 0) {
@@ -665,7 +668,8 @@ function simulateFloorCombat(
   }
 
   if (nextPlayer.health > 0 && tracker.needsFallbackReward(floor)) {
-    const fallbackTable = resolveProgressionSpikeTable(floor);
+    // Runtime selects fallback rewards against the upcoming floor band.
+    const fallbackTable = resolveProgressionSpikeTableForNextFloor(floor + 1);
     const fallback = fallbackTable === undefined
       ? null
       : resolveGuaranteedSpikeReward({
@@ -681,7 +685,7 @@ function simulateFloorCombat(
       recordSimulatedItemPowerSpike(tracker, floor, nextPlayer, fallback);
       rarityCounts[fallback.rarity] += 1;
       lootCollected += 1;
-      nextPlayer = collectItem(nextPlayer, fallback, config.playerBehavior);
+      nextPlayer = collectItem(nextPlayer, fallback, config.playerBehavior, storyMaxFloor);
     }
   }
 
@@ -701,7 +705,8 @@ function simulateBossCombat(
   player: PlayerState,
   config: BalanceConfig,
   runSeed: string,
-  tracker: PowerSpikeBudgetTracker
+  tracker: PowerSpikeBudgetTracker,
+  storyMaxFloor: number
 ): {
   player: PlayerState;
   elapsedMs: number;
@@ -752,7 +757,7 @@ function simulateBossCombat(
         archetypeId: "melee_grunt",
         ...(bossState.enemyProfileId === undefined ? {} : { enemyProfileId: bossState.enemyProfileId }),
         ...(bossState.damageProfile === undefined ? {} : { damageProfile: bossState.damageProfile }),
-        level: STORY_MAX_FLOOR,
+        level: storyMaxFloor,
         health: bossState.health,
         maxHealth: bossState.maxHealth,
         damage: 0,
@@ -811,7 +816,7 @@ function simulateBossCombat(
         archetypeId: "boss_proxy",
         ...(bossState.enemyProfileId === undefined ? {} : { enemyProfileId: bossState.enemyProfileId }),
         ...(bossState.damageProfile === undefined ? {} : { damageProfile: bossState.damageProfile }),
-        level: STORY_MAX_FLOOR,
+        level: storyMaxFloor,
         health: bossState.health,
         maxHealth: bossState.maxHealth,
         damage: 0,
@@ -901,7 +906,7 @@ function simulateBossCombat(
       LOOT_TABLE_MAP[BONE_SOVEREIGN.dropTableId]!,
       LOOT_TABLE_MAP[BOSS_EXCLUSIVE_TABLE_ID]!,
       ITEM_DEF_MAP,
-      STORY_MAX_FLOOR,
+      storyMaxFloor,
       lootRng,
       `${runSeed}:real:boss:reward`
     );
@@ -909,10 +914,10 @@ function simulateBossCombat(
       (item): item is ItemInstance => item !== undefined
     );
     for (const item of collected) {
-      recordSimulatedItemPowerSpike(tracker, STORY_MAX_FLOOR, nextPlayer, item);
+      recordSimulatedItemPowerSpike(tracker, storyMaxFloor, nextPlayer, item);
       rarityCounts[item.rarity] += 1;
       lootCollected += 1;
-      nextPlayer = collectItem(nextPlayer, item, config.playerBehavior);
+      nextPlayer = collectItem(nextPlayer, item, config.playerBehavior, storyMaxFloor);
     }
   }
 
@@ -931,12 +936,13 @@ function simulateBossCombat(
 function resolveDeathCause(
   floorReached: number,
   player: PlayerState,
-  branchChoice: BranchChoice | undefined
+  branchChoice: BranchChoice | undefined,
+  storyMaxFloor: number
 ): string {
   if (player.health > 0) {
     return "none";
   }
-  if (floorReached >= STORY_MAX_FLOOR) {
+  if (floorReached >= storyMaxFloor) {
     return "boss_pressure";
   }
   if (branchChoice === "molten_route") {
@@ -946,7 +952,8 @@ function resolveDeathCause(
 }
 
 function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
-  const floors = Math.max(1, Math.floor(config.maxFloors ?? STORY_MAX_FLOOR));
+  const storyMaxFloor = resolveStoryMaxFloor(config.maxFloors ?? PHASE6_BASELINE_MAX_FLOOR);
+  const floors = Math.max(1, Math.floor(config.maxFloors ?? storyMaxFloor));
   const runSeed = `${config.seedBase}:${config.difficulty}:${config.playerBehavior}:real:${index}`;
   const branchChoice: BranchChoice = resolveBranchChoiceBySeed(runSeed);
   let player = createBalancePlayer();
@@ -968,16 +975,16 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
 
   for (let floor = 1; floor <= floors; floor += 1) {
     const result =
-      floor >= STORY_MAX_FLOOR
-        ? simulateBossCombat(player, config, runSeed, powerSpikeBudget)
-        : simulateFloorCombat(player, config, floor, runSeed, branchChoice, powerSpikeBudget);
+      floor >= storyMaxFloor
+        ? simulateBossCombat(player, config, runSeed, powerSpikeBudget, storyMaxFloor)
+        : simulateFloorCombat(player, config, floor, runSeed, branchChoice, powerSpikeBudget, storyMaxFloor);
     const pacedFloorDurationMs =
       result.elapsedMs +
       estimateStoryFloorPacingOverheadMs({
         floor,
         difficulty: config.difficulty,
         playerBehavior: config.playerBehavior,
-        isBossFloor: floor >= STORY_MAX_FLOOR
+        isBossFloor: floor >= storyMaxFloor
       });
     player = result.player;
     combatDurationMs += result.elapsedMs;
@@ -1008,7 +1015,7 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
     combatDurationMs,
     floorDurationsMs,
     hpByFloor,
-    deathCause: resolveDeathCause(floorReached, player, branchChoice),
+    deathCause: resolveDeathCause(floorReached, player, branchChoice, storyMaxFloor),
     rarityCounts,
     skillUses,
     skillDamage,
@@ -1019,7 +1026,7 @@ function simulateSingleRun(config: BalanceConfig, index: number): SimulatedRun {
 
 export function simulateRealRun(config: BalanceConfig): RunSimulation {
   const sampleSize = Math.max(1, Math.floor(config.sampleSize));
-  const floors = Math.max(1, Math.floor(config.maxFloors ?? STORY_MAX_FLOOR));
+  const floors = resolveStoryMaxFloor(config.maxFloors ?? PHASE6_BASELINE_MAX_FLOOR);
   const runs = Array.from({ length: sampleSize }, (_, index) => simulateSingleRun(config, index));
   const clearedCount = runs.filter((run) => run.cleared).length;
   const avgFloorReached = runs.reduce((sum, run) => sum + run.floorReached, 0) / sampleSize;

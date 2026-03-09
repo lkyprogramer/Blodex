@@ -3,6 +3,7 @@ import {
   SeededRng,
   deriveEquippedPlayerStats,
   isTerminalStoryPowerSpikePairId,
+  resolveStoryPowerSpikePairs,
   resolveStoryPowerSpikePairId,
   resolveStoryPowerSpikePairIds,
   resolveSpecialAffixTotals,
@@ -406,7 +407,10 @@ export class PowerSpikeBudgetTracker {
     const pairId = resolvePowerSpikePairId(floor, this.maxFloors);
     const pairState = this.requirePairState(pairId);
     if (isTerminalStoryPowerSpikePairId(pairId, this.maxFloors)) {
-      return false;
+      const terminalPair = resolveStoryPowerSpikePairs(this.maxFloors).find((pair) => pair.id === pairId);
+      if (terminalPair === undefined || Math.max(1, Math.floor(floor)) >= terminalPair.endFloor) {
+        return false;
+      }
     }
     return !pairState.satisfied && !pairState.fallbackGranted;
   }

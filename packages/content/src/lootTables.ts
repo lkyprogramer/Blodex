@@ -132,11 +132,26 @@ export const LOOT_TABLES: LootTableDef[] = [
       { itemDefId: "revenant_mask", weight: 8, minFloor: 3 },
       { itemDefId: "oathbound_cuirass", weight: 8, minFloor: 3 },
       { itemDefId: "bloodsigil_band", weight: 8, minFloor: 3 },
-      { itemDefId: "sovereign_requiem", weight: 3, minFloor: 5 },
-      { itemDefId: "crown_of_bone", weight: 3, minFloor: 5 },
-      { itemDefId: "cataclysm_mail", weight: 3, minFloor: 5 },
-      { itemDefId: "echostep_greaves", weight: 3, minFloor: 5 },
-      { itemDefId: "voidsigil_band", weight: 3, minFloor: 5 }
+      { itemDefId: "sovereign_requiem", weight: 3, minFloor: 8 },
+      { itemDefId: "crown_of_bone", weight: 3, minFloor: 8 },
+      { itemDefId: "cataclysm_mail", weight: 3, minFloor: 8 },
+      { itemDefId: "echostep_greaves", weight: 3, minFloor: 8 },
+      { itemDefId: "voidsigil_band", weight: 3, minFloor: 8 }
+    ]
+  },
+  {
+    id: "late_story_progression",
+    entries: [
+      { itemDefId: "dusk_halberd", weight: 14, minFloor: 7 },
+      { itemDefId: "penitent_blade", weight: 14, minFloor: 7 },
+      { itemDefId: "warden_greathelm", weight: 14, minFloor: 7 },
+      { itemDefId: "cathedral_plate", weight: 14, minFloor: 7 },
+      { itemDefId: "pilgrim_treads", weight: 14, minFloor: 7 },
+      { itemDefId: "oath_ring", weight: 14, minFloor: 7 },
+      { itemDefId: "revenant_mask", weight: 5, minFloor: 8 },
+      { itemDefId: "oathbound_cuirass", weight: 5, minFloor: 8 },
+      { itemDefId: "catacomb_greaves", weight: 5, minFloor: 8 },
+      { itemDefId: "bloodsigil_band", weight: 5, minFloor: 8 }
     ]
   }
 ];

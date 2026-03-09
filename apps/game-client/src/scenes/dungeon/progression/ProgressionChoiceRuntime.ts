@@ -210,6 +210,9 @@ export class ProgressionChoiceRuntime {
   }
 
   resolveProgressionLootTable(floor: number): LootTableDef | undefined {
+    if (floor >= 7) {
+      return LOOT_TABLE_MAP.late_story_progression;
+    }
     if (floor >= 6) {
       return LOOT_TABLE_MAP.catacomb_elite;
     }
