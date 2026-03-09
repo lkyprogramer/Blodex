@@ -222,14 +222,14 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 132px;
+  min-height: 8.25rem;
   overflow: hidden;
 }
 
 .dialog-art {
   display: block;
   max-width: 100%;
-  max-height: 188px;
+  max-height: 11.75rem;
   object-fit: contain;
 }
 
@@ -237,8 +237,8 @@
   position: absolute;
   right: 10px;
   bottom: 10px;
-  width: 68px;
-  height: 68px;
+  width: 4.25rem;
+  height: 4.25rem;
   object-fit: contain;
   filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
 }
@@ -315,7 +315,7 @@
 .equipment-compare-set-card-image {
   display: block;
   width: 100%;
-  max-height: 132px;
+  max-height: 8.25rem;
   object-fit: cover;
   opacity: 0.82;
 }
