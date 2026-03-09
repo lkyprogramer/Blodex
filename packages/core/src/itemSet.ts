@@ -120,9 +120,17 @@ export function resolveItemSetTransition(
     return null;
   }
 
-  const baseEquipment = equippedItems.filter((entry) => entry.id !== compareItem?.id && entry.id !== candidate.id);
+  const baseEquipment =
+    compareItem === undefined
+      ? [...equippedItems]
+      : equippedItems.filter((entry) => entry.id !== compareItem.id && entry.id !== candidate.id);
   const beforeEquipment = compareItem === undefined ? [...baseEquipment] : [...baseEquipment, compareItem];
-  const afterEquipment = [...baseEquipment, candidate];
+  const afterEquipment =
+    compareItem === undefined
+      ? equippedItems.some((entry) => entry.id === candidate.id)
+        ? [...baseEquipment]
+        : [...baseEquipment, candidate]
+      : [...baseEquipment, candidate];
 
   const beforePieces = countEquippedItemSetPieces(beforeEquipment)[relevantSetId] ?? 0;
   const afterPieces = countEquippedItemSetPieces(afterEquipment)[relevantSetId] ?? 0;

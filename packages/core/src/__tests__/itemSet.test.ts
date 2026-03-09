@@ -149,4 +149,13 @@ describe("item set foundations", () => {
       lostThresholds: [2]
     });
   });
+
+  it("does not fabricate a set transition when the candidate is already equipped", () => {
+    const candidate = makeSetItem("cindersigil_band", "ring", "ember_vow");
+    const equipped = [makeSetItem("emberbrand_edge", "weapon", "ember_vow"), candidate];
+
+    const transition = resolveItemSetTransition(candidate, undefined, equipped, TEST_SET_DEFS);
+
+    expect(transition).toBeNull();
+  });
 });

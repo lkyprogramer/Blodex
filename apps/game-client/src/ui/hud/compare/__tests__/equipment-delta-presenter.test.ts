@@ -219,4 +219,37 @@ describe("EquipmentDeltaPresenter", () => {
       lostThresholds: [2]
     });
   });
+
+  it("does not surface a fake set transition when previewing an already-equipped set item", () => {
+    const candidate = makeItem({
+      id: "cindersigil-band",
+      defId: "cindersigil_band",
+      name: "Cindersigil Band",
+      slot: "ring",
+      kind: "unique",
+      setId: "ember_vow",
+      rarity: "rare",
+      iconId: "item_ring_02",
+      rolledAffixes: {
+        attackPower: 14
+      }
+    });
+    const equippedItems = [
+      makeItem({
+        id: "emberbrand-edge",
+        defId: "emberbrand_edge",
+        slot: "weapon",
+        kind: "unique",
+        setId: "ember_vow",
+        rolledAffixes: {
+          attackPower: 18
+        }
+      }),
+      candidate
+    ];
+
+    const compareView = buildEquipmentCompareView(candidate, undefined, equippedItems);
+
+    expect(compareView.setTransition).toBeUndefined();
+  });
 });
