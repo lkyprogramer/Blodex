@@ -227,6 +227,14 @@ export class RenderSystem {
             ? 0x9a4bd2
             : affixId === "splitting"
               ? 0xd8b45f
+              : affixId === "hulking"
+                ? 0x6d8b4f
+                : affixId === "warded"
+                  ? 0x5aa4c8
+                  : affixId === "skirmisher"
+                    ? 0xd4b764
+                    : affixId === "manaburn"
+                      ? 0x6d60d8
               : null;
     const affixMarker =
       affixColor === null

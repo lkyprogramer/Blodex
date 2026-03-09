@@ -43,12 +43,16 @@ export function resolveMitigatedMonsterDamage(rawDamage: number, armor: number, 
 
 export function resolveMonsterTakenDamage(rawDamage: number, monster: MonsterState, damageType: DamageType): number {
   const normalizedRawDamage = Math.max(0, rawDamage);
-  if (!hasMonsterAffix(monster, "armored")) {
-    return Math.max(1, Math.floor(normalizedRawDamage));
+  let mitigated = normalizedRawDamage;
+  if (hasMonsterAffix(monster, "armored")) {
+    const multiplier =
+      damageType === "arcane" ? ARMORED_ARCANE_DAMAGE_MULTIPLIER : ARMORED_PHYSICAL_DAMAGE_MULTIPLIER;
+    mitigated *= multiplier;
   }
-  const multiplier =
-    damageType === "arcane" ? ARMORED_ARCANE_DAMAGE_MULTIPLIER : ARMORED_PHYSICAL_DAMAGE_MULTIPLIER;
-  return Math.max(1, Math.floor(normalizedRawDamage * multiplier));
+  if (damageType === "arcane" && hasMonsterAffix(monster, "warded")) {
+    mitigated *= 0.72;
+  }
+  return Math.max(1, Math.floor(mitigated));
 }
 
 export function resolvePlayerAttack(

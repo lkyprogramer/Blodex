@@ -23,6 +23,26 @@ export const BUFF_DEFS: BuffDef[] = [
     name: "Frost Slow",
     duration: 3000,
     slow: 0.5
+  },
+  {
+    id: "frenzy_tonic",
+    name: "Frenzy Tonic",
+    duration: 8000,
+    statModifiers: {
+      attackPower: 10
+    },
+    statMultipliers: {
+      attackSpeed: 1.15
+    }
+  },
+  {
+    id: "phantom_brew",
+    name: "Phantom Brew",
+    duration: 6000,
+    statModifiers: {
+      moveSpeed: 18,
+      critChance: 0.08
+    }
   }
 ];
 

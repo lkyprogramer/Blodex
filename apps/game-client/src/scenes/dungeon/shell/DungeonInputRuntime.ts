@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { appendReplayInput, type GridNode, type PlayerState, type RunState } from "@blodex/core";
+import { appendReplayInput, type ConsumableId, type GridNode, type PlayerState, type RunState } from "@blodex/core";
 import { isoToGrid } from "../../../systems/iso";
 import type { RunLogService } from "../logging/RunLogService";
 
@@ -67,7 +67,7 @@ export interface DungeonInputSource {
   recordPlayerInput(nowMs: number): void;
   computePathTo(target: { x: number; y: number }): GridNode[];
   tryUseSkill(slotIndex: number): void;
-  tryUseConsumable(consumableId: "health_potion" | "mana_potion" | "scroll_of_mapping"): void;
+  tryUseConsumable(consumableId: ConsumableId): void;
 }
 
 export class DungeonInputRuntime {
@@ -205,6 +205,9 @@ export class DungeonInputRuntime {
     this.bindKeyboard("keydown-R", () => this.source.tryUseConsumable("health_potion"));
     this.bindKeyboard("keydown-F", () => this.source.tryUseConsumable("mana_potion"));
     this.bindKeyboard("keydown-G", () => this.source.tryUseConsumable("scroll_of_mapping"));
+    this.bindKeyboard("keydown-T", () => this.source.tryUseConsumable("scroll_of_mapping_plus"));
+    this.bindKeyboard("keydown-H", () => this.source.tryUseConsumable("frenzy_tonic"));
+    this.bindKeyboard("keydown-V", () => this.source.tryUseConsumable("phantom_brew"));
 
     if (this.source.debugCheatsEnabled) {
       this.bindKeyboard("keydown", (event) => {

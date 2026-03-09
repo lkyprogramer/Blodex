@@ -33,6 +33,9 @@ describe("consumable", () => {
     expect(state.charges.health_potion).toBe(3);
     expect(state.charges.mana_potion).toBe(3);
     expect(state.charges.scroll_of_mapping).toBe(0);
+    expect(state.charges.scroll_of_mapping_plus).toBe(0);
+    expect(state.charges.frenzy_tonic).toBe(0);
+    expect(state.charges.phantom_brew).toBe(0);
   });
 
   it("restores health and applies cooldown", () => {
@@ -79,5 +82,49 @@ describe("consumable", () => {
     const result = useConsumable(player, granted, "scroll_of_mapping", 100);
     expect(result.mappingRevealed).toBe(true);
     expect(result.consumables.charges.scroll_of_mapping).toBe(0);
+  });
+
+  it("uses greater mapping scroll and restores mana", () => {
+    const player = {
+      ...makePlayer(),
+      mana: 10
+    };
+    const base = createInitialConsumableState(0);
+    const granted = grantConsumable(base, "scroll_of_mapping_plus", 1);
+
+    const result = useConsumable(player, granted, "scroll_of_mapping_plus", 100);
+    expect(result.mappingRevealed).toBe(true);
+    expect(result.player.mana).toBeGreaterThan(player.mana);
+    expect(result.consumables.charges.scroll_of_mapping_plus).toBe(0);
+  });
+
+  it("applies tonic and brew buffs on use", () => {
+    const player = makePlayer();
+    const tonic = useConsumable(player, grantConsumable(createInitialConsumableState(0), "frenzy_tonic", 1), "frenzy_tonic", 100);
+    const brew = useConsumable(player, grantConsumable(createInitialConsumableState(0), "phantom_brew", 1), "phantom_brew", 200);
+
+    expect(tonic.buffsApplied[0]?.defId).toBe("frenzy_tonic");
+    expect(brew.buffsApplied[0]?.defId).toBe("phantom_brew");
+  });
+
+  it("grants and spends newly added consumables on sparse legacy-like state", () => {
+    const sparseState = {
+      charges: {
+        health_potion: 1,
+        mana_potion: 1,
+        scroll_of_mapping: 0
+      },
+      cooldowns: {
+        health_potion: 0,
+        mana_potion: 0,
+        scroll_of_mapping: 0
+      }
+    } as unknown as ReturnType<typeof createInitialConsumableState>;
+    const granted = grantConsumable(sparseState, "phantom_brew", 2);
+    const result = useConsumable(makePlayer(), granted, "phantom_brew", 100);
+
+    expect(granted.charges.phantom_brew).toBe(2);
+    expect(result.consumables.charges.phantom_brew).toBe(1);
+    expect(result.buffsApplied[0]?.defId).toBe("phantom_brew");
   });
 });

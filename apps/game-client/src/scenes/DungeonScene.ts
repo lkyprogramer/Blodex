@@ -324,7 +324,10 @@ const STAT_HIGHLIGHT_DURATION_MS = 1_300;
 const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
   health_potion: "item_consumable_health_potion_01",
   mana_potion: "item_consumable_mana_potion_01",
-  scroll_of_mapping: "item_consumable_scroll_mapping_01"
+  scroll_of_mapping: "item_consumable_scroll_mapping_01",
+  scroll_of_mapping_plus: "item_consumable_scroll_mapping_01",
+  frenzy_tonic: "item_consumable_health_potion_01",
+  phantom_brew: "item_consumable_mana_potion_01"
 };
 const SKILL_DEF_BY_ID = new Map(SKILL_DEFS.map((entry) => [entry.id, entry]));
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
@@ -576,6 +579,7 @@ export class DungeonScene extends Phaser.Scene {
       spawnMonsters: () => scene.spawnMonsters(),
       spawnLootDrop: (item, position, source) => scene.powerSpikeRuntimeModule.spawnLootDrop(item, position, source, scene.time.now),
       tryDiscoverBlueprints: (sourceType, nowMs, sourceId) => scene.tryDiscoverBlueprints(sourceType, nowMs, sourceId),
+      addRunBlueprintDiscoveries: (blueprintIds, nowMs, sourceLabel) => scene.addRunBlueprintDiscoveries(blueprintIds, nowMs, sourceLabel),
       scheduleRunSave: () => scene.scheduleRunSave(),
       resolveHiddenRoomRevealRadius: () => scene.resolveHiddenRoomRevealRadius(),
       resolveMutationAttackSpeedMultiplier: (nowMs) => scene.resolveMutationAttackSpeedMultiplier(nowMs),

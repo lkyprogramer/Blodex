@@ -269,6 +269,7 @@ export const DUNGEON_SCENE_HOST_METHOD_KEYS = [
   ,"computePathTo"
   ,"tryUseSkill"
   ,"tryUseConsumable"
+  ,"addRunBlueprintDiscoveries"
 ] as const satisfies ReadonlyArray<keyof DungeonSceneHostBridge>;
 
 type MutableKey = (typeof DUNGEON_SCENE_HOST_MUTABLE_KEYS)[number];

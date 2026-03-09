@@ -8,10 +8,11 @@ import {
   rollItemDrop,
   spendRunObols,
   type EventReward,
+  type ConsumableId,
   type ItemDef,
   type ItemInstance
 } from "@blodex/core";
-import { ITEM_DEF_MAP, LOOT_TABLE_MAP } from "@blodex/content";
+import { BLUEPRINT_DEF_MAP, ITEM_DEF_MAP, LOOT_TABLE_MAP } from "@blodex/content";
 import { t } from "../../../i18n";
 import type { RuntimeEventHost } from "./types";
 
@@ -21,6 +22,15 @@ export interface EventResolutionServiceOptions {
 
 export class EventResolutionService {
   constructor(private readonly options: EventResolutionServiceOptions) {}
+
+  private resolveConsumableBlueprintId(consumableId: ConsumableId): string | null {
+    for (const blueprint of Object.values(BLUEPRINT_DEF_MAP)) {
+      if (blueprint.category === "consumable" && blueprint.unlockTargetId === consumableId) {
+        return blueprint.id;
+      }
+    }
+    return null;
+  }
 
   applyCost(nowMs: number, eventId: string, choiceId: string): boolean {
     const host = this.options.host;
@@ -165,7 +175,16 @@ export class EventResolutionService {
       );
       return;
     }
+    if (reward.type === "blueprint") {
+      host.addRunBlueprintDiscoveries([reward.blueprintId], nowMs, source);
+      return;
+    }
     if (reward.type === "consumable") {
+      const blueprintId = this.resolveConsumableBlueprintId(reward.consumableId);
+      if (blueprintId !== null && !host.meta.blueprintForgedIds.includes(blueprintId)) {
+        host.addRunBlueprintDiscoveries([blueprintId], nowMs, source);
+        return;
+      }
       host.consumables = grantConsumable(host.consumables, reward.consumableId, reward.amount);
       host.runLog.appendKey(
         "log.event.reward.consumable",

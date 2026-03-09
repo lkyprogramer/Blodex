@@ -33,6 +33,7 @@ export class MerchantFlowService {
       return itemDef !== undefined && host.isItemDefUnlocked(itemDef);
     });
     const mutatorModifiers = resolveEndlessMutatorModifiers(host.run.mutatorActiveIds ?? []);
+    const merchantDiscount = Math.max(0, Math.min(0.35, host.talentEffects.economy.merchantDiscount ?? 0));
     const scarcitySurcharge = visibleEntries.length <= 4 ? 2 : visibleEntries.length <= 6 ? 1 : 0;
     const floorPriceStep =
       host.run.currentFloor >= 6 ? Math.floor((host.run.currentFloor - 5) / 2) : 0;
@@ -44,7 +45,7 @@ export class MerchantFlowService {
       {
         floorPriceStep,
         scarcitySurcharge,
-        priceMultiplier: mutatorModifiers.merchantPriceMultiplier
+        priceMultiplier: mutatorModifiers.merchantPriceMultiplier * (1 - merchantDiscount)
       }
     );
     host.eventBus.emit("merchant:offer", {

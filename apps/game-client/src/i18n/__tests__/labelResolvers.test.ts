@@ -21,6 +21,8 @@ describe("i18n label resolvers", () => {
 
     expect(consumableNameLabel("health_potion")).toBe("生命药剂");
     expect(consumableDescriptionLabel("scroll_of_mapping")).toBe("揭示当前楼层目标位置。");
+    expect(consumableNameLabel("frenzy_tonic")).toBe("狂热药剂");
+    expect(consumableDescriptionLabel("phantom_brew")).toBe("在 6 秒内提升移速与暴击率。");
   });
 
   it("resolves localized level-up choice labels", () => {

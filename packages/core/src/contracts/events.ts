@@ -250,6 +250,12 @@ export interface GameEventMap {
     amount: number;
     timestampMs: number;
   };
+  "monster:manaBurn": {
+    monsterId: string;
+    targetId: string;
+    amount: number;
+    timestampMs: number;
+  };
   "consumable:use": {
     playerId: string;
     consumableId: ConsumableId;

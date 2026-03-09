@@ -74,12 +74,18 @@ function createConsumables(): ConsumableState {
     charges: {
       health_potion: 1,
       mana_potion: 1,
-      scroll_of_mapping: 1
+      scroll_of_mapping: 1,
+      scroll_of_mapping_plus: 0,
+      frenzy_tonic: 0,
+      phantom_brew: 0
     },
     cooldowns: {
       health_potion: 0,
       mana_potion: 0,
-      scroll_of_mapping: 0
+      scroll_of_mapping: 0,
+      scroll_of_mapping_plus: 0,
+      frenzy_tonic: 0,
+      phantom_brew: 0
     }
   };
 }
@@ -171,6 +177,25 @@ describe("PlayerActionModule", () => {
     expect(used).toBe(false);
     expect(host.consumables.charges.health_potion).toBe(1);
     expect(eventEmit).not.toHaveBeenCalled();
+    expect(scheduleRunSave).not.toHaveBeenCalled();
+  });
+
+  it("applies consumable buffs for tonic-type consumables", () => {
+    const { host, eventEmit, scheduleRunSave } = createHost(false);
+    host.consumables.charges.frenzy_tonic = 1;
+    const module = new PlayerActionModule({ host });
+
+    const used = module.tryUseConsumable("frenzy_tonic");
+
+    expect(used).toBe(true);
+    expect(host.applyResolvedBuffs).toHaveBeenCalledTimes(1);
+    expect(host.consumables.charges.frenzy_tonic).toBe(0);
+    expect(eventEmit).toHaveBeenCalledWith(
+      "consumable:use",
+      expect.objectContaining({
+        consumableId: "frenzy_tonic"
+      })
+    );
     expect(scheduleRunSave).not.toHaveBeenCalled();
   });
 });

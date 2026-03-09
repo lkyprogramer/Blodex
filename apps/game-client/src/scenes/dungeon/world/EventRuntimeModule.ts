@@ -14,6 +14,7 @@ import { MerchantFlowService } from "./MerchantFlowService";
 import type { RuntimeEventHost } from "./types";
 
 const FLOOR_EVENT_SPAWN_CHANCE = 0.62;
+const GUARANTEED_MERCHANT_FLOORS = new Set<number>([2, 4]);
 
 export interface EventRuntimeModuleOptions {
   host: RuntimeEventHost;
@@ -28,6 +29,9 @@ export class EventRuntimeModule {
     const host = this.options.host;
     this.destroyEventNode();
     if (host.floorConfig.isBossFloor) {
+      return;
+    }
+    if (this.setupGuaranteedMerchantEvent(nowMs)) {
       return;
     }
     if (host.eventRng.next() > FLOOR_EVENT_SPAWN_CHANCE) {
@@ -50,6 +54,26 @@ export class EventRuntimeModule {
     }
 
     this.createEventNode(eventDef, position, nowMs);
+  }
+
+  private setupGuaranteedMerchantEvent(nowMs: number): boolean {
+    const host = this.options.host;
+    if (!host.unlockedEventIds.includes("wandering_merchant")) {
+      return false;
+    }
+    if (!GUARANTEED_MERCHANT_FLOORS.has(host.run.currentFloor)) {
+      return false;
+    }
+    const merchantEvent = RANDOM_EVENT_DEFS.find((eventDef) => eventDef.id === "wandering_merchant");
+    if (merchantEvent === undefined) {
+      return false;
+    }
+    const position = this.pickFloorEventPosition();
+    if (position === null) {
+      return false;
+    }
+    this.createEventNode(merchantEvent, position, nowMs);
+    return true;
   }
 
   createEventNode(

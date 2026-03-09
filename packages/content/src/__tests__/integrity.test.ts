@@ -18,7 +18,14 @@ import {
 } from "../index";
 import { describe, expect, it } from "vitest";
 
-const CONSUMABLE_IDS = new Set(["health_potion", "mana_potion", "scroll_of_mapping"]);
+const CONSUMABLE_IDS = new Set([
+  "health_potion",
+  "mana_potion",
+  "scroll_of_mapping",
+  "scroll_of_mapping_plus",
+  "frenzy_tonic",
+  "phantom_brew"
+]);
 
 describe("content integrity", () => {
   it("keeps loot/monster/biome/event references valid", () => {

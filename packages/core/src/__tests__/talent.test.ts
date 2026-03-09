@@ -17,7 +17,7 @@ const TALENTS: TalentNodeDef[] = [
     name: "Vitality Training",
     description: "",
     cost: 24,
-    maxRank: 1,
+    maxRank: 3,
     prerequisites: [],
     effects: [{ type: "derived_stat_flat", stat: "maxHealth", value: 10 }],
     uiPosition: { x: 0, y: 0 }
@@ -29,7 +29,7 @@ const TALENTS: TalentNodeDef[] = [
     name: "Third Slot",
     description: "",
     cost: 30,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "core_vitality_training", minRank: 1 }],
     effects: [{ type: "capacity", key: "skillSlots", value: 1 }],
     uiPosition: { x: 0, y: 0 }
@@ -94,21 +94,27 @@ describe("talent", () => {
   it("checks purchase gating and applies rank + shard spend", () => {
     const meta: MetaProgression = {
       ...createInitialMeta(),
-      soulShards: 60
+      soulShards: 90
     };
 
     expect(canPurchaseTalent(meta, TALENTS[1]!)).toBe(false);
 
     const afterFirst = purchaseTalent(meta, TALENTS[0]!);
-    expect(afterFirst.soulShards).toBe(36);
+    expect(afterFirst.soulShards).toBe(66);
     expect(afterFirst.talentPoints.core_vitality_training).toBe(1);
     expect(afterFirst.totalShardsSpent).toBe(24);
 
-    const afterSecond = purchaseTalent(afterFirst, TALENTS[1]!);
-    expect(afterSecond.soulShards).toBe(6);
-    expect(afterSecond.talentPoints.utility_skill_slot_i).toBe(1);
-    expect(afterSecond.totalShardsSpent).toBe(54);
-    expect(afterSecond.permanentUpgrades.skillSlots).toBe(3);
+    const afterSecond = purchaseTalent(afterFirst, TALENTS[0]!);
+    expect(afterSecond.soulShards).toBe(42);
+    expect(afterSecond.talentPoints.core_vitality_training).toBe(2);
+    expect(afterSecond.totalShardsSpent).toBe(48);
+    expect(afterSecond.permanentUpgrades.startingHealth).toBe(20);
+
+    const afterThird = purchaseTalent(afterSecond, TALENTS[1]!);
+    expect(afterThird.soulShards).toBe(12);
+    expect(afterThird.talentPoints.utility_skill_slot_i).toBe(1);
+    expect(afterThird.totalShardsSpent).toBe(78);
+    expect(afterThird.permanentUpgrades.skillSlots).toBe(3);
   });
 
   it("aggregates typed effects by purchased ranks", () => {
@@ -124,5 +130,22 @@ describe("talent", () => {
     expect(totals.derivedFlat.maxHealth).toBeUndefined();
     expect(totals.capacity.skillSlots).toBeUndefined();
     expect(totals.baseStats.strength).toBe(2);
+  });
+
+  it("maps expanded legacy talent ranks from permanent upgrades", () => {
+    const points = mapLegacyPermanentUpgradesToTalents({
+      startingHealth: 30,
+      startingArmor: 4,
+      luckBonus: 0.1,
+      skillSlots: 2,
+      potionCharges: 2
+    });
+
+    expect(points).toMatchObject({
+      core_vitality_training: 3,
+      core_iron_skin: 2,
+      core_keen_eye: 2,
+      utility_potion_satchel: 2
+    });
   });
 });

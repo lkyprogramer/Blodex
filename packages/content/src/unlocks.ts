@@ -164,6 +164,54 @@ export const UNLOCK_DEFS: UnlockDef[] = [
     }
   },
   {
+    id: "u_unlock_affix_hulking",
+    name: "Affix: Hulking",
+    description: "Enable hulking monsters.",
+    tier: 3,
+    cost: 52,
+    cumulativeRequirement: 130,
+    effect: {
+      type: "affix_unlock",
+      affixId: "hulking"
+    }
+  },
+  {
+    id: "u_unlock_affix_warded",
+    name: "Affix: Warded",
+    description: "Enable warded monsters.",
+    tier: 3,
+    cost: 52,
+    cumulativeRequirement: 130,
+    effect: {
+      type: "affix_unlock",
+      affixId: "warded"
+    }
+  },
+  {
+    id: "u_unlock_affix_skirmisher",
+    name: "Affix: Skirmisher",
+    description: "Enable skirmisher monsters.",
+    tier: 4,
+    cost: 64,
+    cumulativeRequirement: 180,
+    effect: {
+      type: "affix_unlock",
+      affixId: "skirmisher"
+    }
+  },
+  {
+    id: "u_unlock_affix_manaburn",
+    name: "Affix: Manaburn",
+    description: "Enable manaburn monsters.",
+    tier: 4,
+    cost: 68,
+    cumulativeRequirement: 180,
+    effect: {
+      type: "affix_unlock",
+      affixId: "manaburn"
+    }
+  },
+  {
     id: "u_unlock_event_unstable_portal",
     name: "Event: Unstable Portal",
     description: "Allow unstable portal events.",

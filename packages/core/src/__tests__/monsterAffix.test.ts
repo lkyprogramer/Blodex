@@ -88,6 +88,22 @@ describe("monster affix", () => {
     expect(armored.damage).toBeLessThan(20);
   });
 
+  it("applies batch-one affix stat shaping", () => {
+    const hulking = applyAffixesToMonsterState({
+      ...baseMonster(),
+      affixes: ["hulking"]
+    });
+    const skirmisher = applyAffixesToMonsterState({
+      ...baseMonster(),
+      affixes: ["skirmisher"]
+    });
+
+    expect(hulking.maxHealth).toBeGreaterThan(100);
+    expect(hulking.moveSpeed).toBeLessThan(100);
+    expect(skirmisher.moveSpeed).toBeGreaterThan(100);
+    expect(skirmisher.attackRange).toBeGreaterThan(baseMonster().attackRange);
+  });
+
   it("reuses the same frenzied move-speed rule for restore fallbacks", () => {
     const frenzied = applyAffixesToMonsterState({
       ...baseMonster(),
@@ -117,6 +133,20 @@ describe("monster affix", () => {
       amount: 10,
       timestampMs: 1234
     });
+  });
+
+  it("emits mana burn amount when manaburn affix lands damage", () => {
+    const result = resolveMonsterAffixOnDealDamage(
+      {
+        ...baseMonster(),
+        affixes: ["manaburn"]
+      },
+      "player",
+      25,
+      1234
+    );
+
+    expect(result.manaBurnAmount).toBeGreaterThan(0);
   });
 
   it("creates split children via unified onKilled hook", () => {

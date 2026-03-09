@@ -235,6 +235,10 @@ const UNLOCK_ZH: Readonly<Record<string, { name: string; description: string }>>
   u_unlock_event_merchant: { name: "事件：流浪商人", description: "允许在对局中遭遇商人。" },
   u_unlock_affix_vampiric: { name: "词缀：吸血", description: "启用吸血怪物。" },
   u_unlock_affix_splitting: { name: "词缀：分裂", description: "启用分裂怪物。" },
+  u_unlock_affix_hulking: { name: "词缀：巨躯", description: "启用巨躯怪物。" },
+  u_unlock_affix_warded: { name: "词缀：奥术护幕", description: "启用护幕怪物。" },
+  u_unlock_affix_skirmisher: { name: "词缀：游击", description: "启用游击怪物。" },
+  u_unlock_affix_manaburn: { name: "词缀：燃法", description: "启用燃法怪物。" },
   u_unlock_event_unstable_portal: { name: "事件：不稳定传送门", description: "允许不稳定传送门事件出现。" }
 };
 
@@ -337,7 +341,11 @@ const AFFIX_ZH: Readonly<Record<string, { name: string; description: string }>> 
   frenzied: { name: "狂热", description: "移动与攻击速度更快。" },
   armored: { name: "重甲", description: "拥有强化生命池。" },
   vampiric: { name: "吸血", description: "攻击时会汲取生命。" },
-  splitting: { name: "分裂", description: "死亡时分裂为弱体。" }
+  splitting: { name: "分裂", description: "死亡时分裂为弱体。" },
+  hulking: { name: "巨躯", description: "生命更厚，但行动更迟缓。" },
+  warded: { name: "奥术护幕", description: "对奥术伤害有更强抗性。" },
+  skirmisher: { name: "游击", description: "更快逼近并从更远位置出手。" },
+  manaburn: { name: "燃法", description: "命中时会额外灼烧法力。" }
 };
 
 const BOSS_NAME_ZH: Readonly<Record<string, string>> = {

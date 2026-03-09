@@ -136,13 +136,16 @@ export interface RuntimeEventHost {
   runLog: RuntimeEventRunLog;
   time: { now: number };
   hudDirty: boolean;
+  meta: MetaProgression;
   tryDiscoverBlueprints(sourceType: "random_event", nowMs: number, sourceId?: string): void;
+  addRunBlueprintDiscoveries(blueprintIds: string[], nowMs: number, sourceLabel: string): void;
   routeFeedback(input: FeedbackRouterInput): void;
   flushRunSave(): void;
   runCompletionModule: {
     finishRun(isVictory: boolean): void;
   };
   merchantOffers: MerchantOffer[];
+  talentEffects: Pick<TalentEffectTotals, "economy">;
   isItemDefUnlocked(itemDef: ItemDef): boolean;
   markHighValueChoice(source: string, nowMs: number): void;
   resolveLootRollOptions(options: RollItemDropOptions): RollItemDropOptions;

@@ -303,6 +303,9 @@ export class PlayerActionModule {
     const result = useConsumable(host.player, host.consumables, consumableId, nowMs);
     host.player = result.player;
     host.consumables = result.consumables;
+    if (result.buffsApplied.length > 0 && typeof host.applyResolvedBuffs === "function") {
+      host.applyResolvedBuffs(result.buffsApplied, nowMs);
+    }
     if (consumableId === "health_potion") {
       const potionEffects = host.collectMutationEffects("potion_heal_amp_and_self_damage");
       if (potionEffects.length > 0) {

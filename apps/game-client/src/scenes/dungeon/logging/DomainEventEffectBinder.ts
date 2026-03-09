@@ -390,6 +390,34 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
           "success",
           timestampMs
         );
+      } else if (consumableId === "scroll_of_mapping_plus") {
+        host.runLog.appendKey(
+          "log.consumable.scroll_mapping_plus_used",
+          {
+            amount: amountApplied,
+            remainingCharges
+          },
+          "success",
+          timestampMs
+        );
+      } else if (consumableId === "frenzy_tonic") {
+        host.runLog.appendKey(
+          "log.consumable.frenzy_tonic_used",
+          {
+            remainingCharges
+          },
+          "success",
+          timestampMs
+        );
+      } else if (consumableId === "phantom_brew") {
+        host.runLog.appendKey(
+          "log.consumable.phantom_brew_used",
+          {
+            remainingCharges
+          },
+          "success",
+          timestampMs
+        );
       } else {
         host.runLog.appendKey(
           "log.consumable.scroll_mapping_used",
@@ -523,6 +551,19 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
           target: host.resolveEntityLabel(targetId)
         },
         "danger",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("monster:manaBurn", ({ monsterId, amount, targetId, timestampMs }) => {
+      host.runLog.appendKey(
+        "log.monster.mana_burn",
+        {
+          monsterName: host.resolveEntityLabel(monsterId),
+          amount,
+          target: host.resolveEntityLabel(targetId)
+        },
+        "warn",
         timestampMs
       );
     });

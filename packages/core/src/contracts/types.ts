@@ -18,7 +18,15 @@ export type HazardType = "damage_zone" | "movement_modifier" | "periodic_trap";
 
 export type MonsterAiBehavior = "chase" | "kite" | "ambush" | "swarm" | "shield" | "support";
 
-export type MonsterAffixId = "frenzied" | "armored" | "vampiric" | "splitting";
+export type MonsterAffixId =
+  | "frenzied"
+  | "armored"
+  | "vampiric"
+  | "splitting"
+  | "hulking"
+  | "warded"
+  | "skirmisher"
+  | "manaburn";
 
 export type DamageType = "physical" | "arcane";
 
@@ -479,13 +487,19 @@ export interface CombatEvent {
   timestampMs: number;
 }
 
-export type ConsumableId = "health_potion" | "mana_potion" | "scroll_of_mapping";
+export type ConsumableId =
+  | "health_potion"
+  | "mana_potion"
+  | "scroll_of_mapping"
+  | "scroll_of_mapping_plus"
+  | "frenzy_tonic"
+  | "phantom_brew";
 
 export interface ConsumableDef {
   id: ConsumableId;
   name: string;
   description: string;
-  hotkey?: "R" | "F" | "G";
+  hotkey?: "R" | "F" | "G" | "T" | "H" | "V";
 }
 
 export interface ConsumableState {
@@ -525,6 +539,7 @@ export type EventReward =
   | { type: "obol"; amount: number }
   | { type: "xp"; amount: number }
   | { type: "mapping" }
+  | { type: "blueprint"; blueprintId: string }
   | { type: "item"; itemDefId?: string; lootTableId?: string }
   | { type: "consumable"; consumableId: ConsumableId; amount: number }
   | {
