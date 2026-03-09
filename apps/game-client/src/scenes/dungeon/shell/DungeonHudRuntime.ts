@@ -11,7 +11,7 @@ import {
   type RunState,
   type SkillDef
 } from "@blodex/core";
-import { SKILL_DEFS, type FloorConfig } from "@blodex/content";
+import { BLUEPRINT_DEF_MAP, SKILL_DEFS, type BlueprintDef, type FloorConfig } from "@blodex/content";
 import type { UIManager } from "../../../ui/UIManager";
 import type { HudPresenter } from "../ui/HudPresenter";
 import {
@@ -26,9 +26,13 @@ const SKILL_READY_FLASH_DURATION_MS = 480;
 const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
   health_potion: "item_consumable_health_potion_01",
   mana_potion: "item_consumable_mana_potion_01",
-  scroll_of_mapping: "item_consumable_scroll_mapping_01"
+  scroll_of_mapping: "item_consumable_scroll_mapping_01",
+  scroll_of_mapping_plus: "item_consumable_scroll_mapping_01",
+  frenzy_tonic: "item_consumable_health_potion_01",
+  phantom_brew: "item_consumable_mana_potion_01"
 };
 const SKILL_DEF_BY_ID = new Map(SKILL_DEFS.map((entry) => [entry.id, entry]));
+const DEFAULT_VISIBLE_CONSUMABLES = new Set<ConsumableId>(["health_potion", "mana_potion", "scroll_of_mapping"]);
 
 export interface DungeonHudSource {
   time: { now: number };
@@ -115,6 +119,13 @@ export class DungeonHudRuntime {
   render(): void {
     const source = this.source;
     const nowMs = source.time.now;
+    const unlockedConsumableIds = new Set<ConsumableId>(
+      source.meta.blueprintForgedIds
+        .map((blueprintId) => BLUEPRINT_DEF_MAP[blueprintId])
+        .filter((blueprint: BlueprintDef | undefined) => blueprint?.category === "consumable")
+        .map((blueprint) => blueprint?.unlockTargetId)
+        .filter((consumableId): consumableId is ConsumableId => typeof consumableId === "string")
+    );
     const newlyAcquiredItemIds = collectNewlyAcquiredItemIds(source, nowMs);
     const statHighlightSnapshot = collectActiveHudStatHighlights(source.statHighlightEntries, nowMs);
     source.statHighlightEntries = statHighlightSnapshot.persisted;
@@ -123,7 +134,13 @@ export class DungeonHudRuntime {
     }
     const levelUpPulseLevel =
       source.levelUpPulseUntilMs > nowMs ? (source.levelUpPulseLevel ?? source.player.level) : undefined;
-    const consumables = CONSUMABLE_DEFS.map((def) => {
+    const consumables = CONSUMABLE_DEFS.filter((def) => {
+      return (
+        DEFAULT_VISIBLE_CONSUMABLES.has(def.id) ||
+        unlockedConsumableIds.has(def.id) ||
+        (source.consumables.charges[def.id] ?? 0) > 0
+      );
+    }).map((def) => {
       const cooldownLeftMs = Math.max(0, (source.consumables.cooldowns[def.id] ?? 0) - nowMs);
       const availability = canUseConsumable(source.player, source.consumables, def.id, nowMs);
       return {

@@ -33,17 +33,17 @@ const LEGACY_UPGRADE_TO_TALENT: Record<keyof PermanentUpgrade, TalentLegacyMapEn
   startingHealth: {
     talentId: "core_vitality_training",
     perRank: 10,
-    maxRank: 1
+    maxRank: 3
   },
   startingArmor: {
     talentId: "core_iron_skin",
     perRank: 2,
-    maxRank: 1
+    maxRank: 2
   },
   luckBonus: {
     talentId: "core_keen_eye",
     perRank: 0.05,
-    maxRank: 1
+    maxRank: 2
   },
   skillSlots: {
     talentId: "utility_skill_slot_i",
@@ -53,7 +53,7 @@ const LEGACY_UPGRADE_TO_TALENT: Record<keyof PermanentUpgrade, TalentLegacyMapEn
   potionCharges: {
     talentId: "utility_potion_satchel",
     perRank: 1,
-    maxRank: 1
+    maxRank: 2
   }
 };
 

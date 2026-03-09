@@ -83,7 +83,10 @@ const SKILL_SFX_MAP: Record<string, AudioKey> = {
 const CONSUMABLE_SFX_MAP: Record<ConsumableId, AudioKey> = {
   health_potion: "sfx_consumable_health_potion_01",
   mana_potion: "sfx_consumable_mana_potion_01",
-  scroll_of_mapping: "sfx_consumable_scroll_mapping_01"
+  scroll_of_mapping: "sfx_consumable_scroll_mapping_01",
+  scroll_of_mapping_plus: "sfx_consumable_scroll_mapping_01",
+  frenzy_tonic: "sfx_consumable_health_potion_01",
+  phantom_brew: "sfx_consumable_mana_potion_01"
 };
 
 const HAZARD_SFX_MAP: Record<HazardType, AudioKey> = {

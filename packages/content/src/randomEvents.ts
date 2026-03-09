@@ -99,7 +99,10 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
         name: "Blood Trade",
         description: "Lose health for a rare reward.",
         cost: { type: "health", amount: 25 },
-        rewards: [{ type: "item", lootTableId: "catacomb_elite" }]
+        rewards: [
+          { type: "item", lootTableId: "catacomb_elite" },
+          { type: "blueprint", blueprintId: "bp_consumable_phantom_brew" }
+        ]
       },
       {
         id: "drain_mana",
@@ -130,7 +133,8 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
         cost: { type: "mana", amount: 12 },
         rewards: [
           { type: "consumable", consumableId: "health_potion", amount: 1 },
-          { type: "consumable", consumableId: "mana_potion", amount: 1 }
+          { type: "consumable", consumableId: "mana_potion", amount: 1 },
+          { type: "blueprint", blueprintId: "bp_consumable_frenzy_tonic" }
         ]
       },
       {
@@ -158,7 +162,11 @@ export const RANDOM_EVENT_DEFS: RandomEventDef[] = [
         id: "attune",
         name: "Attune",
         description: "Gain insight and map reveal.",
-        rewards: [{ type: "mapping" }, { type: "xp", amount: 48 }]
+        rewards: [
+          { type: "mapping" },
+          { type: "xp", amount: 48 },
+          { type: "blueprint", blueprintId: "bp_consumable_mapping_plus" }
+        ]
       },
       {
         id: "harvest",

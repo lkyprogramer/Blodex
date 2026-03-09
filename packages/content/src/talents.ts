@@ -8,7 +8,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Vitality Training",
     description: "Increase baseline max health.",
     cost: 24,
-    maxRank: 1,
+    maxRank: 3,
     prerequisites: [],
     effects: [{ type: "derived_stat_flat", stat: "maxHealth", value: 10 }],
     uiPosition: { x: 80, y: 40 }
@@ -20,7 +20,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Iron Skin",
     description: "Increase baseline armor.",
     cost: 24,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "core_vitality_training", minRank: 1 }],
     effects: [{ type: "derived_stat_flat", stat: "armor", value: 2 }],
     uiPosition: { x: 40, y: 120 }
@@ -32,7 +32,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Keen Eye",
     description: "Increase baseline critical chance.",
     cost: 20,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "core_vitality_training", minRank: 1 }],
     effects: [{ type: "derived_stat_percent", stat: "critChance", value: 0.05 }],
     uiPosition: { x: 120, y: 120 }
@@ -44,7 +44,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Blooded Edge",
     description: "Increase strength.",
     cost: 36,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [],
     effects: [{ type: "base_stat_flat", stat: "strength", value: 2 }],
     uiPosition: { x: 40, y: 40 }
@@ -56,7 +56,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Crushing Weight",
     description: "Increase attack power.",
     cost: 42,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "warrior_blooded_edge", minRank: 1 }],
     effects: [{ type: "derived_stat_flat", stat: "attackPower", value: 8 }],
     uiPosition: { x: 100, y: 80 }
@@ -68,7 +68,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Brutal Momentum",
     description: "Increase attack speed.",
     cost: 48,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "warrior_crushing_weight", minRank: 1 }],
     effects: [{ type: "derived_stat_percent", stat: "attackSpeed", value: 0.05 }],
     uiPosition: { x: 40, y: 130 }
@@ -80,7 +80,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Colossus Frame",
     description: "Increase vitality.",
     cost: 54,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "warrior_brutal_momentum", minRank: 1 }],
     effects: [{ type: "base_stat_flat", stat: "vitality", value: 2 }],
     uiPosition: { x: 100, y: 170 }
@@ -92,7 +92,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Executioner Instinct",
     description: "Increase attack power by percent.",
     cost: 60,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "warrior_colossus_frame", minRank: 1 }],
     effects: [{ type: "derived_stat_percent", stat: "attackPower", value: 0.08 }],
     uiPosition: { x: 40, y: 220 }
@@ -104,7 +104,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Undying Stride",
     description: "Increase max health.",
     cost: 66,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "warrior_executioner_instinct", minRank: 1 }],
     effects: [{ type: "derived_stat_flat", stat: "maxHealth", value: 24 }],
     uiPosition: { x: 100, y: 260 }
@@ -116,7 +116,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Shadow Step",
     description: "Increase dexterity.",
     cost: 36,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [],
     effects: [{ type: "base_stat_flat", stat: "dexterity", value: 2 }],
     uiPosition: { x: 40, y: 40 }
@@ -128,7 +128,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Quickdraw",
     description: "Increase attack speed.",
     cost: 42,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "ranger_shadow_step", minRank: 1 }],
     effects: [{ type: "derived_stat_percent", stat: "attackSpeed", value: 0.06 }],
     uiPosition: { x: 100, y: 80 }
@@ -140,7 +140,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Hawk Eye",
     description: "Increase critical chance.",
     cost: 48,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "ranger_quickdraw", minRank: 1 }],
     effects: [{ type: "derived_stat_percent", stat: "critChance", value: 0.03 }],
     uiPosition: { x: 40, y: 130 }
@@ -152,7 +152,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Windrunner",
     description: "Increase movement speed.",
     cost: 54,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "ranger_hawk_eye", minRank: 1 }],
     effects: [{ type: "derived_stat_percent", stat: "moveSpeed", value: 0.05 }],
     uiPosition: { x: 100, y: 170 }
@@ -164,7 +164,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Venom Threads",
     description: "Increase attack power.",
     cost: 60,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "ranger_windrunner", minRank: 1 }],
     effects: [{ type: "derived_stat_flat", stat: "attackPower", value: 6 }],
     uiPosition: { x: 40, y: 220 }
@@ -176,7 +176,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Predator Focus",
     description: "Increase dexterity further.",
     cost: 66,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "ranger_venom_threads", minRank: 1 }],
     effects: [{ type: "base_stat_flat", stat: "dexterity", value: 3 }],
     uiPosition: { x: 100, y: 260 }
@@ -188,7 +188,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Mindforge",
     description: "Increase intelligence.",
     cost: 36,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [],
     effects: [{ type: "base_stat_flat", stat: "intelligence", value: 2 }],
     uiPosition: { x: 40, y: 40 }
@@ -200,7 +200,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Aether Pool",
     description: "Increase max mana.",
     cost: 42,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "arcanist_mindforge", minRank: 1 }],
     effects: [{ type: "derived_stat_flat", stat: "maxMana", value: 18 }],
     uiPosition: { x: 100, y: 80 }
@@ -212,7 +212,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Sigil Acceleration",
     description: "Increase attack speed.",
     cost: 48,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "arcanist_aether_pool", minRank: 1 }],
     effects: [{ type: "derived_stat_percent", stat: "attackSpeed", value: 0.04 }],
     uiPosition: { x: 40, y: 130 }
@@ -224,7 +224,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Crystal Focus",
     description: "Increase attack power.",
     cost: 54,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "arcanist_sigil_acceleration", minRank: 1 }],
     effects: [{ type: "derived_stat_flat", stat: "attackPower", value: 7 }],
     uiPosition: { x: 100, y: 170 }
@@ -236,7 +236,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Phase Dodge",
     description: "Gain phase dodge trigger chance.",
     cost: 60,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "arcanist_crystal_focus", minRank: 1 }],
     effects: [{ type: "trigger", key: "phaseDodge", value: 0.1 }],
     uiPosition: { x: 40, y: 220 }
@@ -248,7 +248,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Mana Shield",
     description: "Gain mana shield trigger chance.",
     cost: 66,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "arcanist_phase_dodge", minRank: 1 }],
     effects: [{ type: "trigger", key: "manaShield", value: 0.12 }],
     uiPosition: { x: 100, y: 260 }
@@ -260,7 +260,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Potion Satchel",
     description: "Increase potion charge capacity.",
     cost: 25,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [],
     effects: [{ type: "capacity", key: "potionCharges", value: 1 }],
     uiPosition: { x: 40, y: 40 }
@@ -296,7 +296,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Merchant Sense",
     description: "Gain merchant discount in run.",
     cost: 40,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "utility_skill_slot_ii", minRank: 1 }],
     effects: [{ type: "economy", key: "merchantDiscount", value: 0.08 }],
     uiPosition: { x: 100, y: 170 }
@@ -320,7 +320,7 @@ export const TALENT_DEFS: TalentNodeDef[] = [
     name: "Lethal Guard",
     description: "Gain lethal guard trigger chance.",
     cost: 50,
-    maxRank: 1,
+    maxRank: 2,
     prerequisites: [{ talentId: "utility_death_ledger", minRank: 1 }],
     effects: [{ type: "trigger", key: "lethalGuard", value: 0.1 }],
     uiPosition: { x: 100, y: 260 }

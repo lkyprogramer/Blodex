@@ -189,6 +189,32 @@ describe("combat contract", () => {
     expect(physicalDamage).toBeLessThan(arcaneDamage);
   });
 
+  it("lets warded reduce arcane damage more than physical", () => {
+    const warded: MonsterState = {
+      ...makeMonster(100),
+      affixes: ["warded"]
+    };
+    const player = makePlayer();
+    const physical = resolvePlayerAttack(player, warded, fixedRng(1), 1000);
+    const arcaneSkill: SkillDef = {
+      id: "arcane_probe",
+      name: "Arcane Probe",
+      description: "",
+      icon: "",
+      cooldownMs: 1000,
+      manaCost: 5,
+      damageType: "arcane",
+      targeting: "nearest",
+      range: 3,
+      effects: [{ type: "damage", value: 20 }]
+    };
+    const arcane = resolveSkill(player, [warded], arcaneSkill, fixedRng(1), 1200);
+    const physicalDamage = physical.events.find((event) => event.kind === "damage")?.amount ?? 0;
+    const arcaneDamage = arcane.events.find((event) => event.kind === "damage")?.amount ?? 0;
+
+    expect(arcaneDamage).toBeLessThan(physicalDamage);
+  });
+
   it("consumes cooldownReduction when applying skill cooldown", () => {
     const state = {
       skillSlots: [],

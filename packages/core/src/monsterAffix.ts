@@ -12,7 +12,11 @@ export const MONSTER_AFFIX_IDS: MonsterAffixId[] = [
   "frenzied",
   "armored",
   "vampiric",
-  "splitting"
+  "splitting",
+  "hulking",
+  "warded",
+  "skirmisher",
+  "manaburn"
 ];
 
 export interface MonsterAffixLeechTrigger {
@@ -31,6 +35,7 @@ export interface MonsterAffixSplitTrigger {
 export interface MonsterAffixOnDealDamageResult {
   monster: MonsterState;
   leechEvent?: MonsterAffixLeechTrigger;
+  manaBurnAmount?: number;
 }
 
 export interface MonsterAffixOnKilledResult {
@@ -96,7 +101,25 @@ export function applyAffixesToMonsterState(monster: MonsterState): MonsterState 
           damage: withScaled(next.damage, 0.94)
         };
         break;
+      case "hulking":
+        next = {
+          ...next,
+          maxHealth: withScaled(next.maxHealth, 1.45),
+          health: withScaled(next.health, 1.45),
+          moveSpeed: withScaled(next.moveSpeed, 0.88),
+          damage: withScaled(next.damage, 1.08)
+        };
+        break;
+      case "skirmisher":
+        next = {
+          ...next,
+          moveSpeed: withScaled(next.moveSpeed, 1.16),
+          attackRange: next.attackRange + 1
+        };
+        break;
       case "vampiric":
+      case "warded":
+      case "manaburn":
       case "splitting":
         break;
     }
@@ -138,28 +161,38 @@ export function resolveMonsterAffixOnDealDamage(
   dealtDamage: number,
   timestampMs: number
 ): MonsterAffixOnDealDamageResult {
-  if (!hasMonsterAffix(monster, "vampiric") || dealtDamage <= 0) {
+  if (dealtDamage <= 0) {
     return { monster };
   }
 
+  let nextMonster = monster;
+  let leechEvent: MonsterAffixLeechTrigger | undefined;
   const leech = Math.max(1, Math.floor(dealtDamage * 0.35));
-  const nextHealth = Math.min(monster.maxHealth, monster.health + leech);
-  const actualLeech = nextHealth - monster.health;
-  if (actualLeech <= 0) {
-    return { monster };
+  if (hasMonsterAffix(monster, "vampiric")) {
+    const nextHealth = Math.min(monster.maxHealth, monster.health + leech);
+    const actualLeech = nextHealth - monster.health;
+    if (actualLeech > 0) {
+      nextMonster = {
+        ...monster,
+        health: nextHealth
+      };
+      leechEvent = {
+        monsterId: monster.id,
+        targetId,
+        amount: actualLeech,
+        timestampMs
+      };
+    }
   }
+
+  const manaBurnAmount = hasMonsterAffix(monster, "manaburn")
+    ? Math.max(4, Math.floor(dealtDamage * 0.22))
+    : undefined;
 
   return {
-    monster: {
-      ...monster,
-      health: nextHealth
-    },
-    leechEvent: {
-      monsterId: monster.id,
-      targetId,
-      amount: actualLeech,
-      timestampMs
-    }
+    monster: nextMonster,
+    ...(leechEvent === undefined ? {} : { leechEvent }),
+    ...(manaBurnAmount === undefined ? {} : { manaBurnAmount })
   };
 }
 

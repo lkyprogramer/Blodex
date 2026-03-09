@@ -73,6 +73,12 @@ export function consumableNameLabel(consumableId: ConsumableId, fallback?: strin
       return t("ui.consumable.mana_potion.name");
     case "scroll_of_mapping":
       return t("ui.consumable.scroll_of_mapping.name");
+    case "scroll_of_mapping_plus":
+      return t("ui.consumable.scroll_of_mapping_plus.name");
+    case "frenzy_tonic":
+      return t("ui.consumable.frenzy_tonic.name");
+    case "phantom_brew":
+      return t("ui.consumable.phantom_brew.name");
     default:
       return fallback ?? consumableId;
   }
@@ -86,6 +92,12 @@ export function consumableDescriptionLabel(consumableId: ConsumableId, fallback?
       return t("ui.consumable.mana_potion.description");
     case "scroll_of_mapping":
       return t("ui.consumable.scroll_of_mapping.description");
+    case "scroll_of_mapping_plus":
+      return t("ui.consumable.scroll_of_mapping_plus.description");
+    case "frenzy_tonic":
+      return t("ui.consumable.frenzy_tonic.description");
+    case "phantom_brew":
+      return t("ui.consumable.phantom_brew.description");
     default:
       return fallback ?? consumableId;
   }

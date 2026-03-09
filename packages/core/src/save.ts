@@ -30,6 +30,14 @@ const RUN_RNG_STREAM_NAMES: RunRngStreamName[] = [
   "event",
   "merchant"
 ];
+const CONSUMABLE_IDS = [
+  "health_potion",
+  "mana_potion",
+  "scroll_of_mapping",
+  "scroll_of_mapping_plus",
+  "frenzy_tonic",
+  "phantom_brew"
+] as const;
 
 const EQUIPMENT_SLOTS = ["weapon", "helm", "chest", "boots", "ring"] as const;
 const ITEM_RARITIES = ["common", "magic", "rare"] as const;
@@ -255,6 +263,21 @@ function isPowerSpikeBudgetRuntimeState(value: unknown): value is PowerSpikeBudg
 
 function isStringNumberRecord(value: unknown): value is Record<string, number> {
   return isRecord(value) && Object.values(value).every((entry) => isFiniteNumber(entry));
+}
+
+function isConsumableCountRecord(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return CONSUMABLE_IDS.every((consumableId) => isFiniteNumber(value[consumableId]));
+}
+
+function isConsumableState(value: unknown): value is ConsumableState {
+  return (
+    isRecord(value) &&
+    isConsumableCountRecord(value.charges) &&
+    isConsumableCountRecord(value.cooldowns)
+  );
 }
 
 function isKnownStringLiteral<T extends readonly string[]>(value: unknown, allowed: T): value is T[number] {
@@ -664,7 +687,7 @@ function validateDomainState(domain: Record<string, unknown>): boolean {
   return (
     isRunState(domain.run) &&
     isPersistentPlayerState(domain.player) &&
-    isRecord(domain.consumables) &&
+    isConsumableState(domain.consumables) &&
     isStringArray(domain.blueprintFoundIdsInRun) &&
     isStringArray(domain.selectedMutationIds)
   );

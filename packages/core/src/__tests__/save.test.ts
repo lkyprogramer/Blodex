@@ -392,6 +392,28 @@ describe("save", () => {
     expect(deserializeRunState(JSON.stringify(broken))).toBeNull();
   });
 
+  it("rejects sparse consumable state", () => {
+    const broken = makeSave() as unknown as Record<string, unknown>;
+    broken.domain = {
+      ...(broken.domain as Record<string, unknown>),
+      consumables: {
+        charges: {
+          health_potion: 1,
+          mana_potion: 1,
+          scroll_of_mapping: 0
+        },
+        cooldowns: {
+          health_potion: 0,
+          mana_potion: 0,
+          scroll_of_mapping: 0
+        }
+      }
+    };
+
+    expect(validateSave(broken)).toBe(false);
+    expect(deserializeRunState(JSON.stringify(broken))).toBeNull();
+  });
+
   it("rejects invalid runtime monster shape", () => {
     const broken = makeSave() as unknown as Record<string, unknown>;
     const runtime = broken.runtime as Record<string, unknown>;

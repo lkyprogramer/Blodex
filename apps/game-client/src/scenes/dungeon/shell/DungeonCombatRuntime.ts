@@ -407,10 +407,24 @@ export class DungeonCombatRuntime {
       }
       const affixResult = resolveMonsterAffixOnDealDamage(sourceMonster.state, event.targetId, event.amount, nowMs);
       sourceMonster.state = affixResult.monster;
-      if (affixResult.leechEvent === undefined) {
-        continue;
+      if (affixResult.manaBurnAmount !== undefined && event.targetId === source.player.id) {
+        const appliedManaBurn = Math.min(source.player.mana, affixResult.manaBurnAmount);
+        if (appliedManaBurn > 0) {
+          source.player = {
+            ...source.player,
+            mana: source.player.mana - appliedManaBurn
+          };
+          source.eventBus.emit("monster:manaBurn", {
+            monsterId: sourceMonster.state.id,
+            targetId: source.player.id,
+            amount: appliedManaBurn,
+            timestampMs: nowMs
+          });
+        }
       }
-      source.eventBus.emit("monster:leech", affixResult.leechEvent);
+      if (affixResult.leechEvent !== undefined) {
+        source.eventBus.emit("monster:leech", affixResult.leechEvent);
+      }
     }
     if (monsterCombat.combatEvents.length > 0) {
       source.hudDirty = true;
