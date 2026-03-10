@@ -756,8 +756,11 @@ export class DungeonScene extends Phaser.Scene {
     host: createProgressionChoiceHost(this.dungeonSceneHostBridge, {
       playerActionModule: {
         resolveLevelupSkillChoices: () => this.playerActionModule.resolveLevelupSkillChoices(),
+        resolveLevelupSkillReplacementChoices: (skillId) =>
+          this.playerActionModule.resolveLevelupSkillReplacementChoices(skillId),
         resolveLevelupSkillChoiceById: (skillId) => this.playerActionModule.resolveLevelupSkillChoiceById(skillId),
-        applyLevelupSkillChoice: (skillId) => this.playerActionModule.applyLevelupSkillChoice(skillId)
+        applyLevelupSkillChoice: (skillId, replaceSlotIndex) =>
+          this.playerActionModule.applyLevelupSkillChoice(skillId, replaceSlotIndex)
       },
       registerStatDeltaHighlights: (before, after, nowMs) => this.hudRuntime.registerStatDeltaHighlights(before, after, nowMs),
       recordBuildLevelUpChoice: (stat, source, nowMs) => {

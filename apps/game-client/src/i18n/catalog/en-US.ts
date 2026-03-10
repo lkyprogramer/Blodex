@@ -344,10 +344,13 @@ const UI_MESSAGES: Record<string, string> = {
   "ui.progression.levelup.preview.max_mana": "MANA {delta}",
   "ui.progression.levelup.preview.move_speed": "MOVE {delta}",
   "ui.progression.levelup_skill.title": "Level Up - Skill Choice",
-  "ui.progression.levelup_skill.description": "Choose 1 skill offer. Pending skill choices: {pendingChoices}.",
+  "ui.progression.levelup_skill.description": "Choose 1 skill offer. Pending skill choices: {pendingChoices}. Current slots: {slotCapacity}/5.",
   "ui.progression.levelup_skill.choice.new": "{skillName} (New)",
   "ui.progression.levelup_skill.choice.upgrade": "{skillName} (Lv.{level})",
   "ui.progression.levelup_skill.choice.meta": "CD {cooldown}s | Mana {mana}",
+  "ui.progression.levelup_skill_replace.title": "Level Up - Replace Skill",
+  "ui.progression.levelup_skill_replace.description": "Your current slots are full. Choose which slot to replace with {skillName}.",
+  "ui.progression.levelup_skill_replace.choice": "Slot {slot}: {skillName} (Lv.{level})",
   "ui.progression.source.event": "event",
   "ui.progression.source.merchant": "merchant",
   "ui.progression.source.levelup": "level-up",
@@ -705,6 +708,7 @@ const UI_MESSAGES: Record<string, string> = {
   "log.progression.levelup_panel_opened": "Level-up choice panel opened ({pendingPoints} pending).",
   "log.progression.levelup_choice": "Level-up choice: {choiceName} ({pendingPoints} pending).",
   "log.progression.levelup_skill_panel_opened": "Level-up skill panel opened ({pendingChoices} pending).",
+  "log.progression.levelup_skill_replace_panel_opened": "Skill replacement panel opened for {skillId} ({pendingChoices} pending).",
   "log.progression.levelup_skill_choice": "Level-up skill choice: {skillId} ({pendingChoices} pending).",
   "log.debug.kill_player.death_reason": "Debug cheat forced death to validate death feedback pipeline."
 };

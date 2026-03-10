@@ -19,7 +19,10 @@ import {
   levelUpStatChoiceLabel,
   progressionChoiceSourceLabel
 } from "../../../i18n/labelResolvers";
-import type { LevelupSkillChoice } from "../encounter/PlayerActionModule";
+import type {
+  LevelupSkillChoice,
+  LevelupSkillReplacementChoice
+} from "../encounter/PlayerActionModule";
 
 interface ProgressionChoiceUiManager {
   showEventDialog(
@@ -41,8 +44,9 @@ interface ProgressionChoiceRunLog {
 
 interface ProgressionChoicePlayerActionPort {
   resolveLevelupSkillChoices(): LevelupSkillChoice[];
+  resolveLevelupSkillReplacementChoices(skillId: string): LevelupSkillReplacementChoice[];
   resolveLevelupSkillChoiceById(skillId: string): LevelupSkillChoice | null;
-  applyLevelupSkillChoice(skillId: string): boolean;
+  applyLevelupSkillChoice(skillId: string, replaceSlotIndex?: number): boolean;
 }
 
 export interface ProgressionChoiceHost {
@@ -365,7 +369,8 @@ export class ProgressionChoiceRuntime {
       id: "levelup_skill_choice",
       name: t("ui.progression.levelup_skill.title"),
       description: t("ui.progression.levelup_skill.description", {
-        pendingChoices
+        pendingChoices,
+        slotCapacity: host.player.skills?.skillSlots.length ?? 0
       }),
       floorRange: {
         min: host.run.currentFloor,
@@ -446,12 +451,85 @@ export class ProgressionChoiceRuntime {
     if (!activeOfferIds.has(choiceId)) {
       return;
     }
+    const replacementChoices = host.playerActionModule.resolveLevelupSkillReplacementChoices(choiceId);
+    if (replacementChoices.length > 0) {
+      this.showLevelUpSkillReplacementPrompt(choiceId, replacementChoices, nowMs, source);
+      return;
+    }
     if (!host.playerActionModule.applyLevelupSkillChoice(choiceId)) {
       host.eventPanelOpen = false;
       host.uiManager.hideEventPanel();
       return;
     }
+    this.finishLevelUpSkillSelection(choiceId, nowMs, source);
+  }
 
+  private showLevelUpSkillReplacementPrompt(
+    skillId: string,
+    replacements: LevelupSkillReplacementChoice[],
+    nowMs: number,
+    source: string
+  ): void {
+    const host = this.options.host;
+    const pendingChoice = this.pendingLevelUpSkillOffers.find((offer) => offer.skillId === skillId);
+    if (pendingChoice === undefined) {
+      return;
+    }
+    const eventChoices = replacements.map((entry) => ({
+      id: `replace_slot_${entry.slotIndex}`,
+      name: t("ui.progression.levelup_skill_replace.choice", {
+        slot: entry.slotIndex + 1,
+        skillName: this.contentLocalizer.skillName(entry.currentSkillId, entry.currentName),
+        level: entry.currentLevel
+      }),
+      description: this.contentLocalizer.skillDescription(entry.currentSkillId, entry.currentDescription),
+      rewards: []
+    }));
+    const eventDef: RandomEventDef = {
+      id: "levelup_skill_replace",
+      name: t("ui.progression.levelup_skill_replace.title"),
+      description: t("ui.progression.levelup_skill_replace.description", {
+        skillName: this.contentLocalizer.skillName(pendingChoice.skillId, pendingChoice.name)
+      }),
+      floorRange: {
+        min: host.run.currentFloor,
+        max: host.run.currentFloor
+      },
+      spawnWeight: 1,
+      choices: eventChoices
+    };
+    host.uiManager.showEventDialog(
+      eventDef,
+      eventChoices.map((choice) => ({ choice, enabled: true as const })),
+      (replacementChoiceId: string) => {
+        const selected = replacements.find((entry) => `replace_slot_${entry.slotIndex}` === replacementChoiceId);
+        if (selected === undefined) {
+          return;
+        }
+        if (!host.playerActionModule.applyLevelupSkillChoice(skillId, selected.slotIndex)) {
+          return;
+        }
+        this.finishLevelUpSkillSelection(skillId, host.time.now, source);
+      },
+      () => {
+        host.uiManager.hideEventPanel();
+        this.nextLevelUpPromptAt = host.time.now + 90;
+        this.maybePromptLevelUpChoice(host.time.now + 1, source);
+      }
+    );
+    host.runLog.appendKey(
+      "log.progression.levelup_skill_replace_panel_opened",
+      {
+        skillId,
+        pendingChoices: Math.max(0, host.player.pendingSkillChoices ?? 0)
+      },
+      "info",
+      nowMs
+    );
+  }
+
+  private finishLevelUpSkillSelection(choiceId: string, nowMs: number, source: string): void {
+    const host = this.options.host;
     if (typeof host.recordPlayerFacingChoice === "function") {
       host.recordPlayerFacingChoice("levelup_skill", nowMs);
     } else {

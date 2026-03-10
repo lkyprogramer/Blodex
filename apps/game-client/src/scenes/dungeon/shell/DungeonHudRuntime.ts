@@ -157,7 +157,11 @@ export class DungeonHudRuntime {
 
     const activeSkillIds = new Set<string>();
     let hasActiveSkillCooldown = false;
-    const skillSlots = (source.player.skills?.skillSlots ?? []).map((slot, index) => {
+    const paddedSkillSlots = Array.from(
+      { length: Math.max(5, source.player.skills?.skillSlots.length ?? 0) },
+      (_, index) => source.player.skills?.skillSlots[index] ?? null
+    );
+    const skillSlots = paddedSkillSlots.map((slot, index) => {
       if (slot === null) {
         return {
           hotkey: String(index + 1),

@@ -235,7 +235,7 @@ export class ProgressionRuntimeModule {
       equipment: {},
       gold: 0,
       skills: {
-        skillSlots: Array.from({ length: Math.min(4, Math.max(2, host.meta.permanentUpgrades.skillSlots)) }, (_, idx) => {
+        skillSlots: Array.from({ length: Math.min(5, Math.max(3, host.meta.permanentUpgrades.skillSlots)) }, (_, idx) => {
           const id = startingSkillIds[idx];
           return id === undefined ? null : { defId: id, level: 1 };
         }),

@@ -157,7 +157,7 @@ export class MovementSystem {
       };
     }
 
-    const speedCellsPerSec = player.derivedStats.moveSpeed / 130;
+    const speedCellsPerSec = player.derivedStats.moveSpeed / 115;
     const dx = next.x - player.position.x;
     const dy = next.y - player.position.y;
     const dist = Math.hypot(dx, dy);

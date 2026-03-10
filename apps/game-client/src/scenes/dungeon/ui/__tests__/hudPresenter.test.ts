@@ -29,14 +29,14 @@ const META_MOCK: MetaProgression = {
   endlessBestFloor: 0,
   dailyHistory: [],
   dailyRewardClaimedDates: [],
-  permanentUpgrades: {
-    startingHealth: 0,
-    startingArmor: 0,
-    luckBonus: 0,
-    potionCharges: 1,
-    skillSlots: 2
-  }
-};
+    permanentUpgrades: {
+      startingHealth: 0,
+      startingArmor: 0,
+      luckBonus: 0,
+      potionCharges: 1,
+      skillSlots: 3
+    }
+  };
 
 const PLAYER_MOCK: PlayerState = {
   id: "player",
@@ -65,7 +65,7 @@ const PLAYER_MOCK: PlayerState = {
   equipment: {},
   gold: 0,
   skills: {
-    skillSlots: [null, null],
+    skillSlots: [null, null, null],
     cooldowns: {}
   },
   activeBuffs: []

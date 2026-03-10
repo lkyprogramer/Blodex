@@ -45,7 +45,7 @@ function normalizePermanentUpgrades(input: unknown): PermanentUpgrade {
     startingHealth: 0,
     startingArmor: 0,
     luckBonus: 0,
-    skillSlots: 2,
+    skillSlots: 3,
     potionCharges: 0
   };
   if (!isRecord(input)) {
@@ -173,7 +173,7 @@ export function migrateMeta(raw: unknown): MetaProgression {
       startingHealth: 0,
       startingArmor: 0,
       luckBonus: 0,
-      skillSlots: 2,
+      skillSlots: 3,
       potionCharges: 0
     }
   };
@@ -377,7 +377,7 @@ export function migrateMeta(raw: unknown): MetaProgression {
           startingHealth: 0,
           startingArmor: 0,
           luckBonus: 0,
-          skillSlots: 2,
+          skillSlots: 3,
           potionCharges: 0
         };
   const talentPoints = mapLegacyPermanentUpgradesToTalents(rawPermanentUpgrades);

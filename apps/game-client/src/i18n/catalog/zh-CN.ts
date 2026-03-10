@@ -311,10 +311,13 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "ui.progression.levelup.preview.max_mana": "法力 {delta}",
   "ui.progression.levelup.preview.move_speed": "移速 {delta}",
   "ui.progression.levelup_skill.title": "升级 - 技能选择",
-  "ui.progression.levelup_skill.description": "请选择 1 个技能奖励。当前待选择：{pendingChoices} 次。",
+  "ui.progression.levelup_skill.description": "请选择 1 个技能奖励。当前待选择：{pendingChoices} 次。当前技能槽：{slotCapacity}/5。",
   "ui.progression.levelup_skill.choice.new": "{skillName}（新技能）",
   "ui.progression.levelup_skill.choice.upgrade": "{skillName}（Lv.{level}）",
   "ui.progression.levelup_skill.choice.meta": "冷却 {cooldown}s | 法力 {mana}",
+  "ui.progression.levelup_skill_replace.title": "升级 - 替换技能",
+  "ui.progression.levelup_skill_replace.description": "当前技能槽已满。请选择要被 {skillName} 替换的槽位。",
+  "ui.progression.levelup_skill_replace.choice": "槽位 {slot}：{skillName}（Lv.{level}）",
   "ui.progression.source.event": "事件",
   "ui.progression.source.merchant": "商人",
   "ui.progression.source.levelup": "升级选择",
@@ -669,6 +672,7 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "log.progression.levelup_panel_opened": "升级选择面板已打开（待分配 {pendingPoints} 点）。",
   "log.progression.levelup_choice": "已选择升级：{choiceName}（剩余 {pendingPoints} 点待分配）。",
   "log.progression.levelup_skill_panel_opened": "技能升级面板已打开（待选择 {pendingChoices} 次）。",
+  "log.progression.levelup_skill_replace_panel_opened": "技能替换面板已打开：{skillId}（剩余 {pendingChoices} 次待选择）。",
   "log.progression.levelup_skill_choice": "已选择技能升级：{skillId}（剩余 {pendingChoices} 次待选择）。",
   "log.debug.kill_player.death_reason": "这是一次用于验证死亡反馈链路的调试强制死亡。"
 };

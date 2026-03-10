@@ -174,7 +174,7 @@ export function createInitialPermanentUpgrades(): PermanentUpgrade {
     startingHealth: 0,
     startingArmor: 0,
     luckBonus: 0,
-    skillSlots: 2,
+    skillSlots: 3,
     potionCharges: 0
   };
 }

@@ -28,8 +28,8 @@ export const UNLOCK_DEFS: UnlockDef[] = [
   },
   {
     id: "u_skill_slot_3",
-    name: "Third Skill Slot",
-    description: "Increase skill slots to 3.",
+    name: "Fourth Skill Slot",
+    description: "Increase skill slots to 4.",
     tier: 2,
     cost: 30,
     cumulativeRequirement: 50,
@@ -41,8 +41,8 @@ export const UNLOCK_DEFS: UnlockDef[] = [
   },
   {
     id: "u_skill_slot_4",
-    name: "Fourth Skill Slot",
-    description: "Increase skill slots to 4.",
+    name: "Fifth Skill Slot",
+    description: "Increase skill slots to 5.",
     tier: 3,
     cost: 50,
     cumulativeRequirement: 150,

@@ -171,7 +171,7 @@ export function derivePermanentUpgradesFromTalents(talentPoints: Record<string, 
     startingHealth: 0,
     startingArmor: 0,
     luckBonus: 0,
-    skillSlots: 2,
+    skillSlots: 3,
     potionCharges: 0
   };
 
@@ -224,7 +224,7 @@ export function mapLegacyPermanentUpgradesToTalents(
     talentPoints[luckEntry.talentId] = luckRank;
   }
 
-  const skillSlotExtra = Math.max(0, Math.floor(permanentUpgrades.skillSlots) - 2);
+  const skillSlotExtra = Math.max(0, Math.floor(permanentUpgrades.skillSlots) - 3);
   if (skillSlotExtra >= 1) {
     talentPoints.utility_skill_slot_i = 1;
   }

@@ -104,6 +104,14 @@ export interface LevelupSkillChoice {
   manaCost: number;
 }
 
+export interface LevelupSkillReplacementChoice {
+  slotIndex: number;
+  currentSkillId: string;
+  currentLevel: number;
+  currentName: string;
+  currentDescription: string;
+}
+
 export class PlayerActionModule {
   private healthRegenCarry = 0;
   private manaRegenCarry = 0;
@@ -390,7 +398,38 @@ export class PlayerActionModule {
       .filter((choice): choice is LevelupSkillChoice => choice !== null);
   }
 
-  applyLevelupSkillChoice(skillId: string): boolean {
+  resolveLevelupSkillReplacementChoices(skillId: string): LevelupSkillReplacementChoice[] {
+    const host = this.options.host;
+    if (host.player.skills === undefined) {
+      return [];
+    }
+    if (host.player.skills.skillSlots.some((entry) => entry === null)) {
+      return [];
+    }
+    if (host.player.skills.skillSlots.some((entry) => entry?.defId === skillId)) {
+      return [];
+    }
+    return host.player.skills.skillSlots.flatMap((entry, slotIndex) => {
+      if (entry === null || entry === undefined) {
+        return [];
+      }
+      const def = SKILL_DEFS.find((candidate) => candidate.id === entry.defId);
+      if (def === undefined) {
+        return [];
+      }
+      return [
+        {
+          slotIndex,
+          currentSkillId: entry.defId,
+          currentLevel: entry.level,
+          currentName: def.name,
+          currentDescription: def.description
+        }
+      ];
+    });
+  }
+
+  applyLevelupSkillChoice(skillId: string, replaceSlotIndex?: number): boolean {
     const host = this.options.host;
     if (host.player.skills === undefined) {
       return false;
@@ -414,8 +453,15 @@ export class PlayerActionModule {
       const firstEmpty = slots.findIndex((entry) => entry === null);
       if (firstEmpty >= 0) {
         slots[firstEmpty] = { defId: pick.id, level: 1 };
+      } else if (
+        replaceSlotIndex !== undefined &&
+        Number.isInteger(replaceSlotIndex) &&
+        replaceSlotIndex >= 0 &&
+        replaceSlotIndex < slots.length
+      ) {
+        slots[replaceSlotIndex] = { defId: pick.id, level: 1 };
       } else {
-        slots[0] = { defId: pick.id, level: 1 };
+        return false;
       }
     }
 

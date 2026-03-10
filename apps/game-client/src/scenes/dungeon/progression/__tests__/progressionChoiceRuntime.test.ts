@@ -43,6 +43,7 @@ function createHost(): any {
     registerStatDeltaHighlights: vi.fn(),
     playerActionModule: {
       resolveLevelupSkillChoices: vi.fn(() => []),
+      resolveLevelupSkillReplacementChoices: vi.fn(() => []),
       resolveLevelupSkillChoiceById: vi.fn(() => null),
       applyLevelupSkillChoice: vi.fn(() => true)
     },
@@ -251,5 +252,57 @@ describe("ProgressionChoiceRuntime", () => {
     expect(restoredCall?.[0]?.choices[0]?.id).toBe("chain_lightning");
     expect(host.playerActionModule.resolveLevelupSkillChoices).toHaveBeenCalledTimes(1);
     expect(host.playerActionModule.resolveLevelupSkillChoiceById).toHaveBeenCalledWith("chain_lightning");
+  });
+
+  it("opens an explicit replacement panel when a new skill is chosen with full skill slots", () => {
+    const host = createHost();
+    host.player.pendingSkillChoices = 1;
+    host.player.skills = {
+      skillSlots: [
+        { defId: "cleave", level: 1 },
+        { defId: "frost_nova", level: 1 }
+      ],
+      cooldowns: {}
+    };
+    host.playerActionModule.resolveLevelupSkillChoices.mockReturnValue([
+      {
+        skillId: "rift_step",
+        nextLevel: 1,
+        name: "Rift Step",
+        description: "Blink strike.",
+        cooldownMs: 3000,
+        manaCost: 10
+      }
+    ]);
+    host.playerActionModule.resolveLevelupSkillReplacementChoices.mockReturnValue([
+      {
+        slotIndex: 0,
+        currentSkillId: "cleave",
+        currentLevel: 1,
+        currentName: "Cleave",
+        currentDescription: "Wide slash."
+      },
+      {
+        slotIndex: 1,
+        currentSkillId: "frost_nova",
+        currentLevel: 1,
+        currentName: "Frost Nova",
+        currentDescription: "Cold burst."
+      }
+    ]);
+    const runtime = new ProgressionChoiceRuntime({ host });
+
+    runtime.maybePromptLevelUpChoice(100, "runtime_tick");
+    const onSelect = vi.mocked(host.uiManager.showEventDialog).mock.calls[0]?.[2];
+    onSelect?.("rift_step");
+
+    expect(vi.mocked(host.uiManager.showEventDialog)).toHaveBeenCalledTimes(2);
+    const replacementDialog = vi.mocked(host.uiManager.showEventDialog).mock.calls[1]?.[0];
+    expect(replacementDialog?.id).toBe("levelup_skill_replace");
+
+    const onReplace = vi.mocked(host.uiManager.showEventDialog).mock.calls[1]?.[2];
+    onReplace?.("replace_slot_1");
+
+    expect(host.playerActionModule.applyLevelupSkillChoice).toHaveBeenCalledWith("rift_step", 1);
   });
 });

@@ -3,8 +3,8 @@ import { appendReplayInput, type ConsumableId, type GridNode, type PlayerState, 
 import { isoToGrid } from "../../../systems/iso";
 import type { RunLogService } from "../logging/RunLogService";
 
-const MANUAL_PATH_REPLAN_INTERVAL_MS = 90;
-const KEYBOARD_MOVE_INPUT_INTERVAL_MS = 70;
+const MANUAL_PATH_REPLAN_INTERVAL_MS = 45;
+const KEYBOARD_MOVE_INPUT_INTERVAL_MS = 35;
 
 interface HiddenRoomState {
   roomId: string;
@@ -137,7 +137,7 @@ export class DungeonInputRuntime {
     if (source.runEnded || source.isBlockingOverlayOpen() || source.cursorKeys === null) {
       return;
     }
-    if (source.path.length > 0 || nowMs < source.nextKeyboardMoveInputAt) {
+    if (nowMs < source.nextKeyboardMoveInputAt) {
       return;
     }
 
@@ -201,6 +201,7 @@ export class DungeonInputRuntime {
     bind("TWO", 1);
     bind("THREE", 2);
     bind("FOUR", 3);
+    bind("FIVE", 4);
     bind("Q", 0);
     this.bindKeyboard("keydown-R", () => this.source.tryUseConsumable("health_potion"));
     this.bindKeyboard("keydown-F", () => this.source.tryUseConsumable("mana_potion"));
@@ -256,7 +257,7 @@ export class DungeonInputRuntime {
       source.nextManualPathReplanAt = 0;
       return;
     }
-    if (source.path.length > 0 || nowMs < source.nextManualPathReplanAt) {
+    if (nowMs < source.nextManualPathReplanAt) {
       return;
     }
 

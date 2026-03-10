@@ -67,7 +67,7 @@ describe("talent", () => {
       startingHealth: 10,
       startingArmor: 2,
       luckBonus: 0.05,
-      skillSlots: 4,
+      skillSlots: 5,
       potionCharges: 1
     });
   });
@@ -77,7 +77,7 @@ describe("talent", () => {
       startingHealth: 10,
       startingArmor: 2,
       luckBonus: 0.05,
-      skillSlots: 4,
+      skillSlots: 5,
       potionCharges: 1
     });
 
@@ -114,7 +114,7 @@ describe("talent", () => {
     expect(afterThird.soulShards).toBe(12);
     expect(afterThird.talentPoints.utility_skill_slot_i).toBe(1);
     expect(afterThird.totalShardsSpent).toBe(78);
-    expect(afterThird.permanentUpgrades.skillSlots).toBe(3);
+    expect(afterThird.permanentUpgrades.skillSlots).toBe(4);
   });
 
   it("aggregates typed effects by purchased ranks", () => {
@@ -137,7 +137,7 @@ describe("talent", () => {
       startingHealth: 30,
       startingArmor: 4,
       luckBonus: 0.1,
-      skillSlots: 2,
+      skillSlots: 3,
       potionCharges: 2
     });
 

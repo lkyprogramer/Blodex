@@ -198,4 +198,34 @@ describe("PlayerActionModule", () => {
     );
     expect(scheduleRunSave).not.toHaveBeenCalled();
   });
+
+  it("does not auto-replace the first slot when level-up skill slots are full", () => {
+    const { host } = createHost(false);
+    host.player.skills = {
+      skillSlots: [
+        { defId: "cleave", level: 1 },
+        { defId: "frost_nova", level: 1 },
+        { defId: "shadow_step", level: 1 }
+      ],
+      cooldowns: {}
+    };
+    const module = new PlayerActionModule({ host });
+
+    const applied = module.applyLevelupSkillChoice("rift_step");
+
+    expect(applied).toBe(false);
+    expect(host.player.skills?.skillSlots[0]?.defId).toBe("cleave");
+    expect(host.player.skills?.skillSlots[1]?.defId).toBe("frost_nova");
+    expect(host.player.skills?.skillSlots[2]?.defId).toBe("shadow_step");
+  });
+
+  it("upgrades an already owned skill instead of treating it as a new replacement", () => {
+    const { host } = createHost(false);
+    const module = new PlayerActionModule({ host });
+
+    const applied = module.applyLevelupSkillChoice("cleave");
+
+    expect(applied).toBe(true);
+    expect(host.player.skills?.skillSlots[0]).toEqual({ defId: "cleave", level: 2 });
+  });
 });
