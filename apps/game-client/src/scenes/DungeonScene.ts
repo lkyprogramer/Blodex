@@ -227,6 +227,7 @@ import { BossRuntimeModule, type BossRuntimeHost } from "./dungeon/encounter/Bos
 import { BossSpawnService } from "./dungeon/encounter/BossSpawnService";
 import { BossTelegraphPresenter } from "./dungeon/encounter/BossTelegraphPresenter";
 import { EncounterController } from "./dungeon/encounter/EncounterController";
+import { applySkillDisplacement } from "./dungeon/encounter/applySkillDisplacement";
 import { PlayerActionModule, type PlayerActionHost } from "./dungeon/encounter/PlayerActionModule";
 import { entityLabel } from "./dungeon/logging/labelResolvers";
 import {
@@ -256,7 +257,6 @@ import { DungeonDiagnosticsRuntime } from "./dungeon/shell/DungeonDiagnosticsRun
 import { DungeonMetaRuntime } from "./dungeon/shell/DungeonMetaRuntime";
 import { initializeDungeonSceneShell, type DungeonSceneShellSource } from "./dungeon/shell/DungeonSceneShellRuntime";
 import { DungeonSessionFacade } from "./dungeon/shell/DungeonSessionFacade";
-import { directionBetween, resolveStepDisplacement } from "./dungeon/shell/displacement";
 import { createInitialDodgeRuntimeState } from "./dungeon/shell/dodgeTypes";
 import {
   buildHudStatHighlightEntries,
@@ -1429,60 +1429,25 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private applySkillDisplacement(skillDef: SkillDef, resolution: SkillResolution, nowMs: number): void {
-    const displacement = skillDef.displacement;
-    if (displacement === undefined) {
-      return;
-    }
-
-    let direction = this.dodgeRuntimeState.lastFacingDirection;
-    let stopBeforeTile: { x: number; y: number } | undefined;
-    if (displacement.anchor === "target" && resolution.primaryTargetId !== undefined) {
-      const target = this.entityManager.findMonsterById(resolution.primaryTargetId);
-      if (target !== undefined) {
-        direction = directionBetween(this.player.position, target.state.position);
-        stopBeforeTile = {
-          x: Math.round(target.state.position.x),
-          y: Math.round(target.state.position.y)
-        };
-      }
-    }
-
-    if (direction === null) {
-      return;
-    }
-
-    const resolved = resolveStepDisplacement({
-      from: this.player.position,
-      direction,
-      distance: displacement.distance,
-      walkable: this.dungeon.walkable,
-      width: this.dungeon.width,
-      height: this.dungeon.height,
-      ...(stopBeforeTile === undefined ? {} : { stopBeforeTile })
-    });
-    this.path = [];
-    this.attackTargetId = null;
-    this.manualMoveTarget = null;
-    this.manualMoveTargetFailures = 0;
-    this.nextManualPathReplanAt = 0;
-    this.dodgeRuntimeState.autoTargetSuppressed = true;
-    if (resolved === null || resolved.traveledCells <= 0) {
-      return;
-    }
-
-    const from = { ...this.player.position };
-    this.player = {
-      ...this.player,
-      position: { ...resolved.to }
-    };
-    this.dodgeRuntimeState.lastFacingDirection = { ...resolved.direction };
-    this.eventBus.emit("player:move", {
-      playerId: this.player.id,
-      from,
-      to: { ...resolved.to },
-      timestampMs: nowMs
-    });
-    this.hudDirty = true;
+    const scene = this;
+    applySkillDisplacement(
+      {
+        get player() { return scene.player; }, set player(value) { scene.player = value; },
+        dodgeRuntimeState: scene.dodgeRuntimeState,
+        dungeon: scene.dungeon,
+        entityManager: scene.entityManager,
+        eventBus: scene.eventBus,
+        get path() { return scene.path; }, set path(value) { scene.path = value; },
+        get attackTargetId() { return scene.attackTargetId; }, set attackTargetId(value) { scene.attackTargetId = value; },
+        get manualMoveTarget() { return scene.manualMoveTarget; }, set manualMoveTarget(value) { scene.manualMoveTarget = value; },
+        get manualMoveTargetFailures() { return scene.manualMoveTargetFailures; }, set manualMoveTargetFailures(value) { scene.manualMoveTargetFailures = value; },
+        get nextManualPathReplanAt() { return scene.nextManualPathReplanAt; }, set nextManualPathReplanAt(value) { scene.nextManualPathReplanAt = value; },
+        get hudDirty() { return scene.hudDirty; }, set hudDirty(value) { scene.hudDirty = value; }
+      },
+      skillDef,
+      resolution,
+      nowMs
+    );
   }
 
   private registerStatDeltaHighlights(
