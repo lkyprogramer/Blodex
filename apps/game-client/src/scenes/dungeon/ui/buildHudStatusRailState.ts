@@ -17,6 +17,13 @@ const BUFF_TONE_BY_ID: Partial<Record<string, HudStatusTone>> = {
   frenzy_tonic: "offense",
   phantom_brew: "utility"
 };
+const HUD_STATUS_BUFF_KEY_BY_ID = {
+  frost_slow: "ui.hud.status.buff.frost_slow",
+  war_cry: "ui.hud.status.buff.war_cry",
+  guaranteed_crit: "ui.hud.status.buff.guaranteed_crit",
+  frenzy_tonic: "ui.hud.status.buff.frenzy_tonic",
+  phantom_brew: "ui.hud.status.buff.phantom_brew"
+} as const satisfies Partial<Record<string, string>>;
 
 export interface HudStatusRailBuildResult {
   state?: HudStatusRailState;
@@ -25,8 +32,9 @@ export interface HudStatusRailBuildResult {
 
 function localizeBuffLabel(buffId: string, fallback: string): string {
   const i18n = getI18nService();
-  const key = `ui.hud.status.buff.${buffId}`;
-  return i18n.hasKey(key) ? i18n.t(key) : fallback;
+  // Keep keys explicit so catalog-completeness can detect HUD buff usage.
+  const key = HUD_STATUS_BUFF_KEY_BY_ID[buffId as keyof typeof HUD_STATUS_BUFF_KEY_BY_ID];
+  return key !== undefined && i18n.hasKey(key) ? i18n.t(key) : fallback;
 }
 
 function localizeSynergyLabel(synergyId: string): string {
