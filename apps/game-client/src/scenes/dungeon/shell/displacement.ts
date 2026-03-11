@@ -3,6 +3,8 @@ export interface GridDirection {
   y: number;
 }
 
+const GRID_TRAVERSAL_EPSILON = 1e-9;
+
 export interface DisplacementResolution {
   from: { x: number; y: number };
   to: { x: number; y: number };
@@ -53,21 +55,40 @@ export function resolveStepDisplacement(options: {
     y: options.from.y
   };
   let currentTile = {
-    x: Math.round(options.from.x),
-    y: Math.round(options.from.y)
+    x: Math.floor(options.from.x),
+    y: Math.floor(options.from.y)
   };
   let traveledCells = 0;
   let blocked = false;
   let blockedAtFirstCell = false;
 
-  for (let step = 1; step <= requestedDistance; step += 1) {
-    const candidate = {
-      x: Math.round(options.from.x + normalized.x * step),
-      y: Math.round(options.from.y + normalized.y * step)
-    };
-    if (candidate.x === currentTile.x && candidate.y === currentTile.y) {
-      continue;
+  const stepX = normalized.x > GRID_TRAVERSAL_EPSILON ? 1 : normalized.x < -GRID_TRAVERSAL_EPSILON ? -1 : 0;
+  const stepY = normalized.y > GRID_TRAVERSAL_EPSILON ? 1 : normalized.y < -GRID_TRAVERSAL_EPSILON ? -1 : 0;
+  const tDeltaX = stepX === 0 ? Number.POSITIVE_INFINITY : Math.abs(1 / normalized.x);
+  const tDeltaY = stepY === 0 ? Number.POSITIVE_INFINITY : Math.abs(1 / normalized.y);
+  let tMaxX =
+    stepX === 0
+      ? Number.POSITIVE_INFINITY
+      : ((stepX > 0 ? Math.floor(options.from.x) + 1 : Math.floor(options.from.x)) - options.from.x) /
+        normalized.x;
+  let tMaxY =
+    stepY === 0
+      ? Number.POSITIVE_INFINITY
+      : ((stepY > 0 ? Math.floor(options.from.y) + 1 : Math.floor(options.from.y)) - options.from.y) /
+        normalized.y;
+
+  while (traveledCells < requestedDistance) {
+    const nextBoundaryT = Math.min(tMaxX, tMaxY);
+    if (!Number.isFinite(nextBoundaryT) || nextBoundaryT > requestedDistance + GRID_TRAVERSAL_EPSILON) {
+      break;
     }
+    const crossesX = Math.abs(nextBoundaryT - tMaxX) <= GRID_TRAVERSAL_EPSILON;
+    const crossesY = Math.abs(nextBoundaryT - tMaxY) <= GRID_TRAVERSAL_EPSILON;
+    const candidate = {
+      x: currentTile.x + (crossesX ? stepX : 0),
+      y: currentTile.y + (crossesY ? stepY : 0)
+    };
+
     if (
       options.stopBeforeTile !== undefined &&
       candidate.x === options.stopBeforeTile.x &&
@@ -89,6 +110,12 @@ export function resolveStepDisplacement(options: {
     }
     currentTile = candidate;
     traveledCells += 1;
+    if (crossesX) {
+      tMaxX += tDeltaX;
+    }
+    if (crossesY) {
+      tMaxY += tDeltaY;
+    }
   }
 
   return {
