@@ -13,6 +13,7 @@ import { RANDOM_EVENT_DEFS } from "@blodex/content";
 import { t } from "../../../i18n";
 import { EventResolutionService } from "./EventResolutionService";
 import { MerchantFlowService } from "./MerchantFlowService";
+import { clearCombatIntent } from "./clearCombatIntent";
 import type { RuntimeEventHost } from "./types";
 
 const FLOOR_EVENT_SPAWN_CHANCE = 0.62;
@@ -104,24 +105,21 @@ export class EventRuntimeModule {
     options?: { emitSpawnEvent?: boolean }
   ): void {
     const host = this.options.host;
+    const inPreparationWindow = host.floorConfig.pacingKind === "recovery" || host.floorConfig.pacingKind === "preparation";
+    const markerDisplaySize = inPreparationWindow ? { width: 42, height: 42 } : { width: 36, height: 36 };
+    const fallbackRadius = inPreparationWindow ? 1.05 : 0.8;
     const marker =
       eventDef.markerAssetId !== undefined
-        ? host.renderSystem.spawnWorldMarker?.(position, eventDef.markerAssetId, host.origin, {
-            width: 36,
-            height: 36
-          }) ??
-          host.renderSystem.spawnTelegraphCircle(position, 0.8, host.origin)
+        ? host.renderSystem.spawnWorldMarker?.(position, eventDef.markerAssetId, host.origin, markerDisplaySize) ??
+          host.renderSystem.spawnTelegraphCircle(position, fallbackRadius, host.origin)
       : eventDef.id === "wandering_merchant"
-        ? host.renderSystem.spawnWorldMarker?.(position, "merchant_room_marker_01", host.origin, {
-            width: 36,
-            height: 36
-          }) ??
-          host.renderSystem.spawnTelegraphCircle(position, 0.8, host.origin)
-        : host.renderSystem.spawnTelegraphCircle(position, 0.8, host.origin);
+        ? host.renderSystem.spawnWorldMarker?.(position, "merchant_room_marker_01", host.origin, markerDisplaySize) ??
+          host.renderSystem.spawnTelegraphCircle(position, fallbackRadius, host.origin)
+        : host.renderSystem.spawnTelegraphCircle(position, fallbackRadius, host.origin);
     if ((eventDef.id === "wandering_merchant" || eventDef.markerAssetId !== undefined) && marker instanceof Phaser.GameObjects.Image) {
-      marker.setAlpha(0.96);
+      marker.setAlpha(inPreparationWindow ? 1 : 0.96);
     } else {
-      marker.setAlpha(0.18);
+      marker.setAlpha(inPreparationWindow ? 0.28 : 0.18);
       if (marker instanceof Phaser.GameObjects.Image) {
         marker.setTint(0xd0a86f);
       }
@@ -164,6 +162,7 @@ export class EventRuntimeModule {
     if (host.eventNode === null || host.eventNode.resolved) {
       return;
     }
+    this.clearCombatIntent();
 
     host.eventPanelOpen = true;
     const eventDef: RandomEventDef = host.eventNode.eventDef;
@@ -280,6 +279,7 @@ export class EventRuntimeModule {
       this.consumeCurrentEvent();
       return;
     }
+    this.clearCombatIntent();
 
     const view = this.options.merchantFlowService.buildView();
     host.eventPanelOpen = true;
@@ -350,8 +350,9 @@ export class EventRuntimeModule {
 
   private pickFloorEventPosition(): { x: number; y: number } | null {
     const host = this.options.host;
+    const minDistanceFromPlayer = host.floorConfig.eventNodeBias === "near_player" ? 4 : 6;
     const candidates = host.dungeon.spawnPoints.filter((point: { x: number; y: number }) => {
-      if (Math.hypot(point.x - host.player.position.x, point.y - host.player.position.y) < 6) {
+      if (Math.hypot(point.x - host.player.position.x, point.y - host.player.position.y) < minDistanceFromPlayer) {
         return false;
       }
       if (Math.hypot(point.x - host.staircaseState.position.x, point.y - host.staircaseState.position.y) < 2) {
@@ -368,7 +369,27 @@ export class EventRuntimeModule {
     if (candidates.length === 0) {
       return null;
     }
+    if (host.floorConfig.eventNodeBias === "near_player") {
+      const closest = [...candidates].sort((left, right) => {
+        const leftDistance = Math.hypot(left.x - host.player.position.x, left.y - host.player.position.y);
+        const rightDistance = Math.hypot(right.x - host.player.position.x, right.y - host.player.position.y);
+        if (leftDistance !== rightDistance) {
+          return leftDistance - rightDistance;
+        }
+        if (left.y !== right.y) {
+          return left.y - right.y;
+        }
+        return left.x - right.x;
+      })[0];
+      if (closest !== undefined) {
+        return { x: closest.x, y: closest.y };
+      }
+    }
     const picked = host.eventRng.pick(candidates);
     return { x: picked.x, y: picked.y };
+  }
+
+  private clearCombatIntent(): void {
+    clearCombatIntent(this.options.host);
   }
 }

@@ -22,6 +22,7 @@ export interface FloorProgressionHost {
     isBossFloor: boolean;
     monsterCount: number;
     clearThreshold: number;
+    grantsFloorClearRewards?: boolean;
   };
   staircaseState: StaircaseState;
   run: RunState;
@@ -68,14 +69,18 @@ export class FloorProgressionModule {
         visible: true
       };
       host.progressionRuntimeModule.renderStaircases();
-      host.grantFloorPairFallbackReward(nowMs);
+      if (host.floorConfig.grantsFloorClearRewards !== false) {
+        host.grantFloorPairFallbackReward(nowMs);
+      }
       host.eventBus.emit("floor:clear", {
         floor: host.run.currentFloor,
         kills: host.run.kills,
         staircase: host.staircaseState,
         timestampMs: nowMs
       });
-      host.tryDiscoverBlueprints("floor_clear", nowMs);
+      if (host.floorConfig.grantsFloorClearRewards !== false) {
+        host.tryDiscoverBlueprints("floor_clear", nowMs);
+      }
       if (host.eventPanelOpen) {
         return;
       }

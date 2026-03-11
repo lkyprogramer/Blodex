@@ -21,6 +21,15 @@ export interface ProjectileSpriteHandle {
   destroy(): void;
 }
 
+interface DungeonRenderOptions {
+  tileKey?: string;
+  wallKey?: string;
+  tintColor?: number;
+  accentColor?: number;
+  variantSeed?: string;
+  pacingKind?: "combat" | "recovery" | "preparation" | "boss";
+}
+
 export class RenderSystem {
   private readonly multiplyBlendFallbackKeys = new Set<string>();
   private lastSyncStats: RenderSyncStats = {
@@ -53,6 +62,55 @@ export class RenderSystem {
       return;
     }
     sprite.setBlendMode(Phaser.BlendModes.MULTIPLY);
+  }
+
+  private mixColor(baseColor: number, targetColor: number, ratio: number): number {
+    const base = Phaser.Display.Color.IntegerToRGB(baseColor);
+    const target = Phaser.Display.Color.IntegerToRGB(targetColor);
+    const clampedRatio = Phaser.Math.Clamp(ratio, 0, 1);
+    return Phaser.Display.Color.GetColor(
+      Math.round(base.r + (target.r - base.r) * clampedRatio),
+      Math.round(base.g + (target.g - base.g) * clampedRatio),
+      Math.round(base.b + (target.b - base.b) * clampedRatio)
+    );
+  }
+
+  private tileVariantHash(seed: string, x: number, y: number): number {
+    let hash = 2166136261;
+    for (let index = 0; index < seed.length; index += 1) {
+      hash ^= seed.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    hash ^= x + 1;
+    hash = Math.imul(hash, 16777619);
+    hash ^= y + 1;
+    hash = Math.imul(hash, 16777619);
+    return hash >>> 0;
+  }
+
+  private pacingOverlayTint(pacingKind: DungeonRenderOptions["pacingKind"], accentColor: number): number {
+    if (pacingKind === "recovery") {
+      return 0xd9c48c;
+    }
+    if (pacingKind === "preparation") {
+      return 0xc9d6e8;
+    }
+    if (pacingKind === "boss") {
+      return 0xd9b0b0;
+    }
+    return accentColor;
+  }
+
+  private shouldRenderWall(dungeon: DungeonLayout, x: number, y: number): boolean {
+    if (dungeon.walkable[y]?.[x]) {
+      return false;
+    }
+    return (
+      dungeon.walkable[y - 1]?.[x] === true ||
+      dungeon.walkable[y + 1]?.[x] === true ||
+      dungeon.walkable[y]?.[x - 1] === true ||
+      dungeon.walkable[y]?.[x + 1] === true
+    );
   }
 
   computeWorldBounds(dungeon: DungeonLayout): WorldBoundsConfig {
@@ -100,7 +158,7 @@ export class RenderSystem {
   drawDungeon(
     dungeon: DungeonLayout,
     origin: { x: number; y: number },
-    tintOrOptions?: number | { tileKey?: string; tintColor?: number }
+    tintOrOptions?: number | DungeonRenderOptions
   ): void {
     const options =
       typeof tintOrOptions === "number"
@@ -112,6 +170,12 @@ export class RenderSystem {
       : this.scene.textures.exists("tile_floor_01")
         ? "tile_floor_01"
         : null;
+    const wallTextureKey =
+      options.wallKey !== undefined && this.scene.textures.exists(options.wallKey) ? options.wallKey : null;
+    const crackGraphics = this.scene.add.graphics().setDepth(2);
+    const accentColor = options.accentColor ?? 0xcfb990;
+    const pacingTint = this.pacingOverlayTint(options.pacingKind, accentColor);
+    const variantSeed = options.variantSeed ?? dungeon.layoutHash;
 
     if (tileTextureKey !== null) {
       for (let y = 0; y < dungeon.height; y += 1) {
@@ -120,12 +184,43 @@ export class RenderSystem {
             continue;
           }
           const iso = gridToIso(x, y, this.tileWidth, this.tileHeight, origin.x, origin.y);
+          const variantHash = this.tileVariantHash(variantSeed, x, y);
           const tile = this.scene.add
             .image(iso.x, iso.y, tileTextureKey)
             .setDisplaySize(this.tileWidth, this.tileHeight)
             .setDepth(iso.y);
-          if (options.tintColor !== undefined) {
-            tile.setTint(options.tintColor);
+          const baseTint = options.tintColor ?? 0xffffff;
+          const overlayRatio =
+            variantHash % 11 === 0
+              ? 0.16
+              : variantHash % 7 === 0
+                ? 0.11
+                : variantHash % 5 === 0
+                  ? 0.07
+                  : 0;
+          tile.setTint(overlayRatio > 0 ? this.mixColor(baseTint, pacingTint, overlayRatio) : baseTint);
+          if (variantHash % 17 === 0 || (options.pacingKind !== "combat" && variantHash % 13 === 0)) {
+            crackGraphics.lineStyle(1, this.mixColor(0x1a2328, pacingTint, 0.22), 0.28);
+            crackGraphics.beginPath();
+            crackGraphics.moveTo(iso.x - this.tileWidth * 0.18, iso.y - this.tileHeight * 0.08);
+            crackGraphics.lineTo(iso.x - this.tileWidth * 0.02, iso.y + this.tileHeight * 0.02);
+            crackGraphics.lineTo(iso.x + this.tileWidth * 0.16, iso.y - this.tileHeight * 0.12);
+            crackGraphics.strokePath();
+          }
+        }
+      }
+      if (wallTextureKey !== null) {
+        for (let y = 0; y < dungeon.height; y += 1) {
+          for (let x = 0; x < dungeon.width; x += 1) {
+            if (!this.shouldRenderWall(dungeon, x, y)) {
+              continue;
+            }
+            const iso = gridToIso(x, y, this.tileWidth, this.tileHeight, origin.x, origin.y);
+            this.scene.add
+              .image(iso.x, iso.y - this.tileHeight * 0.5, wallTextureKey)
+              .setOrigin(0.5, 1)
+              .setDisplaySize(this.tileWidth, this.tileHeight * 1.35)
+              .setDepth(iso.y + 1);
           }
         }
       }
@@ -140,7 +235,14 @@ export class RenderSystem {
         }
 
         const iso = gridToIso(x, y, this.tileWidth, this.tileHeight, origin.x, origin.y);
-        const color = (x + y) % 2 === 0 ? 0x2f3f45 : 0x25343a;
+        const variantHash = this.tileVariantHash(variantSeed, x, y);
+        const baseColor = (x + y) % 2 === 0 ? 0x2f3f45 : 0x25343a;
+        const color =
+          variantHash % 11 === 0
+            ? this.mixColor(baseColor, pacingTint, 0.22)
+            : variantHash % 5 === 0
+              ? this.mixColor(baseColor, pacingTint, 0.1)
+              : baseColor;
         graphics.fillStyle(color, 1);
         graphics.lineStyle(1, 0x1a2328, 0.7);
         graphics.beginPath();
@@ -151,6 +253,13 @@ export class RenderSystem {
         graphics.closePath();
         graphics.fillPath();
         graphics.strokePath();
+        if (variantHash % 17 === 0) {
+          crackGraphics.lineStyle(1, this.mixColor(0x1a2328, pacingTint, 0.2), 0.28);
+          crackGraphics.beginPath();
+          crackGraphics.moveTo(iso.x - this.tileWidth * 0.18, iso.y - this.tileHeight * 0.08);
+          crackGraphics.lineTo(iso.x + this.tileWidth * 0.14, iso.y + this.tileHeight * 0.1);
+          crackGraphics.strokePath();
+        }
       }
     }
     graphics.setDepth(0);

@@ -21,8 +21,7 @@ import {
   startChallengeRoom,
   type ItemDef,
   type MonsterState,
-  type PlayerState,
-  type RandomEventDef
+  type PlayerState
 } from "@blodex/core";
 import {
   BIOME_MAP,
@@ -41,11 +40,16 @@ import { resolveDebugLockedEquipEnabled } from "../debug/debugFlags";
 import { injectDebugLockedEquipment } from "../debug/injectDebugLockedEquipment";
 import { resolveBiomeVisualTheme } from "../presentation/BiomeVisualThemeRegistry";
 import {
+  buildChallengeRoomEventDef,
+  buildFloorTransitionCopy
+} from "./progressionCopy";
+import {
   resolveBiomeTransitionPanelAssetId,
   resolveBossNodeTextureKey,
   resolveBranchRouteCardAssetId,
   spawnChallengeWorldMarker
 } from "./progressionPresentation";
+import { clearCombatIntent } from "./clearCombatIntent";
 import type { ProgressionRuntimeHost } from "./types";
 
 export interface ProgressionRuntimeModuleOptions {
@@ -102,11 +106,7 @@ export class ProgressionRuntimeModule {
     }
     host.entityLabelById.set(host.player.id, t("ui.hud.player.title"));
 
-    host.path = [];
-    host.attackTargetId = null;
-    host.manualMoveTarget = null;
-    host.manualMoveTargetFailures = 0;
-    host.nextManualPathReplanAt = 0;
+    clearCombatIntent(host);
     host.nextPlayerAttackAt = 0;
     host.nextBossAttackAt = 0;
     host.bossState = null;
@@ -121,14 +121,14 @@ export class ProgressionRuntimeModule {
     host.renderSystem.drawDungeon(
       host.dungeon,
       host.origin,
-      biomeVisualTheme.tileTint === undefined
-        ? {
-            tileKey: biomeVisualTheme.floorTileKey
-          }
-        : {
-            tileKey: biomeVisualTheme.floorTileKey,
-            tintColor: biomeVisualTheme.tileTint
-          }
+      {
+        tileKey: biomeVisualTheme.floorTileKey,
+        ...(biomeVisualTheme.tileTint === undefined ? {} : { tintColor: biomeVisualTheme.tileTint }),
+        ...(biomeVisualTheme.wallTileKey === undefined ? {} : { wallKey: biomeVisualTheme.wallTileKey }),
+        accentColor: biomeVisualTheme.accentColor,
+        variantSeed: host.dungeon.layoutHash,
+        ...(host.floorConfig.pacingKind === undefined ? {} : { pacingKind: host.floorConfig.pacingKind })
+      }
     );
     this.renderHiddenRoomMarkers();
 
@@ -140,7 +140,9 @@ export class ProgressionRuntimeModule {
     if (host.floorConfig.isBossFloor) {
       host.bossRuntimeModule.spawn();
     } else {
-      host.spawnMonsters();
+      if (host.floorConfig.monsterCount > 0) {
+        host.spawnMonsters();
+      }
       host.eventRuntimeModule.setupFloorEvent(host.time.now);
       this.initializeChallengeRoom(host.time.now);
     }
@@ -172,6 +174,11 @@ export class ProgressionRuntimeModule {
     if (!initial) {
       const backdropAssetId = resolveBiomeTransitionPanelAssetId(host.currentBiome.id);
       const accentAssetId = resolveBranchRouteCardAssetId(host.run.branchChoice);
+      const transitionCopy = buildFloorTransitionCopy({
+        floor,
+        biomeName: host.currentBiome.name,
+        ...(host.floorConfig.pacingKind === undefined ? {} : { pacingKind: host.floorConfig.pacingKind })
+      });
       const transitionOptions: {
         title: string;
         subtitle: string;
@@ -180,8 +187,8 @@ export class ProgressionRuntimeModule {
         backdropAssetId?: string;
         accentAssetId?: string;
       } = {
-        title: `Floor ${floor}`,
-        subtitle: host.currentBiome.name,
+        title: transitionCopy.title,
+        subtitle: transitionCopy.subtitle,
         mode: "floor",
         durationMs: 420
       };
@@ -303,9 +310,7 @@ export class ProgressionRuntimeModule {
       row[target.entrance.x] = true;
     }
     host.movementSystem.clearPathCache();
-    host.path = [];
-    host.manualMoveTarget = null;
-    host.manualMoveTargetFailures = 0;
+    clearCombatIntent(host);
 
     host.hiddenEntranceMarkers.get(roomId)?.destroy();
     host.hiddenEntranceMarkers.delete(roomId);
@@ -476,32 +481,19 @@ export class ProgressionRuntimeModule {
     ) {
       return;
     }
-    const eventDef: RandomEventDef = {
-      id: `challenge_${host.challengeRoomState.roomId}`,
-      name: "Challenge Room",
-      description: "Seal the room and survive timed waves for bonus rewards.",
-      floorRange: { min: host.run.currentFloor, max: host.run.currentFloor },
-      spawnWeight: 1,
-      choices: [
-        {
-          id: "enter",
-          name: "Enter Challenge",
-          description: "Begin timed waves immediately.",
-          rewards: []
-        },
-        {
-          id: "skip",
-          name: "Leave",
-          description: "Keep exploring this floor.",
-          rewards: []
-        }
-      ]
-    };
+    const artAssetId = resolveBiomeTransitionPanelAssetId(host.currentBiome.id);
+    const eventDef = buildChallengeRoomEventDef({
+      roomId: host.challengeRoomState.roomId,
+      floor: host.run.currentFloor,
+      waveTotal: host.challengeWaveTotal,
+      ...(artAssetId === undefined ? {} : { artAssetId })
+    });
     const choices = eventDef.choices.map((choice) => ({
       choice,
       enabled: true as const
     }));
     host.eventPanelOpen = true;
+    clearCombatIntent(host);
     host.uiManager.showEventDialog(
       eventDef,
       choices,
@@ -572,9 +564,7 @@ export class ProgressionRuntimeModule {
         health: Math.max(1, host.player.health - hpPenalty),
         position: { ...host.dungeon.playerSpawn }
       };
-      host.path = [];
-      host.manualMoveTarget = null;
-      host.manualMoveTargetFailures = 0;
+      clearCombatIntent(host);
       host.runLog.appendKey(
         "log.challenge.failed_lost_hp",
         {
@@ -685,12 +675,23 @@ export class ProgressionRuntimeModule {
 
   private renderNormalFloor(floor: number) {
     const host = this.options.host;
+    const biomeRoomCount = Math.round((host.currentBiome.roomCount.min + host.currentBiome.roomCount.max) / 2);
     return generateDungeon({
       width: 46,
       height: 46,
       minRoomSize: 4,
       maxRoomSize: 9,
+      roomCount: host.floorConfig.layoutRoomCount ?? biomeRoomCount,
       floorNumber: floor,
+      ...(host.floorConfig.layoutCorridorHalfWidth === undefined
+        ? {}
+        : { corridorHalfWidth: host.floorConfig.layoutCorridorHalfWidth }),
+      ...(host.floorConfig.layoutCorridorLoopChance === undefined
+        ? {}
+        : { corridorLoopChance: host.floorConfig.layoutCorridorLoopChance }),
+      ...(host.floorConfig.layoutMaxExtraCorridors === undefined
+        ? {}
+        : { maxExtraCorridors: host.floorConfig.layoutMaxExtraCorridors }),
       seed: deriveFloorSeed(host.runSeed, floor, "procgen")
     });
   }

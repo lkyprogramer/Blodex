@@ -46,6 +46,17 @@ export function renderEventDialog(
     })
     .join("");
 
+  const badge =
+    eventDef.badgeAssetId === undefined
+      ? ""
+      : `
+        <img
+          class="${eventDef.artAssetId === undefined ? "dialog-standalone-badge" : "dialog-art-badge"}"
+          data-asset-id="${eventDef.badgeAssetId}"
+          src="${resolveGeneratedAssetUrl(eventDef.badgeAssetId, "webp")}"
+          alt=""
+        />
+      `;
   const artwork =
     eventDef.artAssetId === undefined
       ? ""
@@ -57,24 +68,14 @@ export function renderEventDialog(
             src="${resolveGeneratedAssetUrl(eventDef.artAssetId, "webp")}"
             alt="${escapeHtml(eventName)}"
           />
-          ${
-            eventDef.badgeAssetId === undefined
-              ? ""
-              : `
-                <img
-                  class="dialog-art-badge"
-                  data-asset-id="${eventDef.badgeAssetId}"
-                  src="${resolveGeneratedAssetUrl(eventDef.badgeAssetId, "webp")}"
-                  alt=""
-                />
-              `
-          }
+          ${badge}
         </div>
       `;
 
   return `
     <div class="dialog-card event-dialog-card">
       ${artwork}
+      ${eventDef.artAssetId === undefined ? badge : ""}
       <h2>${escapeHtml(eventName)}</h2>
       <p>${escapeHtml(eventDescription)}</p>
       <div class="dialog-actions">${buttons}</div>

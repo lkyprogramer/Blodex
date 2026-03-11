@@ -244,14 +244,14 @@ export class RunStateRestorer {
     host.renderSystem.drawDungeon(
       host.dungeon,
       host.origin,
-      biomeVisualTheme.tileTint === undefined
-        ? {
-            tileKey: biomeVisualTheme.floorTileKey
-          }
-        : {
-            tileKey: biomeVisualTheme.floorTileKey,
-            tintColor: biomeVisualTheme.tileTint
-          }
+      {
+        tileKey: biomeVisualTheme.floorTileKey,
+        ...(biomeVisualTheme.tileTint === undefined ? {} : { tintColor: biomeVisualTheme.tileTint }),
+        ...(biomeVisualTheme.wallTileKey === undefined ? {} : { wallKey: biomeVisualTheme.wallTileKey }),
+        accentColor: biomeVisualTheme.accentColor,
+        variantSeed: host.dungeon.layoutHash,
+        ...(host.floorConfig.pacingKind === undefined ? {} : { pacingKind: host.floorConfig.pacingKind })
+      }
     );
     host.progressionRuntimeModule.renderHiddenRoomMarkers();
 

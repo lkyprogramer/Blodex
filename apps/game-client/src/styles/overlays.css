@@ -243,6 +243,15 @@
   filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
 }
 
+.dialog-standalone-badge {
+  display: block;
+  width: 4.25rem;
+  height: 4.25rem;
+  margin: 0 auto 10px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+}
+
 .equipment-compare-card {
   width: min(520px, calc(100vw - 30px));
 }

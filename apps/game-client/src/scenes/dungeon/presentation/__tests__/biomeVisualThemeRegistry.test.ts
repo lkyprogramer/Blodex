@@ -10,6 +10,7 @@ describe("BiomeVisualThemeRegistry", () => {
     for (const biome of BIOME_DEFS) {
       const resolved = resolveBiomeVisualTheme(biome);
       expect(resolved.floorTileKey.length).toBeGreaterThan(0);
+      expect(resolved.wallTileKey?.length ?? 0).toBeGreaterThan(0);
       expect(BIOME_VISUAL_THEME_REGISTRY[biome.id]).toBeDefined();
     }
   });

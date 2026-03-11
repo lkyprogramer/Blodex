@@ -62,6 +62,8 @@ export type DeferredOutcomeTrigger =
   | { type: "floor_reached"; value: number }
   | { type: "boss_kill" }
   | { type: "run_end" };
+export type FloorPacingKind = "combat" | "recovery" | "preparation" | "boss";
+export type FloorEventNodeBias = "random" | "near_player";
 export interface DeferredOutcomeReward {
   obol?: number;
   shard?: number;
@@ -75,6 +77,18 @@ export interface FloorConfig {
   monsterCount: number;
   clearThreshold: number;
   isBossFloor: boolean;
+  pacingKind?: FloorPacingKind;
+  grantsFloorClearRewards?: boolean;
+  eventNodeBias?: FloorEventNodeBias;
+  spawnMinDistance?: number;
+  spawnMaxDistance?: number;
+  spawnMinSpacing?: number;
+  spawnPackChance?: number;
+  spawnPackRadius?: number;
+  layoutRoomCount?: number;
+  layoutCorridorHalfWidth?: number;
+  layoutCorridorLoopChance?: number;
+  layoutMaxExtraCorridors?: number;
 }
 
 export interface BiomeDef {

@@ -97,4 +97,43 @@ describe("MonsterSpawnSystem", () => {
 
     expect(monsters).toEqual([]);
   });
+
+  it("honors floor-configured spawn distance and spacing tuning", () => {
+    const spawnSystem = new MonsterSpawnSystem();
+    const monsters = spawnSystem.createMonsters({
+      dungeon: makeDungeon(),
+      playerPosition: { x: 10, y: 10 },
+      floor: 4,
+      floorConfig: {
+        floorNumber: 4,
+        monsterHpMultiplier: 1,
+        monsterDmgMultiplier: 1,
+        monsterCount: 2,
+        clearThreshold: 0.7,
+        isBossFloor: false,
+        spawnMinDistance: 4,
+        spawnMaxDistance: 12,
+        spawnMinSpacing: 4,
+        spawnPackChance: 0,
+        spawnPackRadius: 4
+      },
+      enemyBaseHealth: 100,
+      enemyBaseDamage: 20,
+      archetypes: MONSTER_ARCHETYPES,
+      rng: new DeterministicRng()
+    });
+
+    expect(monsters).toHaveLength(2);
+    for (const monster of monsters) {
+      const distance = Math.hypot(monster.state.position.x - 10, monster.state.position.y - 10);
+      expect(distance).toBeGreaterThanOrEqual(4);
+      expect(distance).toBeLessThanOrEqual(12);
+    }
+    expect(
+      Math.hypot(
+        monsters[0]!.state.position.x - monsters[1]!.state.position.x,
+        monsters[0]!.state.position.y - monsters[1]!.state.position.y
+      )
+    ).toBeGreaterThanOrEqual(4);
+  });
 });
