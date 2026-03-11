@@ -288,45 +288,55 @@ Phase 8 在 `8.0A` 采用以下立场：
 
 ### 8.0B Feedback Surface（P0）
 
-**目标**: 让玩家持续感知到自己的状态、build 和元素关系。
+**目标**: 让玩家持续感知到自己的状态、build、元素关系，以及自己正在规避的远程威胁。
 
 #### 内部优先级
 
 `8.0B` 内部执行顺序固定为：
 
-1. `P0` Buff / Debuff HUD 图标栏
-2. `P0` Combat feedback 分层 + 关键操作音效
-3. `P1` 元素克制/抗性提示
-4. `P1` Set / Synergy 持续激活标记
+1. `P0` Projectile Runtime + `fired / hit / miss` feedback
+2. `P0` Buff / Debuff HUD 图标栏
+3. `P0` Combat feedback 分层 + 关键操作音效
+4. `P1` 元素克制/抗性提示
+5. `P1` Set / Synergy 持续激活标记
 
 原因：
 
-1. Buff rail 和 combat feedback 是持续体感的第一层；
-2. 元素与 set/synergy 的价值建立在玩家已经能稳定看懂基础反馈之后。
+1. `8.0A` 已经解决“玩家能主动规避”，`8.0B` 先解决“玩家看不看得清自己在规避什么”；
+2. Buff rail 和 combat feedback 是持续体感的第一层；
+3. 元素与 set/synergy 的价值建立在玩家已经能稳定看懂基础反馈之后。
 
 #### 主要工作
 
-1. 新增 Buff / Debuff HUD 图标栏：
+1. 新增 ranged projectile feedback：
+   - `fired / hit / miss`
+   - placeholder VFX/SFX 允许先落地；
+   - 不等待第二批内容包才建立 projectile runtime。
+2. 新增 Buff / Debuff HUD 图标栏：
    - buff 图标；
    - 剩余时间；
    - 来源区分（技能 / consumable / debuff）。
-2. Combat feedback 分层：
+3. Combat feedback 分层：
    - 暴击；
    - 闪避；
+   - projectile 发射；
+   - projectile 落空；
    - 普通命中；
    - 关键防御结果（首版仅处理 dodge/evade，`Block / Guard` 当前未实现，仅预留分类枚举）；
    - 不同反馈层级要有明确颜色/字重/持续时间区分。
-3. 新增关键操作音效反馈：
+4. 新增关键操作音效反馈：
+   - projectile 发射
+   - projectile 落空
    - dodge 成功
    - crit 命中
    - 元素弱点命中
    - buff 激活
-4. 元素克制与抗性提示：
+5. 元素克制与抗性提示：
    - `Weak`
    - `Resist`
    - 可区分的伤害色彩或标签；
    - 仅当倍率达到阈值时才显示。
-5. Set / Synergy 持续激活标记：
+6. Set / Synergy 持续激活标记：
    - 激活状态标识；
    - 套装层数；
    - 协同激活提示不再只靠 toast。
@@ -368,30 +378,35 @@ Phase 8 在 `8.0A` 采用以下立场：
 
 #### 推荐 PR 拆分
 
-1. `PR-8.0B-01`：Buff / Debuff HUD 图标栏
-2. `PR-8.0B-02`：Combat feedback 分层 + 关键 SFX
+1. `PR-8.0B-01`：Projectile Runtime
+2. `PR-8.0B-02`：Buff / Debuff HUD 图标栏 + Combat feedback 分层
 3. `PR-8.0B-03`：元素提示 + set/synergy 持续标记
 
 #### 架构放置建议
 
-1. Buff rail 不直接堆回 `HudContainer`，优先新增 `HudBuffController` / `HudStatusRailPresenter`
-2. combat feedback 继续通过 `feedbackEventRouter + SFXSystem + VFXSystem` 扩展
-3. 元素提示在 combat event metadata 上补“有效性分类”，避免 UI 层自己再计算一次
-4. set/synergy persistent indicator 放在 HUD/controller 层，不重复依赖瞬时 toast
+1. projectile runtime 优先新增 `ProjectileRuntime / ProjectileSystem`
+2. Buff rail 不直接堆回 `HudContainer`，优先新增 `HudBuffController / HudStatusRailPresenter`
+3. combat feedback 继续通过 `feedbackEventRouter + SFXSystem + VFXSystem` 扩展
+4. 元素提示在 combat / projectile event metadata 上补“有效性分类”，避免 UI 层自己再计算一次
+5. set/synergy persistent indicator 放在 HUD/controller 层，不重复依赖瞬时 toast
 
 #### 出口门禁
 
 1. 玩家能在 HUD 上持续看到关键 buff/debuff。
-2. 元素抗性和弱点具有玩家可见反馈。
-3. 套装/协同激活不是只在日志或 code path 中存在。
-4. 关键反馈不会只停留在瞬时 toast。
+2. 玩家能看清 ranged threat 的发射、飞行和命中/落空。
+3. 元素抗性和弱点具有玩家可见反馈。
+4. 套装/协同激活不是只在日志或 code path 中存在。
+5. 关键反馈不会只停留在瞬时 toast。
 
 #### 验证建议
 
-1. Buff HUD 图标渲染与倒计时测试
-2. 元素命中反馈样式测试
-3. Set/Synergy 标记测试
-4. 浏览器白盒：
+1. projectile travel time / hit / miss 测试
+2. Buff HUD 图标渲染与倒计时测试
+3. 元素命中反馈样式测试
+4. Set/Synergy 标记测试
+5. 浏览器白盒：
+   - 触发 ranged projectile
+   - 通过移动或 dodge 让其 miss
    - 使用 `frenzy_tonic`
    - 触发 `war_cry / frost_slow / guaranteed_crit`
    - 命中弱点/抗性目标
@@ -404,14 +419,18 @@ Phase 8 在 `8.0A` 采用以下立场：
 
 #### 主要工作
 
-1. `4 -> 5` 增加中段准备/整理窗口。
-2. `7 -> 8` 增加最终 Boss 前准备窗口。
-3. 强化当前既有节点的情绪功能：
+1. 调整怪物密度与 encounter 分布，压缩空跑时间。
+2. `4 -> 5` 增加中段准备/整理窗口。
+3. `7 -> 8` 增加最终 Boss 前准备窗口。
+4. 强化当前既有节点的情绪功能：
    - merchant：补给与整理
    - forge：强化与 build 推进
    - gamble：风险与赌局
    - challenge：节奏升压
-4. 调整节点前后的怪物密度与情绪对比，而不是单纯继续加楼层。
+5. 强化环境读图：
+   - 墙壁启用
+   - 地面变体
+   - prep/recovery 节点视觉差异
 
 #### 节奏节点语义冻结
 
@@ -429,9 +448,9 @@ Phase 8 在 `8.0A` 采用以下立场：
 
 #### 推荐 PR 拆分
 
-1. `PR-8.0C-01`：中段准备窗口 / 最终 Boss 前准备窗口
-2. `PR-8.0C-02`：story finale 的 compare / reward / summary 收束强化 + floor pacing evidence 更新
-3. `PR-8.0C-03`：merchant/forge/gamble/challenge 的情绪功能强化
+1. `PR-8.0C-01`：Density & Encounter Pacing
+2. `PR-8.0C-02`：中段准备窗口 / 最终 Boss 前准备窗口 + finale closure
+3. `PR-8.0C-03`：merchant/forge/gamble/challenge 的情绪功能强化 + Environment Readability
 
 #### 架构放置建议
 
@@ -461,10 +480,13 @@ Phase 8 在 `8.0A` 采用以下立场：
 
 #### 候选内容
 
-1. 第二批 Boss
-2. 更多元素/敌人画像
-3. 更深的 set / item batch
-4. 更强的中后段 challenge 变体
+1. room template system
+2. props / decoration pack
+3. second ranged content batch
+4. 第二批 Boss
+5. 更多元素/敌人画像
+6. 更深的 set / item batch
+7. 更强的中后段 challenge 变体
 
 #### 启动前提
 
