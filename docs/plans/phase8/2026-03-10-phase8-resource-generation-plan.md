@@ -4,7 +4,7 @@
 
 **日期**: `2026-03-10`  
 **适用阶段**: `8.0A / 8.0B / 8.0C / 8.1`  
-**目的**: 将 `Phase 8` 的视觉与音频资源需求从“概念要求”收口为可执行的生成与接线文档。
+**目的**: 将 `Phase 8` 的视觉与音频资源需求从“概念要求”收口为可执行的生成与接线文档，并与 `8.0A` 完成后的后续分期保持一致。
 
 ---
 
@@ -77,7 +77,7 @@
 
 ### 2.1 `8.0A Combat Agency`
 
-**结论**: `8.0A` 不要求强制新增大批美术资源，但存在少量**增强型资源需求**。
+**结论**: `8.0A` 不要求强制新增大批美术资源，但存在少量增强型资源需求。
 
 #### 最小发货要求
 
@@ -121,19 +121,64 @@
 
 ### 2.2 `8.0B Feedback Surface`
 
-**结论**: `8.0B` 存在明确的美术与音频生成需求，而且属于本阶段的高优先级内容。
+**结论**: `8.0B` 的资源需求分成两条正式资源线：
 
-#### 必须新增的美术资源
+1. projectile feedback
+2. HUD / status feedback
+
+两者都属于本阶段正式交付的一部分。
+
+#### `8.0B-A` Projectile Feedback 批次
+
+美术：
+
+1. `fx_projectile_fire_orb_01`
+   - 类别：`fx_sheet`
+   - 用途：火系远程弹道
+2. `fx_projectile_frost_shard_01`
+   - 类别：`fx_sheet`
+   - 用途：冰系远程弹道
+3. `fx_projectile_shadow_bolt_01`
+   - 类别：`fx_sheet`
+   - 用途：暗影远程弹道
+4. `fx_projectile_venom_glob_01`
+   - 类别：`fx_sheet`
+   - 用途：毒系远程弹道
+5. `fx_projectile_impact_generic_01`
+   - 类别：`fx_sheet`
+   - 用途：通用命中特效
+6. `fx_projectile_dissipate_01`
+   - 类别：`fx_sheet`
+   - 用途：miss / 消散
+
+音频：
+
+1. `sfx_projectile_fire_cast_01`
+2. `sfx_projectile_frost_cast_01`
+3. `sfx_projectile_shadow_cast_01`
+4. `sfx_projectile_venom_cast_01`
+5. `sfx_projectile_whizz_01`
+6. `sfx_projectile_miss_01`
+
+placeholder 策略：
+
+1. 首版允许用 Phaser Graphics 实现 projectile core
+2. `impact / dissipate` 首版允许复用现有 hit VFX 或 tween 占位
+3. 音频 cue 若未实际生成，必须先登记 placeholder binding
+
+#### `8.0B-B` HUD / Status Feedback 批次
+
+必须新增的美术资源：
 
 1. `ui_buff_rail_frame_01`
    - 类别：`ui_frame`
    - 用途：buff/debuff rail 容器
 2. `ui_status_buff_batch_01`
    - 类别：`ui_badge`
-   - 用途：输出/生存/功能类 buff 图标
+   - 用途：输出/生存/功能类 Buff 图标
 3. `ui_status_debuff_batch_01`
    - 类别：`ui_badge`
-   - 用途：slow / vulnerability / curse 等 debuff 图标
+   - 用途：slow / vulnerability / curse 等 Debuff 图标
 4. `ui_element_weak_badge_01`
    - 类别：`ui_badge`
 5. `ui_element_resist_badge_01`
@@ -143,7 +188,7 @@
 7. `ui_synergy_active_badge_01`
    - 类别：`ui_badge`
 
-#### 必须新增的音频资源
+必须新增的音频资源：
 
 1. `sfx_combat_crit_heavy_01`
 2. `sfx_element_weak_hit_01`
@@ -157,36 +202,53 @@
 
 #### 生成说明
 
-美术风格要求：
+projectile 方向：
+
+1. 火/冰/暗影/毒只做材质差异，不做高饱和霓虹
+2. trail 要短、密、可读，避免屏幕上留下过长脏拖影
+3. 飞行体必须在深色地牢场景中保持高轮廓清晰度
+
+HUD / status 方向：
 
 1. 图标在深色 HUD 上必须高可读
 2. 统一使用 `painterly-dark-fantasy-v1`
 3. 强调金属、皮革、灰石、灰烬、秘法纹理
 4. 不使用现代 UI 扁平图标风格
 
-布局要求：
-
-1. 按 `6` 个图标位设计
-2. 需兼容小尺寸 HUD
-3. 图标边缘不可过细
-
 ### 2.3 `8.0C Pacing Pass`
 
-**结论**: `8.0C` 有明确的资源需求，主要是节点和过场表达资源。
+**结论**: `8.0C` 的资源需求分成两类：
 
-#### 必须新增的美术资源
+1. 环境读图强化
+2. prep / recovery 节点表达
 
-1. `node_prep_room_marker_01`
+#### 可直接复用、无需新生成
+
+1. 现有各 biome 的 `wall_01`
+2. 现有已有的 transition/panel 体系
+
+#### 必须冻结的新美术批次
+
+1. `biome_{bone|catacombs|frozen|molten|venom}_tile_floor_02`
+   - 类别：`tile`
+   - 用途：常规地面随机变体
+2. `biome_{bone|catacombs|frozen|molten|venom}_tile_floor_03`
+   - 类别：`tile`
+   - 用途：稀有地面变体
+3. `biome_{bone|catacombs|frozen|molten|venom}_tile_floor_crack_01`
+   - 类别：`tile`
+   - 用途：边缘裂纹 / 污渍点缀
+4. `node_prep_room_marker_01`
    - 类别：`node_marker`
-2. `node_recovery_room_marker_01`
+5. `node_recovery_room_marker_01`
    - 类别：`node_marker`
-3. `panel_prep_room_01`
+6. `panel_prep_room_01`
    - 类别：`transition_panel`
-4. `panel_recovery_room_01`
+7. `panel_recovery_room_01`
    - 类别：`transition_panel`
-5. `card_prep_room_01`
+8. `card_prep_room_01`
    - 类别：`ui_card`
-6. `card_recovery_room_01`
+9. `card_recovery_room_01`
    - 类别：`ui_card`
 
 #### 推荐新增的音频资源
@@ -202,13 +264,36 @@
 
 1. 准备室偏“静、冷、整理”
 2. 休整节点偏“余震、缓和、收束”
-3. 必须与战斗层有可感知视觉差异，但不能跳出整体美术风格
+3. 地面变体强调裂纹、污渍、痕迹，而不是更亮的色彩
+4. 必须与战斗层有可感知视觉差异，但不能跳出整体美术风格
 
 ### 2.4 `8.1 Content Batch Two`
 
-**结论**: `8.1` 的资源需求必须在具体内容包选定后再冻结，不应在当前阶段预先大批量生成。
+**结论**: `8.1` 的资源允许冻结，但只能围绕明确立项的内容包，不允许再次回到“先生成一大批再决定怎么用”的模式。
 
-#### 当前只允许冻结的资源类型
+#### `8.1-A` Room Template + Props
+
+当前允许冻结的资源类型：
+
+1. `prop_bone_pillar_01`
+2. `prop_brazier_01`
+3. `prop_bookshelf_ruined_01`
+4. `prop_bone_heap_01`
+5. `prop_chain_hook_01`
+6. `prop_altar_shattered_01`
+7. `panel_room_template_preview_01`（仅 debug/authoring 可选）
+
+#### `8.1-B` Second Ranged Content Batch
+
+当前允许冻结的资源类型：
+
+1. 第二批 projectile family 资源
+2. 第二批 ranged monster portrait / icon
+3. 元素化 projectile impact / travel 资源
+
+#### `8.1-C` Boss / Element / Item Batch Two
+
+当前允许冻结的资源类型：
 
 1. 第二批 Boss 的 sprite / portrait / reward badge / telegraph
 2. 第二批元素/敌人画像 icon
@@ -220,6 +305,7 @@
 1. 未被具体立项的第二批 Boss 美术
 2. 未被 gameplay 选定的元素图标大包
 3. 未被实际接线的 panel / portrait 扩展包
+4. 未被具体选中的大体量 props 套装
 
 ---
 
@@ -230,7 +316,7 @@
 1. `asset-plan.yaml`
 2. `audio-plan.yaml`
 3. `generated manifest / audio-manifest`
-4. 各阶段文档中的资源章节
+4. `8.0B / 8.0C / 8.1` 对应阶段文档中的资源章节
 5. 运行时接线
 
 ---
@@ -247,6 +333,6 @@
 
 当前状态：
 
-- `Phase 8 资源需求已冻结`
+- `Phase 8 资源需求已按 8.0B / 8.0C / 8.1 重新归属冻结`
 - `美术生成前置条件已明确`
 - `待实际生成时向用户索取 Gemini Key`
