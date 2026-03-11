@@ -4,6 +4,8 @@ import { renderHudPanel } from "../components/HudPanel";
 import { t } from "../../i18n";
 import { difficultyLabel } from "../../i18n/labelResolvers";
 import type { HudStatHighlight } from "./compare/StatDeltaHighlighter";
+import { renderHudStatusRail } from "./HudStatusRailPresenter";
+import type { HudStatusRailState } from "./HudStatusRailTypes";
 
 export interface HudPanelRenderState {
   player: PlayerState;
@@ -27,6 +29,7 @@ export interface HudPanelRenderState {
     mappingRevealed?: boolean;
     levelUpPulseLevel?: number;
     statHighlights?: HudStatHighlight[];
+    statusRail?: HudStatusRailState;
   };
   meta: MetaProgression;
 }
@@ -34,6 +37,7 @@ export interface HudPanelRenderState {
 export interface HudPanelRenderOutput {
   metaHtml: string;
   statsHtml: string;
+  statusRailHtml: string;
   runHtml: string;
   bossBarHtml: string;
   lowHealth: boolean;
@@ -204,6 +208,7 @@ export function buildHudPanelRenderOutput(state: HudPanelRenderState): HudPanelR
   return {
     metaHtml,
     statsHtml,
+    statusRailHtml: renderHudStatusRail(state.run.statusRail),
     runHtml: renderHudPanel(t("ui.hud.run.title"), runBody),
     bossBarHtml: renderBossHealthBar(state.run),
     lowHealth

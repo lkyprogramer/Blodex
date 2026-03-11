@@ -72,6 +72,7 @@ function makeMonsterRuntime(input: {
     archetype: {
       id: "test_archetype",
       name: "Test",
+      attackType: input.attackRange !== undefined && input.attackRange > 2 ? "ranged" : "melee",
       healthMultiplier: 1,
       damageMultiplier: 1,
       attackRange: input.attackRange ?? 1.2,

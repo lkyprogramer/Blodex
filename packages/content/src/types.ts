@@ -138,6 +138,7 @@ export interface MonsterArchetypeDef {
   name: string;
   enemyProfileId?: string;
   damageProfile?: DamageProfile;
+  attackType: "melee" | "ranged";
   healthMultiplier: number;
   damageMultiplier: number;
   attackRange: number;

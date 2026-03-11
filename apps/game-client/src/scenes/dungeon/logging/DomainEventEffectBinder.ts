@@ -42,6 +42,23 @@ function damageTypeLabel(damageType: CombatEvent["damageType"]): string {
   return t(`ui.damage_type.${damageType}`);
 }
 
+function resolveEffectiveness(
+  damageProfile: Partial<Record<CombatEvent["damageType"], number>> | undefined,
+  damageType: CombatEvent["damageType"]
+): "weak" | "resist" | undefined {
+  const multiplier = damageProfile?.[damageType];
+  if (multiplier === undefined) {
+    return undefined;
+  }
+  if (multiplier >= 1.1) {
+    return "weak";
+  }
+  if (multiplier <= 0.85) {
+    return "resist";
+  }
+  return undefined;
+}
+
 interface DomainEventUiPersistence {
   scheduleRunSave(): void;
   flushRunSave(): void;
@@ -49,6 +66,9 @@ interface DomainEventUiPersistence {
 
 export interface DomainEventEffectHost extends DomainEventUiPersistence {
   eventBus: TypedEventBus<GameEventMap>;
+  entityManager: {
+    findMonsterById(entityId: string): { state: { damageProfile?: Partial<Record<CombatEvent["damageType"], number>> } } | undefined;
+  };
   player: PlayerState;
   routeFeedback(input: FeedbackRouterInput): void;
   hudDirty: boolean;
@@ -67,12 +87,54 @@ export interface DomainEventEffectHost extends DomainEventUiPersistence {
 }
 
 export function bindDomainEventEffects(host: DomainEventEffectHost): void {
+    host.eventBus.on("combat:projectile_fired", ({ sourceId, from, to, timestampMs }) => {
+      host.routeFeedback({
+        type: "combat:projectile_fired",
+        sourceId
+      });
+      host.runLog.append(
+        `Projectile fired: ${host.resolveEntityLabel(sourceId)} [${from.x.toFixed(1)}, ${from.y.toFixed(1)}] -> [${to.x.toFixed(1)}, ${to.y.toFixed(1)}].`,
+        "info",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("combat:projectile_hit", ({ sourceId, targetId, position, timestampMs }) => {
+      host.routeFeedback({
+        type: "combat:projectile_hit",
+        position
+      });
+      host.runLog.append(
+        `Projectile hit: ${host.resolveEntityLabel(sourceId)} -> ${host.resolveEntityLabel(targetId)} @ [${position.x.toFixed(1)}, ${position.y.toFixed(1)}].`,
+        "warn",
+        timestampMs
+      );
+    });
+
+    host.eventBus.on("combat:projectile_miss", ({ sourceId, position, reason, timestampMs }) => {
+      host.routeFeedback({
+        type: "combat:projectile_miss",
+        position
+      });
+      host.runLog.append(
+        `Projectile miss: ${host.resolveEntityLabel(sourceId)} @ [${position.x.toFixed(1)}, ${position.y.toFixed(1)}] (${reason}).`,
+        "success",
+        timestampMs
+      );
+    });
+
     host.eventBus.on("combat:hit", ({ combat }) => {
+      const targetMonster = host.entityManager.findMonsterById(combat.targetId);
+      const effectiveness =
+        combat.sourceId === host.player.id
+          ? resolveEffectiveness(targetMonster?.state.damageProfile, combat.damageType)
+          : undefined;
       const weaponType =
         combat.sourceId === host.player.id ? resolveEquippedWeaponType(host.player) : undefined;
       host.routeFeedback({
         type: "combat:hit",
         combat,
+        ...(effectiveness === undefined ? {} : { effectiveness }),
         ...(weaponType === undefined ? {} : { weaponType })
       });
       host.hudDirty = true;
@@ -280,6 +342,14 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
     });
 
     host.eventBus.on("buff:apply", ({ buff, timestampMs }) => {
+      if (buff.targetId === host.player.id) {
+        host.routeFeedback({
+          type: "buff:apply",
+          buffId: buff.defId,
+          targetId: buff.targetId
+        });
+        host.hudDirty = true;
+      }
       host.runLog.append(
         `Buff observed: ${buff.defId} on ${host.resolveEntityLabel(buff.targetId)} for ${Math.max(
           0,

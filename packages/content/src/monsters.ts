@@ -5,6 +5,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "melee_grunt",
     name: "Crypt Hound",
+    attackType: "melee",
     healthMultiplier: 1,
     damageMultiplier: 0.9,
     enemyProfileId: "grave_flesh",
@@ -23,6 +24,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "ranged_caster",
     name: "Ash Acolyte",
+    attackType: "ranged",
     healthMultiplier: 0.75,
     damageMultiplier: 1.05,
     enemyProfileId: "arcane_ward",
@@ -42,6 +44,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "elite_bruiser",
     name: "Iron Revenant",
+    attackType: "melee",
     healthMultiplier: 1.7,
     damageMultiplier: 1.15,
     enemyProfileId: "storm_forged",
@@ -61,6 +64,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "magma_crawler",
     name: "Magma Crawler",
+    attackType: "melee",
     healthMultiplier: 0.82,
     damageMultiplier: 0.86,
     enemyProfileId: "emberborn",
@@ -80,6 +84,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "ember_wraith",
     name: "Ember Wraith",
+    attackType: "ranged",
     healthMultiplier: 0.72,
     damageMultiplier: 1.08,
     enemyProfileId: "emberborn",
@@ -99,6 +104,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "flame_brute",
     name: "Flame Brute",
+    attackType: "melee",
     healthMultiplier: 1.42,
     damageMultiplier: 1.22,
     enemyProfileId: "emberborn",
@@ -117,6 +123,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "frost_warden",
     name: "Frost Warden",
+    attackType: "melee",
     healthMultiplier: 1.28,
     damageMultiplier: 0.96,
     enemyProfileId: "frostbound",
@@ -136,6 +143,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "ice_specter",
     name: "Ice Specter",
+    attackType: "ranged",
     healthMultiplier: 0.78,
     damageMultiplier: 1.02,
     enemyProfileId: "frostbound",
@@ -155,6 +163,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "shadow_lurker",
     name: "Shadow Lurker",
+    attackType: "melee",
     healthMultiplier: 0.92,
     damageMultiplier: 1.18,
     enemyProfileId: "arcane_ward",
@@ -174,6 +183,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "bone_priest",
     name: "Bone Priest",
+    attackType: "ranged",
     healthMultiplier: 0.98,
     damageMultiplier: 0.82,
     enemyProfileId: "arcane_ward",
@@ -195,6 +205,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "wraith_knight",
     name: "Wraith Knight",
+    attackType: "melee",
     healthMultiplier: 1.36,
     damageMultiplier: 1.08,
     enemyProfileId: "grave_flesh",
@@ -214,6 +225,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "soul_eater",
     name: "Soul Eater",
+    attackType: "melee",
     healthMultiplier: 0.88,
     damageMultiplier: 1.25,
     enemyProfileId: "grave_flesh",
@@ -233,6 +245,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "venom_spitter",
     name: "Venom Spitter",
+    attackType: "ranged",
     healthMultiplier: 0.84,
     damageMultiplier: 1.14,
     enemyProfileId: "swamp_rot",
@@ -252,6 +265,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "swamp_hulk",
     name: "Swamp Hulk",
+    attackType: "melee",
     healthMultiplier: 1.8,
     damageMultiplier: 1.16,
     enemyProfileId: "swamp_rot",
@@ -270,6 +284,7 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
   {
     id: "fungal_host",
     name: "Fungal Host",
+    attackType: "ranged",
     healthMultiplier: 1.02,
     damageMultiplier: 0.92,
     enemyProfileId: "swamp_rot",

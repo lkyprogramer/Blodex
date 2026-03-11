@@ -32,6 +32,29 @@ export interface GameEventMap {
   "combat:death": {
     combat: CombatEvent;
   };
+  "combat:projectile_fired": {
+    projectileId: string;
+    sourceId: string;
+    targetId: string;
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+    timestampMs: number;
+  };
+  "combat:projectile_hit": {
+    projectileId: string;
+    sourceId: string;
+    targetId: string;
+    position: { x: number; y: number };
+    timestampMs: number;
+  };
+  "combat:projectile_miss": {
+    projectileId: string;
+    sourceId: string;
+    targetId: string;
+    position: { x: number; y: number };
+    reason: "moved_out" | "source_gone" | "floor_reset";
+    timestampMs: number;
+  };
   "player:move": {
     playerId: string;
     from: { x: number; y: number };

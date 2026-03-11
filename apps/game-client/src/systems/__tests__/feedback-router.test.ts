@@ -24,6 +24,7 @@ describe("feedbackEventRouter", () => {
     const actions = deriveFeedbackActions({
       type: "combat:hit",
       combat: makeCombatEvent({ kind: "crit" }),
+      effectiveness: "weak",
       weaponType: "dagger"
     });
 
@@ -32,6 +33,7 @@ describe("feedbackEventRouter", () => {
         channel: "sfx",
         cue: "combat_hit",
         critical: true,
+        effectiveness: "weak",
         weaponType: "dagger"
       },
       {
@@ -40,7 +42,66 @@ describe("feedbackEventRouter", () => {
         targetId: "monster-a",
         amount: 12,
         critical: true,
+        effectiveness: "weak",
         weaponType: "dagger"
+      }
+    ]);
+  });
+
+  it("maps projectile feedback to dedicated fired and miss cues", () => {
+    expect(
+      deriveFeedbackActions({
+        type: "combat:projectile_fired",
+        sourceId: "monster-a"
+      })
+    ).toEqual([
+      {
+        channel: "sfx",
+        cue: "projectile_fire"
+      },
+      {
+        channel: "vfx",
+        cue: "projectile_fire",
+        sourceId: "monster-a"
+      }
+    ]);
+
+    expect(
+      deriveFeedbackActions({
+        type: "combat:projectile_miss",
+        position: { x: 3, y: 4 }
+      })
+    ).toEqual([
+      {
+        channel: "sfx",
+        cue: "projectile_miss"
+      },
+      {
+        channel: "vfx",
+        cue: "projectile_miss",
+        position: { x: 3, y: 4 }
+      }
+    ]);
+  });
+
+  it("maps buff apply on the player to dedicated feedback", () => {
+    expect(
+      deriveFeedbackActions({
+        type: "buff:apply",
+        buffId: "war_cry",
+        targetId: "player"
+      })
+    ).toEqual([
+      {
+        channel: "sfx",
+        cue: "buff_activate",
+        buffId: "war_cry"
+      },
+      {
+        channel: "vfx",
+        cue: "buff_activate",
+        targetId: "player",
+        buffId: "war_cry"
       }
     ]);
   });

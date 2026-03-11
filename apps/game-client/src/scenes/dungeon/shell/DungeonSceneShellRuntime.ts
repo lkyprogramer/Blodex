@@ -83,6 +83,7 @@ export interface DungeonSceneShellSource {
   combatRuntime: {
     updateCombat(nowMs: number): void;
     updateMonsters(deltaSeconds: number, nowMs: number): void;
+    updateProjectiles(deltaSeconds: number, nowMs: number): void;
     updateMonsterCombat(nowMs: number): void;
     collectNearbyLoot(nowMs: number): void;
   };
@@ -338,6 +339,8 @@ export function initializeDungeonSceneShell(scene: DungeonScene): void {
   source.encounterController = new EncounterController({
     updateCombat: (nowMs: number) => source.combatRuntime.updateCombat(nowMs),
     updateMonsters: (deltaSeconds: number, nowMs: number) => source.combatRuntime.updateMonsters(deltaSeconds, nowMs),
+    updateProjectiles: (deltaSeconds: number, nowMs: number) =>
+      source.combatRuntime.updateProjectiles(deltaSeconds, nowMs),
     updateMonsterCombat: (nowMs: number) => source.combatRuntime.updateMonsterCombat(nowMs),
     updateBossCombat: (nowMs: number) => source.bossRuntimeModule.updateCombat(nowMs),
     updateChallengeRoom: (nowMs: number) => source.progressionRuntimeModule.updateChallengeRoom(nowMs)

@@ -1,5 +1,6 @@
 import type { MetaProgression, PlayerState } from "@blodex/core";
 import type { LogEntry } from "../Hud";
+import type { HudStatusRailState } from "../hud/HudStatusRailTypes";
 
 export interface UIStateView {
   player: PlayerState;
@@ -22,6 +23,7 @@ export interface UIStateView {
     bossPhase?: number;
     mappingRevealed?: boolean;
     newlyAcquiredItemIds?: string[];
+    statusRail?: HudStatusRailState;
   };
   meta: MetaProgression;
 }

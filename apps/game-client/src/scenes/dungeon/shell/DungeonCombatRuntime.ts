@@ -3,8 +3,11 @@ import {
   collectLoot,
   resolveMonsterAffixOnDealDamage,
   resolveMonsterAffixOnKilled,
+  resolveMonsterAttack,
+  resolveSpecialAffixTotals,
   type RollItemDropOptions,
   type CombatEvent,
+  type DamageProfile,
   type ItemDef,
   type ItemInstance,
   type MonsterState,
@@ -17,6 +20,7 @@ import type { EntityManager, MonsterRuntime } from "../../../systems/EntityManag
 import type { RunLogService } from "../logging/RunLogService";
 import type { DungeonScene } from "../../DungeonScene";
 import type { DodgeRuntimeState } from "./dodgeTypes";
+import { ProjectileRuntime } from "./ProjectileRuntime";
 
 const AI_ACTIVE_RADIUS_TILES = 10;
 const AI_FAR_UPDATE_INTERVAL_FRAMES = 3;
@@ -27,10 +31,34 @@ const NEAR_DEATH_RECOVERY_WINDOW_MS = 8_000;
 const NEAR_DEATH_FEEDBACK_COOLDOWN_MS = 10_000;
 const MONSTER_COMBAT_RADIUS_TILES = 12;
 const LOOT_PICKUP_RADIUS_TILES = 1.15;
+const RANGED_PROJECTILE_SPEED_TILES_PER_SECOND = 7.2;
+const RANGED_PROJECTILE_HIT_RADIUS_TILES = 0.65;
+
+function resolveProjectileTint(damageProfile: DamageProfile | undefined): number {
+  const fire = damageProfile?.fire ?? 0;
+  const cold = damageProfile?.cold ?? 0;
+  const lightning = damageProfile?.lightning ?? 0;
+  const arcane = damageProfile?.arcane ?? 0;
+  const physical = damageProfile?.physical ?? 0;
+  const maxValue = Math.max(fire, cold, lightning, arcane, physical);
+  if (maxValue === cold) {
+    return 0x8bc7ff;
+  }
+  if (maxValue === lightning) {
+    return 0xd9ed85;
+  }
+  if (maxValue === arcane) {
+    return 0xb493ef;
+  }
+  if (maxValue === fire) {
+    return 0xef9a62;
+  }
+  return 0xd8c17a;
+}
 
 export interface DungeonCombatSource {
   floorConfig: { isBossFloor: boolean };
-  combatSystem: Pick<CombatSystem, "updatePlayerAttack" | "updateMonsterAttacks">;
+  combatSystem: Pick<CombatSystem, "updatePlayerAttack" | "updateMonsterAttacks" | "canMonsterAttack">;
   aiSystem: {
     updateMonsters(
       monsters: MonsterRuntime[],
@@ -47,6 +75,20 @@ export interface DungeonCombatSource {
       archetype: (typeof MONSTER_ARCHETYPES)[number],
       origin: { x: number; y: number }
     ): MonsterRuntime;
+    spawnProjectile(
+      position: { x: number; y: number },
+      origin: { x: number; y: number },
+      options?: {
+        tint?: number;
+        width?: number;
+        height?: number;
+      }
+    ): import("../../../systems/RenderSystem").ProjectileSpriteHandle;
+    syncProjectileSprite(
+      sprite: import("../../../systems/RenderSystem").ProjectileSpriteHandle,
+      position: { x: number; y: number },
+      origin: { x: number; y: number }
+    ): void;
   };
   powerSpikeRuntimeModule: {
     spawnLootDrop(
@@ -135,6 +177,11 @@ export interface DungeonCombatSource {
 }
 
 export class DungeonCombatRuntime {
+  private readonly projectileRuntime = new ProjectileRuntime(() => ({
+    renderSystem: this.source.renderSystem,
+    origin: this.source.origin
+  }));
+
   constructor(private readonly resolveSource: () => DungeonCombatSource) {}
 
   private get source(): DungeonCombatSource {
@@ -300,17 +347,43 @@ export class DungeonCombatRuntime {
     }
   }
 
+  updateProjectiles(deltaSeconds: number, nowMs: number): void {
+    const source = this.source;
+    const floorResetMisses = this.projectileRuntime.update({
+      deltaSeconds,
+      nowMs,
+      floor: source.run.currentFloor,
+      playerPosition: source.player.position
+    });
+    for (const miss of floorResetMisses) {
+      source.eventBus.emit("combat:projectile_miss", miss);
+    }
+  }
+
   updateMonsterCombat(nowMs: number): void {
     const source = this.source;
     const healthBeforeHits = source.player.health;
-    const monsterCombat = source.combatSystem.updateMonsterAttacks(
-      source.entityManager.queryMonstersInRadius(source.player.position, MONSTER_COMBAT_RADIUS_TILES, true),
-      source.player,
-      nowMs,
-      source.combatRng
-    );
+    const nearbyMonsters = source.entityManager.queryMonstersInRadius(source.player.position, MONSTER_COMBAT_RADIUS_TILES, true);
+    const projectileCombat = this.resolvePendingProjectileHits(source.player, nowMs);
+    const canContinueMonsterAttacks = projectileCombat.player.health > 0;
+    if (canContinueMonsterAttacks) {
+      this.queueRangedMonsterProjectiles(nearbyMonsters, projectileCombat.player, nowMs);
+    }
+    const meleeMonsters = nearbyMonsters.filter((monster) => monster.archetype.attackType !== "ranged");
+    const monsterCombat = canContinueMonsterAttacks
+      ? source.combatSystem.updateMonsterAttacks(
+          meleeMonsters,
+          projectileCombat.player,
+          nowMs,
+          source.combatRng
+        )
+      : {
+          player: projectileCombat.player,
+          combatEvents: []
+        };
 
     source.player = monsterCombat.player;
+    const combinedCombatEvents = [...projectileCombat.combatEvents, ...monsterCombat.combatEvents];
     const playerTookDamage = source.player.health < healthBeforeHits;
     if (playerTookDamage && nowMs <= source.mutationRuntime.onHitInvulnUntilMs) {
       source.player = {
@@ -360,7 +433,7 @@ export class DungeonCombatRuntime {
       return sum + effect.value;
     }, 0);
     if (reflectPercent > 0) {
-      for (const event of monsterCombat.combatEvents) {
+      for (const event of combinedCombatEvents) {
         if (event.targetId !== source.player.id || (event.kind !== "damage" && event.kind !== "crit") || event.amount <= 0) {
           continue;
         }
@@ -398,9 +471,9 @@ export class DungeonCombatRuntime {
       }
     }
 
-    source.emitCombatEvents(monsterCombat.combatEvents);
-    source.phase6Telemetry.recordCombatEvents(source.player.id, monsterCombat.combatEvents, "other");
-    for (const event of monsterCombat.combatEvents) {
+    source.emitCombatEvents(combinedCombatEvents);
+    source.phase6Telemetry.recordCombatEvents(source.player.id, combinedCombatEvents, "other");
+    for (const event of combinedCombatEvents) {
       if (event.kind === "dodge" || event.amount <= 0) {
         continue;
       }
@@ -429,7 +502,7 @@ export class DungeonCombatRuntime {
         source.eventBus.emit("monster:leech", affixResult.leechEvent);
       }
     }
-    if (monsterCombat.combatEvents.length > 0) {
+    if (combinedCombatEvents.length > 0) {
       source.hudDirty = true;
     }
   }
@@ -484,6 +557,65 @@ export class DungeonCombatRuntime {
     this.spawnSplitChildren(dead.state, dead.archetype, nowMs);
   }
 
+  private resolvePendingProjectileHits(player: PlayerState, nowMs: number): { player: PlayerState; combatEvents: CombatEvent[] } {
+    const source = this.source;
+    let nextPlayer = player;
+    const combatEvents: CombatEvent[] = [];
+    const specialAffixTotals = resolveSpecialAffixTotals(
+      Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined)
+    );
+
+    for (const impact of this.projectileRuntime.drainCompletedImpacts()) {
+      if (!impact.withinHitRadius) {
+        source.eventBus.emit("combat:projectile_miss", {
+          projectileId: impact.projectileId,
+          sourceId: impact.sourceId,
+          targetId: impact.targetId,
+          position: impact.position,
+          reason: "moved_out",
+          timestampMs: impact.timestampMs
+        });
+        continue;
+      }
+
+      const sourceMonster = source.entityManager.findMonsterById(impact.sourceId);
+      if (sourceMonster === undefined || sourceMonster.state.health <= 0) {
+        source.eventBus.emit("combat:projectile_miss", {
+          projectileId: impact.projectileId,
+          sourceId: impact.sourceId,
+          targetId: impact.targetId,
+          position: impact.position,
+          reason: "source_gone",
+          timestampMs: impact.timestampMs
+        });
+        continue;
+      }
+
+      source.eventBus.emit("combat:projectile_hit", {
+        projectileId: impact.projectileId,
+        sourceId: impact.sourceId,
+        targetId: impact.targetId,
+        position: impact.position,
+        timestampMs: impact.timestampMs
+      });
+      const resolution = resolveMonsterAttack(
+        sourceMonster.state,
+        nextPlayer,
+        source.combatRng,
+        impact.timestampMs,
+        specialAffixTotals
+      );
+      nextPlayer = resolution.player;
+      sourceMonster.state = resolution.monster;
+      combatEvents.push(...resolution.events);
+    }
+
+    return {
+      player: nextPlayer,
+      combatEvents
+    };
+  }
+
   spawnSplitChildren(
     sourceState: MonsterState,
     archetype: (typeof MONSTER_ARCHETYPES)[number],
@@ -532,5 +664,37 @@ export class DungeonCombatRuntime {
       return false;
     }
     return source.dungeon.walkable[tileY]?.[tileX] === true;
+  }
+
+  private queueRangedMonsterProjectiles(monsters: MonsterRuntime[], player: PlayerState, nowMs: number): void {
+    const source = this.source;
+    for (const monster of monsters) {
+      if (monster.archetype.attackType !== "ranged") {
+        continue;
+      }
+      if (!source.combatSystem.canMonsterAttack(monster, player, nowMs)) {
+        continue;
+      }
+
+      monster.nextAttackAt = nowMs + monster.archetype.aiConfig.attackCooldownMs;
+      const projectileId = this.projectileRuntime.spawn({
+        floor: source.run.currentFloor,
+        sourceId: monster.state.id,
+        targetId: source.player.id,
+        sourcePosition: { ...monster.state.position },
+        targetPosition: { ...player.position },
+        speedTilesPerSecond: RANGED_PROJECTILE_SPEED_TILES_PER_SECOND,
+        hitRadiusTiles: RANGED_PROJECTILE_HIT_RADIUS_TILES,
+        tint: resolveProjectileTint(monster.state.damageProfile ?? monster.archetype.damageProfile)
+      });
+      source.eventBus.emit("combat:projectile_fired", {
+        projectileId,
+        sourceId: monster.state.id,
+        targetId: source.player.id,
+        from: { ...monster.state.position },
+        to: { ...player.position },
+        timestampMs: nowMs
+      });
+    }
   }
 }

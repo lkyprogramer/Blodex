@@ -112,6 +112,27 @@ function resolvePreferredTarget(
 export class CombatSystem {
   private readonly staggerUntilByMonsterId = new Map<string, number>();
 
+  canMonsterAttack(monster: MonsterRuntime, player: PlayerState, nowMs: number): boolean {
+    if (monster.state.health <= 0 || monster.state.aiState !== "attack") {
+      return false;
+    }
+
+    const staggerUntilMs = this.staggerUntilByMonsterId.get(monster.state.id) ?? 0;
+    if (nowMs < staggerUntilMs) {
+      return false;
+    }
+
+    if (distance(monster.state.position, player.position) > monster.state.attackRange + 0.2) {
+      return false;
+    }
+
+    if (nowMs < monster.nextAttackAt) {
+      return false;
+    }
+
+    return true;
+  }
+
   private resolveWeaponDef(
     player: PlayerState,
     weaponTypeDefs: Partial<Record<WeaponType, WeaponTypeDef>> | undefined
@@ -390,16 +411,7 @@ export class CombatSystem {
         continue;
       }
 
-      const staggerUntilMs = this.staggerUntilByMonsterId.get(monster.state.id) ?? 0;
-      if (nowMs < staggerUntilMs) {
-        continue;
-      }
-
-      if (distance(monster.state.position, nextPlayer.position) > monster.state.attackRange + 0.2) {
-        continue;
-      }
-
-      if (nowMs < monster.nextAttackAt) {
+      if (!this.canMonsterAttack(monster, nextPlayer, nowMs)) {
         continue;
       }
 
