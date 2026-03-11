@@ -134,6 +134,17 @@ export interface ReplayInputSkill {
   targetId?: string;
 }
 
+export type DodgeDirectionSource = "move_vector" | "cursor" | "facing";
+export type DodgeResult = "attempt" | "blocked" | "success" | "evade_success";
+
+export interface ReplayInputDodge {
+  type: "dodge";
+  atMs: number;
+  direction: { x: number; y: number };
+  directionSource: DodgeDirectionSource;
+  result?: DodgeResult;
+}
+
 export interface ReplayInputFloorTransition {
   type: "floor_transition";
   atMs: number;
@@ -145,6 +156,7 @@ export type ReplayInputEvent =
   | ReplayInputMove
   | ReplayInputAttack
   | ReplayInputSkill
+  | ReplayInputDodge
   | ReplayInputFloorTransition;
 
 export interface RunReplay {
@@ -244,6 +256,12 @@ export interface SkillEffect {
   summonArchetypeId?: MonsterArchetypeId;
 }
 
+export interface SkillDisplacement {
+  type: "blink" | "dash";
+  distance: number;
+  anchor: "target" | "direction";
+}
+
 export interface SkillDef {
   id: string;
   name: string;
@@ -255,6 +273,7 @@ export interface SkillDef {
   damageType: DamageType;
   targeting: "self" | "nearest" | "directional" | "aoe_around";
   range: number;
+  displacement?: SkillDisplacement;
   effects: SkillEffect[];
   unlockCondition?: string;
 }
@@ -279,6 +298,7 @@ export interface SkillResolution {
   affectedMonsters: MonsterState[];
   events: CombatEvent[];
   buffsApplied: BuffInstance[];
+  primaryTargetId?: string;
 }
 
 export interface PlayerState {

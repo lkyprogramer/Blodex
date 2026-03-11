@@ -92,6 +92,7 @@ export const DUNGEON_SCENE_HOST_MUTABLE_KEYS = [
   "manualMoveTargetFailures",
   "nextManualPathReplanAt",
   "nextKeyboardMoveInputAt",
+  "dodgeRuntimeState",
   "cursorKeys",
   "statHighlightEntries",
   "levelUpPulseUntilMs",
@@ -263,11 +264,13 @@ export const DUNGEON_SCENE_HOST_METHOD_KEYS = [
   ,"recordPlayerInput"
   ,"recordSkillResolutionTelemetry"
   ,"applyResolvedBuffs"
+  ,"applySkillDisplacement"
   ,"resolveEntityLabel"
   ,"flushQueuedComparePrompts"
   ,"recordAcquiredItemTelemetry"
   ,"computePathTo"
   ,"tryUseSkill"
+  ,"tryUseDodge"
   ,"tryUseConsumable"
   ,"addRunBlueprintDiscoveries"
 ] as const satisfies ReadonlyArray<keyof DungeonSceneHostBridge>;

@@ -2,6 +2,8 @@ import Phaser from "phaser";
 import { appendReplayInput, type ConsumableId, type GridNode, type PlayerState, type RunState } from "@blodex/core";
 import { isoToGrid } from "../../../systems/iso";
 import type { RunLogService } from "../logging/RunLogService";
+import { directionBetween } from "./displacement";
+import type { DodgeRuntimeState } from "./dodgeTypes";
 
 const MANUAL_PATH_REPLAN_INTERVAL_MS = 45;
 const KEYBOARD_MOVE_INPUT_INTERVAL_MS = 35;
@@ -38,14 +40,13 @@ export interface DungeonInputSource {
   manualMoveTargetFailures: number;
   nextManualPathReplanAt: number;
   nextKeyboardMoveInputAt: number;
+  dodgeRuntimeState: DodgeRuntimeState;
   cursorKeys: Phaser.Types.Input.Keyboard.CursorKeys | null;
   keyboardBindings: Array<{
     eventName: string;
     handler: (...args: unknown[]) => void;
   }>;
-  input: {
-    keyboard?: Phaser.Input.Keyboard.KeyboardPlugin | null;
-  };
+  input: Phaser.Input.InputPlugin;
   debugRuntimeModule: {
     handleHotkey(event: KeyboardEvent): void;
   };
@@ -65,9 +66,11 @@ export interface DungeonInputSource {
   isBlockingOverlayOpen(): boolean;
   getRunRelativeNowMs(): number;
   recordPlayerInput(nowMs: number): void;
+  scheduleRunSave(): void;
   computePathTo(target: { x: number; y: number }): GridNode[];
   tryUseSkill(slotIndex: number): void;
   tryUseConsumable(consumableId: ConsumableId): void;
+  tryUseDodge(): boolean;
 }
 
 export class DungeonInputRuntime {
@@ -100,6 +103,7 @@ export class DungeonInputRuntime {
       return !entry.revealed && entry.entrance.x === targetTile.x && entry.entrance.y === targetTile.y;
     });
     if (hiddenRoom !== undefined) {
+      source.dodgeRuntimeState.autoTargetSuppressed = false;
       source.progressionRuntimeModule.revealHiddenRoom(hiddenRoom.roomId, nowMs, "click");
       source.recordPlayerInput(nowMs);
       return;
@@ -107,6 +111,8 @@ export class DungeonInputRuntime {
 
     const clickedMonster = source.entityManager.pickMonsterAt(targetTile);
     if (clickedMonster !== null) {
+      source.dodgeRuntimeState.autoTargetSuppressed = false;
+      source.dodgeRuntimeState.lastMoveIntentDirection = directionBetween(source.player.position, targetTile);
       source.attackTargetId = clickedMonster.state.id;
       source.manualMoveTarget = null;
       source.manualMoveTargetFailures = 0;
@@ -119,6 +125,8 @@ export class DungeonInputRuntime {
       return;
     }
 
+    source.dodgeRuntimeState.autoTargetSuppressed = false;
+    source.dodgeRuntimeState.lastMoveIntentDirection = directionBetween(source.player.position, targetTile);
     source.attackTargetId = null;
     source.manualMoveTarget = targetTile;
     source.manualMoveTargetFailures = 0;
@@ -161,6 +169,8 @@ export class DungeonInputRuntime {
       return;
     }
 
+    source.dodgeRuntimeState.autoTargetSuppressed = false;
+    source.dodgeRuntimeState.lastMoveIntentDirection = directionBetween(source.player.position, targetTile);
     source.attackTargetId = null;
     source.manualMoveTarget = targetTile;
     source.manualMoveTargetFailures = 0;
@@ -180,6 +190,7 @@ export class DungeonInputRuntime {
     source.player = result.player;
     source.path = result.path;
     if (result.moved && result.from !== undefined && result.to !== undefined) {
+      source.dodgeRuntimeState.lastFacingDirection = directionBetween(result.from, result.to);
       source.eventBus.emit("player:move", {
         playerId: source.player.id,
         from: result.from,
@@ -203,6 +214,9 @@ export class DungeonInputRuntime {
     bind("FOUR", 3);
     bind("FIVE", 4);
     bind("Q", 0);
+    this.bindKeyboard("keydown-SPACE", () => {
+      this.source.tryUseDodge();
+    });
     this.bindKeyboard("keydown-R", () => this.source.tryUseConsumable("health_potion"));
     this.bindKeyboard("keydown-F", () => this.source.tryUseConsumable("mana_potion"));
     this.bindKeyboard("keydown-G", () => this.source.tryUseConsumable("scroll_of_mapping"));

@@ -27,6 +27,7 @@ import { BLUEPRINT_DEF_MAP, SKILL_DEFS, WEAPON_TYPE_DEF_MAP } from "@blodex/cont
 import type { MonsterRuntime } from "../../../systems/EntityManager";
 import type { MessageParams } from "../../../i18n/types";
 import type { LogLevel } from "../../../ui/Hud";
+import type { DodgeRuntimeState } from "../shell/dodgeTypes";
 
 const PASSIVE_MANA_REGEN_PER_SECOND = 2;
 
@@ -56,6 +57,7 @@ export interface PlayerActionHost {
   runEnded: boolean;
   eventPanelOpen: boolean;
   comparePromptOpen: boolean;
+  dodgeRuntimeState: DodgeRuntimeState;
   time: { now: number };
   resolveRuntimeSkillDef(skillDef: SkillDef): SkillDef;
   entityManager: PlayerActionEntityManager;
@@ -78,6 +80,7 @@ export interface PlayerActionHost {
   recordPlayerInput?(nowMs: number): void;
   recordSkillResolutionTelemetry?(resolution: SkillResolution, nowMs: number): void;
   applyResolvedBuffs?(buffs: SkillResolution["buffsApplied"], nowMs: number): void;
+  applySkillDisplacement?(skillDef: SkillDef, resolution: SkillResolution, nowMs: number): void;
   eventBus: TypedEventBus<GameEventMap>;
   refreshSynergyRuntime(persistDiscovery?: boolean): void;
   hudDirty: boolean;
@@ -195,6 +198,7 @@ export class PlayerActionModule {
     if (!canUseSkill(host.player, host.player.skills, runtimeSkillDef, nowMs)) {
       return false;
     }
+    host.dodgeRuntimeState.autoTargetSuppressed = false;
 
     const monsters = host.entityManager.listMonsters();
     const resolution = host.combatSystem.useSkill(
@@ -211,6 +215,9 @@ export class PlayerActionModule {
         cooldownReduction: specialAffixTotals.cooldownReduction
       })
     };
+    if (runtimeSkillDef.displacement !== undefined && typeof host.applySkillDisplacement === "function") {
+      host.applySkillDisplacement(runtimeSkillDef as SkillDef, resolution, nowMs);
+    }
 
     let kills = 0;
     for (const event of resolution.events) {

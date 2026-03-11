@@ -21,6 +21,7 @@ import {
 } from "@blodex/content";
 import { resolveBiomeVisualTheme } from "../presentation/BiomeVisualThemeRegistry";
 import type { RunStateRestoreHost } from "./savePorts";
+import { createInitialDodgeRuntimeState } from "../shell/dodgeTypes";
 
 const MUTATION_DEF_BY_ID = buildMutationDefMap(MUTATION_DEFS);
 
@@ -109,6 +110,7 @@ export class RunStateRestorer {
     host.manualMoveTargetFailures = 0;
     host.nextManualPathReplanAt = 0;
     host.nextKeyboardMoveInputAt = 0;
+    host.dodgeRuntimeState = createInitialDodgeRuntimeState();
     host.entityLabelById.clear();
     host.newlyAcquiredItemUntilMs.clear();
     host.previousSkillCooldownLeftById.clear();
@@ -135,6 +137,22 @@ export class RunStateRestorer {
       cooldowns: { ...domain.consumables.cooldowns }
     };
     host.mapRevealActive = runtime.mapRevealActive;
+    if (runtime.dodge !== undefined) {
+      host.dodgeRuntimeState = {
+        ...host.dodgeRuntimeState,
+        readyAtMs: host.time.now + Math.max(0, Math.floor(runtime.dodge.cooldownRemainingMs)),
+        iframeUntilMs: 0,
+        autoTargetSuppressed: runtime.dodge.autoTargetSuppressed,
+        lastSuccessfulDodgeAtMs: null,
+        lastMoveIntentDirection: null,
+        lastFacingDirection:
+          runtime.dodge.lastDirection === undefined ? host.dodgeRuntimeState.lastFacingDirection : { ...runtime.dodge.lastDirection },
+        lastDodgeDirection:
+          runtime.dodge.lastDirection === undefined ? null : { ...runtime.dodge.lastDirection },
+        lastDodgeDirectionSource: runtime.dodge.lastDirectionSource ?? null,
+        lastResult: runtime.dodge.lastResult ?? null
+      };
+    }
     host.deferredOutcomes = runtime.deferredOutcomes.map((outcome) => ({
       outcomeId: outcome.outcomeId,
       source: outcome.source,

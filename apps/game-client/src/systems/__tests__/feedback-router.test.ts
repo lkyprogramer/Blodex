@@ -67,6 +67,25 @@ describe("feedbackEventRouter", () => {
     ]);
   });
 
+  it("maps player:dodge to dodge feedback without requiring a combat event", () => {
+    const actions = deriveFeedbackActions({
+      type: "player:dodge",
+      playerId: "player"
+    });
+
+    expect(actions).toEqual([
+      {
+        channel: "sfx",
+        cue: "combat_dodge"
+      },
+      {
+        channel: "vfx",
+        cue: "combat_dodge",
+        targetId: "player"
+      }
+    ]);
+  });
+
   it("maps heartbeat cues to dedicated channels", () => {
     expect(
       deriveFeedbackActions({

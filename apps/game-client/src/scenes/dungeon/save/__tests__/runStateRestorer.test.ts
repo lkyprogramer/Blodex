@@ -104,6 +104,13 @@ function createSave(): RunSaveDataV3 {
         visible: false
       },
       hazards: [],
+      dodge: {
+        cooldownRemainingMs: 450,
+        autoTargetSuppressed: true,
+        lastDirection: { x: 0, y: -1 },
+        lastDirectionSource: "cursor",
+        lastResult: "success"
+      },
       bossEncounterId: null,
       boss: null,
       monsters: [
@@ -249,6 +256,17 @@ function createHost(): RunStateRestoreHost {
     meta: {
       selectedMutationIds: [],
       mutationSlots: 1
+    },
+    dodgeRuntimeState: {
+      readyAtMs: 0,
+      iframeUntilMs: 0,
+      autoTargetSuppressed: false,
+      lastSuccessfulDodgeAtMs: null,
+      lastMoveIntentDirection: null,
+      lastFacingDirection: { x: 1, y: 0 },
+      lastDodgeDirection: null,
+      lastDodgeDirectionSource: null,
+      lastResult: null
     },
     syncEndlessMutators: vi.fn(),
     resolveDailyWeaponType: vi.fn(() => null),
@@ -405,6 +423,11 @@ describe("RunStateRestorer", () => {
       acceptedSpikeCount: 1,
       majorSpikeCount: 0
     });
+    expect(host.dodgeRuntimeState.readyAtMs).toBe(1050);
+    expect(host.dodgeRuntimeState.iframeUntilMs).toBe(0);
+    expect(host.dodgeRuntimeState.autoTargetSuppressed).toBe(true);
+    expect(host.dodgeRuntimeState.lastDodgeDirection).toEqual({ x: 0, y: -1 });
+    expect(host.dodgeRuntimeState.lastDodgeDirectionSource).toBe("cursor");
   });
 
   it("restores monster baseMoveSpeed separately from current slowed moveSpeed", () => {

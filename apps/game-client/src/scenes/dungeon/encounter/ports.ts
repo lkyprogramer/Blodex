@@ -13,6 +13,7 @@ import type {
 } from "@blodex/core";
 import type { FloorConfig, MonsterArchetypeDef } from "@blodex/content";
 import type { MonsterRuntime } from "../../../systems/EntityManager";
+import type { DodgeRuntimeState } from "../shell/dodgeTypes";
 
 interface EncounterRngPort {
   next(): number;
@@ -80,6 +81,7 @@ export interface BossCombatHost {
   floorConfig: Pick<FloorConfig, "isBossFloor">;
   bossState: BossRuntimeState | null;
   player: PlayerState;
+  dodgeRuntimeState: DodgeRuntimeState;
   resolveMutationAttackSpeedMultiplier(nowMs: number): number;
   nextPlayerAttackAt: number;
   combatRng: Pick<EncounterRngPort, "next">;

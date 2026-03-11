@@ -170,6 +170,10 @@ export type FeedbackRouterInput =
       combat: CombatEvent;
     }
   | {
+      type: "player:dodge";
+      playerId: string;
+    }
+  | {
       type: "combat:death";
       combat: CombatEvent;
     }
@@ -338,6 +342,18 @@ export function deriveFeedbackActions(input: FeedbackRouterInput): FeedbackActio
           channel: "vfx",
           cue: "combat_dodge",
           targetId: input.combat.targetId
+        }
+      ];
+    case "player:dodge":
+      return [
+        {
+          channel: "sfx",
+          cue: "combat_dodge"
+        },
+        {
+          channel: "vfx",
+          cue: "combat_dodge",
+          targetId: input.playerId
         }
       ];
     case "combat:death":

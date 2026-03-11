@@ -30,6 +30,7 @@ interface PlayerCombatContext {
   run: RunState;
   monsters: MonsterRuntime[];
   attackTargetId: string | null;
+  allowAutoTarget?: boolean;
   nextPlayerAttackAt: number;
   nowMs: number;
   combatRng: RngLike;
@@ -76,13 +77,18 @@ type TargetSource = "manual" | "auto";
 function resolvePreferredTarget(
   monsters: MonsterRuntime[],
   playerPosition: { x: number; y: number },
-  requestedTargetId: string | null
+  requestedTargetId: string | null,
+  allowAutoTarget = true
 ): { target?: MonsterRuntime; source?: TargetSource } {
   if (requestedTargetId !== null) {
     const requested = monsters.find((monster) => monster.state.id === requestedTargetId);
     if (requested !== undefined && requested.state.health > 0) {
       return { target: requested, source: "manual" };
     }
+  }
+
+  if (!allowAutoTarget) {
+    return {};
   }
 
   let nearest: MonsterRuntime | undefined;
@@ -158,7 +164,8 @@ export class CombatSystem {
     const { target, source } = resolvePreferredTarget(
       context.monsters,
       context.player.position,
-      context.attackTargetId
+      context.attackTargetId,
+      context.allowAutoTarget ?? true
     );
     const activeTargetId = target?.state.id ?? null;
 

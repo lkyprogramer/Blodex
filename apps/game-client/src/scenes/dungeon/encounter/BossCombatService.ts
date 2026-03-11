@@ -25,6 +25,30 @@ export interface BossCombatServiceOptions {
 export class BossCombatService {
   constructor(private readonly options: BossCombatServiceOptions) {}
 
+  private shouldPromotePositionEvadeToDodgeSuccess(attack: BossAttack, nowMs: number): boolean {
+    if (attack.telegraphMs <= 0) {
+      return false;
+    }
+    const lastSuccessfulDodgeAtMs = this.options.host.dodgeRuntimeState.lastSuccessfulDodgeAtMs;
+    if (lastSuccessfulDodgeAtMs === null) {
+      return false;
+    }
+    const telegraphStartedAtMs = nowMs - attack.telegraphMs;
+    return lastSuccessfulDodgeAtMs >= telegraphStartedAtMs && lastSuccessfulDodgeAtMs <= nowMs;
+  }
+
+  private createPlayerDodgeEvent(nowMs: number) {
+    const host = this.options.host;
+    return {
+      kind: "dodge" as const,
+      sourceId: host.bossDef.id,
+      targetId: host.player.id,
+      amount: 0,
+      damageType: "physical" as const,
+      timestampMs: nowMs
+    };
+  }
+
   private clearTelegraphState(state: NonNullable<BossCombatHost["bossState"]>, aiState: "idle" | "attacking") {
     const { telegraphAttackId, telegraphEndMs, telegraphTarget, ...rest } = state;
     return {
@@ -58,7 +82,11 @@ export class BossCombatService {
     const critDamageMultiplier =
       weaponDef.mechanic.type === "crit_bonus" ? (weaponDef.mechanic.critDamageMultiplier ?? 1.7) : 1.7;
 
-    if (distanceToBoss <= Math.max(1.1, weaponDef.attackRange + 0.3) && nowMs >= host.nextPlayerAttackAt) {
+    if (
+      !host.dodgeRuntimeState.autoTargetSuppressed &&
+      distanceToBoss <= Math.max(1.1, weaponDef.attackRange + 0.3) &&
+      nowMs >= host.nextPlayerAttackAt
+    ) {
       const crit = host.combatRng.next() < Math.min(0.95, host.player.derivedStats.critChance + critChanceBonus);
       const effectiveCritMultiplier = Math.max(1, critDamageMultiplier * (1 + specialAffixTotals.critDamage));
       const damage = Math.max(
@@ -129,16 +157,43 @@ export class BossCombatService {
         this.options.telegraphPresenter.clear();
         return;
       }
-      this.resolveBossAttack(
-        telegraphedAttack,
-        nowMs,
-        telegraphingBossState.telegraphTarget,
-        false,
-        specialAffixTotals
-      );
+      let resolveResult: "hit" | "evaded_by_position" | "evaded_by_iframe";
+      if (host.dodgeRuntimeState.iframeUntilMs >= nowMs) {
+        resolveResult = "evaded_by_iframe";
+        host.dodgeRuntimeState.lastResult = "evade_success";
+        host.emitCombatEvents([this.createPlayerDodgeEvent(nowMs)]);
+        host.eventBus.emit("boss:attack", {
+          boss: telegraphingBossState,
+          attack: telegraphedAttack,
+          timestampMs: nowMs
+        });
+        host.eventBus.emit("player:dodge", {
+          playerId: host.player.id,
+          result: "evade_success",
+          direction: host.dodgeRuntimeState.lastDodgeDirection ?? { x: 1, y: 0 },
+          directionSource: host.dodgeRuntimeState.lastDodgeDirectionSource ?? "facing",
+          reason: "iframe",
+          timestampMs: nowMs
+        });
+      } else {
+        resolveResult = this.resolveBossAttack(
+          telegraphedAttack,
+          nowMs,
+          telegraphingBossState.telegraphTarget,
+          false,
+          specialAffixTotals
+        );
+      }
       host.bossState = this.clearTelegraphState(telegraphingBossState, "attacking");
       this.options.telegraphPresenter.clear();
       host.nextBossAttackAt = nowMs + Math.max(800, telegraphedAttack.cooldownMs * 0.4);
+      host.eventBus.emit("boss:attack_resolve", {
+        bossId: host.bossDef.id,
+        attack: telegraphedAttack,
+        ...(telegraphingBossState.telegraphTarget === undefined ? {} : { target: telegraphingBossState.telegraphTarget }),
+        result: resolveResult,
+        timestampMs: nowMs
+      });
       host.hudDirty = true;
       return;
     }
@@ -228,11 +283,11 @@ export class BossCombatService {
     telegraphTarget: { x: number; y: number } | undefined,
     markCooldown: boolean,
     specialAffixTotals: ReturnType<typeof resolveSpecialAffixTotals>
-  ): void {
+  ): "hit" | "evaded_by_position" | "evaded_by_iframe" {
     const host = this.options.host;
     const currentBossState = host.bossState;
     if (currentBossState === null) {
-      return;
+      return "hit";
     }
     const attackResult = resolveBossAttack(
       attack,
@@ -245,17 +300,35 @@ export class BossCombatService {
     );
     host.player = attackResult.player;
     host.emitCombatEvents(attackResult.events);
-    host.eventBus.emit("boss:attack_resolve", {
-      bossId: host.bossDef.id,
-      attack,
-      ...(telegraphTarget === undefined ? {} : { target: telegraphTarget }),
-      timestampMs: nowMs
-    });
     host.eventBus.emit("boss:attack", {
       boss: currentBossState,
       attack,
       timestampMs: nowMs
     });
+    const resolveResult = attack.telegraphMs > 0 && attackResult.events.length === 0 ? "evaded_by_position" : "hit";
+    if (resolveResult === "evaded_by_position") {
+      host.emitCombatEvents([this.createPlayerDodgeEvent(nowMs)]);
+      if (this.shouldPromotePositionEvadeToDodgeSuccess(attack, nowMs)) {
+        host.dodgeRuntimeState.lastResult = "evade_success";
+        host.eventBus.emit("player:dodge", {
+          playerId: host.player.id,
+          result: "evade_success",
+          direction: host.dodgeRuntimeState.lastDodgeDirection ?? { x: 1, y: 0 },
+          directionSource: host.dodgeRuntimeState.lastDodgeDirectionSource ?? "facing",
+          reason: "position",
+          timestampMs: nowMs
+        });
+      }
+    }
+    if (attack.telegraphMs <= 0) {
+      host.eventBus.emit("boss:attack_resolve", {
+        bossId: host.bossDef.id,
+        attack,
+        ...(telegraphTarget === undefined ? {} : { target: telegraphTarget }),
+        result: resolveResult,
+        timestampMs: nowMs
+      });
+    }
 
     if (attack.type === "summon") {
       host.eventBus.emit("boss:summon", {
@@ -270,5 +343,6 @@ export class BossCombatService {
     if (markCooldown) {
       host.bossState = markBossAttackUsed(currentBossState, attack, nowMs);
     }
+    return resolveResult;
   }
 }

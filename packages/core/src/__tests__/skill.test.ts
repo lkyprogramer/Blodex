@@ -216,6 +216,7 @@ describe("skill targeting", () => {
     const result = resolveSkill(player, [outOfRangeMonster, inRangeMonster], makeSkill(5), neverCritRng, 1000);
 
     expect(result.events).toHaveLength(1);
+    expect(result.primaryTargetId).toBe("near");
     expect(result.events[0]?.targetId).toBe("near");
     expect(result.affectedMonsters.find((monster) => monster.id === "near")?.health).toBe(60);
     expect(result.affectedMonsters.find((monster) => monster.id === "far")?.health).toBe(80);

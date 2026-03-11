@@ -95,16 +95,29 @@ function createHost(comparePromptOpen: boolean): {
   combatUseSkill: ReturnType<typeof vi.fn>;
   eventEmit: ReturnType<typeof vi.fn>;
   scheduleRunSave: ReturnType<typeof vi.fn>;
+  applySkillDisplacement: ReturnType<typeof vi.fn>;
 } {
   const combatUseSkill = vi.fn();
   const eventEmit = vi.fn();
   const scheduleRunSave = vi.fn();
+  const applySkillDisplacement = vi.fn();
   const host: PlayerActionHost = {
     player: createPlayer(),
     run: createRun(),
     runEnded: false,
     eventPanelOpen: false,
     comparePromptOpen,
+    dodgeRuntimeState: {
+      readyAtMs: 0,
+      iframeUntilMs: 0,
+      autoTargetSuppressed: false,
+      lastSuccessfulDodgeAtMs: null,
+      lastMoveIntentDirection: null,
+      lastFacingDirection: { x: 1, y: 0 },
+      lastDodgeDirection: null,
+      lastDodgeDirectionSource: null,
+      lastResult: null
+    },
     time: { now: 1200 },
     resolveRuntimeSkillDef: vi.fn((skillDef) => skillDef),
     entityManager: {
@@ -132,6 +145,7 @@ function createHost(comparePromptOpen: boolean): {
     recordPlayerInput: vi.fn(),
     recordSkillResolutionTelemetry: vi.fn(),
     applyResolvedBuffs: vi.fn(),
+    applySkillDisplacement,
     eventBus: {
       on: vi.fn(() => () => undefined),
       off: vi.fn(),
@@ -153,7 +167,7 @@ function createHost(comparePromptOpen: boolean): {
     },
     scheduleRunSave
   };
-  return { host, combatUseSkill, eventEmit, scheduleRunSave };
+  return { host, combatUseSkill, eventEmit, scheduleRunSave, applySkillDisplacement };
 }
 
 describe("PlayerActionModule", () => {
@@ -227,5 +241,45 @@ describe("PlayerActionModule", () => {
 
     expect(applied).toBe(true);
     expect(host.player.skills?.skillSlots[0]).toEqual({ defId: "cleave", level: 2 });
+  });
+
+  it("routes generic displacement skills through host.applySkillDisplacement", () => {
+    const { host, combatUseSkill, applySkillDisplacement } = createHost(false);
+    host.player.skills = {
+      skillSlots: [{ defId: "wind_dash", level: 1 }, null, null],
+      cooldowns: {}
+    };
+    host.resolveRuntimeSkillDef = vi.fn((skillDef) => ({
+      ...skillDef,
+      displacement: {
+        type: "dash",
+        distance: 2,
+        anchor: "target"
+      }
+    }));
+    combatUseSkill.mockReturnValue({
+      player: host.player,
+      affectedMonsters: [],
+      events: [],
+      buffsApplied: [],
+      primaryTargetId: "monster-1"
+    });
+    const module = new PlayerActionModule({ host });
+
+    const used = module.tryUseSkill(0);
+
+    expect(used).toBe(true);
+    expect(applySkillDisplacement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "wind_dash",
+        displacement: expect.objectContaining({
+          type: "dash"
+        })
+      }),
+      expect.objectContaining({
+        primaryTargetId: "monster-1"
+      }),
+      1200
+    );
   });
 });
