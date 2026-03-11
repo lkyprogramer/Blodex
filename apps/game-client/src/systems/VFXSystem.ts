@@ -37,6 +37,7 @@ export class VFXSystem {
     target: EntitySprite | null,
     amount: number,
     critical: boolean,
+    effectiveness?: "weak" | "resist",
     weaponType?: WeaponType
   ): void {
     if (!this.enabled || target === null || !target.active) {
@@ -58,6 +59,20 @@ export class VFXSystem {
       },
       critical ? "high" : "low"
     );
+    if (effectiveness !== undefined) {
+      this.spawnFloatingText(
+        target.x,
+        target.y - 56,
+        effectiveness === "weak" ? "WEAK" : "RESIST",
+        {
+          color: effectiveness === "weak" ? "#ffc98b" : "#9dc5ff",
+          size: 10,
+          durationMs: 420,
+          rise: 14
+        },
+        "low"
+      );
+    }
 
     const offset = critical
       ? Math.max(4, weaponProfile.hitOffset + 1)
@@ -99,6 +114,109 @@ export class VFXSystem {
       yoyo: true,
       ease: "Sine.InOut"
     });
+  }
+
+  playProjectileFire(source: EntitySprite | null): void {
+    if (!this.enabled || source === null || !source.active || !this.tryReserveTransient("low")) {
+      return;
+    }
+
+    const pulse = this.particlePool
+      .acquireEllipse()
+      .setPosition(source.x, source.y - 18)
+      .setSize(10, 6)
+      .setFillStyle(0xe6d28e, 0.3)
+      .setStrokeStyle(2, 0xe6d28e, 0.82)
+      .setDepth(90_000);
+    this.transientObjects.add(pulse);
+
+    this.scene.tweens.add({
+      targets: pulse,
+      scaleX: 2.2,
+      scaleY: 1.8,
+      alpha: 0,
+      duration: 180,
+      ease: "Quad.Out",
+      onComplete: () => {
+        this.transientObjects.delete(pulse);
+        this.particlePool.releaseEllipse(pulse);
+      }
+    });
+  }
+
+  playProjectileHit(worldX: number, worldY: number): void {
+    if (!this.enabled || !this.tryReserveTransient("low")) {
+      return;
+    }
+
+    const pulse = this.particlePool
+      .acquireEllipse()
+      .setPosition(worldX, worldY - 10)
+      .setSize(12, 8)
+      .setFillStyle(0xf4d18a, 0.32)
+      .setStrokeStyle(2, 0xf4d18a, 0.88)
+      .setDepth(90_000);
+    this.transientObjects.add(pulse);
+
+    this.scene.tweens.add({
+      targets: pulse,
+      scaleX: 2.6,
+      scaleY: 2.1,
+      alpha: 0,
+      duration: 210,
+      ease: "Quad.Out",
+      onComplete: () => {
+        this.transientObjects.delete(pulse);
+        this.particlePool.releaseEllipse(pulse);
+      }
+    });
+  }
+
+  playProjectileMiss(worldX: number, worldY: number): void {
+    if (!this.enabled) {
+      return;
+    }
+
+    this.spawnFloatingText(
+      worldX,
+      worldY - 28,
+      "MISS",
+      {
+        color: "#b9d9ff",
+        size: 12,
+        durationMs: 420,
+        rise: 16
+      },
+      "low"
+    );
+  }
+
+  playBuffActivate(target: EntitySprite | null, buffId: string): void {
+    if (!this.enabled || target === null || !target.active) {
+      return;
+    }
+
+    const color =
+      buffId === "war_cry"
+        ? 0xf0b36d
+        : buffId === "guaranteed_crit"
+          ? 0xffe799
+          : buffId === "phantom_brew"
+            ? 0x8eb9ff
+            : 0x8dd6a6;
+    this.flashTarget(target, color, 90);
+    this.spawnFloatingText(
+      target.x,
+      target.y - 48,
+      "BUFF",
+      {
+        color: "#cfe7b0",
+        size: 11,
+        durationMs: 420,
+        rise: 14
+      },
+      "low"
+    );
   }
 
   playCombatDeath(target: EntitySprite | null): void {

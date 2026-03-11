@@ -14,6 +14,13 @@ export interface RenderSyncStats {
   monstersCulled: number;
 }
 
+export interface ProjectileSpriteHandle {
+  active: boolean;
+  setPosition(x: number, y: number): this;
+  setDepth(value: number): this;
+  destroy(): void;
+}
+
 export class RenderSystem {
   private readonly multiplyBlendFallbackKeys = new Set<string>();
   private lastSyncStats: RenderSyncStats = {
@@ -301,6 +308,29 @@ export class RenderSystem {
       .setDepth(iso.y + this.entityDepthOffset - 10);
   }
 
+  spawnProjectile(
+    position: { x: number; y: number },
+    origin: { x: number; y: number },
+    options?: {
+      tint?: number;
+      width?: number;
+      height?: number;
+    }
+  ): ProjectileSpriteHandle {
+    const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
+    return this.scene.add
+      .ellipse(
+        iso.x,
+        iso.y - 10,
+        options?.width ?? 12,
+        options?.height ?? 8,
+        options?.tint ?? 0xd8c17a,
+        0.92
+      )
+      .setStrokeStyle(1, 0x11161d, 0.8)
+      .setDepth(iso.y + this.entityDepthOffset + 10);
+  }
+
   spawnStaircase(
     position: { x: number; y: number },
     origin: { x: number; y: number },
@@ -444,6 +474,16 @@ export class RenderSystem {
       monstersVisible,
       monstersCulled
     };
+  }
+
+  syncProjectileSprite(
+    sprite: ProjectileSpriteHandle,
+    position: { x: number; y: number },
+    origin: { x: number; y: number }
+  ): void {
+    const iso = gridToIso(position.x, position.y, this.tileWidth, this.tileHeight, origin.x, origin.y);
+    sprite.setPosition(iso.x, iso.y - 10);
+    sprite.setDepth(iso.y + this.entityDepthOffset + 10);
   }
 
   getLastSyncStats(): RenderSyncStats {

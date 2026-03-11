@@ -69,7 +69,17 @@ export interface DungeonFrameSource {
   feedbackRouter: { route(input: FeedbackRouterInput): void };
   sfxSystem: { dispatch(action: FeedbackAction): void };
   vfxSystem: {
-    playCombatHit(target: unknown, amount: number, critical: boolean, weaponType: string | undefined): void;
+    playBuffActivate(target: unknown, buffId: string): void;
+    playProjectileFire(target: unknown): void;
+    playProjectileHit(worldX: number, worldY: number): void;
+    playProjectileMiss(worldX: number, worldY: number): void;
+    playCombatHit(
+      target: unknown,
+      amount: number,
+      critical: boolean,
+      effectiveness: "weak" | "resist" | undefined,
+      weaponType: string | undefined
+    ): void;
     playCombatDodge(target: unknown): void;
     playCombatDeath(target: unknown): void;
     playSkillCast(caster: unknown, skillId: string): void;
@@ -228,8 +238,30 @@ export class DungeonFrameRuntime {
     }
 
     switch (action.cue) {
+      case "buff_activate":
+        source.vfxSystem.playBuffActivate(this.resolveEntitySprite(action.targetId), action.buffId);
+        return;
+      case "projectile_fire":
+        source.vfxSystem.playProjectileFire(this.resolveEntitySprite(action.sourceId));
+        return;
+      case "projectile_hit": {
+        const iso = gridToIso(action.position.x, action.position.y, source.tileWidth, source.tileHeight, source.origin.x, source.origin.y);
+        source.vfxSystem.playProjectileHit(iso.x, iso.y);
+        return;
+      }
+      case "projectile_miss": {
+        const iso = gridToIso(action.position.x, action.position.y, source.tileWidth, source.tileHeight, source.origin.x, source.origin.y);
+        source.vfxSystem.playProjectileMiss(iso.x, iso.y);
+        return;
+      }
       case "combat_hit":
-        source.vfxSystem.playCombatHit(this.resolveEntitySprite(action.targetId), action.amount, action.critical, action.weaponType);
+        source.vfxSystem.playCombatHit(
+          this.resolveEntitySprite(action.targetId),
+          action.amount,
+          action.critical,
+          action.effectiveness,
+          action.weaponType
+        );
         return;
       case "combat_dodge":
         source.vfxSystem.playCombatDodge(this.resolveEntitySprite(action.targetId));

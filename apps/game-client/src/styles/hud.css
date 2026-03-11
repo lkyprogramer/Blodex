@@ -171,6 +171,111 @@ button,
   background: linear-gradient(90deg, #baa34a, #e6cf75);
 }
 
+.status-rail-shell {
+  padding: 10px 12px;
+}
+
+.status-rail-root {
+  display: grid;
+  gap: 10px;
+}
+
+.status-rail-panel {
+  display: grid;
+  gap: 6px;
+}
+
+.status-rail-head {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+}
+
+.status-buff-list,
+.status-build-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-chip,
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(208, 168, 111, 0.24);
+  background: rgba(13, 18, 24, 0.72);
+  padding: 4px 8px;
+}
+
+.status-chip {
+  min-width: 64px;
+  justify-content: space-between;
+}
+
+.status-chip.debuff {
+  border-color: rgba(130, 186, 233, 0.42);
+  background: rgba(27, 44, 61, 0.82);
+}
+
+.status-chip.survival {
+  border-color: rgba(137, 201, 155, 0.42);
+  background: rgba(29, 51, 38, 0.82);
+}
+
+.status-chip.offense {
+  border-color: rgba(235, 157, 114, 0.42);
+  background: rgba(59, 35, 24, 0.82);
+}
+
+.status-chip.utility {
+  border-color: rgba(192, 171, 120, 0.38);
+  background: rgba(49, 41, 25, 0.82);
+}
+
+.status-chip.overflow {
+  min-width: 44px;
+  justify-content: center;
+}
+
+.status-chip-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-main);
+}
+
+.status-chip-timer {
+  font-size: 10px;
+  color: var(--text-subtle);
+}
+
+.status-indicator.set {
+  border-color: rgba(231, 191, 116, 0.38);
+}
+
+.status-indicator.synergy {
+  border-color: rgba(129, 183, 236, 0.42);
+}
+
+.status-indicator-label {
+  font-size: 11px;
+  color: var(--text-main);
+}
+
+.status-indicator-detail {
+  font-size: 10px;
+  color: var(--text-subtle);
+}
+
+.status-empty {
+  font-size: 11px;
+  color: var(--text-subtle);
+}
+
 .hud-stat-cell.delta-up,
 .hud-stat-cell.delta-down,
 .hud-stat-cell.delta-equal {

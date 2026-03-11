@@ -24,6 +24,7 @@ import type { RunOutcomeAnalysis } from "../../scenes/dungeon/taste/RunOutcomeAn
 import { t } from "../../i18n";
 import { renderHudLogPanel } from "./HudLogPresenter";
 import { buildHudPanelRenderOutput } from "./HudPanelRender";
+import type { HudStatusRailState } from "./HudStatusRailTypes";
 import { buildQuickbarTooltipHtml } from "./HudQuickbarTooltipPresenter";
 import type { HudStatHighlight } from "./compare/StatDeltaHighlighter";
 import { HudOverlayController } from "./HudOverlayController";
@@ -76,10 +77,11 @@ interface HudState {
       outOfMana: boolean;
       locked: boolean;
     }>;
-    newlyAcquiredItemIds?: string[];
-    levelUpPulseLevel?: number;
-    statHighlights?: HudStatHighlight[];
-  };
+      newlyAcquiredItemIds?: string[];
+      levelUpPulseLevel?: number;
+      statHighlights?: HudStatHighlight[];
+      statusRail?: HudStatusRailState;
+    };
   meta: MetaProgression;
 }
 
@@ -106,6 +108,7 @@ export class HudContainer {
   private readonly metaEl = document.querySelector("#meta") as HTMLDivElement;
   private readonly hudCriticalEl = document.querySelector("#hud-critical") as HTMLDivElement | null;
   private readonly statsEl = document.querySelector("#stats") as HTMLDivElement;
+  private readonly statusRailEl = document.querySelector("#status-rail") as HTMLDivElement;
   private readonly runEl = document.querySelector("#run") as HTMLDivElement;
   private readonly bossBarEl = document.querySelector("#boss-bar") as HTMLDivElement;
   private readonly skillBarEl = document.querySelector("#skillbar") as HTMLDivElement;
@@ -157,6 +160,14 @@ export class HudContainer {
     document.body.classList.toggle("low-health-critical", panels.lowHealth);
     this.statsEl.className = "panel-block compact-block";
     this.statsEl.innerHTML = panels.statsHtml;
+
+    if (panels.statusRailHtml.length === 0) {
+      this.statusRailEl.className = "hidden";
+      this.statusRailEl.innerHTML = "";
+    } else {
+      this.statusRailEl.className = "panel-block compact-block status-rail-shell";
+      this.statusRailEl.innerHTML = panels.statusRailHtml;
+    }
 
     this.runEl.className = "panel-block compact-block";
     this.runEl.innerHTML = panels.runHtml;

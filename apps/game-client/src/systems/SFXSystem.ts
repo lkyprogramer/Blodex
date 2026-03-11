@@ -171,8 +171,17 @@ export class SFXSystem {
       return;
     }
     switch (action.cue) {
+      case "projectile_fire":
+        this.playProjectileFire();
+        return;
+      case "projectile_miss":
+        this.playProjectileMiss();
+        return;
+      case "buff_activate":
+        this.playBuffActivate(action.buffId);
+        return;
       case "combat_hit":
-        this.playCombatHit(action.critical, action.weaponType);
+        this.playCombatHit(action.critical, action.weaponType, action.effectiveness);
         return;
       case "combat_dodge":
         // Dodge SFX placeholder for future asset expansion.
@@ -239,16 +248,53 @@ export class SFXSystem {
     }
   }
 
-  playCombatHit(isCrit: boolean, weaponType?: WeaponType): void {
+  playCombatHit(isCrit: boolean, weaponType?: WeaponType, effectiveness?: "weak" | "resist"): void {
     const profile = resolveWeaponFeedbackProfile(weaponType);
-    this.play(isCrit ? "sfx_combat_crit_01" : "sfx_combat_hit_01", VOLUME.combat * profile.sfxVolumeMultiplier, {
-      rate: isCrit ? profile.sfxRate * 1.02 : profile.sfxRate,
-      detune: isCrit ? profile.sfxDetune + 80 : profile.sfxDetune
-    });
+    this.play(
+      isCrit ? "sfx_combat_crit_01" : "sfx_combat_hit_01",
+      VOLUME.combat *
+        profile.sfxVolumeMultiplier *
+        (effectiveness === "weak" ? 1.08 : effectiveness === "resist" ? 0.92 : 1),
+      {
+      rate:
+        effectiveness === "weak"
+          ? (isCrit ? profile.sfxRate * 1.04 : profile.sfxRate * 1.02)
+          : effectiveness === "resist"
+            ? profile.sfxRate * 0.96
+            : (isCrit ? profile.sfxRate * 1.02 : profile.sfxRate),
+      detune:
+        effectiveness === "weak"
+          ? profile.sfxDetune + 120
+          : effectiveness === "resist"
+            ? profile.sfxDetune - 80
+            : (isCrit ? profile.sfxDetune + 80 : profile.sfxDetune)
+    }
+    );
   }
 
   playCombatDeath(): void {
     this.play("sfx_combat_death_01", VOLUME.combat);
+  }
+
+  playProjectileFire(): void {
+    this.play("sfx_skill_chain_lightning_01", 0.18, {
+      rate: 1.2,
+      detune: -260
+    });
+  }
+
+  playProjectileMiss(): void {
+    this.play("sfx_hazard_ice_trigger_01", 0.14, {
+      rate: 1.22,
+      detune: 180
+    });
+  }
+
+  playBuffActivate(_buffId: string): void {
+    this.play("ui_build_formed_01", 0.18, {
+      rate: 1.28,
+      detune: 140
+    });
   }
 
   playBossPhaseChange(): void {

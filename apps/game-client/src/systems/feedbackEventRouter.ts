@@ -3,8 +3,22 @@ import type { BiomeId, CombatEvent, ConsumableId, HazardType, WeaponType } from 
 export type FeedbackAction =
   | {
       channel: "sfx";
+      cue: "buff_activate";
+      buffId: string;
+    }
+  | {
+      channel: "sfx";
+      cue: "projectile_fire";
+    }
+  | {
+      channel: "sfx";
+      cue: "projectile_miss";
+    }
+  | {
+      channel: "sfx";
       cue: "combat_hit";
       critical: boolean;
+      effectiveness?: "weak" | "resist";
       weaponType?: WeaponType;
     }
   | {
@@ -97,10 +111,32 @@ export type FeedbackAction =
     }
   | {
       channel: "vfx";
+      cue: "buff_activate";
+      targetId: string;
+      buffId: string;
+    }
+  | {
+      channel: "vfx";
+      cue: "projectile_fire";
+      sourceId: string;
+    }
+  | {
+      channel: "vfx";
+      cue: "projectile_hit";
+      position: { x: number; y: number };
+    }
+  | {
+      channel: "vfx";
+      cue: "projectile_miss";
+      position: { x: number; y: number };
+    }
+  | {
+      channel: "vfx";
       cue: "combat_hit";
       targetId: string;
       amount: number;
       critical: boolean;
+      effectiveness?: "weak" | "resist";
       weaponType?: WeaponType;
     }
   | {
@@ -161,8 +197,26 @@ export type FeedbackAction =
 
 export type FeedbackRouterInput =
   | {
+      type: "combat:projectile_fired";
+      sourceId: string;
+    }
+  | {
+      type: "combat:projectile_hit";
+      position: { x: number; y: number };
+    }
+  | {
+      type: "combat:projectile_miss";
+      position: { x: number; y: number };
+    }
+  | {
+      type: "buff:apply";
+      buffId: string;
+      targetId: string;
+    }
+  | {
       type: "combat:hit";
       combat: CombatEvent;
+      effectiveness?: "weak" | "resist";
       weaponType?: WeaponType;
     }
   | {
@@ -250,13 +304,15 @@ export function feedbackActionKey(action: FeedbackAction): string {
   if (action.channel === "sfx") {
     switch (action.cue) {
       case "combat_hit":
-        return `sfx:${action.cue}:${action.critical ? "crit" : "normal"}:${action.weaponType ?? "none"}`;
+        return `sfx:${action.cue}:${action.critical ? "crit" : "normal"}:${action.effectiveness ?? "none"}:${action.weaponType ?? "none"}`;
       case "skill_use":
         return `sfx:${action.cue}:${action.skillId}`;
       case "consumable_use":
         return `sfx:${action.cue}:${action.consumableId}`;
       case "event_spawn":
         return `sfx:${action.cue}:${action.eventId}`;
+      case "buff_activate":
+        return `sfx:${action.cue}:${action.buffId}`;
       case "ambient_biome":
         return `sfx:${action.cue}:${action.biomeId}`;
       case "hazard_trigger":
@@ -273,8 +329,15 @@ export function feedbackActionKey(action: FeedbackAction): string {
   }
 
   switch (action.cue) {
+    case "buff_activate":
+      return `vfx:${action.cue}:${action.targetId}:${action.buffId}`;
+    case "projectile_fire":
+      return `vfx:${action.cue}:${action.sourceId}`;
+    case "projectile_hit":
+    case "projectile_miss":
+      return `vfx:${action.cue}:${action.position.x},${action.position.y}`;
     case "combat_hit":
-      return `vfx:${action.cue}:${action.targetId}:${action.amount}:${action.critical ? "crit" : "normal"}:${action.weaponType ?? "none"}`;
+      return `vfx:${action.cue}:${action.targetId}:${action.amount}:${action.critical ? "crit" : "normal"}:${action.effectiveness ?? "none"}:${action.weaponType ?? "none"}`;
     case "combat_dodge":
     case "combat_death":
       return `vfx:${action.cue}:${action.targetId}`;
@@ -315,12 +378,59 @@ export function collapseDuplicateActions(actions: readonly FeedbackAction[]): Fe
 
 export function deriveFeedbackActions(input: FeedbackRouterInput): FeedbackAction[] {
   switch (input.type) {
+    case "combat:projectile_fired":
+      return [
+        {
+          channel: "sfx",
+          cue: "projectile_fire"
+        },
+        {
+          channel: "vfx",
+          cue: "projectile_fire",
+          sourceId: input.sourceId
+        }
+      ];
+    case "combat:projectile_hit":
+      return [
+        {
+          channel: "vfx",
+          cue: "projectile_hit",
+          position: input.position
+        }
+      ];
+    case "combat:projectile_miss":
+      return [
+        {
+          channel: "sfx",
+          cue: "projectile_miss"
+        },
+        {
+          channel: "vfx",
+          cue: "projectile_miss",
+          position: input.position
+        }
+      ];
+    case "buff:apply":
+      return [
+        {
+          channel: "sfx",
+          cue: "buff_activate",
+          buffId: input.buffId
+        },
+        {
+          channel: "vfx",
+          cue: "buff_activate",
+          targetId: input.targetId,
+          buffId: input.buffId
+        }
+      ];
     case "combat:hit":
       return [
         {
           channel: "sfx",
           cue: "combat_hit",
           critical: input.combat.kind === "crit",
+          ...(input.effectiveness === undefined ? {} : { effectiveness: input.effectiveness }),
           ...(input.weaponType === undefined ? {} : { weaponType: input.weaponType })
         },
         {
@@ -329,6 +439,7 @@ export function deriveFeedbackActions(input: FeedbackRouterInput): FeedbackActio
           targetId: input.combat.targetId,
           amount: input.combat.amount,
           critical: input.combat.kind === "crit",
+          ...(input.effectiveness === undefined ? {} : { effectiveness: input.effectiveness }),
           ...(input.weaponType === undefined ? {} : { weaponType: input.weaponType })
         }
       ];

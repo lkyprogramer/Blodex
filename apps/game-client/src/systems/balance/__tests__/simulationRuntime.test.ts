@@ -55,6 +55,7 @@ function createMonster(): MonsterRuntime {
     archetype: {
       id: "melee_grunt",
       name: "Melee",
+      attackType: "melee",
       spriteId: "monster_melee_01",
       healthMultiplier: 1,
       damageMultiplier: 1,

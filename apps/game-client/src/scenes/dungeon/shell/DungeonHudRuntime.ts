@@ -3,6 +3,7 @@ import {
   CONSUMABLE_DEFS,
   createSkillDefForLevel,
   describeEndlessMutator,
+  type SynergyRuntimeEffects,
   type BossRuntimeState,
   type ConsumableId,
   type ConsumableState,
@@ -21,6 +22,7 @@ import {
 } from "../../../ui/hud/compare/StatDeltaHighlighter";
 import { t } from "../../../i18n";
 import { consumableDescriptionLabel, consumableFailureReasonLabel, consumableNameLabel, difficultyLabel } from "../../../i18n/labelResolvers";
+import { buildHudStatusRailState } from "../ui/buildHudStatusRailState";
 
 const SKILL_READY_FLASH_DURATION_MS = 480;
 const CONSUMABLE_ICON_BY_ID: Record<ConsumableId, string> = {
@@ -40,6 +42,7 @@ export interface DungeonHudSource {
   consumables: ConsumableState;
   meta: MetaProgression;
   run: RunState;
+  synergyRuntime: Pick<SynergyRuntimeEffects, "activeSynergyIds">;
   currentBiome: { id: string; name: string };
   bossState: BossRuntimeState | null;
   floorConfig: FloorConfig;
@@ -58,6 +61,7 @@ export interface DungeonHudSource {
   mapRevealActive: boolean;
   contentLocalizer: {
     biomeName(id: string, fallback: string): string;
+    itemSetName(id: string, fallback: string): string;
     skillName(id: string, fallback: string): string;
     skillDescription(id: string, fallback: string): string;
   };
@@ -84,7 +88,8 @@ function recomputeNextTransientHudRefreshAt(
   source: DungeonHudSource,
   nowMs: number,
   hasActiveSkillCooldown: boolean,
-  nextStatHighlightAt = Number.POSITIVE_INFINITY
+  nextStatHighlightAt = Number.POSITIVE_INFINITY,
+  nextStatusRailRefreshAt = Number.POSITIVE_INFINITY
 ): void {
   let next = Number.POSITIVE_INFINITY;
   for (const expiresAtMs of source.newlyAcquiredItemUntilMs.values()) {
@@ -105,6 +110,9 @@ function recomputeNextTransientHudRefreshAt(
   }
   if (nextStatHighlightAt > nowMs) {
     next = Math.min(next, nextStatHighlightAt);
+  }
+  if (nextStatusRailRefreshAt > nowMs) {
+    next = Math.min(next, nextStatusRailRefreshAt);
   }
   source.nextTransientHudRefreshAt = next;
 }
@@ -128,6 +136,12 @@ export class DungeonHudRuntime {
     );
     const newlyAcquiredItemIds = collectNewlyAcquiredItemIds(source, nowMs);
     const statHighlightSnapshot = collectActiveHudStatHighlights(source.statHighlightEntries, nowMs);
+    const statusRailState = buildHudStatusRailState({
+      player: source.player,
+      synergyRuntime: source.synergyRuntime,
+      nowMs,
+      itemSetName: (setId, fallback) => source.contentLocalizer.itemSetName(setId, fallback)
+    });
     source.statHighlightEntries = statHighlightSnapshot.persisted;
     if (source.levelUpPulseUntilMs <= nowMs) {
       source.levelUpPulseLevel = null;
@@ -240,6 +254,7 @@ export class DungeonHudRuntime {
       newlyAcquiredItemIds,
       ...(levelUpPulseLevel === undefined ? {} : { levelUpPulseLevel }),
       ...(statHighlightSnapshot.active.length === 0 ? {} : { statHighlights: statHighlightSnapshot.active }),
+      ...(statusRailState.state === undefined ? {} : { statusRail: statusRailState.state }),
       consumables,
       skillSlots,
       isBossFloor: source.floorConfig.isBossFloor,
@@ -251,7 +266,13 @@ export class DungeonHudRuntime {
             bossMaxHealth: source.bossState.maxHealth
           })
     };
-    recomputeNextTransientHudRefreshAt(source, nowMs, hasActiveSkillCooldown, statHighlightSnapshot.nextRefreshAt);
+    recomputeNextTransientHudRefreshAt(
+      source,
+      nowMs,
+      hasActiveSkillCooldown,
+      statHighlightSnapshot.nextRefreshAt,
+      statusRailState.nextRefreshAt
+    );
 
     const snapshot = source.hudPresenter.buildSnapshot({
       view: {

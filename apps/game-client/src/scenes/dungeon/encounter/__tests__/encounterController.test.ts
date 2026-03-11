@@ -6,6 +6,7 @@ describe("EncounterController", () => {
     const deps = {
       updateCombat: vi.fn(),
       updateMonsters: vi.fn(),
+      updateProjectiles: vi.fn(),
       updateMonsterCombat: vi.fn(),
       updateBossCombat: vi.fn(),
       updateChallengeRoom: vi.fn()
@@ -19,6 +20,7 @@ describe("EncounterController", () => {
 
     expect(deps.updateCombat).toHaveBeenCalledWith(120);
     expect(deps.updateMonsters).toHaveBeenCalledWith(0.016, 120);
+    expect(deps.updateProjectiles).toHaveBeenCalledWith(0.016, 120);
     expect(deps.updateMonsterCombat).toHaveBeenCalledWith(120);
     expect(deps.updateBossCombat).toHaveBeenCalledWith(120);
     expect(deps.updateChallengeRoom).not.toHaveBeenCalled();
@@ -28,6 +30,7 @@ describe("EncounterController", () => {
     const deps = {
       updateCombat: vi.fn(),
       updateMonsters: vi.fn(),
+      updateProjectiles: vi.fn(),
       updateMonsterCombat: vi.fn(),
       updateBossCombat: vi.fn(),
       updateChallengeRoom: vi.fn()
