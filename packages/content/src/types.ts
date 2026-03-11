@@ -358,6 +358,12 @@ export interface SkillEffect {
   buffId?: string;
 }
 
+export interface SkillDisplacement {
+  type: "blink" | "dash";
+  distance: number;
+  anchor: "target" | "direction";
+}
+
 export interface SkillDef {
   id: string;
   name: string;
@@ -369,6 +375,7 @@ export interface SkillDef {
   damageType: DamageType;
   targeting: "self" | "nearest" | "directional" | "aoe_around";
   range: number;
+  displacement?: SkillDisplacement;
   effects: SkillEffect[];
   unlockCondition?: string;
 }

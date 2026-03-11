@@ -31,6 +31,7 @@ import type { HudStatHighlightEntry } from "../../../ui/hud/compare/StatDeltaHig
 import type { EventRuntimeModule } from "../world/EventRuntimeModule";
 import type { HazardRuntimeModule } from "../world/HazardRuntimeModule";
 import type { ProgressionRuntimeModule } from "../world/ProgressionRuntimeModule";
+import type { DodgeRuntimeState } from "../shell/dodgeTypes";
 
 export interface RunSaveSnapshotRngPort {
   getCursor(): number;
@@ -57,6 +58,7 @@ export interface RunSaveSnapshotSceneStatePort {
   merchantOffers: MerchantOffer[];
   mapRevealActive: boolean;
   blueprintFoundIdsInRun: string[];
+  dodgeRuntimeState: DodgeRuntimeState;
   mutationRuntime: {
     activeIds: string[];
   };
@@ -108,6 +110,7 @@ export interface RunStateRestoreMutableStatePort {
   manualMoveTargetFailures: number;
   nextManualPathReplanAt: number;
   nextKeyboardMoveInputAt: number;
+  dodgeRuntimeState: DodgeRuntimeState;
   eventPanelOpen: boolean;
   statHighlightEntries: HudStatHighlightEntry[];
   levelUpPulseUntilMs: number;

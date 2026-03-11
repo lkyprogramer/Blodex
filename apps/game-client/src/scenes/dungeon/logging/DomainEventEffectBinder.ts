@@ -122,6 +122,17 @@ export function bindDomainEventEffects(host: DomainEventEffectHost): void {
       );
     });
 
+    host.eventBus.on("player:dodge", ({ playerId, result }) => {
+      if (result !== "success") {
+        return;
+      }
+      host.routeFeedback({
+        type: "player:dodge",
+        playerId
+      });
+      host.hudDirty = true;
+    });
+
     host.eventBus.on("combat:death", ({ combat }) => {
       host.routeFeedback({
         type: "combat:death",

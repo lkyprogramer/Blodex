@@ -16,6 +16,7 @@ import type { CombatSystem } from "../../../systems/CombatSystem";
 import type { EntityManager, MonsterRuntime } from "../../../systems/EntityManager";
 import type { RunLogService } from "../logging/RunLogService";
 import type { DungeonScene } from "../../DungeonScene";
+import type { DodgeRuntimeState } from "./dodgeTypes";
 
 const AI_ACTIVE_RADIUS_TILES = 10;
 const AI_FAR_UPDATE_INTERVAL_FRAMES = 3;
@@ -81,6 +82,7 @@ export interface DungeonCombatSource {
   player: PlayerState;
   run: DungeonScene["run"];
   attackTargetId: string | null;
+  dodgeRuntimeState: DodgeRuntimeState;
   nextPlayerAttackAt: number;
   combatRng: DungeonScene["combatRng"];
   lootRng: DungeonScene["lootRng"];
@@ -150,6 +152,7 @@ export class DungeonCombatRuntime {
       run: source.run,
       monsters: source.entityManager.listMonsters(),
       attackTargetId: source.attackTargetId,
+      allowAutoTarget: !source.dodgeRuntimeState.autoTargetSuppressed,
       nextPlayerAttackAt: source.nextPlayerAttackAt,
       nowMs,
       combatRng: source.combatRng,

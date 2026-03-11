@@ -2,6 +2,8 @@ import type {
   BossRuntimeState,
   ConsumableState,
   DeferredOutcomeState,
+  DodgeDirectionSource,
+  DodgeResult,
   DungeonLayout,
   HazardRuntimeState,
   ItemInstance,
@@ -83,6 +85,14 @@ export interface RuntimeEventNodeState {
   merchantOffers?: MerchantOffer[];
 }
 
+export interface PersistedDodgeRuntimeState {
+  cooldownRemainingMs: number;
+  autoTargetSuppressed: boolean;
+  lastDirection?: { x: number; y: number };
+  lastDirectionSource?: DodgeDirectionSource;
+  lastResult?: DodgeResult;
+}
+
 export interface MinimapSnapshot {
   layoutHash: string;
   exploredKeys: number[];
@@ -153,6 +163,7 @@ export interface RunSaveRuntimeState {
   dungeon: DungeonLayout;
   staircase: StaircaseState;
   hazards: HazardRuntimeState[];
+  dodge?: PersistedDodgeRuntimeState;
   bossEncounterId?: string | null;
   boss: BossRuntimeState | null;
   monsters: RuntimeMonsterState[];
@@ -555,6 +566,26 @@ function isMinimapSnapshot(value: unknown): value is MinimapSnapshot {
   );
 }
 
+function isDodgeDirectionSource(value: unknown): value is DodgeDirectionSource {
+  return value === "move_vector" || value === "cursor" || value === "facing";
+}
+
+function isDodgeResult(value: unknown): value is DodgeResult {
+  return value === "attempt" || value === "blocked" || value === "success" || value === "evade_success";
+}
+
+function isPersistedDodgeRuntimeState(value: unknown): value is PersistedDodgeRuntimeState {
+  return (
+    isRecord(value) &&
+    isFiniteNumber(value.cooldownRemainingMs) &&
+    value.cooldownRemainingMs >= 0 &&
+    typeof value.autoTargetSuppressed === "boolean" &&
+    (value.lastDirection === undefined || isPoint(value.lastDirection)) &&
+    (value.lastDirectionSource === undefined || isDodgeDirectionSource(value.lastDirectionSource)) &&
+    (value.lastResult === undefined || isDodgeResult(value.lastResult))
+  );
+}
+
 function isLootEntry(value: unknown): value is { item: ItemInstance; position: { x: number; y: number } } {
   return isRecord(value) && isRecord(value.item) && isPoint(value.position);
 }
@@ -714,6 +745,9 @@ function validateRuntimeState(runtime: Record<string, unknown>): boolean {
     return false;
   }
   if (!(runtime.bossEncounterId === undefined || runtime.bossEncounterId === null || typeof runtime.bossEncounterId === "string")) {
+    return false;
+  }
+  if (runtime.dodge !== undefined && !isPersistedDodgeRuntimeState(runtime.dodge)) {
     return false;
   }
   if (!Array.isArray(runtime.monsters) || !runtime.monsters.every((entry) => isRuntimeMonsterState(entry))) {

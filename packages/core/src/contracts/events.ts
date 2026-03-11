@@ -17,6 +17,8 @@ import type {
   RunSummary,
   SkillResolution,
   ConsumableId,
+  DodgeDirectionSource,
+  DodgeResult,
   StaircaseState
 } from "./types";
 
@@ -39,6 +41,16 @@ export interface GameEventMap {
   "player:levelup": {
     playerId: string;
     level: number;
+    timestampMs: number;
+  };
+  "player:dodge": {
+    playerId: string;
+    result: DodgeResult;
+    direction: { x: number; y: number };
+    directionSource: DodgeDirectionSource;
+    reason?: "blocked" | "position" | "iframe";
+    from?: { x: number; y: number };
+    to?: { x: number; y: number };
     timestampMs: number;
   };
   "loot:drop": {
@@ -186,6 +198,7 @@ export interface GameEventMap {
     bossId: string;
     attack: BossAttack;
     target?: { x: number; y: number };
+    result?: "hit" | "evaded_by_position" | "evaded_by_iframe";
     timestampMs: number;
   };
   "skill:use": {

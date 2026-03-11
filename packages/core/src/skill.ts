@@ -223,7 +223,8 @@ export function resolveSkill(
     player: nextPlayer,
     affectedMonsters: updatedMonsters,
     events,
-    buffsApplied
+    buffsApplied,
+    ...(selectedTargets[0] === undefined ? {} : { primaryTargetId: selectedTargets[0].id })
   };
 }
 

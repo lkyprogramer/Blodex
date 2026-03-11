@@ -100,6 +100,17 @@ describe("RunSaveSnapshotBuilder", () => {
       hazards: [],
       currentBossEncounterId: "story_bone_throne_finale",
       bossState: null,
+      dodgeRuntimeState: {
+        readyAtMs: 900,
+        iframeUntilMs: 320,
+        autoTargetSuppressed: true,
+        lastSuccessfulDodgeAtMs: 100,
+        lastMoveIntentDirection: null,
+        lastFacingDirection: { x: 1, y: 0 },
+        lastDodgeDirection: { x: 1, y: 0 },
+        lastDodgeDirectionSource: "move_vector",
+        lastResult: "success"
+      },
       entityManager: {
         listMonsters: () => [
           {
@@ -143,6 +154,13 @@ describe("RunSaveSnapshotBuilder", () => {
     expect(capturePowerSpikeBudgetState).toHaveBeenCalledTimes(1);
     expect(snapshot?.runtime.phase6TelemetryState).toBeDefined();
     expect(snapshot?.runtime.bossEncounterId).toBe("story_bone_throne_finale");
+    expect(snapshot?.runtime.dodge).toEqual({
+      cooldownRemainingMs: 640,
+      autoTargetSuppressed: true,
+      lastDirection: { x: 1, y: 0 },
+      lastDirectionSource: "move_vector",
+      lastResult: "success"
+    });
     expect(snapshot?.runtime.powerSpikeBudgetState?.pairStates["1-2"]?.hitCount).toBe(1);
     expect(snapshot?.session.progressionPromptState).toEqual({
       nextPromptDelayMs: 2_100,

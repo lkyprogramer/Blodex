@@ -78,6 +78,17 @@ function createSource(): DungeonInputSource {
     manualMoveTargetFailures: 0,
     nextManualPathReplanAt: 0,
     nextKeyboardMoveInputAt: 0,
+    dodgeRuntimeState: {
+      readyAtMs: 0,
+      iframeUntilMs: 0,
+      autoTargetSuppressed: false,
+      lastSuccessfulDodgeAtMs: null,
+      lastMoveIntentDirection: null,
+      lastFacingDirection: { x: 1, y: 0 },
+      lastDodgeDirection: null,
+      lastDodgeDirectionSource: null,
+      lastResult: null
+    },
     cursorKeys: {
       left: { isDown: false },
       right: { isDown: true },
@@ -85,7 +96,17 @@ function createSource(): DungeonInputSource {
       down: { isDown: false }
     } as DungeonInputSource["cursorKeys"],
     keyboardBindings: [],
-    input: {},
+    input: {
+      keyboard: {
+        on: vi.fn(),
+        off: vi.fn(),
+        createCursorKeys: vi.fn(() => null)
+      },
+      activePointer: {
+        worldX: 0,
+        worldY: 0
+      }
+    } as unknown as DungeonInputSource["input"],
     debugRuntimeModule: {
       handleHotkey: vi.fn()
     },
@@ -107,9 +128,11 @@ function createSource(): DungeonInputSource {
     isBlockingOverlayOpen: vi.fn(() => false),
     getRunRelativeNowMs: vi.fn(() => 100),
     recordPlayerInput: vi.fn(),
+    scheduleRunSave: vi.fn(),
     computePathTo: vi.fn(() => [{ x: 1, y: 0 }]),
     tryUseSkill: vi.fn(),
-    tryUseConsumable: vi.fn()
+    tryUseConsumable: vi.fn(),
+    tryUseDodge: vi.fn(() => true)
   };
 }
 
@@ -123,5 +146,14 @@ describe("DungeonInputRuntime", () => {
     expect(source.path).toEqual([{ x: 1, y: 0 }]);
     expect(source.manualMoveTarget).toEqual({ x: 1, y: 0 });
     expect(source.recordPlayerInput).toHaveBeenCalledWith(100);
+  });
+
+  it("binds Space to dodge", () => {
+    const source = createSource();
+    const runtime = new DungeonInputRuntime(() => source);
+
+    runtime.bindSkillKeys();
+
+    expect(source.keyboardBindings.some((binding) => binding.eventName === "keydown-SPACE")).toBe(true);
   });
 });

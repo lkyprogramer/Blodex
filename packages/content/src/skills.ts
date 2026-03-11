@@ -77,6 +77,11 @@ export const SKILL_DEFS: SkillDef[] = [
     damageType: "physical",
     targeting: "nearest",
     range: 6,
+    displacement: {
+      type: "blink",
+      distance: 3,
+      anchor: "target"
+    },
     effects: [{ type: "buff", value: 1, duration: 3000, buffId: "guaranteed_crit" }]
   },
   {
@@ -129,6 +134,11 @@ export const SKILL_DEFS: SkillDef[] = [
     damageType: "physical",
     targeting: "nearest",
     range: 5.5,
+    displacement: {
+      type: "dash",
+      distance: 2,
+      anchor: "target"
+    },
     effects: [{ type: "damage", value: { base: 7, scaling: "dexterity", ratio: 1.3 } }]
   },
   {
@@ -197,6 +207,11 @@ export const SKILL_DEFS: SkillDef[] = [
     damageType: "arcane",
     targeting: "nearest",
     range: 7,
+    displacement: {
+      type: "blink",
+      distance: 3,
+      anchor: "target"
+    },
     effects: [{ type: "damage", value: { base: 10, scaling: "intelligence", ratio: 1.3 } }]
   }
 ];

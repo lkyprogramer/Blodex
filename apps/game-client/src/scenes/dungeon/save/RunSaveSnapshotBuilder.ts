@@ -1,6 +1,7 @@
 import { SAVE_LEASE_TTL_MS } from "../../../systems/SaveManager";
 import type {
   BuffInstance,
+  PersistedDodgeRuntimeState,
   PersistedBuffState,
   RunRngStreamName,
   RunSaveDataV3,
@@ -63,6 +64,7 @@ export class RunSaveSnapshotBuilder {
       typeof host.capturePhase6TelemetryState === "function"
         ? host.capturePhase6TelemetryState(Math.max(0, nowMs - run.startedAtMs))
         : undefined;
+    const dodgeSnapshot = this.snapshotDodgeRuntime(nowMs);
 
     return {
       schemaVersion: 3,
@@ -105,6 +107,7 @@ export class RunSaveSnapshotBuilder {
           ...hazard,
           position: { ...hazard.position }
         })),
+        ...(dodgeSnapshot === undefined ? {} : { dodge: dodgeSnapshot }),
         bossEncounterId: host.currentBossEncounterId,
         boss:
           host.bossState === null
@@ -228,6 +231,28 @@ export class RunSaveSnapshotBuilder {
       hazard: host.hazardRng?.getCursor() ?? 0,
       event: host.eventRng?.getCursor() ?? 0,
       merchant: host.merchantRng?.getCursor() ?? 0
+    };
+  }
+
+  private snapshotDodgeRuntime(nowMs: number): PersistedDodgeRuntimeState | undefined {
+    const dodgeState = this.options.host.dodgeRuntimeState;
+    const cooldownRemainingMs = Math.max(0, Math.floor(dodgeState.readyAtMs - nowMs));
+    if (
+      cooldownRemainingMs <= 0 &&
+      !dodgeState.autoTargetSuppressed &&
+      dodgeState.lastDodgeDirection === null &&
+      dodgeState.lastResult === null
+    ) {
+      return undefined;
+    }
+    return {
+      cooldownRemainingMs,
+      autoTargetSuppressed: dodgeState.autoTargetSuppressed,
+      ...(dodgeState.lastDodgeDirection === null ? {} : { lastDirection: { ...dodgeState.lastDodgeDirection } }),
+      ...(dodgeState.lastDodgeDirectionSource === null
+        ? {}
+        : { lastDirectionSource: dodgeState.lastDodgeDirectionSource }),
+      ...(dodgeState.lastResult === null ? {} : { lastResult: dodgeState.lastResult })
     };
   }
 

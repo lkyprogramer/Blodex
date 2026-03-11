@@ -227,6 +227,7 @@ import { BossRuntimeModule, type BossRuntimeHost } from "./dungeon/encounter/Bos
 import { BossSpawnService } from "./dungeon/encounter/BossSpawnService";
 import { BossTelegraphPresenter } from "./dungeon/encounter/BossTelegraphPresenter";
 import { EncounterController } from "./dungeon/encounter/EncounterController";
+import { applySkillDisplacement } from "./dungeon/encounter/applySkillDisplacement";
 import { PlayerActionModule, type PlayerActionHost } from "./dungeon/encounter/PlayerActionModule";
 import { entityLabel } from "./dungeon/logging/labelResolvers";
 import {
@@ -247,6 +248,7 @@ import { Phase6TelemetryTracker } from "./dungeon/taste/Phase6Telemetry";
 import { PowerSpikeRuntimeModule } from "./dungeon/taste/PowerSpikeRuntimeModule";
 import { TasteRuntimePortHub } from "./dungeon/taste/TasteRuntimePorts";
 import { HudPresenter } from "./dungeon/ui/HudPresenter";
+import { DodgeRuntime } from "./dungeon/shell/DodgeRuntime";
 import { DungeonFrameRuntime } from "./dungeon/shell/DungeonFrameRuntime";
 import { DungeonHudRuntime } from "./dungeon/shell/DungeonHudRuntime";
 import { DungeonInputRuntime } from "./dungeon/shell/DungeonInputRuntime";
@@ -255,6 +257,7 @@ import { DungeonDiagnosticsRuntime } from "./dungeon/shell/DungeonDiagnosticsRun
 import { DungeonMetaRuntime } from "./dungeon/shell/DungeonMetaRuntime";
 import { initializeDungeonSceneShell, type DungeonSceneShellSource } from "./dungeon/shell/DungeonSceneShellRuntime";
 import { DungeonSessionFacade } from "./dungeon/shell/DungeonSessionFacade";
+import { createInitialDodgeRuntimeState } from "./dungeon/shell/dodgeTypes";
 import {
   buildHudStatHighlightEntries,
   collectActiveHudStatHighlights,
@@ -336,6 +339,7 @@ export class DungeonScene extends Phaser.Scene {
   private readonly hudRuntime = new DungeonHudRuntime(() => this.dungeonSceneHostBridge);
   private readonly inputRuntime = new DungeonInputRuntime(() => this.dungeonSceneHostBridge);
   private readonly combatRuntime = new DungeonCombatRuntime(() => this.dungeonSceneHostBridge);
+  private readonly dodgeRuntime = new DodgeRuntime(() => this.dungeonSceneHostBridge);
   private readonly diagnosticsRuntime = new DungeonDiagnosticsRuntime({
     diagnosticsService: this.diagnosticsService,
     isEnabled: () => this.diagnosticsEnabled,
@@ -414,6 +418,7 @@ export class DungeonScene extends Phaser.Scene {
       manualMoveTargetFailures: mutableHostField(() => scene.manualMoveTargetFailures, (value) => { scene.manualMoveTargetFailures = value; }),
       nextManualPathReplanAt: mutableHostField(() => scene.nextManualPathReplanAt, (value) => { scene.nextManualPathReplanAt = value; }),
       nextKeyboardMoveInputAt: mutableHostField(() => scene.nextKeyboardMoveInputAt, (value) => { scene.nextKeyboardMoveInputAt = value; }),
+      dodgeRuntimeState: mutableHostField(() => scene.dodgeRuntimeState, (value) => { scene.dodgeRuntimeState = value; }),
       cursorKeys: mutableHostField(() => scene.cursorKeys, (value) => { scene.cursorKeys = value; }),
       statHighlightEntries: mutableHostField(() => scene.statHighlightEntries, (value) => { scene.statHighlightEntries = value; }),
       levelUpPulseUntilMs: mutableHostField(() => scene.levelUpPulseUntilMs, (value) => { scene.levelUpPulseUntilMs = value; }),
@@ -577,10 +582,12 @@ export class DungeonScene extends Phaser.Scene {
       recordPlayerInput: (nowMs) => scene.recordPlayerInput(nowMs),
       recordSkillResolutionTelemetry: (resolution, nowMs) => scene.recordSkillResolutionTelemetry(resolution, nowMs),
       applyResolvedBuffs: (buffs, nowMs) => scene.applyResolvedBuffs(buffs, nowMs),
+      applySkillDisplacement: (skillDef, resolution, nowMs) => scene.applySkillDisplacement(skillDef, resolution, nowMs),
       resolveEntityLabel: (entityId) => scene.resolveEntityLabel(entityId),
       flushQueuedComparePrompts: () => scene.heartbeatFeedbackRuntime.flushImmediateComparePrompts(),
       computePathTo: (target) => scene.computePathTo(target),
       tryUseSkill: (slotIndex) => scene.tryUseSkill(slotIndex),
+      tryUseDodge: () => scene.tryUseDodge(),
       tryUseConsumable: (consumableId: ConsumableId) => scene.tryUseConsumable(consumableId),
       recordAcquiredItemTelemetry: (item, source, nowMs, baselinePlayer) =>
         scene.recordAcquiredItemTelemetry(item, source, nowMs, baselinePlayer)
@@ -703,6 +710,7 @@ export class DungeonScene extends Phaser.Scene {
   private manualMoveTargetFailures = 0;
   private nextManualPathReplanAt = 0;
   private nextKeyboardMoveInputAt = 0;
+  private dodgeRuntimeState = createInitialDodgeRuntimeState();
   private cursorKeys: Phaser.Types.Input.Keyboard.CursorKeys | null = null;
   private readonly keyboardBindings: Array<{
     eventName: string;
@@ -982,6 +990,7 @@ export class DungeonScene extends Phaser.Scene {
     this.uiManager.hideEquipmentComparePrompt();
     this.powerSpikeRuntimeModule.resetRun();
     this.heartbeatFeedbackRuntime.reset();
+    this.dodgeRuntimeState = createInitialDodgeRuntimeState();
     this.sessionFacade.bootstrapRun(runSeed, difficulty);
     this.eventBus.emit("run:start", {
       runSeed: this.runSeed,
@@ -1411,8 +1420,34 @@ export class DungeonScene extends Phaser.Scene {
     this.playerActionModule.tryUseSkill(slotIndex);
   }
 
+  private tryUseDodge(): boolean {
+    return this.dodgeRuntime.tryUseDodge();
+  }
+
   private tryUseConsumable(consumableId: ConsumableId): void {
     this.playerActionModule.tryUseConsumable(consumableId);
+  }
+
+  private applySkillDisplacement(skillDef: SkillDef, resolution: SkillResolution, nowMs: number): void {
+    const scene = this;
+    applySkillDisplacement(
+      {
+        get player() { return scene.player; }, set player(value) { scene.player = value; },
+        dodgeRuntimeState: scene.dodgeRuntimeState,
+        dungeon: scene.dungeon,
+        entityManager: scene.entityManager,
+        eventBus: scene.eventBus,
+        get path() { return scene.path; }, set path(value) { scene.path = value; },
+        get attackTargetId() { return scene.attackTargetId; }, set attackTargetId(value) { scene.attackTargetId = value; },
+        get manualMoveTarget() { return scene.manualMoveTarget; }, set manualMoveTarget(value) { scene.manualMoveTarget = value; },
+        get manualMoveTargetFailures() { return scene.manualMoveTargetFailures; }, set manualMoveTargetFailures(value) { scene.manualMoveTargetFailures = value; },
+        get nextManualPathReplanAt() { return scene.nextManualPathReplanAt; }, set nextManualPathReplanAt(value) { scene.nextManualPathReplanAt = value; },
+        get hudDirty() { return scene.hudDirty; }, set hudDirty(value) { scene.hudDirty = value; }
+      },
+      skillDef,
+      resolution,
+      nowMs
+    );
   }
 
   private registerStatDeltaHighlights(
@@ -1471,6 +1506,7 @@ export class DungeonScene extends Phaser.Scene {
     this.manualMoveTargetFailures = 0;
     this.nextManualPathReplanAt = 0;
     this.nextKeyboardMoveInputAt = 0;
+    this.dodgeRuntimeState = createInitialDodgeRuntimeState();
     this.newlyAcquiredItemUntilMs.clear();
     this.previousSkillCooldownLeftById.clear();
     this.skillReadyFlashUntilMsById.clear();

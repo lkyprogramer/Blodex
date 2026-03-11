@@ -214,6 +214,31 @@ describe("CombatSystem auto target preference", () => {
     expect(result.combatEvents).toEqual([]);
   });
 
+  it("honors temporary auto-target suppression after dodge-like interrupts", () => {
+    const combat = new CombatSystem();
+    const player = makePlayer({ x: 0, y: 0 });
+    const nearMonster = makeMonsterRuntime("near", { x: 1, y: 0 });
+    const run = createRunState("seed", 0, "normal");
+
+    const result = combat.updatePlayerAttack({
+      player,
+      run,
+      monsters: [nearMonster],
+      attackTargetId: null,
+      allowAutoTarget: false,
+      nextPlayerAttackAt: 0,
+      nowMs: 0,
+      combatRng: new SeededRng("combat-seed"),
+      lootRng: new SeededRng("loot-seed"),
+      itemDefs: {},
+      lootTables: {}
+    });
+
+    expect(result.attackTargetId).toBeNull();
+    expect(result.requestPathTarget).toBeUndefined();
+    expect(result.combatEvents).toEqual([]);
+  });
+
   it("preserves lifesteal health on non-kill player attacks", () => {
     const combat = new CombatSystem();
     const player = {
