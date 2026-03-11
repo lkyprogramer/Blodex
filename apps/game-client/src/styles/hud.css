@@ -212,7 +212,7 @@ button,
 }
 
 .status-chip {
-  min-width: 64px;
+  min-width: calc(var(--space-6) * 4);
   justify-content: space-between;
 }
 
@@ -237,7 +237,7 @@ button,
 }
 
 .status-chip.overflow {
-  min-width: 44px;
+  min-width: calc(var(--space-5) * 3 + var(--space-1) * 2);
   justify-content: center;
 }
 
