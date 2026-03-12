@@ -54,7 +54,21 @@ function createProjectileSprite() {
   };
 }
 
-function createRangedMonster(id: string, damage: number, nextAttackAt = 0): MonsterRuntime {
+function createRangedMonster(
+  id: string,
+  damage: number,
+  nextAttackAt = 0,
+  projectilePattern?: {
+    family: "straight" | "spread" | "lob";
+    speedTilesPerSecond?: number;
+    hitRadiusTiles?: number;
+    width?: number;
+    height?: number;
+    spreadCount?: number;
+    spreadAngleDeg?: number;
+    targetOffsetTiles?: number;
+  }
+): MonsterRuntime {
   return {
     state: {
       id,
@@ -82,6 +96,7 @@ function createRangedMonster(id: string, damage: number, nextAttackAt = 0): Mons
       xpValue: 6,
       spriteId: "monster_ranged_01",
       dropTableId: "starter_floor",
+      ...(projectilePattern === undefined ? {} : { projectilePattern }),
       aiConfig: {
         behavior: "kite",
         chaseRange: 8,
@@ -275,5 +290,22 @@ describe("DungeonCombatRuntime", () => {
           (entry.payload as { sourceId: string }).sourceId === "ranged-b"
       )
     ).toBe(false);
+  });
+
+  it("emits one fired event per spread projectile shard", () => {
+    const spreadMonster = createRangedMonster("ranged-spread", 8, 0, {
+      family: "spread",
+      spreadCount: 3,
+      spreadAngleDeg: 10
+    });
+    const { source, emitted } = createSource({
+      monsters: [spreadMonster]
+    });
+    const runtime = new DungeonCombatRuntime(() => source);
+
+    runtime.updateMonsterCombat(1_000);
+
+    const fired = emitted.filter((entry) => entry.event === "combat:projectile_fired");
+    expect(fired).toHaveLength(3);
   });
 });

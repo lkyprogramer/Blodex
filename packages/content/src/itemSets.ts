@@ -75,6 +75,30 @@ export const ITEM_SET_DEFS: ItemSetDef[] = [
         }
       }
     ]
+  },
+  {
+    id: "winter_oath",
+    name: "Winter Oath",
+    theme: "defense",
+    associatedDamageType: "cold",
+    cardAssetId: "set_collection_card_01",
+    itemIds: ["glacier_circlet", "rimeguard_plate", "hailstone_loop"],
+    bonuses: [
+      {
+        pieces: 2,
+        derivedFlat: {
+          armor: 6,
+          maxMana: 14
+        }
+      },
+      {
+        pieces: 3,
+        derivedFlat: {
+          moveSpeed: 8,
+          critChance: 0.03
+        }
+      }
+    ]
   }
 ];
 

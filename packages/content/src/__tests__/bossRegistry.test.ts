@@ -3,7 +3,8 @@ import {
   BOSS_DEF_MAP,
   BOSS_ENCOUNTERS,
   BOSS_REWARD_POLICY_MAP,
-  BOSS_TELEGRAPH_PROFILE_MAP
+  BOSS_TELEGRAPH_PROFILE_MAP,
+  listChallengeEncounterIdsForFloor
 } from "../index";
 
 describe("boss registry", () => {
@@ -30,5 +31,10 @@ describe("boss registry", () => {
     expect(bossIds.has("ember_warden")).toBe(true);
     expect(bossIds.has("cathedral_judge")).toBe(true);
     expect(bossIds.has("ossuary_keeper")).toBe(true);
+    expect(bossIds.has("glacier_oracle")).toBe(true);
+  });
+
+  it("exposes the second challenge batch on the intended floor", () => {
+    expect(listChallengeEncounterIdsForFloor(6)).toContain("glacier_sanctum");
   });
 });

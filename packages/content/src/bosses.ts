@@ -261,7 +261,72 @@ export const OSSUARY_KEEPER: BossDef = {
   exclusiveFloor: 5
 };
 
-export const BOSS_DEFS: BossDef[] = [BONE_SOVEREIGN, CATHEDRAL_JUDGE, EMBER_WARDEN, OSSUARY_KEEPER];
+export const GLACIER_ORACLE: BossDef = {
+  id: "glacier_oracle",
+  name: "Glacier Oracle",
+  spriteKey: "boss_glacier_oracle",
+  enemyProfileId: "frostbound",
+  damageProfile: ENEMY_PROFILE_MAP.frostbound!.damageProfile,
+  baseHealth: 880,
+  phases: [
+    {
+      hpThreshold: 1,
+      attackPattern: [
+        {
+          id: "hail_bolt",
+          cooldownMs: 2600,
+          telegraphMs: 950,
+          type: "projectile",
+          damage: 20,
+          range: 7
+        },
+        {
+          id: "ice_lattice",
+          cooldownMs: 6200,
+          telegraphMs: 1700,
+          type: "aoe_zone",
+          damage: 18,
+          range: 6,
+          radius: 1.8
+        }
+      ]
+    },
+    {
+      hpThreshold: 0.52,
+      attackPattern: [
+        {
+          id: "winter_lash",
+          cooldownMs: 2100,
+          telegraphMs: 800,
+          type: "melee",
+          damage: 26,
+          range: 1.7
+        },
+        {
+          id: "hail_bolt",
+          cooldownMs: 2200,
+          telegraphMs: 750,
+          type: "projectile",
+          damage: 24,
+          range: 7
+        },
+        {
+          id: "mirror_spawn",
+          cooldownMs: 10500,
+          telegraphMs: 0,
+          type: "summon",
+          damage: 0,
+          range: 0
+        }
+      ],
+      enrageTimer: 100000
+    }
+  ],
+  dropTableId: "boss_glacier_oracle_rare",
+  exclusiveFloor: 6
+};
+
+export const BOSS_DEFS: BossDef[] = [BONE_SOVEREIGN, CATHEDRAL_JUDGE, EMBER_WARDEN, OSSUARY_KEEPER, GLACIER_ORACLE];
 
 export const BOSS_DEF_MAP = Object.fromEntries(BOSS_DEFS.map((entry) => [entry.id, entry])) as Record<
   BossDef["id"],

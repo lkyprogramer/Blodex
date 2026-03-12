@@ -88,13 +88,26 @@ export class RunSaveSnapshotBuilder {
         dungeon: {
           ...host.dungeon,
           walkable: host.dungeon.walkable.map((row: boolean[]) => [...row]),
-          rooms: host.dungeon.rooms.map((room) => ({ ...room })),
+          rooms: host.dungeon.rooms.map((room) => ({
+            ...room,
+            ...(room.authoredSpawnPoints === undefined
+              ? {}
+              : { authoredSpawnPoints: room.authoredSpawnPoints.map((point) => ({ ...point })) })
+          })),
           corridors: host.dungeon.corridors.map((corridor) => ({
             ...corridor,
             path: corridor.path.map((point) => ({ ...point }))
           })),
           spawnPoints: host.dungeon.spawnPoints.map((point) => ({ ...point })),
           playerSpawn: { ...host.dungeon.playerSpawn },
+          ...(host.dungeon.props === undefined
+            ? {}
+            : {
+                props: host.dungeon.props.map((prop) => ({
+                  ...prop,
+                  position: { ...prop.position }
+                }))
+              }),
           hiddenRooms: (host.dungeon.hiddenRooms ?? []).map((room) => ({
             roomId: room.roomId,
             entrance: { ...room.entrance },

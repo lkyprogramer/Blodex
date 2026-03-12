@@ -403,6 +403,11 @@ const UI_MESSAGES: Record<string, string> = {
   "boss.challenge.ossuary_keeper_trial.description_abyss": "Claim the keeper's cache and resume the run.",
   "boss.challenge.ossuary_keeper_trial.description_daily": "Claim the keeper's cache and resume the run.",
   "boss.challenge.ossuary_keeper_trial.log_defeated": "Ossuary Keeper defeated. Claim your cache and continue.",
+  "boss.challenge.glacier_oracle_trial.title": "Glacier Oracle Silenced",
+  "boss.challenge.glacier_oracle_trial.description": "Claim the frozen cache and resume the climb.",
+  "boss.challenge.glacier_oracle_trial.description_abyss": "Claim the frozen cache and resume the climb.",
+  "boss.challenge.glacier_oracle_trial.description_daily": "Claim the frozen cache and resume the climb.",
+  "boss.challenge.glacier_oracle_trial.log_defeated": "Glacier Oracle defeated. Claim the winter cache and continue.",
 
   "ui.meta.title": "Blodex Meta Progression",
   "ui.meta.resources.soul_shards": "Soul Shards: {value}",

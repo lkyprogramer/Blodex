@@ -192,4 +192,38 @@ describe("MonsterSpawnSystem", () => {
       expect.arrayContaining([{ x: 5, y: 5 }])
     );
   });
+
+  it("biases spawn selection toward ranged archetypes in crossfire template rooms", () => {
+    const spawnSystem = new MonsterSpawnSystem();
+    const dungeon: DungeonLayout = {
+      ...makeDungeon(),
+      rooms: [
+        {
+          id: "room-crossfire",
+          x: 15,
+          y: 15,
+          width: 4,
+          height: 4,
+          templateId: "grand_hall",
+          encounterTag: "crossfire",
+          authoredSpawnPoints: [{ x: 17, y: 17 }]
+        }
+      ],
+      spawnPoints: [{ x: 17, y: 17 }]
+    };
+
+    const monsters = spawnSystem.createMonsters({
+      dungeon,
+      playerPosition: { x: 10, y: 10 },
+      floor: 4,
+      count: 1,
+      enemyBaseHealth: 100,
+      enemyBaseDamage: 20,
+      archetypes: MONSTER_ARCHETYPES,
+      rng: new DeterministicRng()
+    });
+
+    expect(monsters).toHaveLength(1);
+    expect(monsters[0]?.archetype.attackType).toBe("ranged");
+  });
 });

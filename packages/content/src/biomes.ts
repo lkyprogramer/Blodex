@@ -8,7 +8,7 @@ export const BIOME_DEFS: BiomeDef[] = [
     floorTilesetKey: "biome_catacombs_tile_floor_01",
     wallStyleKey: "crypt_stone",
     roomCount: { min: 8, max: 13 },
-    monsterPool: ["melee_grunt", "ranged_caster", "magma_crawler", "shadow_lurker"],
+    monsterPool: ["melee_grunt", "ranged_caster", "grave_ballista", "magma_crawler", "shadow_lurker"],
     hazardPool: ["bone_spike"],
     lootBias: {
       weapon: 1.15,
@@ -22,7 +22,7 @@ export const BIOME_DEFS: BiomeDef[] = [
     floorTilesetKey: "biome_molten_tile_floor_01",
     wallStyleKey: "magma_rock",
     roomCount: { min: 9, max: 14 },
-    monsterPool: ["magma_crawler", "ember_wraith", "flame_brute", "elite_bruiser"],
+    monsterPool: ["magma_crawler", "ember_wraith", "cinder_bombardier", "flame_brute", "elite_bruiser"],
     hazardPool: ["lava_pool", "bone_spike"],
     lootBias: {
       weapon: 1.2,
@@ -36,7 +36,7 @@ export const BIOME_DEFS: BiomeDef[] = [
     floorTilesetKey: "biome_frozen_tile_floor_01",
     wallStyleKey: "ice_marble",
     roomCount: { min: 9, max: 14 },
-    monsterPool: ["frost_warden", "ice_specter", "shadow_lurker", "bone_priest"],
+    monsterPool: ["frost_warden", "ice_specter", "storm_slinger", "shadow_lurker", "bone_priest"],
     hazardPool: ["ice_patch", "bone_spike"],
     lootBias: {
       helm: 1.2,
@@ -50,7 +50,7 @@ export const BIOME_DEFS: BiomeDef[] = [
     floorTilesetKey: "biome_bone_tile_floor_01",
     wallStyleKey: "spectral_stone",
     roomCount: { min: 10, max: 14 },
-    monsterPool: ["wraith_knight", "soul_eater", "shadow_lurker", "bone_priest"],
+    monsterPool: ["wraith_knight", "soul_eater", "grave_ballista", "shadow_lurker", "bone_priest"],
     hazardPool: ["bone_spike", "ice_patch"],
     lootBias: {
       weapon: 1.15,
@@ -78,7 +78,7 @@ export const BIOME_DEFS: BiomeDef[] = [
     floorTilesetKey: "biome_bone_tile_floor_01",
     wallStyleKey: "bone_marble",
     roomCount: { min: 1, max: 1 },
-    monsterPool: ["elite_bruiser", "frost_warden", "bone_priest"],
+    monsterPool: ["elite_bruiser", "storm_slinger", "frost_warden", "bone_priest"],
     hazardPool: ["bone_spike", "lava_pool"],
     lootBias: {
       weapon: 1.25,

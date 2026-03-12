@@ -368,6 +368,11 @@ const ZH_CN_UI_MESSAGES: Record<string, string> = {
   "boss.challenge.ossuary_keeper_trial.description_abyss": "领取守卫战利品并继续本次探索。",
   "boss.challenge.ossuary_keeper_trial.description_daily": "领取守卫战利品并继续本次探索。",
   "boss.challenge.ossuary_keeper_trial.log_defeated": "骨库守卫已被击败，请领取奖励并继续推进。",
+  "boss.challenge.glacier_oracle_trial.title": "冰川先知已沉寂",
+  "boss.challenge.glacier_oracle_trial.description": "领取寒霜奖励库并继续向下推进。",
+  "boss.challenge.glacier_oracle_trial.description_abyss": "领取寒霜奖励库并继续向下推进。",
+  "boss.challenge.glacier_oracle_trial.description_daily": "领取寒霜奖励库并继续向下推进。",
+  "boss.challenge.glacier_oracle_trial.log_defeated": "冰川先知已被击败，请领取寒霜奖励并继续推进。",
 
   "ui.meta.title": "Blodex 元进度",
   "ui.meta.resources.soul_shards": "灵魂碎片：{value}",

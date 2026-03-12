@@ -39,15 +39,12 @@ import { playSceneTransition } from "../../../ui/SceneTransitionOverlay";
 import { resolveDebugLockedEquipEnabled } from "../debug/debugFlags";
 import { injectDebugLockedEquipment } from "../debug/injectDebugLockedEquipment";
 import { resolveBiomeVisualTheme } from "../presentation/BiomeVisualThemeRegistry";
+import { applyRoomTemplatesToDungeon } from "./roomTemplates";
 import { buildChallengeRoomEventDef, buildFloorTransitionCopy } from "./progressionCopy";
 import { resolveBiomeTransitionPanelAssetId, resolveBossNodeTextureKey, resolveBranchRouteCardAssetId, spawnChallengeWorldMarker } from "./progressionPresentation";
 import { clearCombatIntent } from "./clearCombatIntent";
 import type { ProgressionRuntimeHost } from "./types";
-
-export interface ProgressionRuntimeModuleOptions {
-  host: ProgressionRuntimeHost;
-}
-
+export interface ProgressionRuntimeModuleOptions { host: ProgressionRuntimeHost; }
 export class ProgressionRuntimeModule {
   constructor(private readonly options: ProgressionRuntimeModuleOptions) {}
 
@@ -675,7 +672,7 @@ export class ProgressionRuntimeModule {
   private renderNormalFloor(floor: number) {
     const host = this.options.host;
     const biomeRoomCount = Math.round((host.currentBiome.roomCount.min + host.currentBiome.roomCount.max) / 2);
-    return generateDungeon({
+    const layout = generateDungeon({
       width: 46,
       height: 46,
       minRoomSize: 4,
@@ -692,6 +689,13 @@ export class ProgressionRuntimeModule {
         ? {}
         : { maxExtraCorridors: host.floorConfig.layoutMaxExtraCorridors }),
       seed: deriveFloorSeed(host.runSeed, floor, "procgen")
+    });
+    return applyRoomTemplatesToDungeon({
+      layout,
+      biomeId: host.currentBiome.id,
+      floorNumber: floor,
+      ...(host.floorConfig.pacingKind === undefined ? {} : { pacingKind: host.floorConfig.pacingKind }),
+      seed: `${deriveFloorSeed(host.runSeed, floor, "biome")}:room-templates`
     });
   }
 

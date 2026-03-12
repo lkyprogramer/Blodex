@@ -20,6 +20,7 @@ import type { EntityManager, MonsterRuntime } from "../../../systems/EntityManag
 import type { RunLogService } from "../logging/RunLogService";
 import type { DungeonScene } from "../../DungeonScene";
 import type { DodgeRuntimeState } from "./dodgeTypes";
+import { buildMonsterProjectileSpawns } from "./monsterProjectilePatterns";
 import { ProjectileRuntime } from "./ProjectileRuntime";
 
 const AI_ACTIVE_RADIUS_TILES = 10;
@@ -677,24 +678,35 @@ export class DungeonCombatRuntime {
       }
 
       monster.nextAttackAt = nowMs + monster.archetype.aiConfig.attackCooldownMs;
-      const projectileId = this.projectileRuntime.spawn({
-        floor: source.run.currentFloor,
-        sourceId: monster.state.id,
-        targetId: source.player.id,
-        sourcePosition: { ...monster.state.position },
-        targetPosition: { ...player.position },
-        speedTilesPerSecond: RANGED_PROJECTILE_SPEED_TILES_PER_SECOND,
-        hitRadiusTiles: RANGED_PROJECTILE_HIT_RADIUS_TILES,
-        tint: resolveProjectileTint(monster.state.damageProfile ?? monster.archetype.damageProfile)
+      const spawns = buildMonsterProjectileSpawns({
+        monster: monster.state,
+        archetype: monster.archetype,
+        playerPosition: player.position,
+        defaultSpeedTilesPerSecond: RANGED_PROJECTILE_SPEED_TILES_PER_SECOND,
+        defaultHitRadiusTiles: RANGED_PROJECTILE_HIT_RADIUS_TILES
       });
-      source.eventBus.emit("combat:projectile_fired", {
-        projectileId,
-        sourceId: monster.state.id,
-        targetId: source.player.id,
-        from: { ...monster.state.position },
-        to: { ...player.position },
-        timestampMs: nowMs
-      });
+      for (const spawn of spawns) {
+        const projectileId = this.projectileRuntime.spawn({
+          floor: source.run.currentFloor,
+          sourceId: monster.state.id,
+          targetId: source.player.id,
+          sourcePosition: { ...monster.state.position },
+          targetPosition: { ...spawn.targetPosition },
+          speedTilesPerSecond: spawn.speedTilesPerSecond,
+          hitRadiusTiles: spawn.hitRadiusTiles,
+          tint: resolveProjectileTint(monster.state.damageProfile ?? monster.archetype.damageProfile),
+          ...(spawn.width === undefined ? {} : { width: spawn.width }),
+          ...(spawn.height === undefined ? {} : { height: spawn.height })
+        });
+        source.eventBus.emit("combat:projectile_fired", {
+          projectileId,
+          sourceId: monster.state.id,
+          targetId: source.player.id,
+          from: { ...monster.state.position },
+          to: { ...spawn.targetPosition },
+          timestampMs: nowMs
+        });
+      }
     }
   }
 }

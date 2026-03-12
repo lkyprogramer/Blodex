@@ -71,6 +71,8 @@ export class ProjectileRuntime {
     speedTilesPerSecond: number;
     hitRadiusTiles: number;
     tint?: number;
+    width?: number;
+    height?: number;
   }): string {
     const projectileId = `monster-projectile-${this.nextProjectileId}`;
     this.nextProjectileId += 1;
@@ -78,7 +80,11 @@ export class ProjectileRuntime {
     const sprite = this.host.renderSystem.spawnProjectile(
       input.sourcePosition,
       this.host.origin,
-      input.tint === undefined ? undefined : { tint: input.tint }
+      {
+        ...(input.tint === undefined ? {} : { tint: input.tint }),
+        ...(input.width === undefined ? {} : { width: input.width }),
+        ...(input.height === undefined ? {} : { height: input.height })
+      }
     );
     this.host.renderSystem.syncProjectileSprite(sprite, input.sourcePosition, this.host.origin);
 

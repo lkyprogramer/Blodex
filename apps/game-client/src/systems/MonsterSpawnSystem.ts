@@ -47,6 +47,41 @@ export class MonsterSpawnSystem {
     return !points.some((point) => Math.hypot(point.x - picked.x, point.y - picked.y) < minSpacing);
   }
 
+  private findRoomForPoint(
+    dungeon: DungeonLayout,
+    point: { x: number; y: number }
+  ): DungeonLayout["rooms"][number] | undefined {
+    return dungeon.rooms.find((room) => {
+      return point.x >= room.x && point.x < room.x + room.width && point.y >= room.y && point.y < room.y + room.height;
+    });
+  }
+
+  private resolveEncounterSpawnPool(
+    spawnPool: MonsterArchetypeDef[],
+    encounterTag: DungeonLayout["rooms"][number]["encounterTag"]
+  ): MonsterArchetypeDef[] {
+    if (encounterTag === undefined) {
+      return spawnPool;
+    }
+    const filtered = spawnPool.filter((archetype) => {
+      switch (encounterTag) {
+        case "crossfire":
+          return archetype.attackType === "ranged";
+        case "ambush":
+          return archetype.aiConfig.behavior === "ambush" || archetype.aiConfig.behavior === "swarm";
+        case "support":
+          return archetype.aiConfig.behavior === "support" || archetype.attackType === "ranged";
+        case "bulwark":
+          return archetype.aiConfig.behavior === "shield" || archetype.attackType === "melee";
+        case "gauntlet":
+          return archetype.attackType === "ranged" || archetype.aiConfig.behavior === "kite";
+        default:
+          return true;
+      }
+    });
+    return filtered.length > 0 ? filtered : spawnPool;
+  }
+
   private generateSpawnPoints(
     dungeon: DungeonLayout,
     playerPosition: { x: number; y: number },
@@ -214,7 +249,9 @@ export class MonsterSpawnSystem {
 
     for (let i = 0; i < points.length; i += 1) {
       const point = points[i]!;
-      const archetype = options.rng.pick(spawnPool);
+      const room = this.findRoomForPoint(options.dungeon, point);
+      const encounterPool = this.resolveEncounterSpawnPool(spawnPool, room?.encounterTag);
+      const archetype = options.rng.pick(encounterPool);
       const baseAffixes = rollMonsterAffixes({
         floor: options.floor,
         isBoss: options.floorConfig?.isBossFloor ?? false,

@@ -187,13 +187,26 @@ export class RunStateRestorer {
     host.dungeon = {
       ...runtime.dungeon,
       walkable: runtime.dungeon.walkable.map((row) => [...row]),
-      rooms: runtime.dungeon.rooms.map((room) => ({ ...room })),
+      rooms: runtime.dungeon.rooms.map((room) => ({
+        ...room,
+        ...(room.authoredSpawnPoints === undefined
+          ? {}
+          : { authoredSpawnPoints: room.authoredSpawnPoints.map((point) => ({ ...point })) })
+      })),
       corridors: runtime.dungeon.corridors.map((corridor) => ({
         ...corridor,
         path: corridor.path.map((point) => ({ ...point }))
       })),
       spawnPoints: runtime.dungeon.spawnPoints.map((point) => ({ ...point })),
       playerSpawn: { ...runtime.dungeon.playerSpawn },
+      ...(runtime.dungeon.props === undefined
+        ? {}
+        : {
+            props: runtime.dungeon.props.map((prop) => ({
+              ...prop,
+              position: { ...prop.position }
+            }))
+          }),
       hiddenRooms: (runtime.dungeon.hiddenRooms ?? []).map((room) => ({
         roomId: room.roomId,
         entrance: { ...room.entrance },
