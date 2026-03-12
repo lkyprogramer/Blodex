@@ -88,10 +88,31 @@ describe("RunSaveSnapshotBuilder", () => {
       dungeon: {
         layoutHash: "layout-1",
         walkable: [[true]],
-        rooms: [],
+        rooms: [
+          {
+            id: "room-1",
+            x: 0,
+            y: 0,
+            width: 4,
+            height: 4,
+            templateId: "arena",
+            encounterTag: "open",
+            authoredSpawnPoints: [{ x: 1, y: 1 }]
+          }
+        ],
         corridors: [],
         spawnPoints: [],
-        playerSpawn: { x: 0, y: 0 }
+        playerSpawn: { x: 0, y: 0 },
+        props: [
+          {
+            id: "pillar",
+            position: { x: 2, y: 2 },
+            blocking: true,
+            roomId: "room-1",
+            assetId: "prop_forgotten_catacombs_pillar_01",
+            scale: 1
+          }
+        ]
       },
       staircaseState: {
         position: { x: 1, y: 1 },
@@ -181,5 +202,20 @@ describe("RunSaveSnapshotBuilder", () => {
       drainMode: "all"
     });
     expect(snapshot?.runtime.monsters[0]?.baseMoveSpeed).toBe(128);
+    expect(snapshot?.runtime.dungeon.rooms[0]).toMatchObject({
+      templateId: "arena",
+      encounterTag: "open",
+      authoredSpawnPoints: [{ x: 1, y: 1 }]
+    });
+    expect(snapshot?.runtime.dungeon.props).toEqual([
+      {
+        id: "pillar",
+        position: { x: 2, y: 2 },
+        blocking: true,
+        roomId: "room-1",
+        assetId: "prop_forgotten_catacombs_pillar_01",
+        scale: 1
+      }
+    ]);
   });
 });

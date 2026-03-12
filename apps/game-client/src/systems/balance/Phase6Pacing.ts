@@ -48,8 +48,8 @@ export interface PacingAssessment {
   alerts: string[];
 }
 
-// Simulation-derived cadence can drift by a few thousandths between content passes.
 const SKILL_CADENCE_TARGET_TOLERANCE = 0.01;
+const FLOOR_P90_TARGET_SLACK_MS = 45_000;
 
 function resolvePhase6BaselineMonsterCount(floor: number): number {
   if (floor >= 5) {
@@ -171,7 +171,7 @@ export function assessPacingTargets(difficulty: DifficultyMode, report: RunSimul
     const withinTarget =
       p50Ms >= floorTarget.minDurationMs &&
       p50Ms <= floorTarget.maxDurationMs &&
-      (p90Ms === 0 || p90Ms <= floorTarget.maxDurationMs + 45_000);
+      (p90Ms === 0 || p90Ms <= floorTarget.maxDurationMs + FLOOR_P90_TARGET_SLACK_MS);
     if (!withinTarget) {
       alerts.push(`floor_${floorTarget.floor}_pacing_out_of_range`);
     }

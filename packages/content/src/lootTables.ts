@@ -116,6 +116,24 @@ export const LOOT_TABLES: LootTableDef[] = [
     ]
   },
   {
+    id: "boss_glacier_oracle_rare",
+    entries: [
+      { itemDefId: "revenant_mask", weight: 14, minFloor: 6 },
+      { itemDefId: "oathbound_cuirass", weight: 14, minFloor: 6 },
+      { itemDefId: "catacomb_greaves", weight: 12, minFloor: 6 },
+      { itemDefId: "bloodsigil_band", weight: 12, minFloor: 6 },
+      { itemDefId: "voidsigil_band", weight: 10, minFloor: 6 }
+    ]
+  },
+  {
+    id: "boss_glacier_oracle_exclusive",
+    entries: [
+      { itemDefId: "glacier_circlet", weight: 34, minFloor: 6 },
+      { itemDefId: "rimeguard_plate", weight: 33, minFloor: 6 },
+      { itemDefId: "hailstone_loop", weight: 33, minFloor: 6 }
+    ]
+  },
+  {
     id: "merchant_pool",
     entries: [
       { itemDefId: "rusted_sabre", weight: 8, minFloor: 1 },
@@ -136,7 +154,10 @@ export const LOOT_TABLES: LootTableDef[] = [
       { itemDefId: "crown_of_bone", weight: 3, minFloor: 8 },
       { itemDefId: "cataclysm_mail", weight: 3, minFloor: 8 },
       { itemDefId: "echostep_greaves", weight: 3, minFloor: 8 },
-      { itemDefId: "voidsigil_band", weight: 3, minFloor: 8 }
+      { itemDefId: "voidsigil_band", weight: 3, minFloor: 8 },
+      { itemDefId: "glacier_circlet", weight: 2, minFloor: 8 },
+      { itemDefId: "rimeguard_plate", weight: 2, minFloor: 8 },
+      { itemDefId: "hailstone_loop", weight: 2, minFloor: 8 }
     ]
   },
   {

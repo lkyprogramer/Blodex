@@ -34,6 +34,11 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
     xpValue: 22,
     spriteId: "monster_ranged_01",
     dropTableId: "cathedral_depths",
+    projectilePattern: {
+      family: "straight",
+      speedTilesPerSecond: 7.4,
+      hitRadiusTiles: 0.62
+    },
     aiConfig: {
       behavior: "kite",
       chaseRange: 7,
@@ -94,6 +99,11 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
     xpValue: 28,
     spriteId: "monster_ranged_01",
     dropTableId: "cathedral_depths",
+    projectilePattern: {
+      family: "straight",
+      speedTilesPerSecond: 7.8,
+      hitRadiusTiles: 0.64
+    },
     aiConfig: {
       behavior: "kite",
       chaseRange: 9,
@@ -153,6 +163,11 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
     xpValue: 30,
     spriteId: "monster_ranged_01",
     dropTableId: "cathedral_depths",
+    projectilePattern: {
+      family: "straight",
+      speedTilesPerSecond: 7,
+      hitRadiusTiles: 0.7
+    },
     aiConfig: {
       behavior: "kite",
       chaseRange: 8.5,
@@ -193,6 +208,13 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
     xpValue: 33,
     spriteId: "monster_ranged_01",
     dropTableId: "cathedral_depths",
+    projectilePattern: {
+      family: "straight",
+      speedTilesPerSecond: 6.6,
+      hitRadiusTiles: 0.72,
+      width: 13,
+      height: 9
+    },
     aiConfig: {
       behavior: "support",
       chaseRange: 7,
@@ -255,6 +277,14 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
     xpValue: 38,
     spriteId: "monster_ranged_01",
     dropTableId: "cathedral_depths",
+    projectilePattern: {
+      family: "lob",
+      speedTilesPerSecond: 5.1,
+      hitRadiusTiles: 1,
+      width: 16,
+      height: 12,
+      targetOffsetTiles: 0.9
+    },
     aiConfig: {
       behavior: "kite",
       chaseRange: 9.2,
@@ -294,6 +324,14 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
     xpValue: 39,
     spriteId: "monster_ranged_01",
     dropTableId: "cathedral_depths",
+    projectilePattern: {
+      family: "lob",
+      speedTilesPerSecond: 4.8,
+      hitRadiusTiles: 1.1,
+      width: 18,
+      height: 13,
+      targetOffsetTiles: 0.8
+    },
     aiConfig: {
       behavior: "support",
       chaseRange: 7.8,
@@ -301,6 +339,90 @@ export const MONSTER_ARCHETYPES: MonsterArchetypeDef[] = [
       supportRange: 5.2,
       healThreshold: 0.7,
       healPower: 28
+    }
+  },
+  {
+    id: "grave_ballista",
+    name: "Grave Ballista",
+    attackType: "ranged",
+    healthMultiplier: 1.02,
+    damageMultiplier: 1.2,
+    enemyProfileId: "grave_flesh",
+    damageProfile: ENEMY_PROFILE_MAP.grave_flesh!.damageProfile,
+    attackRange: 6.2,
+    moveSpeed: 82,
+    xpValue: 44,
+    spriteId: "monster_ranged_01",
+    dropTableId: "cathedral_depths",
+    projectilePattern: {
+      family: "straight",
+      speedTilesPerSecond: 8.6,
+      hitRadiusTiles: 0.58,
+      width: 10,
+      height: 6
+    },
+    aiConfig: {
+      behavior: "kite",
+      chaseRange: 9,
+      attackCooldownMs: 1900,
+      preferredDistance: 5.8
+    }
+  },
+  {
+    id: "storm_slinger",
+    name: "Storm Slinger",
+    attackType: "ranged",
+    healthMultiplier: 0.9,
+    damageMultiplier: 1.08,
+    enemyProfileId: "storm_forged",
+    damageProfile: ENEMY_PROFILE_MAP.storm_forged!.damageProfile,
+    attackRange: 5.4,
+    moveSpeed: 106,
+    xpValue: 42,
+    spriteId: "monster_ranged_01",
+    dropTableId: "cathedral_depths",
+    projectilePattern: {
+      family: "spread",
+      speedTilesPerSecond: 6.8,
+      hitRadiusTiles: 0.55,
+      width: 9,
+      height: 7,
+      spreadCount: 3,
+      spreadAngleDeg: 12
+    },
+    aiConfig: {
+      behavior: "kite",
+      chaseRange: 8.8,
+      attackCooldownMs: 1750,
+      preferredDistance: 4.9
+    }
+  },
+  {
+    id: "cinder_bombardier",
+    name: "Cinder Bombardier",
+    attackType: "ranged",
+    healthMultiplier: 0.96,
+    damageMultiplier: 1.12,
+    enemyProfileId: "emberborn",
+    damageProfile: ENEMY_PROFILE_MAP.emberborn!.damageProfile,
+    attackRange: 5.6,
+    moveSpeed: 94,
+    xpValue: 43,
+    spriteId: "monster_ranged_01",
+    dropTableId: "cathedral_depths",
+    projectilePattern: {
+      family: "lob",
+      speedTilesPerSecond: 4.9,
+      hitRadiusTiles: 1.05,
+      width: 17,
+      height: 12,
+      targetOffsetTiles: 1
+    },
+    aiConfig: {
+      behavior: "kite",
+      chaseRange: 8.6,
+      attackCooldownMs: 1850,
+      preferredDistance: 5.2
     }
   }
 ];

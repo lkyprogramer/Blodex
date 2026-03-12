@@ -66,13 +66,17 @@ const ITEM_NAME_ZH: Readonly<Record<string, string>> = {
   absolver_seal: "赦令徽戒",
   gravewake_greaves: "墓醒胫甲",
   ossuary_signet: "骨库徽戒",
-  keeper_veil: "守卫面纱"
+  keeper_veil: "守卫面纱",
+  glacier_circlet: "冰川之环",
+  rimeguard_plate: "霜卫板甲",
+  hailstone_loop: "冰雹指环"
 };
 
 const ITEM_SET_NAME_ZH: Readonly<Record<string, string>> = {
   ember_vow: "烬誓遗物",
   judicator_regalia: "裁判官圣装",
-  gravewake_relics: "墓醒遗物"
+  gravewake_relics: "墓醒遗物",
+  winter_oath: "寒冬誓约"
 };
 
 const SKILL_ZH: Readonly<Record<string, { name: string; description: string }>> = {
@@ -360,7 +364,10 @@ const MONSTER_NAME_ZH: Readonly<Record<string, string>> = {
   soul_eater: "噬魂者",
   venom_spitter: "毒液喷吐者",
   swamp_hulk: "沼泽巨怪",
-  fungal_host: "真菌宿主"
+  fungal_host: "真菌宿主",
+  grave_ballista: "墓穴弩炮",
+  storm_slinger: "风暴投咒者",
+  cinder_bombardier: "炽烬轰击者"
 };
 
 const AFFIX_ZH: Readonly<Record<string, { name: string; description: string }>> = {
@@ -378,7 +385,8 @@ const BOSS_NAME_ZH: Readonly<Record<string, string>> = {
   bone_sovereign: "白骨君王",
   cathedral_judge: "大教堂裁判官",
   ember_warden: "余烬守望者",
-  ossuary_keeper: "骨库守卫"
+  ossuary_keeper: "骨库守卫",
+  glacier_oracle: "冰川先知"
 };
 
 export function buildZhCnContentMessages(): Record<string, string> {

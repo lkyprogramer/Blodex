@@ -30,6 +30,7 @@ export type MonsterAffixId =
 
 export type DamageType = "physical" | "arcane" | "fire" | "cold" | "lightning";
 export type DamageProfile = Partial<Record<DamageType, number>>;
+export type ProjectileFamily = "straight" | "spread" | "lob";
 
 export type DifficultyMode = "normal" | "hard" | "nightmare";
 
@@ -147,6 +148,17 @@ export interface MonsterAiConfig {
   wanderRadius?: number;
 }
 
+export interface MonsterProjectilePattern {
+  family: ProjectileFamily;
+  speedTilesPerSecond?: number;
+  hitRadiusTiles?: number;
+  width?: number;
+  height?: number;
+  spreadCount?: number;
+  spreadAngleDeg?: number;
+  targetOffsetTiles?: number;
+}
+
 export interface MonsterArchetypeDef {
   id: MonsterArchetypeId;
   name: string;
@@ -161,6 +173,7 @@ export interface MonsterArchetypeDef {
   spriteId: string;
   dropTableId: string;
   aiConfig: MonsterAiConfig;
+  projectilePattern?: MonsterProjectilePattern;
 }
 
 export interface ItemAffix {

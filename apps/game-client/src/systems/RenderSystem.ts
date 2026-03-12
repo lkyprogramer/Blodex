@@ -3,6 +3,7 @@ import type { DungeonLayout, ItemInstance, MonsterState } from "@blodex/core";
 import type { MonsterArchetypeDef } from "@blodex/content";
 import type { MonsterRuntime } from "./EntityManager";
 import { gridToIso } from "./iso";
+import { renderDungeonProps } from "./renderDungeonProps";
 
 export interface WorldBoundsConfig {
   origin: { x: number; y: number };
@@ -224,6 +225,14 @@ export class RenderSystem {
           }
         }
       }
+      renderDungeonProps({
+        scene: this.scene,
+        props: dungeon.props,
+        origin,
+        tileWidth: this.tileWidth,
+        tileHeight: this.tileHeight,
+        entityDepthOffset: this.entityDepthOffset
+      });
       return;
     }
 
@@ -263,6 +272,14 @@ export class RenderSystem {
       }
     }
     graphics.setDepth(0);
+    renderDungeonProps({
+      scene: this.scene,
+      props: dungeon.props,
+      origin,
+      tileWidth: this.tileWidth,
+      tileHeight: this.tileHeight,
+      entityDepthOffset: this.entityDepthOffset
+    });
   }
 
   spawnPlayer(position: { x: number; y: number }, origin: { x: number; y: number }): {

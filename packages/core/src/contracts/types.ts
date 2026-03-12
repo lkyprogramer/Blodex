@@ -41,6 +41,16 @@ export type RunMode = "normal" | "daily";
 export type ItemSetId = string;
 export type FloorPacingKind = "combat" | "recovery" | "preparation" | "boss";
 export type FloorEventNodeBias = "random" | "near_player";
+export type RoomTemplateId =
+  | "grand_hall"
+  | "arena"
+  | "ambush_corridor"
+  | "crossroads"
+  | "study"
+  | "vault"
+  | "bridge";
+export type RoomEncounterTag = "open" | "crossfire" | "ambush" | "support" | "bulwark" | "gauntlet";
+export type DungeonPropId = "pillar" | "brazier" | "bookshelf" | "altar" | "bone_heap";
 
 export interface DifficultyModifier {
   monsterHealthMultiplier: number;
@@ -360,6 +370,19 @@ export interface DungeonRoom {
   height: number;
   roomType?: "normal" | "challenge";
   challengeId?: string;
+  templateId?: RoomTemplateId;
+  encounterTag?: RoomEncounterTag;
+  authoredSpawnPoints?: Array<{ x: number; y: number }>;
+}
+
+export interface DungeonProp {
+  id: DungeonPropId;
+  position: { x: number; y: number };
+  blocking: boolean;
+  roomId?: string;
+  assetId?: string;
+  tint?: number;
+  scale?: number;
 }
 
 export interface DungeonCorridor {
@@ -383,6 +406,7 @@ export interface DungeonLayout {
   corridors: DungeonCorridor[];
   spawnPoints: Array<{ x: number; y: number }>;
   playerSpawn: { x: number; y: number };
+  props?: DungeonProp[];
   hiddenRooms?: HiddenRoomState[];
   layoutHash: string;
 }

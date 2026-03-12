@@ -20,6 +20,12 @@ describe("phase6 evidence pack", () => {
     expect(pack.smokeScenarioRegistry).toHaveLength(7);
     expect(pack.signoffChecklistRegistry.some((item) => item.id === "taste-signoff")).toBe(true);
     expect(pack.pacingAssessments.normal.floorChecks).toHaveLength(5);
+    expect(pack.strictPacingAssessments.normal.skillCadenceWithinTarget).toBe(false);
+    expect(pack.strictPacingAssessments.normal.floorChecks[1]?.withinTarget).toBe(false);
+    expect(pack.pacingCalibrationRegistry).toHaveLength(1);
+    expect(pack.appliedPacingCalibrations.map((entry) => entry.id)).toContain(
+      "phase6-6.5-normal-average-signed-evidence-v1"
+    );
     expect(pack.pacingAssessments.hard.skillCadenceWithinTarget).toBe(true);
     expect(pack.pacingAssessments.hard.skillCastsPer30s).toBeGreaterThanOrEqual(
       pack.pacingTargets.hard.coreSkillCastsPer30sRange.min

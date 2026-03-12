@@ -36,6 +36,14 @@ export const BOSS_REWARD_POLICIES: BossRewardPolicyDef[] = [
     rareDropTableId: "boss_ossuary_keeper_rare",
     exclusiveDropTableId: "boss_ossuary_keeper_exclusive",
     compareBinding: "deferred"
+  },
+  {
+    id: "challenge_glacier_oracle_default",
+    flow: "resume_run",
+    rewardSource: "challenge_reward",
+    rareDropTableId: "boss_glacier_oracle_rare",
+    exclusiveDropTableId: "boss_glacier_oracle_exclusive",
+    compareBinding: "deferred"
   }
 ];
 
@@ -71,6 +79,13 @@ export const BOSS_TELEGRAPH_PROFILES: BossTelegraphProfileDef[] = [
     alpha: 0.46,
     pulseDurationMs: 180,
     radiusScale: 1.04
+  },
+  {
+    id: "glacier_oracle_default",
+    tintColor: 0xb8d8ff,
+    alpha: 0.5,
+    pulseDurationMs: 150,
+    radiusScale: 1.02
   }
 ];
 
@@ -136,6 +151,19 @@ export const BOSS_ENCOUNTERS: BossEncounterDef[] = [
     summaryKey: "boss.challenge.ossuary_keeper_trial",
     portraitAssetId: "boss_portrait_ossuary_keeper",
     rewardBadgeAssetId: "boss_reward_badge_ossuary_keeper"
+  },
+  {
+    id: "challenge_glacier_sanctum",
+    bossId: "glacier_oracle",
+    encounterType: "challenge",
+    selector: {
+      kind: "challenge",
+      challengeId: "glacier_sanctum",
+      floor: STORY_MAX_FLOOR - 2
+    },
+    rewardPolicyId: "challenge_glacier_oracle_default",
+    telegraphProfileId: "glacier_oracle_default",
+    summaryKey: "boss.challenge.glacier_oracle_trial"
   }
 ];
 

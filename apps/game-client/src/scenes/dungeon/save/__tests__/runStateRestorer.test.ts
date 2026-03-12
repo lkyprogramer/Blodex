@@ -93,10 +93,31 @@ function createSave(): RunSaveDataV3 {
         width: 4,
         height: 4,
         walkable: Array.from({ length: 4 }, () => Array.from({ length: 4 }, () => true)),
-        rooms: [],
+        rooms: [
+          {
+            id: "room-1",
+            x: 0,
+            y: 0,
+            width: 4,
+            height: 4,
+            templateId: "arena",
+            encounterTag: "open",
+            authoredSpawnPoints: [{ x: 1, y: 1 }]
+          }
+        ],
         corridors: [],
         spawnPoints: [{ x: 1, y: 1 }],
         playerSpawn: { x: 1, y: 1 },
+        props: [
+          {
+            id: "pillar",
+            position: { x: 2, y: 2 },
+            blocking: true,
+            roomId: "room-1",
+            assetId: "prop_forgotten_catacombs_pillar_01",
+            scale: 1
+          }
+        ],
         layoutHash: "layout-1"
       },
       staircase: {
@@ -428,6 +449,21 @@ describe("RunStateRestorer", () => {
     expect(host.dodgeRuntimeState.autoTargetSuppressed).toBe(true);
     expect(host.dodgeRuntimeState.lastDodgeDirection).toEqual({ x: 0, y: -1 });
     expect(host.dodgeRuntimeState.lastDodgeDirectionSource).toBe("cursor");
+    expect(host.dungeon.rooms[0]).toMatchObject({
+      templateId: "arena",
+      encounterTag: "open",
+      authoredSpawnPoints: [{ x: 1, y: 1 }]
+    });
+    expect(host.dungeon.props).toEqual([
+      {
+        id: "pillar",
+        position: { x: 2, y: 2 },
+        blocking: true,
+        roomId: "room-1",
+        assetId: "prop_forgotten_catacombs_pillar_01",
+        scale: 1
+      }
+    ]);
   });
 
   it("restores monster baseMoveSpeed separately from current slowed moveSpeed", () => {

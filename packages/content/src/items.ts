@@ -623,6 +623,73 @@ export const ITEM_DEFS: ItemDef[] = [
       cooldownReduction: 12,
       xpBonus: 18
     }
+  },
+  {
+    id: "glacier_circlet",
+    name: "Glacier Circlet",
+    kind: "unique",
+    setId: "winter_oath",
+    slot: "helm",
+    rarity: "rare",
+    requiredLevel: 6,
+    iconId: "item_set_glacier_circlet_01",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      armor: 10,
+      maxHealth: 10,
+      maxMana: 26
+    },
+    fixedSpecialAffixes: {
+      cooldownReduction: 14,
+      healthRegen: 4
+    }
+  },
+  {
+    id: "rimeguard_plate",
+    name: "Rimeguard Plate",
+    kind: "unique",
+    setId: "winter_oath",
+    slot: "chest",
+    rarity: "rare",
+    requiredLevel: 6,
+    iconId: "item_set_rimeguard_plate_01",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      armor: 18,
+      maxHealth: 34,
+      maxMana: 20,
+      moveSpeed: -6
+    },
+    fixedSpecialAffixes: {
+      thorns: 8,
+      healthRegen: 5
+    }
+  },
+  {
+    id: "hailstone_loop",
+    name: "Hailstone Loop",
+    kind: "unique",
+    setId: "winter_oath",
+    slot: "ring",
+    rarity: "rare",
+    requiredLevel: 6,
+    iconId: "item_set_hailstone_loop_01",
+    minAffixes: 0,
+    maxAffixes: 0,
+    affixPool: [],
+    fixedAffixes: {
+      attackPower: 12,
+      critChance: 4,
+      maxMana: 20
+    },
+    fixedSpecialAffixes: {
+      cooldownReduction: 12,
+      aoeRadius: 16
+    }
   }
 ];
 
