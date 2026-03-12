@@ -18,7 +18,12 @@ export class BossSpawnService {
   spawnBoss(): void {
     const host = this.options.host;
     const roomCenter = findStaircasePosition(host.dungeon, host.dungeon.playerSpawn);
-    host.bossState = initBossState(host.bossDef, roomCenter);
+    const bossState = initBossState(host.bossDef, roomCenter);
+    host.bossState = {
+      ...bossState,
+      health: Math.floor(bossState.health * host.floorConfig.monsterHpMultiplier),
+      maxHealth: Math.floor(bossState.maxHealth * host.floorConfig.monsterHpMultiplier)
+    };
     host.entityLabelById.set(host.bossDef.id, host.bossDef.name);
     host.bossSprite = host.renderSystem.spawnBoss(roomCenter, host.origin, host.bossDef.spriteKey);
     host.entityManager.setBoss({

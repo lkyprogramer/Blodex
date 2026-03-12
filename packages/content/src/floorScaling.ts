@@ -69,8 +69,8 @@ export function getFloorConfig(
   const likelyNightmare = hpDifficultyScale >= 1.4 || damageDifficultyScale >= 1.35;
 
   if (storyFloor === resolvedStoryMaxFloor && normalized <= resolvedStoryMaxFloor) {
-    const bossHpBase = isLongRun ? (likelyNightmare ? 2.45 : 2.95) : 2.5;
-    const bossDmgBase = isLongRun ? (likelyNightmare ? 2.05 : 2.45) : 1.85;
+    const bossHpBase = isLongRun ? (likelyNightmare ? 2.75 : 2.95) : 2.5;
+    const bossDmgBase = isLongRun ? (likelyNightmare ? 2.4 : 2.45) : 1.85;
     return {
       floorNumber: storyFloor,
       monsterHpMultiplier: bossHpBase * hpDifficultyScale,

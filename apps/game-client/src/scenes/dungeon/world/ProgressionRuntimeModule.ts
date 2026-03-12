@@ -310,7 +310,14 @@ export class ProgressionRuntimeModule {
       row[target.entrance.x] = true;
     }
     host.movementSystem.clearPathCache();
-    clearCombatIntent(host);
+    if (source === "click") {
+      clearCombatIntent(host);
+    } else {
+      host.path = [];
+      host.manualMoveTarget = null;
+      host.manualMoveTargetFailures = 0;
+      host.nextManualPathReplanAt = 0;
+    }
 
     host.hiddenEntranceMarkers.get(roomId)?.destroy();
     host.hiddenEntranceMarkers.delete(roomId);

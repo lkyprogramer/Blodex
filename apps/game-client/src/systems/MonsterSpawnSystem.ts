@@ -149,6 +149,10 @@ export class MonsterSpawnSystem {
         if (this.isCandidateBlocked(blocked, fallback)) {
           continue;
         }
+        const distToPlayer = Math.hypot(fallback.x - playerPosition.x, fallback.y - playerPosition.y);
+        if (distToPlayer < minDistance || distToPlayer > maxDistance) {
+          continue;
+        }
         if (!this.canPlacePoint(points, fallback, minSpacing)) {
           continue;
         }

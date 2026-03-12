@@ -78,7 +78,7 @@ export interface BossTelegraphHost {
 }
 
 export interface BossCombatHost {
-  floorConfig: Pick<FloorConfig, "isBossFloor">;
+  floorConfig: Pick<FloorConfig, "isBossFloor"> & { monsterDmgMultiplier?: FloorConfig["monsterDmgMultiplier"] };
   bossState: BossRuntimeState | null;
   player: PlayerState;
   dodgeRuntimeState: DodgeRuntimeState;

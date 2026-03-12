@@ -26,16 +26,16 @@ export const PHASE7_LONG_RUN_EVIDENCE_TARGETS: Record<string, Phase7LongRunEvide
     rareShareMax: 0.32,
     avgRunDurationMsMax: 1_950_000,
     pairSatisfaction56Min: 0.65,
-    pairSatisfaction78Min: 0.3,
+    pairSatisfaction78Min: 0.25,
     finalFloorHpP50Max: 0.93
   },
   "longrun-nightmare-optimal": {
-    clearRateMax: 0.85,
+    clearRateMax: 0.8,
     avgFloorReachedMin: 6.5,
     rareShareMax: 0.3,
     avgRunDurationMsMax: 1_700_000,
     pairSatisfaction56Min: 0.5,
-    pairSatisfaction78Min: 0.2,
-    finalFloorHpP50Max: 0.97
+    pairSatisfaction78Min: 0.15,
+    finalFloorHpP50Max: 0.945
   }
 };

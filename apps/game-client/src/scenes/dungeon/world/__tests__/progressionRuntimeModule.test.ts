@@ -208,4 +208,66 @@ describe("ProgressionRuntimeModule", () => {
       })
     );
   });
+
+  it("does not clear attack target on passive hidden-room reveal", () => {
+    const configureMinimap = vi.fn();
+    const host = {
+      dungeon: {
+        hiddenRooms: [
+          {
+            roomId: "hidden-1",
+            entrance: { x: 4, y: 4 },
+            revealed: false,
+            rewardsClaimed: true
+          }
+        ],
+        walkable: Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => false)),
+        width: 8,
+        height: 8
+      },
+      movementSystem: {
+        clearPathCache: vi.fn()
+      },
+      path: [{ x: 3, y: 3 }],
+      attackTargetId: "monster-1",
+      manualMoveTarget: { x: 6, y: 6 },
+      manualMoveTargetFailures: 2,
+      nextManualPathReplanAt: 800,
+      hiddenEntranceMarkers: new Map<string, { destroy: () => void }>([
+        [
+          "hidden-1",
+          {
+            destroy: vi.fn()
+          }
+        ]
+      ]),
+      uiManager: {
+        configureMinimap
+      },
+      runLog: {
+        appendKey: vi.fn()
+      },
+      resolveProgressionLootTable: vi.fn(),
+      scheduleRunSave: vi.fn(),
+      run: {
+        currentFloor: 4
+      },
+      lootRng: { next: vi.fn(() => 0.5), nextInt: vi.fn(() => 0) },
+      resolveLootRollOptions: vi.fn((options) => options),
+      tryDiscoverBlueprints: vi.fn()
+    } as unknown as ConstructorParameters<typeof ProgressionRuntimeModule>[0]["host"];
+    host.dungeon.walkable[4]![4] = false;
+
+    const module = new ProgressionRuntimeModule({ host });
+
+    const revealed = module.revealHiddenRoom("hidden-1", 2_000, "mutation");
+
+    expect(revealed).toBe(true);
+    expect(host.attackTargetId).toBe("monster-1");
+    expect(host.path).toEqual([]);
+    expect(host.manualMoveTarget).toBeNull();
+    expect(host.manualMoveTargetFailures).toBe(0);
+    expect(host.nextManualPathReplanAt).toBe(0);
+    expect(configureMinimap).toHaveBeenCalledTimes(1);
+  });
 });
