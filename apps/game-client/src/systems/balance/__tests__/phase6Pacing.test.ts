@@ -39,4 +39,31 @@ describe("phase6 pacing", () => {
     expect(assessment.alerts).toContain("run_duration_p50_out_of_range");
     expect(assessment.alerts).toContain("skill_cadence_out_of_range");
   });
+
+  it("tolerates sub-hundredth cadence drift at the target boundary", () => {
+    const assessment = assessPacingTargets("normal", {
+      clearRate: 0.5,
+      avgFloorReached: 4.2,
+      avgRunDurationMs: 900_000,
+      hpCurveP50: [1, 1, 1, 1, 1],
+      hpCurveP90: [1, 1, 1, 1, 1],
+      deathCauseDistribution: {},
+      itemRarityDistribution: { common: 0.6, magic: 0.3, rare: 0.1 },
+      pacing: {
+        runDurationP50Ms: 900_000,
+        runDurationP90Ms: 950_000,
+        floorDurationP50Ms: [120_000, 150_000, 180_000, 210_000, 240_000],
+        floorDurationP90Ms: [121_000, 151_000, 181_000, 211_000, 241_000]
+      },
+      combatRhythm: {
+        avgSkillUsesPerRun: 10,
+        avgSkillCastsPer30s: 4.496,
+        avgSkillDamageShare: 0.3,
+        avgAutoAttackDamageShare: 0.7
+      }
+    });
+
+    expect(assessment.skillCadenceWithinTarget).toBe(true);
+    expect(assessment.alerts).not.toContain("skill_cadence_out_of_range");
+  });
 });
