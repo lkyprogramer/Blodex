@@ -44,14 +44,21 @@ export function spawnChallengeWorldMarker(
   host: ProgressionRuntimeHost,
   center: { x: number; y: number }
 ): Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse {
+  const tint =
+    host.floorConfig.pacingKind === "preparation"
+      ? 0xc9d6e8
+      : host.floorConfig.pacingKind === "recovery"
+        ? 0xd9c48c
+        : 0x9c6ac4;
+  const alpha = host.floorConfig.pacingKind === "combat" ? 0.2 : 0.28;
   const challengeMarker =
     host.renderSystem.spawnWorldMarker?.(center, "node_challenge_marker_01", host.origin, {
-      width: 36,
-      height: 36
-    }) ?? host.renderSystem.spawnTelegraphCircle(center, 0.95, host.origin);
-  challengeMarker.setAlpha(0.2);
+      width: host.floorConfig.pacingKind === "combat" ? 36 : 42,
+      height: host.floorConfig.pacingKind === "combat" ? 36 : 42
+    }) ?? host.renderSystem.spawnTelegraphCircle(center, host.floorConfig.pacingKind === "combat" ? 0.95 : 1.05, host.origin);
+  challengeMarker.setAlpha(alpha);
   if (challengeMarker instanceof Phaser.GameObjects.Image) {
-    challengeMarker.setTint(0x9c6ac4);
+    challengeMarker.setTint(tint);
   }
   return challengeMarker;
 }

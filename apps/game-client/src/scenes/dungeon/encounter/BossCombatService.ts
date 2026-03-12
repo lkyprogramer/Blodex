@@ -25,6 +25,17 @@ export interface BossCombatServiceOptions {
 export class BossCombatService {
   constructor(private readonly options: BossCombatServiceOptions) {}
 
+  private scaleAttack(attack: BossAttack): BossAttack {
+    const damageMultiplier = this.options.host.floorConfig.monsterDmgMultiplier ?? 1;
+    if (damageMultiplier === 1) {
+      return attack;
+    }
+    return {
+      ...attack,
+      damage: Math.max(1, Math.floor(attack.damage * damageMultiplier))
+    };
+  }
+
   private shouldPromotePositionEvadeToDodgeSuccess(attack: BossAttack, nowMs: number): boolean {
     if (attack.telegraphMs <= 0) {
       return false;
@@ -157,6 +168,7 @@ export class BossCombatService {
         this.options.telegraphPresenter.clear();
         return;
       }
+      const scaledTelegraphedAttack = this.scaleAttack(telegraphedAttack);
       let resolveResult: "hit" | "evaded_by_position" | "evaded_by_iframe";
       if (host.dodgeRuntimeState.iframeUntilMs >= nowMs) {
         resolveResult = "evaded_by_iframe";
@@ -164,7 +176,7 @@ export class BossCombatService {
         host.emitCombatEvents([this.createPlayerDodgeEvent(nowMs)]);
         host.eventBus.emit("boss:attack", {
           boss: telegraphingBossState,
-          attack: telegraphedAttack,
+          attack: scaledTelegraphedAttack,
           timestampMs: nowMs
         });
         host.eventBus.emit("player:dodge", {
@@ -177,7 +189,7 @@ export class BossCombatService {
         });
       } else {
         resolveResult = this.resolveBossAttack(
-          telegraphedAttack,
+          scaledTelegraphedAttack,
           nowMs,
           telegraphingBossState.telegraphTarget,
           false,
@@ -189,7 +201,7 @@ export class BossCombatService {
       host.nextBossAttackAt = nowMs + Math.max(800, telegraphedAttack.cooldownMs * 0.4);
       host.eventBus.emit("boss:attack_resolve", {
         bossId: host.bossDef.id,
-        attack: telegraphedAttack,
+        attack: scaledTelegraphedAttack,
         ...(telegraphingBossState.telegraphTarget === undefined ? {} : { target: telegraphingBossState.telegraphTarget }),
         result: resolveResult,
         timestampMs: nowMs
@@ -210,40 +222,41 @@ export class BossCombatService {
     if (attack === null) {
       return;
     }
+    const scaledAttack = this.scaleAttack(attack);
 
-    if (attack.telegraphMs > 0) {
-      const target = this.resolveTelegraphTarget(attack);
-      const executeAtMs = nowMs + attack.telegraphMs;
+    if (scaledAttack.telegraphMs > 0) {
+      const target = this.resolveTelegraphTarget(scaledAttack);
+      const executeAtMs = nowMs + scaledAttack.telegraphMs;
       host.bossState = markBossAttackUsed(
         {
           ...currentBossState,
           aiState: "telegraph",
           telegraphEndMs: executeAtMs,
-          telegraphAttackId: attack.id,
+          telegraphAttackId: scaledAttack.id,
           ...(target === undefined ? {} : { telegraphTarget: target })
         },
-        attack,
+        scaledAttack,
         nowMs
       );
       host.nextBossAttackAt = executeAtMs;
       host.eventBus.emit("boss:attack_intent", {
         bossId: host.bossDef.id,
-        attack,
+        attack: scaledAttack,
         executeAtMs,
         ...(target === undefined ? {} : { target }),
         timestampMs: nowMs
       });
-      this.options.telegraphPresenter.show(host.bossState, attack, this.options.dispatcher.resolveActiveEncounter().telegraphProfile);
+      this.options.telegraphPresenter.show(host.bossState, scaledAttack, this.options.dispatcher.resolveActiveEncounter().telegraphProfile);
       host.hudDirty = true;
       return;
     }
 
-    this.resolveBossAttack(attack, nowMs, undefined, true, specialAffixTotals);
+    this.resolveBossAttack(scaledAttack, nowMs, undefined, true, specialAffixTotals);
     host.bossState = {
-      ...markBossAttackUsed(currentBossState, attack, nowMs),
+      ...markBossAttackUsed(currentBossState, scaledAttack, nowMs),
       aiState: "attacking"
     };
-    host.nextBossAttackAt = nowMs + Math.max(800, attack.cooldownMs * 0.4);
+    host.nextBossAttackAt = nowMs + Math.max(800, scaledAttack.cooldownMs * 0.4);
     host.hudDirty = true;
   }
 

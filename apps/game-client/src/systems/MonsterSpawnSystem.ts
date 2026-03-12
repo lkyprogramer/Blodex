@@ -32,16 +32,44 @@ export interface MonsterSpawnOptions {
 }
 
 export class MonsterSpawnSystem {
+  private isCandidateBlocked(
+    blocked: Set<string>,
+    point: { x: number; y: number }
+  ): boolean {
+    return blocked.has(`${point.x}:${point.y}`);
+  }
+
+  private canPlacePoint(
+    points: Array<{ x: number; y: number }>,
+    picked: { x: number; y: number },
+    minSpacing: number
+  ): boolean {
+    return !points.some((point) => Math.hypot(point.x - picked.x, point.y - picked.y) < minSpacing);
+  }
+
   private generateSpawnPoints(
     dungeon: DungeonLayout,
     playerPosition: { x: number; y: number },
     count: number,
     rng: RngLike,
-    blockedPositions: Array<{ x: number; y: number }>
+    blockedPositions: Array<{ x: number; y: number }>,
+    options?: {
+      minDistance?: number;
+      maxDistance?: number;
+      minSpacing?: number;
+      packChance?: number;
+      packRadius?: number;
+    }
   ): Array<{ x: number; y: number }> {
     const candidates: Array<{ x: number; y: number }> = [];
+    const anchors: Array<{ x: number; y: number }> = [];
     const points: Array<{ x: number; y: number }> = [];
     const blocked = new Set(blockedPositions.map((entry) => `${entry.x}:${entry.y}`));
+    const minDistance = Math.max(0, options?.minDistance ?? 4);
+    const maxDistance = Math.max(minDistance, options?.maxDistance ?? 30);
+    const minSpacing = Math.max(0.5, options?.minSpacing ?? 2);
+    const packChance = Math.max(0, Math.min(1, options?.packChance ?? 0.42));
+    const packRadius = Math.max(minSpacing, options?.packRadius ?? 4.5);
 
     for (let y = 1; y < dungeon.height - 1; y += 1) {
       for (let x = 1; x < dungeon.width - 1; x += 1) {
@@ -53,28 +81,81 @@ export class MonsterSpawnSystem {
         }
 
         const distToPlayer = Math.hypot(x - playerPosition.x, y - playerPosition.y);
-        if (distToPlayer < 6 || distToPlayer > 20) {
+        if (distToPlayer < minDistance || distToPlayer > maxDistance) {
           continue;
         }
         candidates.push({ x, y });
       }
     }
 
-    while (points.length < count && candidates.length > 0) {
-      const idx = rng.nextInt(0, candidates.length - 1);
-      const picked = candidates.splice(idx, 1)[0];
+    for (const spawnPoint of dungeon.spawnPoints) {
+      if (this.isCandidateBlocked(blocked, spawnPoint)) {
+        continue;
+      }
+      const distToPlayer = Math.hypot(spawnPoint.x - playerPosition.x, spawnPoint.y - playerPosition.y);
+      if (distToPlayer < minDistance || distToPlayer > maxDistance) {
+        continue;
+      }
+      anchors.push({ x: spawnPoint.x, y: spawnPoint.y });
+    }
+
+    const removeCandidate = (pool: Array<{ x: number; y: number }>, picked: { x: number; y: number }): void => {
+      const index = pool.findIndex((entry) => entry.x === picked.x && entry.y === picked.y);
+      if (index >= 0) {
+        pool.splice(index, 1);
+      }
+    };
+
+    while (points.length < count && (anchors.length > 0 || candidates.length > 0)) {
+      let picked: { x: number; y: number } | undefined;
+
+      if (points.length > 0 && candidates.length > 0 && rng.next() < packChance) {
+        const packPool = candidates.filter((candidate) => {
+          if (!this.canPlacePoint(points, candidate, minSpacing)) {
+            return false;
+          }
+          return points.some((point) => Math.hypot(point.x - candidate.x, point.y - candidate.y) <= packRadius);
+        });
+        if (packPool.length > 0) {
+          picked = rng.pick(packPool);
+        }
+      }
+
+      if (picked === undefined && anchors.length > 0) {
+        const validAnchors = anchors.filter((anchor) => this.canPlacePoint(points, anchor, minSpacing));
+        if (validAnchors.length > 0) {
+          picked = rng.pick(validAnchors);
+        }
+      }
+
+      if (picked === undefined && candidates.length > 0) {
+        const validCandidates = candidates.filter((candidate) => this.canPlacePoint(points, candidate, minSpacing));
+        if (validCandidates.length > 0) {
+          picked = rng.pick(validCandidates);
+        }
+      }
+
       if (picked === undefined) {
         break;
       }
 
-      const tooClose = points.some((point) => Math.hypot(point.x - picked.x, point.y - picked.y) < 2.8);
-      if (!tooClose) {
-        points.push(picked);
-      }
+      points.push(picked);
+      removeCandidate(anchors, picked);
+      removeCandidate(candidates, picked);
     }
 
     if (points.length < count) {
       for (const fallback of dungeon.spawnPoints) {
+        if (this.isCandidateBlocked(blocked, fallback)) {
+          continue;
+        }
+        const distToPlayer = Math.hypot(fallback.x - playerPosition.x, fallback.y - playerPosition.y);
+        if (distToPlayer < minDistance || distToPlayer > maxDistance) {
+          continue;
+        }
+        if (!this.canPlacePoint(points, fallback, minSpacing)) {
+          continue;
+        }
         points.push({ x: fallback.x, y: fallback.y });
         if (points.length >= count) {
           break;
@@ -87,16 +168,37 @@ export class MonsterSpawnSystem {
 
   createMonsters(options: MonsterSpawnOptions): MonsterSpawnCandidate[] {
     const count = options.count ?? options.floorConfig?.monsterCount ?? 0;
+    if (count <= 0) {
+      return [];
+    }
     if (options.floorConfig?.isBossFloor === true && count <= 1) {
       return [];
     }
 
+    const spawnTuning = {
+      ...(options.floorConfig?.spawnMinDistance === undefined
+        ? {}
+        : { minDistance: options.floorConfig.spawnMinDistance }),
+      ...(options.floorConfig?.spawnMaxDistance === undefined
+        ? {}
+        : { maxDistance: options.floorConfig.spawnMaxDistance }),
+      ...(options.floorConfig?.spawnMinSpacing === undefined
+        ? {}
+        : { minSpacing: options.floorConfig.spawnMinSpacing }),
+      ...(options.floorConfig?.spawnPackChance === undefined
+        ? {}
+        : { packChance: options.floorConfig.spawnPackChance }),
+      ...(options.floorConfig?.spawnPackRadius === undefined
+        ? {}
+        : { packRadius: options.floorConfig.spawnPackRadius })
+    };
     const points = this.generateSpawnPoints(
       options.dungeon,
       options.playerPosition,
       count,
       options.rng,
-      options.blockedPositions ?? []
+      options.blockedPositions ?? [],
+      spawnTuning
     );
     const monsters: MonsterSpawnCandidate[] = [];
     const hpMultiplier = options.floorConfig?.monsterHpMultiplier ?? 1;

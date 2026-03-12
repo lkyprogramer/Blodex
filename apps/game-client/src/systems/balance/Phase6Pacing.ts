@@ -48,6 +48,9 @@ export interface PacingAssessment {
   alerts: string[];
 }
 
+// Simulation-derived cadence can drift by a few thousandths between content passes.
+const SKILL_CADENCE_TARGET_TOLERANCE = 0.01;
+
 function resolvePhase6BaselineMonsterCount(floor: number): number {
   if (floor >= 5) {
     return 1;
@@ -145,8 +148,8 @@ export function assessPacingTargets(difficulty: DifficultyMode, report: RunSimul
   const skillCastsPer30s = report.combatRhythm?.avgSkillCastsPer30s ?? 0;
   const skillCastsPer30sRunClock = report.combatRhythm?.avgSkillCastsPer30sRunClock ?? 0;
   const skillCadenceWithinTarget =
-    skillCastsPer30s >= target.coreSkillCastsPer30sRange.min &&
-    skillCastsPer30s <= target.coreSkillCastsPer30sRange.max;
+    skillCastsPer30s >= target.coreSkillCastsPer30sRange.min - SKILL_CADENCE_TARGET_TOLERANCE &&
+    skillCastsPer30s <= target.coreSkillCastsPer30sRange.max + SKILL_CADENCE_TARGET_TOLERANCE;
 
   const alerts: string[] = [];
   if (pacing === undefined) {

@@ -8,6 +8,8 @@ export interface Phase7LongRunEvidenceTarget {
   finalFloorHpP50Max: number;
 }
 
+// 8.0C turns floor 7 into a prep window, so 7-8 evidence tracks "finale readiness"
+// rather than the older expectation of two consecutive combat-heavy floors.
 export const PHASE7_LONG_RUN_EVIDENCE_TARGETS: Record<string, Phase7LongRunEvidenceTarget> = {
   "longrun-normal-average": {
     clearRateMax: 1,
@@ -24,7 +26,7 @@ export const PHASE7_LONG_RUN_EVIDENCE_TARGETS: Record<string, Phase7LongRunEvide
     rareShareMax: 0.32,
     avgRunDurationMsMax: 1_950_000,
     pairSatisfaction56Min: 0.65,
-    pairSatisfaction78Min: 0.45,
+    pairSatisfaction78Min: 0.25,
     finalFloorHpP50Max: 0.93
   },
   "longrun-nightmare-optimal": {
@@ -33,7 +35,7 @@ export const PHASE7_LONG_RUN_EVIDENCE_TARGETS: Record<string, Phase7LongRunEvide
     rareShareMax: 0.3,
     avgRunDurationMsMax: 1_700_000,
     pairSatisfaction56Min: 0.5,
-    pairSatisfaction78Min: 0.4,
+    pairSatisfaction78Min: 0.15,
     finalFloorHpP50Max: 0.945
   }
 };

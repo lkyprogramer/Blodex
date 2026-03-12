@@ -97,4 +97,99 @@ describe("MonsterSpawnSystem", () => {
 
     expect(monsters).toEqual([]);
   });
+
+  it("honors floor-configured spawn distance and spacing tuning", () => {
+    const spawnSystem = new MonsterSpawnSystem();
+    const monsters = spawnSystem.createMonsters({
+      dungeon: makeDungeon(),
+      playerPosition: { x: 10, y: 10 },
+      floor: 4,
+      floorConfig: {
+        floorNumber: 4,
+        monsterHpMultiplier: 1,
+        monsterDmgMultiplier: 1,
+        monsterCount: 2,
+        clearThreshold: 0.7,
+        isBossFloor: false,
+        spawnMinDistance: 4,
+        spawnMaxDistance: 12,
+        spawnMinSpacing: 4,
+        spawnPackChance: 0,
+        spawnPackRadius: 4
+      },
+      enemyBaseHealth: 100,
+      enemyBaseDamage: 20,
+      archetypes: MONSTER_ARCHETYPES,
+      rng: new DeterministicRng()
+    });
+
+    expect(monsters).toHaveLength(2);
+    for (const monster of monsters) {
+      const distance = Math.hypot(monster.state.position.x - 10, monster.state.position.y - 10);
+      expect(distance).toBeGreaterThanOrEqual(4);
+      expect(distance).toBeLessThanOrEqual(12);
+    }
+    expect(
+      Math.hypot(
+        monsters[0]!.state.position.x - monsters[1]!.state.position.x,
+        monsters[0]!.state.position.y - monsters[1]!.state.position.y
+      )
+    ).toBeGreaterThanOrEqual(4);
+  });
+
+  it("keeps fallback spawn points inside the configured distance band", () => {
+    const spawnSystem = new MonsterSpawnSystem();
+    const width = 12;
+    const height = 12;
+    const dungeon: DungeonLayout = {
+      width,
+      height,
+      walkable: Array.from({ length: height }, () => Array.from({ length: width }, () => false)),
+      rooms: [],
+      corridors: [],
+      spawnPoints: [
+        { x: 5, y: 5 },
+        { x: 1, y: 1 },
+        { x: 10, y: 10 }
+      ],
+      playerSpawn: { x: 5, y: 6 },
+      layoutHash: "fallback-distance"
+    };
+    dungeon.walkable[1]![1] = true;
+    dungeon.walkable[10]![10] = true;
+
+    const monsters = spawnSystem.createMonsters({
+      dungeon,
+      playerPosition: { x: 5, y: 6 },
+      floor: 4,
+      floorConfig: {
+        floorNumber: 4,
+        monsterHpMultiplier: 1,
+        monsterDmgMultiplier: 1,
+        monsterCount: 2,
+        clearThreshold: 0.7,
+        isBossFloor: false,
+        spawnMinDistance: 4,
+        spawnMaxDistance: 8,
+        spawnMinSpacing: 1,
+        spawnPackChance: 0,
+        spawnPackRadius: 2
+      },
+      enemyBaseHealth: 100,
+      enemyBaseDamage: 20,
+      archetypes: MONSTER_ARCHETYPES,
+      rng: new DeterministicRng()
+    });
+
+    expect(monsters).toHaveLength(2);
+    expect(monsters.map((monster) => monster.state.position)).toEqual(
+      expect.arrayContaining([
+        { x: 1, y: 1 },
+        { x: 10, y: 10 }
+      ])
+    );
+    expect(monsters.map((monster) => monster.state.position)).not.toEqual(
+      expect.arrayContaining([{ x: 5, y: 5 }])
+    );
+  });
 });

@@ -233,4 +233,29 @@ describe("BossCombatService", () => {
 
     expect(host.bossState?.health).toBe(initialHealth);
   });
+
+  it("scales boss attack damage by floor-configured damage multiplier", () => {
+    const attack = createAttack();
+    const host = createHost(attack);
+    host.floorConfig = { isBossFloor: true, monsterDmgMultiplier: 2 };
+    const service = new BossCombatService({
+      host,
+      spawnService: { spawnSummonedMonsters: vi.fn() } as never,
+      telegraphPresenter: { clear: vi.fn(), show: vi.fn() } as never,
+      dispatcher: { resolveActiveEncounter: vi.fn(() => ({ telegraphProfile: undefined })) } as never
+    });
+
+    service.updateCombat(100);
+
+    expect(host.player.health).toBe(61);
+    expect(host.eventBus.emit).toHaveBeenCalledWith(
+      "boss:attack_resolve",
+      expect.objectContaining({
+        attack: expect.objectContaining({
+          damage: 40
+        }),
+        result: "hit"
+      })
+    );
+  });
 });

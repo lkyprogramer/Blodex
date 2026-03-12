@@ -109,6 +109,8 @@ export interface RuntimeEventHost {
   eventNode: RuntimeEventNodeState | null;
   floorConfig: {
     isBossFloor: boolean;
+    pacingKind?: FloorConfig["pacingKind"];
+    eventNodeBias?: FloorConfig["eventNodeBias"];
   };
   eventRng: {
     next(): number;
@@ -140,6 +142,11 @@ export interface RuntimeEventHost {
   eventBus: TypedEventBus<GameEventMap>;
   eventPanelOpen: boolean;
   player: PlayerState;
+  path: Array<{ x: number; y: number }>;
+  attackTargetId: string | null;
+  manualMoveTarget: { x: number; y: number } | null;
+  manualMoveTargetFailures: number;
+  nextManualPathReplanAt?: number;
   uiManager: RuntimeEventUiManager;
   runLog: RuntimeEventRunLog;
   time: { now: number };
@@ -232,7 +239,16 @@ interface ProgressionRuntimeRenderPort {
   drawDungeon(
     dungeon: DungeonLayout,
     origin: WorldBoundsConfig["origin"],
-    tintOrOptions?: number | { tileKey?: string; tintColor?: number }
+    tintOrOptions?:
+      | number
+      | {
+          tileKey?: string;
+          wallKey?: string;
+          tintColor?: number;
+          accentColor?: number;
+          variantSeed?: string;
+          pacingKind?: FloorConfig["pacingKind"];
+        }
   ): void;
   spawnPlayer(position: { x: number; y: number }, origin: WorldBoundsConfig["origin"]): {
     sprite: Phaser.GameObjects.Image | Phaser.GameObjects.Rectangle;

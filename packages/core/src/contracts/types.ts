@@ -39,6 +39,8 @@ export type SkillArchetype = "warrior" | "ranger" | "arcanist";
 export type BranchChoice = "molten_route" | "frozen_route";
 export type RunMode = "normal" | "daily";
 export type ItemSetId = string;
+export type FloorPacingKind = "combat" | "recovery" | "preparation" | "boss";
+export type FloorEventNodeBias = "random" | "near_player";
 
 export interface DifficultyModifier {
   monsterHealthMultiplier: number;
@@ -392,6 +394,18 @@ export interface FloorConfig {
   monsterCount: number;
   clearThreshold: number;
   isBossFloor: boolean;
+  pacingKind?: FloorPacingKind;
+  grantsFloorClearRewards?: boolean;
+  eventNodeBias?: FloorEventNodeBias;
+  spawnMinDistance?: number;
+  spawnMaxDistance?: number;
+  spawnMinSpacing?: number;
+  spawnPackChance?: number;
+  spawnPackRadius?: number;
+  layoutRoomCount?: number;
+  layoutCorridorHalfWidth?: number;
+  layoutCorridorLoopChance?: number;
+  layoutMaxExtraCorridors?: number;
 }
 
 export interface BiomeDef {

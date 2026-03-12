@@ -722,12 +722,19 @@ function simulateBossCombat(
   const lootRng = new SeededRng(`${runSeed}:real:boss:loot`);
   const skillRng = new SeededRng(`${runSeed}:real:boss:skill`);
   const combatSystem = new CombatSystem();
+  const difficulty = getDifficultyModifier(config.difficulty);
+  const floorConfig = resolveFloorConfig(storyMaxFloor, difficulty, storyMaxFloor);
   const weaponDef = resolveWeaponDef(player);
   const specialTotals = resolveSpecialAffixTotals(
     Object.values(player.equipment).filter((item): item is ItemInstance => item !== undefined)
   );
   let nextPlayer = player;
   let bossState = initBossState(BONE_SOVEREIGN, { x: 1.15, y: 0 });
+  bossState = {
+    ...bossState,
+    health: Math.floor(bossState.health * floorConfig.monsterHpMultiplier),
+    maxHealth: Math.floor(bossState.maxHealth * floorConfig.monsterHpMultiplier)
+  };
   let elapsedMs = 0;
   let nextPlayerAttackAt = 0;
   let pendingBossAttack:
@@ -875,15 +882,19 @@ function simulateBossCombat(
     } else if (pendingBossAttack === undefined) {
       const attack = selectBossAttack(bossState, BONE_SOVEREIGN, elapsedMs, bossRng);
       if (attack !== null) {
-        bossState = markBossAttackUsed(bossState, attack, elapsedMs);
-        if (attack.telegraphMs > 0) {
+        const scaledAttack = {
+          ...attack,
+          damage: Math.max(1, Math.floor(attack.damage * floorConfig.monsterDmgMultiplier))
+        };
+        bossState = markBossAttackUsed(bossState, scaledAttack, elapsedMs);
+        if (scaledAttack.telegraphMs > 0) {
           pendingBossAttack = {
-            attack,
-            executeAtMs: elapsedMs + attack.telegraphMs
+            attack: scaledAttack,
+            executeAtMs: elapsedMs + scaledAttack.telegraphMs
           };
         } else {
           const result = resolveBossAttack(
-            attack,
+            scaledAttack,
             bossState,
             nextPlayer,
             bossRng,
